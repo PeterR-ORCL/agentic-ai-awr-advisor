@@ -20,4 +20,10 @@
 - Issue classification engine  
 - Bottleneck detection  
 - Workload characterization  
-- Service-level attribution  
+- Service-level attribution
+
+### Roadmap
+- Day 4: OCI integration
+- Day 5: HTML dashboard
+- Day 6: Predictive modeling
+- Day 7: Full demo packaging 

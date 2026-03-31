@@ -1,7 +1,22 @@
+from src.analysis.ai_narrative_generator import generate_ai_narrative
 from src.analysis.issue_detector import detect_issues
 from src.analysis.recommendation_engine import generate_recommendations
 from src.parser.awr_parser import parse_awr_file
 
+def _normalize_terminology(text: str) -> str:
+    replacements = {
+        "user i/o": "User I/O",
+        "User i/o": "User I/O",
+        "user I/O": "User I/O",
+        "USER I/O": "User I/O",
+        "db cpu": "DB CPU",
+        "Db Cpu": "DB CPU",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    return text
 
 def _build_executive_summary(issues: list[dict]) -> str:
     issue_by_type = {
@@ -25,7 +40,9 @@ def _build_executive_summary(issues: list[dict]) -> str:
     secondary_factors: list[str] = []
     io_issue = issue_by_type.get("io_pressure")
     if io_issue:
-        io_event = str(io_issue.get("evidence", {}).get("event_name") or "the dominant User I/O event")
+        io_event = _normalize_terminology(
+            str(io_issue.get("evidence", {}).get("event_name") or "the dominant User I/O event")
+        )
         io_pct = _format_pct(io_issue.get("evidence", {}).get("pct_db_time"))
         secondary_factors.append(f"User I/O remains material, led by '{io_event}' at {io_pct}")
 
@@ -91,12 +108,28 @@ def _format_pct(value: object) -> str:
     return "0.0%"
 
 
+def normalize_terms(text: str) -> str:
+    replacements = {
+        "user i/o": "User I/O",
+        "User i/o": "User I/O",
+        "user I/O": "User I/O",
+        "USER I/O": "User I/O",
+        "db cpu": "DB CPU",
+        "Db Cpu": "DB CPU",
+    }
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+    return text
+
+
 if __name__ == "__main__":
     result = parse_awr_file("data/input/sample_awr_01.out")
 
     issues = detect_issues(result)
     recommendations = generate_recommendations(issues)
+    ai_narrative = generate_ai_narrative(result, issues, recommendations)
     executive_summary = _build_executive_summary(issues)
+    executive_summary = normalize_terms(executive_summary)
 
     print("EXECUTIVE SUMMARY")
     print("--------------------------------------------------------------------------------")
@@ -123,3 +156,14 @@ if __name__ == "__main__":
         for action in rec.actions:
             print(f"    - {action}")
         print()
+
+    print("AI Narrative Layer:\n")
+    print("System Role:")
+    print(f"  {ai_narrative['system_role']}\n")
+
+    print("Expected Sections:")
+    for section in ai_narrative["expected_sections"]:
+        print(f"  - {section}")
+
+    print("\nPrompt:")
+    print(ai_narrative["prompt"])

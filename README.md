@@ -29,6 +29,7 @@ Bridging the gap between **performance engineering and business decision-making*
 - Deterministic analysis is the source of truth
 - AI augments, but does not replace, evidence-based findings
 - Dual AI providers enable flexibility and OCI alignment
+- AI is stateless by design; state and history are introduced explicitly via ADB
 - Historical context (ADB) enables trend-based decisions
 
 ---
@@ -61,7 +62,7 @@ python scripts/run_analysis.py
 
 ## Architecture
 
-The system follows a layered approach:
+The system follows a layered, deterministic-first approach:
 
 ```text
 AWR Report(s) (.out)
@@ -79,16 +80,69 @@ Recommendation Engine (Day 4)
 Deterministic Truth Layer (Source of Truth)
 ────────────────────────────────────────────
         ↓
-ADB (Day 6 - History / Trends)
-        ↓
-AI Narrative Layer (Day 5 - Next)
+AI Narrative Layer (Day 5 - Grounded, Stateless)
    → OpenAI (advanced reasoning)
    → OCI Generative AI (Oracle-native AI)
         ↓
-Agentic Decision Layer (Day 6)
+────────────────────────────────────────────
+Context & State Layer
+────────────────────────────────────────────
+        ↓
+ADB (Day 6 - History / Trends)
+        ↓
+Agentic Decision Layer (Day 6 - Stateful, Context-Aware)
         ↓
 OCI Sizing Guidance (Day 7)
 ```
+
+---
+
+## Agentic AI Model
+
+This system is designed as an **agentic AI architecture**, not a chatbot.
+
+### What makes it agentic:
+
+- Deterministic reasoning engine (issues + recommendations)
+- AI narrative layer (explains and contextualizes decisions)
+- Historical awareness via ADB (Day 6)
+- Future capability:
+  - trend-based decision making
+  - predictive workload behavior
+  - OCI sizing recommendations
+
+### Decision Flow
+
+```text
+AWR → Facts → Issues → Recommendations → AI Interpretation → Decision Support
+```
+
+The AI does not make decisions blindly — it operates on validated system findings.
+
+---
+
+## Multi-AWR Analysis
+
+The system is designed to process multiple AWR reports.
+
+Each AWR may represent:
+- different workloads
+- different performance problems
+- different system behaviors
+
+The system:
+- analyzes each AWR independently
+- produces tailored recommendations per workload
+- will support historical trend analysis via ADB (Day 6)
+
+### Why this matters
+
+Real environments are not single snapshots.
+
+Multi-AWR analysis enables:
+- trend detection over time
+- anomaly identification
+- capacity planning based on actual workload evolution
 
 ---
 
@@ -164,6 +218,43 @@ The system now generates senior DBA-grade recommendations with clear execution g
 
 ---
 
+## Day 5 — AI Narrative Layer (Completed)
+
+The AI layer generates a structured, executive-ready narrative based strictly on deterministic findings.
+
+### Capabilities
+
+- Builds a grounded AI prompt from:
+  - Run metadata
+  - Detected issues
+  - Deterministic recommendations
+  - Key metrics
+  - Top SQL
+
+- Enforces strict constraints:
+  - No invented metrics
+  - No contradiction of findings
+  - No unsupported root causes
+  - No arbitrary sizing values
+
+- Produces structured output sections:
+  - Executive Summary
+  - Technical Narrative
+  - Root Cause Interpretation
+  - Recommended Action Plan
+  - OCI Sizing Considerations
+
+### Important
+
+The AI layer:
+- does NOT analyze raw AWR data
+- does NOT replace deterministic logic
+- is purely a **narrative and interpretation layer**
+
+This ensures credibility and repeatability.
+
+---
+
 ## Key Capabilities
 - Deterministic, explainable performance analysis
 - Evidence-backed insights with precise metrics
@@ -176,29 +267,35 @@ The system now generates senior DBA-grade recommendations with clear execution g
 
 ## Value Proposition
 
-This system replaces manual AWR analysis with:
-- Rapid identification of performance bottlenecks
-- Consistent and repeatable analysis
-- Clear, prioritized remediation steps
-- A foundation for automated OCI sizing decisions
+From AWR → to decision → in seconds
+
+This system provides:
+
+- Deterministic, repeatable analysis
+- AI-enhanced explanation (not guesswork)
+- Prioritized performance actions
+- Future-ready OCI sizing guidance
+
+This is not:
+- a report generator
+- a chatbot
+
+This is:
+- an autonomous performance and sizing advisor
 
 ---
 
 ## Roadmap
 
-### Day 5 — AI Narrative Layer (In Progress)
+### Completed
 
-Planned capabilities:
-- Generate executive summaries in natural language
-- Explain root causes in business-friendly terms
-- Produce narrative action plans
-- Support dual providers:
-  - OpenAI (advanced reasoning)
-  - OCI Generative AI (Oracle-native integration)
+- Day 1 — AWR Parsing
+- Day 2 — Structured Metrics
+- Day 3 — Issue Detection
+- Day 4 — Recommendation Engine
+- Day 5 — AI Narrative Layer (grounded, no hallucination)
 
-**Outcome:** Grounded AI narrative built on deterministic analysis
-
----
+### Next
 
 ### Day 6 — Agentic Decision Layer + ADB Integration
 
@@ -270,5 +367,5 @@ data/
 
 ## Status
 
-**Day 4 Complete — Recommendation Engine Delivered**  
-Next: **Day 5 — AI Narrative Layer**
+**Day 5 Complete — AI Narrative Layer**
+Next: **Day 6 ADB (History / Trends) and Agentic Decision Layer

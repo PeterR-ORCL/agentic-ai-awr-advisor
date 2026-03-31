@@ -142,6 +142,8 @@ The system now generates senior DBA-grade recommendations with clear execution g
 
 **Outcome:** The system not only identifies problems, but clearly explains what to do and what to do first
 
+---
+
 ## Key Capabilities
 - Deterministic, explainable performance analysis
 - Evidence-backed insights with precise metrics

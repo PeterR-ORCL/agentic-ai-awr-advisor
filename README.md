@@ -10,6 +10,21 @@ It is designed to replace manual AWR interpretation with a **repeatable, explain
 
 ---
 
+## Setup
+
+Install runtime dependencies:
+
+```bash
+pip install -r requirements.txt
+
+Install development dependencies (optional):
+pip install -r requirements-dev.txt
+
+Run the analysis:
+python scripts/run_analysis.py
+
+---
+
 ## Architecture
 
 The system follows a layered approach:

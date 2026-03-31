@@ -368,4 +368,4 @@ data/
 ## Status
 
 **Day 5 Complete — AI Narrative Layer**  
-Next: **Day 6 ADB (History / Trends) and Agentic Decision Layer
+Next: **Day 6 ADB (History / Trends) and Agentic Decision Layer**

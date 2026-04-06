@@ -101,7 +101,7 @@ OCI Sizing Guidance
 
 ## Data Flow (Execution Path)
 
-1. AWR file ingested → AWR_REPORT
+1. AWR file(s) ingested → AWR_REPORT
 2. Sections parsed → AWR_SECTION_DOC
 3. Metrics extracted → FACT tables
 4. Feature vector generated → AWR_FEATURE_VECTOR

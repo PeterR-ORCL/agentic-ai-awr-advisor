@@ -99,6 +99,19 @@ OCI Sizing Guidance
 ```
 ---
 
+## Data Flow (Execution Path)
+
+1. AWR file ingested → AWR_REPORT
+2. Sections parsed → AWR_SECTION_DOC
+3. Metrics extracted → FACT tables
+4. Feature vector generated → AWR_FEATURE_VECTOR
+5. Scoring applied → AWR_SCORE_RESULT
+6. Recommendation generated → AWR_RECOMMENDATION
+7. Action tracked → AWR_ACTION
+8. Outcome measured → AWR_OUTCOME
+
+---
+
 ## Database Schema
 
 The project includes an Autonomous Database schema under:
@@ -525,4 +538,12 @@ Current state:
 - ADB schema completed and provisioned
 - Multi-AWR ingestion and historical trend support next
 
-Next: **Multi-AWR ingestion and comparison, ADB history/trend integration, and Agentic Decision Layer**
+Next: **Multi-AWR ingestion and analysis, ADB history/trend integration, and Agentic Decision Workflow Layer**
+
+### Next Implementation Phase
+
+- Multi-AWR ingestion pipeline (parser → DB)
+- Feature vector generation logic
+- Scoring execution engine
+- Recommendation persistence
+- Automated action/outcome tracking

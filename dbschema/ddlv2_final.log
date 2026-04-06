@@ -1,0 +1,1139 @@
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 0. CLEANUP (OPTIONAL)
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> whenever sqlerror continue
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> DROP VIEW  VW_AWR_REPORT_LATEST;
+
+Error starting at line : 30 File @ /Users/probev/Projects/oci-awr-sizing-advisor/dbschema/ddlv2_final.sql
+In command -
+DROP VIEW  VW_AWR_REPORT_LATEST
+Error report -
+ORA-00942: table or view "AWRAI_APP"."VW_AWR_REPORT_LATEST" does not exist
+
+https://docs.oracle.com/error-help/db/ora-00942/
+00942. 00000 -  "table or view%s does not exist"
+*Cause:    The specified table or view did not exist, or a synonym
+           pointed to a table or view that did not exist.
+           To find existing user tables and views, query the
+           ALL_TABLES and ALL_VIEWS data dictionary views. Certain
+           privileges may be required to access the table. If an
+           application returned this message, then the table that the
+           application tried to access did not exist in the database, or
+           the application did not have access to it.
+*Action:   Check each of the following
+           - The spelling of the table or view name is correct.
+           - The referenced table or view name does exist.
+           - The synonym points to an existing table or view.
+Elapsed: 00:00:00.276
+AWRAI_APP@AWRAI_high> DROP VIEW  VW_AWR_RECOMMENDATION_CYCLE;
+
+Error starting at line : 31 File @ /Users/probev/Projects/oci-awr-sizing-advisor/dbschema/ddlv2_final.sql
+In command -
+DROP VIEW  VW_AWR_RECOMMENDATION_CYCLE
+Error report -
+ORA-00942: table or view "AWRAI_APP"."VW_AWR_RECOMMENDATION_CYCLE" does not exist
+
+https://docs.oracle.com/error-help/db/ora-00942/
+00942. 00000 -  "table or view%s does not exist"
+*Cause:    The specified table or view did not exist, or a synonym
+           pointed to a table or view that did not exist.
+           To find existing user tables and views, query the
+           ALL_TABLES and ALL_VIEWS data dictionary views. Certain
+           privileges may be required to access the table. If an
+           application returned this message, then the table that the
+           application tried to access did not exist in the database, or
+           the application did not have access to it.
+*Action:   Check each of the following
+           - The spelling of the table or view name is correct.
+           - The referenced table or view name does exist.
+           - The synonym points to an existing table or view.
+Elapsed: 00:00:00.231
+AWRAI_APP@AWRAI_high> DROP VIEW  VW_AWR_TOP_SQL_TREND;
+
+Error starting at line : 32 File @ /Users/probev/Projects/oci-awr-sizing-advisor/dbschema/ddlv2_final.sql
+In command -
+DROP VIEW  VW_AWR_TOP_SQL_TREND
+Error report -
+ORA-00942: table or view "AWRAI_APP"."VW_AWR_TOP_SQL_TREND" does not exist
+
+https://docs.oracle.com/error-help/db/ora-00942/
+00942. 00000 -  "table or view%s does not exist"
+*Cause:    The specified table or view did not exist, or a synonym
+           pointed to a table or view that did not exist.
+           To find existing user tables and views, query the
+           ALL_TABLES and ALL_VIEWS data dictionary views. Certain
+           privileges may be required to access the table. If an
+           application returned this message, then the table that the
+           application tried to access did not exist in the database, or
+           the application did not have access to it.
+*Action:   Check each of the following
+           - The spelling of the table or view name is correct.
+           - The referenced table or view name does exist.
+           - The synonym points to an existing table or view.
+Elapsed: 00:00:00.223
+AWRAI_APP@AWRAI_high> DROP VIEW  VW_AWR_WAIT_EVENT_TREND;
+
+Error starting at line : 33 File @ /Users/probev/Projects/oci-awr-sizing-advisor/dbschema/ddlv2_final.sql
+In command -
+DROP VIEW  VW_AWR_WAIT_EVENT_TREND
+Error report -
+ORA-00942: table or view "AWRAI_APP"."VW_AWR_WAIT_EVENT_TREND" does not exist
+
+https://docs.oracle.com/error-help/db/ora-00942/
+00942. 00000 -  "table or view%s does not exist"
+*Cause:    The specified table or view did not exist, or a synonym
+           pointed to a table or view that did not exist.
+           To find existing user tables and views, query the
+           ALL_TABLES and ALL_VIEWS data dictionary views. Certain
+           privileges may be required to access the table. If an
+           application returned this message, then the table that the
+           application tried to access did not exist in the database, or
+           the application did not have access to it.
+*Action:   Check each of the following
+           - The spelling of the table or view name is correct.
+           - The referenced table or view name does exist.
+           - The synonym points to an existing table or view.
+Elapsed: 00:00:00.220
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_MODEL_RUN             CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.198
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_OUTCOME               CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.179
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_ACTION                CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.170
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_RECOMMENDATION        CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.179
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_SCORE_RESULT          CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.191
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_SCORING_WEIGHT        CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.167
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_SCORING_MODEL         CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.175
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_FEATURE_VECTOR        CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.185
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_WAIT_EVENT_FACT       CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.179
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_TOP_SQL_FACT          CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.180
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_METRIC_FACT           CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.176
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_SECTION_DOC           CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.178
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_REPORT                CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.178
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_INGEST_RUN            CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.169
+AWRAI_APP@AWRAI_high> DROP TABLE AWR_SOURCE_SYSTEM         CASCADE CONSTRAINTS PURGE;
+Elapsed: 00:00:00.185
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> whenever sqlerror exit sql.sqlcode rollback
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 1. SOURCE SYSTEM / DATABASE REGISTRY
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_SOURCE_SYSTEM (
+  2      SOURCE_SYSTEM_ID         NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      SOURCE_SYSTEM_CODE       VARCHAR2(100)       NOT NULL,
+  4      TENANCY_NAME             VARCHAR2(256),
+  5      COMPARTMENT_NAME         VARCHAR2(256),
+  6      ENVIRONMENT_NAME         VARCHAR2(100),
+  7      CUSTOMER_NAME            VARCHAR2(256),
+  8      APPLICATION_NAME         VARCHAR2(256),
+  9      DB_NAME                  VARCHAR2(128),
+ 10      DB_UNIQUE_NAME           VARCHAR2(128),
+ 11      DBID                     NUMBER,
+ 12      PLATFORM_NAME            VARCHAR2(256),
+ 13      DB_VERSION               VARCHAR2(64),
+ 14      RAC_FLAG                 CHAR(1) DEFAULT 'N' CHECK (RAC_FLAG IN ('Y','N')),
+ 15      ADG_FLAG                 CHAR(1) DEFAULT 'N' CHECK (ADG_FLAG IN ('Y','N')),
+ 16      CDB_FLAG                 CHAR(1) DEFAULT 'N' CHECK (CDB_FLAG IN ('Y','N')),
+ 17      EXADATA_FLAG             CHAR(1) DEFAULT 'N' CHECK (EXADATA_FLAG IN ('Y','N')),
+ 18      PRIMARY_HOST_NAME        VARCHAR2(256),
+ 19      REGION_NAME              VARCHAR2(128),
+ 20      AVAILABILITY_DOMAIN      VARCHAR2(128),
+ 21      TAGS_JSON                JSON,
+ 22      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 23      UPDATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 24      CONSTRAINT UK_AWR_SOURCE_SYSTEM_01
+ 25          UNIQUE (SOURCE_SYSTEM_CODE),
+ 26      CONSTRAINT UK_AWR_SOURCE_SYSTEM_02
+ 27          UNIQUE (DBID, DB_UNIQUE_NAME)
+ 28  );
+Elapsed: 00:00:00.174
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 2. INGEST RUN AUDIT
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_INGEST_RUN (
+  2      INGEST_RUN_ID            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      RUN_GUID                 VARCHAR2(64)        NOT NULL,
+  4      PIPELINE_NAME            VARCHAR2(128)       NOT NULL,
+  5      PIPELINE_VERSION         VARCHAR2(64),
+  6      TRIGGER_TYPE             VARCHAR2(30),
+  7      STATUS                   VARCHAR2(30)        NOT NULL,
+  8      STARTED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+  9      ENDED_AT                 TIMESTAMP(6),
+ 10      FILE_COUNT               NUMBER DEFAULT 0 NOT NULL,
+ 11      SUCCESS_COUNT            NUMBER DEFAULT 0 NOT NULL,
+ 12      ERROR_COUNT              NUMBER DEFAULT 0 NOT NULL,
+ 13      REQUESTED_BY             VARCHAR2(256),
+ 14      EXECUTION_HOST           VARCHAR2(256),
+ 15      NOTES                    VARCHAR2(4000),
+ 16      PARAMETERS_JSON          JSON,
+ 17      ERROR_JSON               JSON,
+ 18      CONSTRAINT UK_AWR_INGEST_RUN_01 UNIQUE (RUN_GUID),
+ 19      CONSTRAINT CK_AWR_INGEST_RUN_STATUS
+ 20          CHECK (STATUS IN ('STARTED','COMPLETED','COMPLETED_WITH_ERRORS','FAILED','CANCELLED'))
+ 21  );
+Elapsed: 00:00:00.166
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 3. MASTER AWR REPORT TABLE
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_REPORT (
+  2      AWR_ID                   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      SOURCE_SYSTEM_ID         NUMBER               NOT NULL,
+  4      INGEST_RUN_ID            NUMBER,
+  5      REPLAY_OF_AWR_ID         NUMBER,
+  6      SOURCE_FILE_NAME         VARCHAR2(512)        NOT NULL,
+  7      SOURCE_FILE_PATH         VARCHAR2(1024),
+  8      OBJECT_STORE_URI         VARCHAR2(2048),
+  9      FILE_HASH_SHA256         VARCHAR2(128)        NOT NULL,
+ 10      FILE_SIZE_BYTES          NUMBER,
+ 11      REPORT_FORMAT            VARCHAR2(30) DEFAULT 'AWR_OUT' NOT NULL,
+ 12      INGEST_MODE              VARCHAR2(30) DEFAULT 'NORMAL' NOT NULL,
+ 13      DB_NAME                  VARCHAR2(128),
+ 14      DBID                     NUMBER,
+ 15      INSTANCE_NAME            VARCHAR2(128),
+ 16      INSTANCE_NUMBER          NUMBER,
+ 17      HOST_NAME                VARCHAR2(256),
+ 18      PLATFORM_NAME            VARCHAR2(256),
+ 19      DB_VERSION               VARCHAR2(64),
+ 20      SNAP_ID_BEGIN            NUMBER,
+ 21      SNAP_ID_END              NUMBER,
+ 22      SNAP_TIME_BEGIN          TIMESTAMP(6),
+ 23      SNAP_TIME_END            TIMESTAMP(6),
+ 24      SNAP_ELAPSED_MINUTES     NUMBER(12,2),
+ 25      PARSE_STATUS             VARCHAR2(30) DEFAULT 'PARSED' NOT NULL,
+ 26      REPORT_CLASS             VARCHAR2(30),
+ 27      WORKLOAD_CLASS           VARCHAR2(50),
+ 28      ANOMALY_FLAG             CHAR(1) DEFAULT 'N' CHECK (ANOMALY_FLAG IN ('Y','N')),
+ 29      RAW_METADATA_JSON        JSON,
+ 30      RAW_HEADER_JSON          JSON,
+ 31      PARSER_OUTPUT_JSON       JSON,
+ 32      PARSER_WARNINGS_JSON     JSON,
+ 33      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 34      UPDATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 35      CONSTRAINT FK_AWR_REPORT_SOURCE_SYSTEM
+ 36          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 37          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 38      CONSTRAINT FK_AWR_REPORT_INGEST_RUN
+ 39          FOREIGN KEY (INGEST_RUN_ID)
+ 40          REFERENCES AWR_INGEST_RUN (INGEST_RUN_ID),
+ 41      CONSTRAINT CK_AWR_REPORT_PARSE_STATUS
+ 42          CHECK (PARSE_STATUS IN ('LOADED','PARSED','PARTIAL','FAILED','SKIPPED')),
+ 43      CONSTRAINT CK_AWR_REPORT_INGEST_MODE
+ 44          CHECK (INGEST_MODE IN ('NORMAL','REPLAY','TEST','BACKFILL'))
+ 45  )
+ 46  PARTITION BY RANGE (SNAP_TIME_END)
+ 47  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 48  (
+ 49      PARTITION P_AWR_REPORT_BOOTSTRAP
+ 50      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 51  );
+Elapsed: 00:00:00.180
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> ALTER TABLE AWR_REPORT
+  2  ADD CONSTRAINT FK_AWR_REPORT_REPLAY_OF
+  3  FOREIGN KEY (REPLAY_OF_AWR_ID)
+  4  REFERENCES AWR_REPORT (AWR_ID);
+Elapsed: 00:00:00.157
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 4. AWR SECTION DOCUMENTS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_SECTION_DOC (
+  2      SECTION_DOC_ID           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      SNAP_TIME_BEGIN          TIMESTAMP(6)         NOT NULL,
+  6      SNAP_TIME_END            TIMESTAMP(6)         NOT NULL,
+  7      SECTION_NAME             VARCHAR2(128)        NOT NULL,
+  8      SECTION_GROUP            VARCHAR2(64),
+  9      SECTION_SEQ              NUMBER DEFAULT 1     NOT NULL,
+ 10      PARSE_CONFIDENCE         NUMBER(5,2),
+ 11      ROW_COUNT_PARSED         NUMBER,
+ 12      HAS_ANOMALY              CHAR(1) DEFAULT 'N' CHECK (HAS_ANOMALY IN ('Y','N')),
+ 13      SECTION_TEXT_CLOB        CLOB,
+ 14      SECTION_JSON             JSON,
+ 15      SECTION_STATS_JSON       JSON,
+ 16      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 17      CONSTRAINT FK_AWR_SECTION_DOC_AWR
+ 18          FOREIGN KEY (AWR_ID)
+ 19          REFERENCES AWR_REPORT (AWR_ID),
+ 20      CONSTRAINT FK_AWR_SECTION_DOC_SOURCE
+ 21          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 22          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 23      CONSTRAINT UK_AWR_SECTION_DOC_01
+ 24          UNIQUE (AWR_ID, SECTION_NAME, SECTION_SEQ)
+ 25  )
+ 26  PARTITION BY RANGE (SNAP_TIME_END)
+ 27  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 28  (
+ 29      PARTITION P_AWR_SECTION_BOOTSTRAP
+ 30      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 31  );
+Elapsed: 00:00:00.181
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 5. METRIC FACT TABLE
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_METRIC_FACT (
+  2      METRIC_FACT_ID           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      SNAP_TIME_BEGIN          TIMESTAMP(6)         NOT NULL,
+  6      SNAP_TIME_END            TIMESTAMP(6)         NOT NULL,
+  7      METRIC_DOMAIN            VARCHAR2(64)         NOT NULL,
+  8      METRIC_NAME              VARCHAR2(256)        NOT NULL,
+  9      METRIC_SUBTYPE           VARCHAR2(128),
+ 10      DIMENSION_1              VARCHAR2(256),
+ 11      DIMENSION_2              VARCHAR2(256),
+ 12      DIMENSION_3              VARCHAR2(256),
+ 13      METRIC_VALUE_NUM         NUMBER(30,10),
+ 14      METRIC_VALUE_TXT         VARCHAR2(4000),
+ 15      UNIT_OF_MEASURE          VARCHAR2(64),
+ 16      VALUE_DIRECTION          VARCHAR2(10),
+ 17      BASELINE_VALUE_NUM       NUMBER(30,10),
+ 18      DELTA_VALUE_NUM          NUMBER(30,10),
+ 19      ZSCORE_VALUE             NUMBER(18,8),
+ 20      PERCENTILE_VALUE         NUMBER(9,4),
+ 21      METRIC_JSON              JSON,
+ 22      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 23      CONSTRAINT FK_AWR_METRIC_FACT_AWR
+ 24          FOREIGN KEY (AWR_ID)
+ 25          REFERENCES AWR_REPORT (AWR_ID),
+ 26      CONSTRAINT FK_AWR_METRIC_FACT_SOURCE
+ 27          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 28          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID)
+ 29  )
+ 30  PARTITION BY RANGE (SNAP_TIME_END)
+ 31  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 32  (
+ 33      PARTITION P_AWR_METRIC_BOOTSTRAP
+ 34      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 35  );
+Elapsed: 00:00:00.167
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 6. TOP SQL FACT TABLE
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_TOP_SQL_FACT (
+  2      TOP_SQL_FACT_ID          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      SNAP_TIME_BEGIN          TIMESTAMP(6)         NOT NULL,
+  6      SNAP_TIME_END            TIMESTAMP(6)         NOT NULL,
+  7      SQL_ID                   VARCHAR2(13)         NOT NULL,
+  8      PLAN_HASH_VALUE          NUMBER,
+  9      MODULE_NAME              VARCHAR2(256),
+ 10      PARSING_SCHEMA_NAME      VARCHAR2(128),
+ 11      RANK_BY_ELAPSED          NUMBER,
+ 12      RANK_BY_CPU              NUMBER,
+ 13      RANK_BY_GETS             NUMBER,
+ 14      RANK_BY_READS            NUMBER,
+ 15      RANK_BY_EXECUTIONS       NUMBER,
+ 16      ELAPSED_TIME_SEC         NUMBER(20,6),
+ 17      CPU_TIME_SEC             NUMBER(20,6),
+ 18      IO_TIME_SEC              NUMBER(20,6),
+ 19      BUFFER_GETS              NUMBER(20,6),
+ 20      DISK_READS               NUMBER(20,6),
+ 21      EXECUTIONS               NUMBER(20,6),
+ 22      ROWS_PROCESSED           NUMBER(20,6),
+ 23      ELAPSED_PER_EXEC_SEC     NUMBER(20,6),
+ 24      CPU_PER_EXEC_SEC         NUMBER(20,6),
+ 25      GETS_PER_EXEC            NUMBER(20,6),
+ 26      READS_PER_EXEC           NUMBER(20,6),
+ 27      SQL_TEXT_SHORT           VARCHAR2(4000),
+ 28      SQL_TEXT_CLOB            CLOB,
+ 29      SQL_METRICS_JSON         JSON,
+ 30      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 31      CONSTRAINT FK_AWR_TOP_SQL_FACT_AWR
+ 32          FOREIGN KEY (AWR_ID)
+ 33          REFERENCES AWR_REPORT (AWR_ID),
+ 34      CONSTRAINT FK_AWR_TOP_SQL_FACT_SOURCE
+ 35          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 36          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID)
+ 37  )
+ 38  PARTITION BY RANGE (SNAP_TIME_END)
+ 39  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 40  (
+ 41      PARTITION P_AWR_TOP_SQL_BOOTSTRAP
+ 42      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 43  );
+Elapsed: 00:00:00.167
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 7. WAIT EVENT FACT TABLE
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_WAIT_EVENT_FACT (
+  2      WAIT_EVENT_FACT_ID       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      SNAP_TIME_BEGIN          TIMESTAMP(6)         NOT NULL,
+  6      SNAP_TIME_END            TIMESTAMP(6)         NOT NULL,
+  7      WAIT_CLASS               VARCHAR2(128)        NOT NULL,
+  8      EVENT_NAME               VARCHAR2(256)        NOT NULL,
+  9      TOTAL_WAITS              NUMBER(20,6),
+ 10      TOTAL_TIMEOUTS           NUMBER(20,6),
+ 11      TIME_WAITED_SEC          NUMBER(20,6),
+ 12      AVG_WAIT_MS              NUMBER(20,6),
+ 13      PCT_DB_TIME              NUMBER(9,4),
+ 14      RANK_IN_AWR              NUMBER,
+ 15      FOREGROUND_FLAG          CHAR(1) DEFAULT 'Y' CHECK (FOREGROUND_FLAG IN ('Y','N')),
+ 16      WAIT_METRICS_JSON        JSON,
+ 17      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 18      CONSTRAINT FK_AWR_WAIT_EVENT_FACT_AWR
+ 19          FOREIGN KEY (AWR_ID)
+ 20          REFERENCES AWR_REPORT (AWR_ID),
+ 21      CONSTRAINT FK_AWR_WAIT_EVENT_FACT_SOURCE
+ 22          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 23          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID)
+ 24  )
+ 25  PARTITION BY RANGE (SNAP_TIME_END)
+ 26  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 27  (
+ 28      PARTITION P_AWR_WAIT_EVENT_BOOTSTRAP
+ 29      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 30  );
+Elapsed: 00:00:00.173
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 8. FEATURE VECTOR TABLE
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_FEATURE_VECTOR (
+  2      FEATURE_VECTOR_ID        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      OBSERVED_AT              TIMESTAMP(6)         NOT NULL,
+  6      VECTOR_VERSION           VARCHAR2(64)         NOT NULL,
+  7      FEATURE_SET_NAME         VARCHAR2(128)        NOT NULL,
+  8      FEATURE_SET_VERSION      VARCHAR2(64)         NOT NULL,
+  9      WORKLOAD_CLASS           VARCHAR2(50),
+ 10      VECTOR_STATUS            VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+ 11      FEATURE_VECTOR           VECTOR(256, FLOAT32),
+ 12      NARRATIVE_EMBEDDING      VECTOR(1536, FLOAT32),
+ 13      FEATURE_JSON             JSON,
+ 14      NORMALIZATION_JSON       JSON,
+ 15      EXPLANATION_JSON         JSON,
+ 16      SOURCE_LINEAGE_JSON      JSON,
+ 17      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 18      CONSTRAINT FK_AWR_FEATURE_VECTOR_AWR
+ 19          FOREIGN KEY (AWR_ID)
+ 20          REFERENCES AWR_REPORT (AWR_ID),
+ 21      CONSTRAINT FK_AWR_FEATURE_VECTOR_SOURCE
+ 22          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 23          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 24      CONSTRAINT UK_AWR_FEATURE_VECTOR_01
+ 25          UNIQUE (AWR_ID, FEATURE_SET_NAME, FEATURE_SET_VERSION)
+ 26  )
+ 27  PARTITION BY RANGE (OBSERVED_AT)
+ 28  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 29  (
+ 30      PARTITION P_AWR_FV_BOOTSTRAP
+ 31      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 32  );
+Elapsed: 00:00:00.186
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 9. SCORING MODEL DEFINITION
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_SCORING_MODEL (
+  2      SCORING_MODEL_ID         NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      MODEL_CODE               VARCHAR2(100)        NOT NULL,
+  4      MODEL_NAME               VARCHAR2(256)        NOT NULL,
+  5      MODEL_VERSION            VARCHAR2(64)         NOT NULL,
+  6      MODEL_TYPE               VARCHAR2(50)         NOT NULL,
+  7      TARGET_DECISION_DOMAIN   VARCHAR2(64)         NOT NULL,
+  8      STATUS                   VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+  9      SCORE_MIN                NUMBER(18,6) DEFAULT 0 NOT NULL,
+ 10      SCORE_MAX                NUMBER(18,6) DEFAULT 100 NOT NULL,
+ 11      THRESHOLD_JSON           JSON,
+ 12      MODEL_CONFIG_JSON        JSON,
+ 13      TRAINING_METADATA_JSON   JSON,
+ 14      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 15      UPDATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 16      CONSTRAINT UK_AWR_SCORING_MODEL_01
+ 17          UNIQUE (MODEL_CODE, MODEL_VERSION),
+ 18      CONSTRAINT CK_AWR_SCORING_MODEL_STATUS
+ 19          CHECK (STATUS IN ('DRAFT','ACTIVE','RETIRED','DISABLED'))
+ 20  );
+Elapsed: 00:00:00.176
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 10. SCORING WEIGHTS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_SCORING_WEIGHT (
+  2      SCORING_WEIGHT_ID        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      SCORING_MODEL_ID         NUMBER                NOT NULL,
+  4      FEATURE_CODE             VARCHAR2(128)        NOT NULL,
+  5      FEATURE_NAME             VARCHAR2(256),
+  6      FEATURE_DOMAIN           VARCHAR2(64),
+  7      FEATURE_PATH             VARCHAR2(512),
+  8      WEIGHT_VALUE             NUMBER(18,8)         NOT NULL,
+  9      NORMALIZATION_METHOD     VARCHAR2(64),
+ 10      TRANSFORM_METHOD         VARCHAR2(64),
+ 11      POLARITY                 VARCHAR2(20),
+ 12      ENABLED_FLAG             CHAR(1) DEFAULT 'Y' CHECK (ENABLED_FLAG IN ('Y','N')),
+ 13      NOTES                    VARCHAR2(4000),
+ 14      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 15      CONSTRAINT FK_AWR_SCORING_WEIGHT_MODEL
+ 16          FOREIGN KEY (SCORING_MODEL_ID)
+ 17          REFERENCES AWR_SCORING_MODEL (SCORING_MODEL_ID),
+ 18      CONSTRAINT UK_AWR_SCORING_WEIGHT_01
+ 19          UNIQUE (SCORING_MODEL_ID, FEATURE_CODE)
+ 20  );
+Elapsed: 00:00:00.161
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 11. SCORE RESULTS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_SCORE_RESULT (
+  2      SCORE_RESULT_ID          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      FEATURE_VECTOR_ID        NUMBER,
+  6      SCORING_MODEL_ID         NUMBER                NOT NULL,
+  7      SCORED_AT                TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+  8      DECISION_DOMAIN          VARCHAR2(64)         NOT NULL,
+  9      RISK_LEVEL               VARCHAR2(30),
+ 10      TOTAL_SCORE              NUMBER(18,8)         NOT NULL,
+ 11      CONFIDENCE_SCORE         NUMBER(9,4),
+ 12      SEVERITY_SCORE           NUMBER(9,4),
+ 13      URGENCY_SCORE            NUMBER(9,4),
+ 14      BUSINESS_IMPACT_SCORE    NUMBER(9,4),
+ 15      EXPLANATION_JSON         JSON,
+ 16      CONTRIBUTION_JSON        JSON,
+ 17      SCORECARD_JSON           JSON,
+ 18      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 19      CONSTRAINT FK_AWR_SCORE_RESULT_AWR
+ 20          FOREIGN KEY (AWR_ID)
+ 21          REFERENCES AWR_REPORT (AWR_ID),
+ 22      CONSTRAINT FK_AWR_SCORE_RESULT_SOURCE
+ 23          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 24          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 25      CONSTRAINT FK_AWR_SCORE_RESULT_VECTOR
+ 26          FOREIGN KEY (FEATURE_VECTOR_ID)
+ 27          REFERENCES AWR_FEATURE_VECTOR (FEATURE_VECTOR_ID),
+ 28      CONSTRAINT FK_AWR_SCORE_RESULT_MODEL
+ 29          FOREIGN KEY (SCORING_MODEL_ID)
+ 30          REFERENCES AWR_SCORING_MODEL (SCORING_MODEL_ID),
+ 31      CONSTRAINT CK_AWR_SCORE_RESULT_RISK
+ 32          CHECK (RISK_LEVEL IN ('LOW','MEDIUM','HIGH','CRITICAL'))
+ 33  )
+ 34  PARTITION BY RANGE (SCORED_AT)
+ 35  INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+ 36  (
+ 37      PARTITION P_AWR_SCORE_BOOTSTRAP
+ 38      VALUES LESS THAN (TIMESTAMP '2025-01-01 00:00:00')
+ 39  );
+Elapsed: 00:00:00.166
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 12. RECOMMENDATIONS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_RECOMMENDATION (
+  2      RECOMMENDATION_ID        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      AWR_ID                   NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      SCORE_RESULT_ID          NUMBER,
+  6      RECOMMENDED_AT           TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+  7      RECOMMENDATION_TYPE      VARCHAR2(64)         NOT NULL,
+  8      RECOMMENDATION_CLASS     VARCHAR2(64),
+  9      PRIORITY_CODE            VARCHAR2(30),
+ 10      STATUS                   VARCHAR2(30) DEFAULT 'PROPOSED' NOT NULL,
+ 11      TITLE                    VARCHAR2(500)        NOT NULL,
+ 12      SUMMARY                  VARCHAR2(4000),
+ 13      RATIONALE_JSON           JSON,
+ 14      EVIDENCE_JSON            JSON,
+ 15      PARAMETERS_JSON          JSON,
+ 16      ESTIMATED_BENEFIT_JSON   JSON,
+ 17      ESTIMATED_COST_JSON      JSON,
+ 18      ESTIMATED_RISK_JSON      JSON,
+ 19      TARGET_STATE_JSON        JSON,
+ 20      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 21      UPDATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 22      CONSTRAINT FK_AWR_RECOMMENDATION_AWR
+ 23          FOREIGN KEY (AWR_ID)
+ 24          REFERENCES AWR_REPORT (AWR_ID),
+ 25      CONSTRAINT FK_AWR_RECOMMENDATION_SOURCE
+ 26          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 27          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 28      CONSTRAINT FK_AWR_RECOMMENDATION_SCORE
+ 29          FOREIGN KEY (SCORE_RESULT_ID)
+ 30          REFERENCES AWR_SCORE_RESULT (SCORE_RESULT_ID),
+ 31      CONSTRAINT CK_AWR_RECOMMENDATION_STATUS
+ 32          CHECK (STATUS IN ('PROPOSED','APPROVED','REJECTED','IMPLEMENTED','CLOSED'))
+ 33  );
+Elapsed: 00:00:00.167
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 13. ACTIONS / IMPLEMENTATION TRACKING
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_ACTION (
+  2      ACTION_ID                NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      RECOMMENDATION_ID        NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      ACTION_TYPE              VARCHAR2(64)         NOT NULL,
+  6      ACTION_STATUS            VARCHAR2(30) DEFAULT 'PLANNED' NOT NULL,
+  7      IMPLEMENTED_BY           VARCHAR2(256),
+  8      IMPLEMENTED_AT           TIMESTAMP(6),
+  9      CHANGE_TICKET            VARCHAR2(128),
+ 10      APPROVAL_REFERENCE       VARCHAR2(128),
+ 11      BEFORE_STATE_JSON        JSON,
+ 12      AFTER_STATE_JSON         JSON,
+ 13      ACTION_DETAILS_JSON      JSON,
+ 14      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 15      UPDATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 16      CONSTRAINT FK_AWR_ACTION_RECOMMENDATION
+ 17          FOREIGN KEY (RECOMMENDATION_ID)
+ 18          REFERENCES AWR_RECOMMENDATION (RECOMMENDATION_ID),
+ 19      CONSTRAINT FK_AWR_ACTION_SOURCE
+ 20          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 21          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 22      CONSTRAINT CK_AWR_ACTION_STATUS
+ 23          CHECK (ACTION_STATUS IN ('PLANNED','IN_PROGRESS','COMPLETED','FAILED','ROLLED_BACK','CANCELLED'))
+ 24  );
+Elapsed: 00:00:00.162
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 14. OUTCOMES / FEEDBACK / TRUE LABELS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_OUTCOME (
+  2      OUTCOME_ID               NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      ACTION_ID                NUMBER                NOT NULL,
+  4      SOURCE_SYSTEM_ID         NUMBER                NOT NULL,
+  5      BASELINE_AWR_ID          NUMBER,
+  6      POST_AWR_ID              NUMBER,
+  7      OBSERVED_AT              TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+  8      OBSERVATION_WINDOW_HRS   NUMBER(12,2),
+  9      OUTCOME_STATUS           VARCHAR2(30)         NOT NULL,
+ 10      SUCCESS_FLAG             CHAR(1) DEFAULT 'N' CHECK (SUCCESS_FLAG IN ('Y','N')),
+ 11      DELTA_CPU_PCT            NUMBER(18,8),
+ 12      DELTA_DB_TIME_PCT        NUMBER(18,8),
+ 13      DELTA_IO_PCT             NUMBER(18,8),
+ 14      DELTA_AAS_PCT            NUMBER(18,8),
+ 15      DELTA_THROUGHPUT_PCT     NUMBER(18,8),
+ 16      ACTUAL_BENEFIT_JSON      JSON,
+ 17      ACTUAL_COST_JSON         JSON,
+ 18      OUTCOME_METRICS_JSON     JSON,
+ 19      LABEL_JSON               JSON,
+ 20      REVIEW_NOTES             VARCHAR2(4000),
+ 21      CREATED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 22      CONSTRAINT FK_AWR_OUTCOME_ACTION
+ 23          FOREIGN KEY (ACTION_ID)
+ 24          REFERENCES AWR_ACTION (ACTION_ID),
+ 25      CONSTRAINT FK_AWR_OUTCOME_SOURCE
+ 26          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 27          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 28      CONSTRAINT FK_AWR_OUTCOME_BASE_AWR
+ 29          FOREIGN KEY (BASELINE_AWR_ID)
+ 30          REFERENCES AWR_REPORT (AWR_ID),
+ 31      CONSTRAINT FK_AWR_OUTCOME_POST_AWR
+ 32          FOREIGN KEY (POST_AWR_ID)
+ 33          REFERENCES AWR_REPORT (AWR_ID),
+ 34      CONSTRAINT CK_AWR_OUTCOME_STATUS
+ 35          CHECK (OUTCOME_STATUS IN ('IMPROVED','UNCHANGED','DEGRADED','MIXED'))
+ 36  );
+Elapsed: 00:00:00.166
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 15. MODEL / INFERENCE AUDIT
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE TABLE AWR_MODEL_RUN (
+  2      MODEL_RUN_ID             NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  3      SCORING_MODEL_ID         NUMBER,
+  4      SOURCE_SYSTEM_ID         NUMBER,
+  5      AWR_ID                   NUMBER,
+  6      FEATURE_VECTOR_ID        NUMBER,
+  7      RUN_TYPE                 VARCHAR2(30)         NOT NULL,
+  8      RUN_STATUS               VARCHAR2(30)         NOT NULL,
+  9      STARTED_AT               TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+ 10      ENDED_AT                 TIMESTAMP(6),
+ 11      TRAINING_SET_REF         VARCHAR2(256),
+ 12      MODEL_ARTIFACT_REF       VARCHAR2(2048),
+ 13      METRICS_JSON             JSON,
+ 14      PARAMS_JSON              JSON,
+ 15      OUTPUT_JSON              JSON,
+ 16      ERROR_JSON               JSON,
+ 17      CONSTRAINT FK_AWR_MODEL_RUN_MODEL
+ 18          FOREIGN KEY (SCORING_MODEL_ID)
+ 19          REFERENCES AWR_SCORING_MODEL (SCORING_MODEL_ID),
+ 20      CONSTRAINT FK_AWR_MODEL_RUN_SOURCE
+ 21          FOREIGN KEY (SOURCE_SYSTEM_ID)
+ 22          REFERENCES AWR_SOURCE_SYSTEM (SOURCE_SYSTEM_ID),
+ 23      CONSTRAINT FK_AWR_MODEL_RUN_AWR
+ 24          FOREIGN KEY (AWR_ID)
+ 25          REFERENCES AWR_REPORT (AWR_ID),
+ 26      CONSTRAINT FK_AWR_MODEL_RUN_VECTOR
+ 27          FOREIGN KEY (FEATURE_VECTOR_ID)
+ 28          REFERENCES AWR_FEATURE_VECTOR (FEATURE_VECTOR_ID),
+ 29      CONSTRAINT CK_AWR_MODEL_RUN_TYPE
+ 30          CHECK (RUN_TYPE IN ('TRAIN','SCORE','RETRAIN','BACKTEST')),
+ 31      CONSTRAINT CK_AWR_MODEL_RUN_STATUS
+ 32          CHECK (RUN_STATUS IN ('STARTED','COMPLETED','FAILED','CANCELLED'))
+ 33  );
+Elapsed: 00:00:00.160
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 16. RELATIONAL INDEXES
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SOURCE_SYSTEM_01
+  2      ON AWR_SOURCE_SYSTEM (CUSTOMER_NAME, ENVIRONMENT_NAME, APPLICATION_NAME);
+Elapsed: 00:00:00.150
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_INGEST_RUN_01
+  2      ON AWR_INGEST_RUN (STATUS, STARTED_AT);
+Elapsed: 00:00:00.146
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_01
+  2      ON AWR_REPORT (SOURCE_SYSTEM_ID, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.146
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_02
+  2      ON AWR_REPORT (DBID, INSTANCE_NUMBER, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.145
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_03
+  2      ON AWR_REPORT (PARSE_STATUS, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.148
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_04
+  2      ON AWR_REPORT (ANOMALY_FLAG, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.152
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_05
+  2      ON AWR_REPORT (SOURCE_FILE_NAME);
+Elapsed: 00:00:00.151
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_06
+  2      ON AWR_REPORT (FILE_HASH_SHA256);
+Elapsed: 00:00:00.152
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_07
+  2      ON AWR_REPORT (INGEST_MODE, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.152
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_08
+  2      ON AWR_REPORT (REPLAY_OF_AWR_ID);
+Elapsed: 00:00:00.153
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SECTION_DOC_01
+  2      ON AWR_SECTION_DOC (AWR_ID, SECTION_NAME);
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SECTION_DOC_02
+  2      ON AWR_SECTION_DOC (SOURCE_SYSTEM_ID, SECTION_GROUP, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_METRIC_FACT_01
+  2      ON AWR_METRIC_FACT (SOURCE_SYSTEM_ID, METRIC_DOMAIN, METRIC_NAME, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_METRIC_FACT_02
+  2      ON AWR_METRIC_FACT (AWR_ID, METRIC_DOMAIN, METRIC_NAME);
+Elapsed: 00:00:00.154
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_METRIC_FACT_03
+  2      ON AWR_METRIC_FACT (DIMENSION_1, DIMENSION_2);
+Elapsed: 00:00:00.154
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_TOP_SQL_FACT_01
+  2      ON AWR_TOP_SQL_FACT (SOURCE_SYSTEM_ID, SQL_ID, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.154
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_TOP_SQL_FACT_02
+  2      ON AWR_TOP_SQL_FACT (AWR_ID, SQL_ID);
+Elapsed: 00:00:00.156
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_TOP_SQL_FACT_03
+  2      ON AWR_TOP_SQL_FACT (SQL_ID, PLAN_HASH_VALUE, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_TOP_SQL_FACT_04
+  2      ON AWR_TOP_SQL_FACT (SOURCE_SYSTEM_ID, RANK_BY_ELAPSED, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.156
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_WAIT_EVENT_FACT_01
+  2      ON AWR_WAIT_EVENT_FACT (SOURCE_SYSTEM_ID, WAIT_CLASS, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.165
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_WAIT_EVENT_FACT_02
+  2      ON AWR_WAIT_EVENT_FACT (SOURCE_SYSTEM_ID, EVENT_NAME, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.157
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_WAIT_EVENT_FACT_03
+  2      ON AWR_WAIT_EVENT_FACT (AWR_ID, WAIT_CLASS, EVENT_NAME);
+Elapsed: 00:00:00.156
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_WAIT_EVENT_FACT_04
+  2      ON AWR_WAIT_EVENT_FACT (SOURCE_SYSTEM_ID, RANK_IN_AWR, SNAP_TIME_END) LOCAL;
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_FEATURE_VECTOR_01
+  2      ON AWR_FEATURE_VECTOR (SOURCE_SYSTEM_ID, FEATURE_SET_NAME, OBSERVED_AT) LOCAL;
+Elapsed: 00:00:00.160
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SCORING_MODEL_01
+  2      ON AWR_SCORING_MODEL (STATUS, TARGET_DECISION_DOMAIN);
+Elapsed: 00:00:00.152
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SCORE_RESULT_01
+  2      ON AWR_SCORE_RESULT (SOURCE_SYSTEM_ID, DECISION_DOMAIN, SCORED_AT) LOCAL;
+Elapsed: 00:00:00.159
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SCORE_RESULT_02
+  2      ON AWR_SCORE_RESULT (AWR_ID, SCORING_MODEL_ID);
+Elapsed: 00:00:00.151
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SCORE_RESULT_03
+  2      ON AWR_SCORE_RESULT (RISK_LEVEL, TOTAL_SCORE, SCORED_AT) LOCAL;
+Elapsed: 00:00:00.156
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_RECOMMENDATION_01
+  2      ON AWR_RECOMMENDATION (SOURCE_SYSTEM_ID, STATUS, RECOMMENDED_AT);
+Elapsed: 00:00:00.164
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_RECOMMENDATION_02
+  2      ON AWR_RECOMMENDATION (AWR_ID, RECOMMENDATION_TYPE);
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_ACTION_01
+  2      ON AWR_ACTION (RECOMMENDATION_ID, ACTION_STATUS);
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_ACTION_02
+  2      ON AWR_ACTION (SOURCE_SYSTEM_ID, ACTION_STATUS, IMPLEMENTED_AT);
+Elapsed: 00:00:00.154
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_OUTCOME_01
+  2      ON AWR_OUTCOME (ACTION_ID, OUTCOME_STATUS);
+Elapsed: 00:00:00.164
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_OUTCOME_02
+  2      ON AWR_OUTCOME (SOURCE_SYSTEM_ID, OBSERVED_AT);
+Elapsed: 00:00:00.162
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_MODEL_RUN_01
+  2      ON AWR_MODEL_RUN (RUN_TYPE, RUN_STATUS, STARTED_AT);
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_MODEL_RUN_02
+  2      ON AWR_MODEL_RUN (SCORING_MODEL_ID, STARTED_AT);
+Elapsed: 00:00:00.160
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 17. JSON FUNCTION-BASED INDEXES
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_JSON_01
+  2      ON AWR_REPORT (
+  3          JSON_VALUE(RAW_METADATA_JSON, '$.release' RETURNING VARCHAR2(64))
+  4      );
+Elapsed: 00:00:00.155
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_REPORT_JSON_02
+  2      ON AWR_REPORT (
+  3          JSON_VALUE(RAW_METADATA_JSON, '$.startup_time' RETURNING VARCHAR2(64))
+  4      );
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SECTION_DOC_JSON_01
+  2      ON AWR_SECTION_DOC (
+  3          JSON_VALUE(SECTION_STATS_JSON, '$.top_wait_event' RETURNING VARCHAR2(256))
+  4      );
+Elapsed: 00:00:00.150
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE INDEX IX_AWR_SCORE_RESULT_JSON_01
+  2      ON AWR_SCORE_RESULT (
+  3          JSON_VALUE(SCORECARD_JSON, '$.primary_bottleneck' RETURNING VARCHAR2(128))
+  4      );
+Elapsed: 00:00:00.160
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 18. JSON SEARCH INDEXES
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE SEARCH INDEX SI_AWR_REPORT_JSON
+  2      ON AWR_REPORT (PARSER_OUTPUT_JSON)
+  3      FOR JSON;
+Elapsed: 00:00:01.204
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE SEARCH INDEX SI_AWR_SECTION_DOC_JSON
+  2      ON AWR_SECTION_DOC (SECTION_JSON)
+  3      FOR JSON;
+Elapsed: 00:00:00.601
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 19. VECTOR INDEXES
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE VECTOR INDEX VIDX_AWR_FEATURE_VECTOR_HNSW
+  2      ON AWR_FEATURE_VECTOR (FEATURE_VECTOR)
+  3      ORGANIZATION INMEMORY NEIGHBOR GRAPH
+  4      DISTANCE COSINE
+  5      WITH TARGET ACCURACY 95;
+Elapsed: 00:00:00.572
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE VECTOR INDEX VIDX_AWR_NARRATIVE_EMBED_HNSW
+  2      ON AWR_FEATURE_VECTOR (NARRATIVE_EMBEDDING)
+  3      ORGANIZATION INMEMORY NEIGHBOR GRAPH
+  4      DISTANCE COSINE
+  5      WITH TARGET ACCURACY 95;
+Elapsed: 00:00:00.342
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 20. HELPFUL VIEWS
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> CREATE OR REPLACE VIEW VW_AWR_REPORT_LATEST AS
+  2  SELECT
+  3      s.SOURCE_SYSTEM_CODE,
+  4      s.CUSTOMER_NAME,
+  5      s.ENVIRONMENT_NAME,
+  6      r.AWR_ID,
+  7      r.DB_NAME,
+  8      r.DBID,
+  9      r.INSTANCE_NAME,
+ 10      r.INSTANCE_NUMBER,
+ 11      r.SNAP_ID_BEGIN,
+ 12      r.SNAP_ID_END,
+ 13      r.SNAP_TIME_BEGIN,
+ 14      r.SNAP_TIME_END,
+ 15      r.SNAP_ELAPSED_MINUTES,
+ 16      r.PARSE_STATUS,
+ 17      r.ANOMALY_FLAG,
+ 18      r.INGEST_MODE,
+ 19      r.SOURCE_FILE_NAME,
+ 20      r.CREATED_AT
+ 21  FROM AWR_REPORT r
+ 22  JOIN AWR_SOURCE_SYSTEM s
+ 23    ON s.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+ 24  WHERE r.SNAP_TIME_END = (
+ 25      SELECT MAX(r2.SNAP_TIME_END)
+ 26      FROM AWR_REPORT r2
+ 27      WHERE r2.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+ 28  );
+Elapsed: 00:00:00.176
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE OR REPLACE VIEW VW_AWR_RECOMMENDATION_CYCLE AS
+  2  SELECT
+  3      s.SOURCE_SYSTEM_CODE,
+  4      r.AWR_ID,
+  5      r.SNAP_TIME_END,
+  6      sr.SCORE_RESULT_ID,
+  7      sr.DECISION_DOMAIN,
+  8      sr.TOTAL_SCORE,
+  9      sr.RISK_LEVEL,
+ 10      rec.RECOMMENDATION_ID,
+ 11      rec.RECOMMENDATION_TYPE,
+ 12      rec.STATUS AS RECOMMENDATION_STATUS,
+ 13      act.ACTION_ID,
+ 14      act.ACTION_TYPE,
+ 15      act.ACTION_STATUS,
+ 16      o.OUTCOME_ID,
+ 17      o.OUTCOME_STATUS,
+ 18      o.SUCCESS_FLAG
+ 19  FROM AWR_REPORT r
+ 20  JOIN AWR_SOURCE_SYSTEM s
+ 21    ON s.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+ 22  LEFT JOIN AWR_SCORE_RESULT sr
+ 23    ON sr.AWR_ID = r.AWR_ID
+ 24  LEFT JOIN AWR_RECOMMENDATION rec
+ 25    ON rec.SCORE_RESULT_ID = sr.SCORE_RESULT_ID
+ 26  LEFT JOIN AWR_ACTION act
+ 27    ON act.RECOMMENDATION_ID = rec.RECOMMENDATION_ID
+ 28  LEFT JOIN AWR_OUTCOME o
+ 29    ON o.ACTION_ID = act.ACTION_ID;
+Elapsed: 00:00:00.163
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE OR REPLACE VIEW VW_AWR_TOP_SQL_TREND AS
+  2  SELECT
+  3      s.SOURCE_SYSTEM_CODE,
+  4      t.SOURCE_SYSTEM_ID,
+  5      t.AWR_ID,
+  6      t.SNAP_TIME_BEGIN,
+  7      t.SNAP_TIME_END,
+  8      t.SQL_ID,
+  9      t.PLAN_HASH_VALUE,
+ 10      t.RANK_BY_ELAPSED,
+ 11      t.RANK_BY_CPU,
+ 12      t.ELAPSED_TIME_SEC,
+ 13      t.CPU_TIME_SEC,
+ 14      t.IO_TIME_SEC,
+ 15      t.EXECUTIONS,
+ 16      t.ELAPSED_PER_EXEC_SEC,
+ 17      t.CPU_PER_EXEC_SEC
+ 18  FROM AWR_TOP_SQL_FACT t
+ 19  JOIN AWR_SOURCE_SYSTEM s
+ 20    ON s.SOURCE_SYSTEM_ID = t.SOURCE_SYSTEM_ID;
+Elapsed: 00:00:00.161
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> CREATE OR REPLACE VIEW VW_AWR_WAIT_EVENT_TREND AS
+  2  SELECT
+  3      s.SOURCE_SYSTEM_CODE,
+  4      w.SOURCE_SYSTEM_ID,
+  5      w.AWR_ID,
+  6      w.SNAP_TIME_BEGIN,
+  7      w.SNAP_TIME_END,
+  8      w.WAIT_CLASS,
+  9      w.EVENT_NAME,
+ 10      w.RANK_IN_AWR,
+ 11      w.TOTAL_WAITS,
+ 12      w.TIME_WAITED_SEC,
+ 13      w.AVG_WAIT_MS,
+ 14      w.PCT_DB_TIME
+ 15  FROM AWR_WAIT_EVENT_FACT w
+ 16  JOIN AWR_SOURCE_SYSTEM s
+ 17    ON s.SOURCE_SYSTEM_ID = w.SOURCE_SYSTEM_ID;
+Elapsed: 00:00:00.151
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> -- 21. SEED EXAMPLE: DEFAULT WEIGHTED MODEL
+AWRAI_APP@AWRAI_high> --------------------------------------------------------------------------------
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_MODEL (
+  2      MODEL_CODE,
+  3      MODEL_NAME,
+  4      MODEL_VERSION,
+  5      MODEL_TYPE,
+  6      TARGET_DECISION_DOMAIN,
+  7      STATUS,
+  8      THRESHOLD_JSON,
+  9      MODEL_CONFIG_JSON
+ 10  ) VALUES (
+ 11      'AWR_WEIGHTED_CORE',
+ 12      'AWR Weighted Core Scoring Model',
+ 13      '1.0.0',
+ 14      'WEIGHTED',
+ 15      'SIZING',
+ 16      'ACTIVE',
+ 17      JSON('{"low":25,"medium":50,"high":75,"critical":90}'),
+ 18      JSON('{"feature_set":"CORE_256","notes":"Initial weighted scoring model for demo"}')
+ 19  );
+Elapsed: 00:00:00.239
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'CPU_UTIL_P95',
+  8      'CPU Utilization P95',
+  9      'CPU',
+ 10      '$.CPU_UTIL_P95',
+ 11      0.20,
+ 12      'MINMAX',
+ 13      'NONE',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.196
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'DB_TIME_PER_TXN',
+  8      'DB Time Per Transaction',
+  9      'LOAD',
+ 10      '$.DB_TIME_PER_TXN',
+ 11      0.20,
+ 12      'ROBUST',
+ 13      'LOG1P',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.159
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'READ_LATENCY_MS',
+  8      'Read Latency (ms)',
+  9      'IO',
+ 10      '$.READ_LATENCY_MS',
+ 11      0.15,
+ 12      'MINMAX',
+ 13      'NONE',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.157
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'LOG_FILE_SYNC_MS',
+  8      'Log File Sync (ms)',
+  9      'WAIT',
+ 10      '$.LOG_FILE_SYNC_MS',
+ 11      0.15,
+ 12      'MINMAX',
+ 13      'NONE',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'TOP_SQL_LOAD_CONCENTRATION',
+  8      'Top SQL Load Concentration',
+  9      'SQL',
+ 10      '$.TOP_SQL_LOAD_CONCENTRATION',
+ 11      0.15,
+ 12      'MINMAX',
+ 13      'NONE',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.158
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> INSERT INTO AWR_SCORING_WEIGHT (
+  2      SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+  3      WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY
+  4  )
+  5  SELECT
+  6      m.SCORING_MODEL_ID,
+  7      'AAS_PER_CPU',
+  8      'Average Active Sessions per CPU',
+  9      'CONCURRENCY',
+ 10      '$.AAS_PER_CPU',
+ 11      0.15,
+ 12      'MINMAX',
+ 13      'NONE',
+ 14      'HIGH_BAD'
+ 15  FROM AWR_SCORING_MODEL m
+ 16  WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+ 17    AND m.MODEL_VERSION = '1.0.0';
+Elapsed: 00:00:00.157
+AWRAI_APP@AWRAI_high>
+AWRAI_APP@AWRAI_high> COMMIT;
+Elapsed: 00:00:00.150
+AWRAI_APP@AWRAI_high> SPOOL OFF

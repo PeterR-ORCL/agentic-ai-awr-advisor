@@ -685,5 +685,6 @@ Next: **Multi-AWR ingestion and analysis, ADB history/trend integration, and Age
 
 - Multi-AWR ingestion pipeline (time-series)
 - Trend analysis across snapshots
+- Scoring execution engine
 - Agentic decision workflow layer
 - OCI sizing recommendation integration

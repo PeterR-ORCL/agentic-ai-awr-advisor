@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Run Analysis",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/scripts/run_analysis.py",
       "console": "integratedTerminal",
@@ -13,7 +13,7 @@
     },
     {
       "name": "Run Parser (Debug)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/scripts/run_parser.py",
       "console": "integratedTerminal",
@@ -23,13 +23,24 @@
     },
     {
       "name": "Inspect Sections",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/scripts/inspect_sections.py",
       "console": "integratedTerminal",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
+    },
+    {
+      "name": "Run AWR → ADB Loader",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/ingest/awr_adb_loader.py",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "envFile": "${workspaceFolder}/.env"
     }
   ]
 }

@@ -15,6 +15,7 @@ It is designed to replace manual AWR interpretation with a **repeatable, explain
 Traditional AWR analysis relies on manual interpretation, requiring deep expertise and significant time investment.
 
 This system introduces:
+
 - Deterministic analysis → consistent outcomes  
 - Structured metrics → machine-readable insights  
 - Automated recommendations → immediate actionability  
@@ -99,28 +100,82 @@ OCI Sizing Guidance
 ```
 ---
 
+## ADB Ingestion Layer (Completed)
+
+The system now includes a fully working ingestion pipeline that persists AWR data into Oracle Autonomous Database (ADB) using secure wallet-based connectivity.
+
+### Capabilities
+
+- Wallet-based TLS connection using python-oracledb
+- Environment-driven configuration via .env
+- Robust connection handling with:
+- TNS_ADMIN
+- wallet password
+- DSN alias (_high, _medium, etc.)
+- Transaction-safe ingestion with rollback on failure
+
+### Data Persisted
+
+Each AWR file results in:
+
+- Ingest run tracking → AWR_INGEST_RUN
+- Source system resolution → AWR_SOURCE_SYSTEM
+- Report metadata → AWR_REPORT
+- Metrics → AWR_METRIC_FACT
+- Top SQL → AWR_TOP_SQL_FACT
+- Wait events → AWR_WAIT_EVENT_FACT
+- Feature vector → AWR_FEATURE_VECTOR
+
+### Key Technical Fixes
+
+- Fixed Oracle wallet connectivity (TNS + wallet password handling)
+- Implemented explicit .env loading
+- Resolved timestamp parsing issues (AWR snapshot format)
+- Normalized snapshot timestamps before DB insertion
+
+### Outcome
+
+The pipeline now supports:
+
+- Reliable ingestion of AWR reports into ADB
+- Consistent relational structure for analytics
+- Foundation for time-series and agentic decision workflows
+
+---
+
 ## Data Flow (Execution Path)
 
-1. AWR file(s) ingested → AWR_REPORT
-2. Sections parsed → AWR_SECTION_DOC
-3. Metrics extracted → FACT tables
-4. Feature vector generated → AWR_FEATURE_VECTOR
-5. Scoring applied → AWR_SCORE_RESULT
-6. Recommendation generated → AWR_RECOMMENDATION
-7. Action tracked → AWR_ACTION
-8. Outcome measured → AWR_OUTCOME
+### Current (Implemented)
+
+1. AWR file ingested → AWR_INGEST_RUN
+2. Source system resolved → AWR_SOURCE_SYSTEM
+3. Report metadata stored → AWR_REPORT
+4. Metrics extracted → AWR_METRIC_FACT
+5. Top SQL extracted → AWR_TOP_SQL_FACT
+6. Wait events extracted → AWR_WAIT_EVENT_FACT
+7. Feature vector generated → AWR_FEATURE_VECTOR
+
+### Next (Planned)
+
+- Scoring → AWR_SCORE_RESULT
+- Recommendation persistence → AWR_RECOMMENDATION
+- Action tracking → AWR_ACTION
+- Outcome tracking → AWR_OUTCOME
 
 ---
 
 ## Database Schema
 
-The project includes an Autonomous Database schema under:
+The schema is now actively used by the ingestion pipeline and has been validated with live AWR data. Core fact and dimension tables are populated and support analytical queries and views.
+
+The Autonomous Database schema under:
 
 ```text
 dbschema/
 ```
 
 This schema supports the **stateful layer** of the system and enables:
+
 - Multi-AWR ingestion and replay
 - Historical trend analysis
 - Metric, wait event, and top SQL fact storage
@@ -138,6 +193,49 @@ AWR → Parse → Metrics → Feature Vector → Score → Recommendation → Ac
 This allows the system to evolve from stateless analysis to a **stateful, learning system**.
 
 This schema is the foundation for the **Context & State Layer (ADB)** described in the architecture above.
+
+---
+
+## Validation & Example Results
+
+A successful ingestion produces:
+
+- 1 AWR report
+- ~40–50 metric facts
+- ~10 Top SQL records
+- ~10–15 wait event records
+- 1 feature vector
+
+### Example Queries
+
+**Top SQL trend**
+
+```sql
+select *
+from vw_awr_top_sql_trend
+```
+
+**Wait event trend**
+
+```sql
+select *
+from vw_awr_wait_event_trend
+order by snap_time_begin, rank_in_awr;
+```
+
+**These views provide:**
+
+- Time-series SQL performance ranking
+- Wait class distribution
+- Derived metrics (per-execution CPU and elapsed time)
+
+**Key Result**
+
+The system now supports:
+
+- Raw AWR → structured DB → analytical views → AI interpretation
+
+End-to-end.
 
 ---
 
@@ -170,11 +268,13 @@ The AI does not make decisions blindly — it operates on validated system findi
 The system is designed to process multiple AWR reports.
 
 Each AWR may represent:
+
 - different workloads
 - different performance problems
 - different system behaviors
 
 The system:
+
 - analyzes each AWR independently
 - produces tailored recommendations per workload
 - will support historical trend analysis via ADB
@@ -184,6 +284,7 @@ The system:
 Real environments are not single snapshots.
 
 Multi-AWR analysis enables:
+
 - trend detection over time
 - anomaly identification
 - capacity planning based on actual workload evolution
@@ -200,6 +301,17 @@ Multi-AWR analysis enables:
 - Established canonical data model (ParseResult, RunMetadata)
 
 **Outcome:** Reliable, structured extraction from raw AWR reports
+
+### ADB Ingestion Pipeline (Complete)
+
+- Implemented end-to-end ingestion into Oracle ADB
+- Established secure wallet-based connectivity
+- Built transactional ingest workflow with rollback safety
+- Normalized snapshot timestamps for Oracle DATE/TIMESTAMP compatibility
+- Validated insertion across all core fact tables
+- Verified analytical views over persisted data
+
+**Outcome:** Fully operational pipeline from AWR file → database → analytics
 
 ---
 
@@ -236,6 +348,7 @@ The system performs deterministic performance analysis, converting metrics into 
 The system now generates senior DBA-grade recommendations with clear execution guidance.
 
 #### Capabilities
+
 - Deterministic issue → recommendation mapping
 - Evidence-based rationale
 - Prioritized action steps
@@ -268,20 +381,23 @@ The AI layer generates a structured, executive-ready advisory output grounded in
 
 ### Capabilities
 
-- Builds a grounded AI prompt from:
+**Builds a grounded AI prompt from:**
+
   - Run metadata
   - Detected issues
   - Deterministic recommendations
   - Key metrics
   - Top SQL
 
-- Enforces strict constraints:
+**Enforces strict constraints:**
+
   - No invented metrics
   - No contradiction of findings
   - No unsupported root causes
   - No arbitrary sizing values
 
-- Produces structured output sections:
+**Produces structured output sections:**
+
   - Executive Summary (includes decision)
   - Technical Narrative
   - Root Cause Interpretation
@@ -303,6 +419,7 @@ Decision strength is influenced by confidence:
 - Low confidence → insufficient evidence to act
 
 This ensures decisions reflect both:
+
 - deterministic evidence
 - quality and completeness of available data
 
@@ -353,6 +470,7 @@ Metrics without sufficient distribution data are surfaced as scalar facts:
 - Hard Parses/s
 
 These are:
+
 - Extracted or derived from AWR evidence
 - Not visualized as distributions
 - Shown separately to preserve analytical integrity
@@ -360,6 +478,7 @@ These are:
 #### Violin chart semantics
 
 Each violin chart currently shows:
+
 - Full workload distribution
 - IQR box
 - Median line
@@ -386,6 +505,7 @@ This guarantees that all visualizations reflect actual workload behavior.
 The AI layer has evolved beyond a pure narrative component and now operates as part of the advisory system.
 
 The AI layer:
+
 - Operates on deterministic findings as its foundation
 - Augments analysis with structured interpretation and prioritization
 - Contributes to decision framing (not just explanation)
@@ -398,11 +518,13 @@ However:
 - All outputs are grounded in extracted metrics and detected issues
 
 This ensures:
+
 - Credibility
 - Explainability
 - Consistency across runs
 
 The system is transitioning from:
+
 - Narrative generation → to → decision support augmentation
 
 ---
@@ -434,10 +556,12 @@ This system provides:
 - Strict analytical honesty (no fabricated distributions or synthetic metrics)
 
 This is not:
+
 - A report generator
 - A chatbot
 
 This is:
+
 - An autonomous performance and sizing advisor
 
 ---
@@ -454,16 +578,27 @@ This is:
 
 ### Next
 
-### Agentic Decision Layer + ADB Integration
+#### Multi-AWR Time-Series Ingestion (Next)
 
-Evolve from recommendations to guided execution planning.
+Extend ingestion from single AWR to multi-snapshot time series.
 
 Planned capabilities:
-- Introduce ADB for historical storage and trend analysis
-- Prioritize actions based on impact
-- Sequence tuning steps
-- Suggest next best actions
-- Enable advisor-style workflows
+
+- Batch ingestion of multiple AWR reports
+- Consistent source system mapping
+- Time-series trend generation
+- Anomaly detection across snapshots
+
+**Outcome:** Historical workload visibility and trend-based analysis
+
+#### Agentic Decision Layer (Next)
+
+Build on ADB-backed history to enable:
+
+- Context-aware recommendations
+- Action prioritization
+- Decision sequencing
+- Feedback loops for improvement
 
 **Outcome:** Stateful, context-aware performance advisor
 
@@ -474,6 +609,7 @@ Planned capabilities:
 Connect performance analysis to OCI infrastructure decisions.
 
 Planned capabilities:
+
 - Map workload → OCPU, memory, storage guidance
 - Use historical trends from ADB
 - Generate OCI-aligned recommendations
@@ -527,23 +663,27 @@ examples/
 
 ## Status
 
-**Complete Milestone — Deterministic Analysis + AI Advisory Dashboard Complete**  
+**Complete Milestone — End-to-End AWR → ADB → Analytics Pipeline**  
 
 Current state:
+
+- AWR parsing working
 - Deterministic analysis working
 - AI advisory layer working
-- Interactive HTML dashboard working
+- Interactive dashboard working
+- Oracle ADB ingestion pipeline fully operational
+- Wallet-based secure connectivity validated
+- All core fact tables populated
+- Analytical views validated (Top SQL, Wait Events)
+- Feature vector generation working
 - Violin workload panel working for core distribution-backed metrics
 - Scalar extraction implemented for PGA Spill Pressure, Temp I/O Pressure, Hard Parses/s
-- ADB schema completed and provisioned
-- Multi-AWR ingestion and historical trend support next
 
 Next: **Multi-AWR ingestion and analysis, ADB history/trend integration, and Agentic Decision Workflow Layer**
 
 ### Next Implementation Phase
 
-- Multi-AWR ingestion pipeline (parser → DB)
-- Feature vector generation logic
-- Scoring execution engine
-- Recommendation persistence
-- Automated action/outcome tracking
+- Multi-AWR ingestion pipeline (time-series)
+- Trend analysis across snapshots
+- Agentic decision workflow layer
+- OCI sizing recommendation integration

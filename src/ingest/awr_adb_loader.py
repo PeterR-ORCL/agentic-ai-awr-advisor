@@ -41,8 +41,8 @@ SNAP_ID_END_PATTERNS = (
     re.compile(r"end snap id\s*[:=]?\s*(\d+)", re.IGNORECASE),
 )
 DB_VERSION_PATTERNS = (
-    re.compile(r"release\s+([0-9][0-9A-Za-z\.\-_]+)", re.IGNORECASE),
     re.compile(r"version\s*[:=]\s*([0-9][0-9A-Za-z\.\-_]+)", re.IGNORECASE),
+    re.compile(r"release\s+([0-9][0-9A-Za-z\.\-_]+)", re.IGNORECASE),
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DOTENV_PATH = PROJECT_ROOT / ".env"
@@ -459,9 +459,8 @@ def build_source_system_record(parse_result: ParseResult) -> dict[str, Any]:
         "db_unique_name": db_name,
         "dbid": dbid,
         "platform_name": metadata.platform,
-        "db_version": _extract_report_header_fields(metadata.source_file_path).get(
-            "db_version"
-        ),
+        "db_version": metadata.db_version
+        or _extract_report_header_fields(metadata.source_file_path).get("db_version"),
         "rac_flag": "Y" if topology.get("is_rac") else "N",
         "adg_flag": "Y" if topology.get("is_dataguard") else "N",
         "cdb_flag": "N",
@@ -481,6 +480,10 @@ def build_source_system_record(parse_result: ParseResult) -> dict[str, Any]:
                 "operational_event_class": topology.get(
                     "operational_event_class"
                 ),
+                "cpu_count": metadata.cpu_count,
+                "core_count": metadata.core_count,
+                "socket_count": metadata.socket_count,
+                "memory_gb": metadata.memory_gb,
             }
         ),
     }
@@ -754,7 +757,7 @@ def build_report_record(
         "instance_number": _to_int(metadata.instance_number),
         "host_name": metadata.host_name,
         "platform_name": metadata.platform,
-        "db_version": header_fields.get("db_version"),
+        "db_version": metadata.db_version or header_fields.get("db_version"),
         "snap_id_begin": header_fields.get("snap_id_begin"),
         "snap_id_end": header_fields.get("snap_id_end"),
         "snap_time_begin": snap_begin,

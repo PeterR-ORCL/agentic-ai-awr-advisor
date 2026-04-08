@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+*.pptx
 data/output/
 Old_Versions/
 .env

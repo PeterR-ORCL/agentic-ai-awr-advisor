@@ -277,7 +277,7 @@ def parse_ai_sections(ai_text: str) -> dict[str, str]:
 def _build_dashboard_html(report_data: dict[str, Any]) -> str:
     """Build the dashboard HTML."""
 
-    title = escape(str(report_data.get("title") or "OCI AWR Sizing Advisor"))
+    title = escape(str(report_data.get("title") or "AWR Sizing Advisor"))
     ai_sections = _normalize_ai_sections(
         parse_ai_sections(str(report_data.get("ai_generated_narrative") or ""))
     )
@@ -758,7 +758,7 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
 <body>
   <div class="container">
     <section class="hero">
-      <div class="eyebrow">OCI AWR Sizing Advisor</div>
+      <div class="eyebrow">AWR Sizing Advisor</div>
       <h1>{title}</h1>
       <div class="hero-meta">Generated: {generated_at}</div>
     </section>

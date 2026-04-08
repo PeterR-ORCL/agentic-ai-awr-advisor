@@ -365,7 +365,7 @@ def _summarize_database_role(
         )
     )
     if not roles:
-        return "Role not explicitly stated in parsed report text"
+        return "Not explicitly identified in AWR"
     if len(roles) == 1:
         return roles[0]
     return "Multiple roles observed (" + ", ".join(roles) + ")"
@@ -1432,6 +1432,27 @@ def _build_analysis_context(
     platform_detected = ", ".join(_collect_platform_labels(snapshot_contexts))
     database_role = _summarize_database_role(snapshot_contexts)
 
+    observed_hostnames = list(
+        dict.fromkeys(
+            str((context["result"].run_metadata.host_name or "")).strip()
+            for context in snapshot_contexts
+            if str((context["result"].run_metadata.host_name or "")).strip()
+        )
+    )
+    observed_platforms = list(
+        dict.fromkeys(
+            str((context["result"].run_metadata.platform or "")).strip()
+            for context in snapshot_contexts
+            if str((context["result"].run_metadata.platform or "")).strip()
+        )
+    )
+    observed_versions = list(
+        dict.fromkeys(
+            str((context["result"].run_metadata.db_version or "")).strip()
+            for context in snapshot_contexts
+            if str((context["result"].run_metadata.db_version or "")).strip()
+        )
+    )
     db_name = str(metadata.database_name or "").strip()
     db_id = str(metadata.db_id or "").strip()
     db_identity_parts = []
@@ -1441,14 +1462,19 @@ def _build_analysis_context(
         db_identity_parts.append(f"DBID {db_id}")
     db_identity = " | ".join(db_identity_parts) or "Unavailable"
 
-    host_name = str(metadata.host_name or "").strip()
-    instance_name = str(metadata.instance_name or "").strip()
-    host_parts = []
-    if host_name:
-        host_parts.append(f"Host {host_name}")
-    if instance_name:
-        host_parts.append(f"Instance {instance_name}")
-    host_identity = " | ".join(host_parts) or "Unavailable"
+    if not observed_hostnames:
+        hostname = "Unknown"
+    elif len(observed_hostnames) <= 2:
+        hostname = " | ".join(observed_hostnames)
+    else:
+        hostname = " | ".join(observed_hostnames[:2] + [f"+{len(observed_hostnames) - 2} more"])
+    operating_system = " | ".join(observed_platforms) if observed_platforms else "Unknown"
+    if not observed_versions:
+        db_version = "Unknown"
+    elif len(observed_versions) == 1:
+        db_version = observed_versions[0]
+    else:
+        db_version = " | ".join(observed_versions)
 
     instance_count = latest_topology.get("instance_count")
     if not isinstance(instance_count, (int, float)):
@@ -1458,6 +1484,120 @@ def _build_analysis_context(
             if str((context["result"].run_metadata.instance_name or "")).strip()
         }
         instance_count = len(observed_instances) if observed_instances else None
+    normalized_instance_count = (
+        int(instance_count) if isinstance(instance_count, (int, float)) else None
+    )
+
+    host_capacity_by_name: dict[str, dict[str, float | None]] = {}
+    for context in snapshot_contexts:
+        run_metadata = context["result"].run_metadata
+        host_key = str(run_metadata.host_name or "").strip()
+        if not host_key:
+            continue
+        host_capacity_by_name[host_key] = {
+            "cpu_count": (
+                float(run_metadata.cpu_count)
+                if isinstance(run_metadata.cpu_count, (int, float))
+                else None
+            ),
+            "core_count": (
+                float(run_metadata.core_count)
+                if isinstance(run_metadata.core_count, (int, float))
+                else None
+            ),
+            "memory_gb": (
+                float(run_metadata.memory_gb)
+                if isinstance(run_metadata.memory_gb, (int, float))
+                else None
+            ),
+        }
+
+    observed_host_count = len(host_capacity_by_name)
+    latest_cpu_count = (
+        float(metadata.cpu_count)
+        if isinstance(metadata.cpu_count, (int, float))
+        else None
+    )
+    latest_core_count = (
+        float(metadata.core_count)
+        if isinstance(metadata.core_count, (int, float))
+        else None
+    )
+    latest_memory_gb = (
+        float(metadata.memory_gb)
+        if isinstance(metadata.memory_gb, (int, float))
+        else None
+    )
+
+    cumulative_core_total = None
+    cumulative_cpu_total = None
+    if host_capacity_by_name:
+        core_values = [
+            value["core_count"]
+            for value in host_capacity_by_name.values()
+            if isinstance(value.get("core_count"), (int, float))
+        ]
+        cpu_values = [
+            value["cpu_count"]
+            for value in host_capacity_by_name.values()
+            if isinstance(value.get("cpu_count"), (int, float))
+        ]
+        if core_values and observed_host_count:
+            cumulative_core_total = sum(float(value) for value in core_values)
+        if cpu_values and observed_host_count:
+            cumulative_cpu_total = sum(float(value) for value in cpu_values)
+    if normalized_instance_count and normalized_instance_count > max(observed_host_count, 1):
+        if latest_core_count is not None:
+            cumulative_core_total = latest_core_count * normalized_instance_count
+        elif latest_cpu_count is not None:
+            cumulative_cpu_total = latest_cpu_count * normalized_instance_count
+
+    if cumulative_core_total is not None:
+        ocpus_cores = (
+            f"{int(cumulative_core_total)} cores"
+            if float(cumulative_core_total).is_integer()
+            else f"{cumulative_core_total:.1f} cores"
+        )
+    elif cumulative_cpu_total is not None:
+        ocpus_cores = (
+            f"{int(cumulative_cpu_total)} CPUs"
+            if float(cumulative_cpu_total).is_integer()
+            else f"{cumulative_cpu_total:.1f} CPUs"
+        )
+    else:
+        ocpus_cores = "Unknown"
+
+    memory_values = [
+        value["memory_gb"]
+        for value in host_capacity_by_name.values()
+        if isinstance(value.get("memory_gb"), (int, float))
+    ]
+    if not memory_values and latest_memory_gb is not None:
+        memory_values = [latest_memory_gb]
+    unique_memory_values = sorted({round(float(value), 2) for value in memory_values})
+    if not unique_memory_values:
+        memory_per_instance = "Unknown"
+    elif len(unique_memory_values) == 1:
+        memory_value = unique_memory_values[0]
+        memory_per_instance = (
+            f"{int(memory_value)} GB"
+            if float(memory_value).is_integer()
+            else f"{memory_value:.1f} GB"
+        )
+    else:
+        low_memory = unique_memory_values[0]
+        high_memory = unique_memory_values[-1]
+        low_text = (
+            str(int(low_memory))
+            if float(low_memory).is_integer()
+            else f"{low_memory:.1f}"
+        )
+        high_text = (
+            str(int(high_memory))
+            if float(high_memory).is_integer()
+            else f"{high_memory:.1f}"
+        )
+        memory_per_instance = f"{low_text}-{high_text} GB"
 
     return {
         "snapshot_count": str(len(snapshot_contexts)),
@@ -1468,13 +1608,13 @@ def _build_analysis_context(
         "topology_detected": topology_detected,
         "platform_detected": platform_detected,
         "database_role": database_role,
+        "db_version": db_version,
+        "ocpus_cores": ocpus_cores,
+        "memory_per_instance": memory_per_instance,
+        "operating_system": operating_system,
         "source_database": db_identity,
-        "host_identity": host_identity,
-        "instance_count": (
-            str(int(instance_count))
-            if isinstance(instance_count, (int, float))
-            else "Unknown"
-        ),
+        "hostname": hostname,
+        "instance_count": str(normalized_instance_count) if normalized_instance_count else "Unknown",
     }
 
 
@@ -2469,23 +2609,36 @@ def _inject_dashboard_style_overrides(html: str) -> str:
 
 
 def _build_analysis_context_html(analysis_context: dict[str, str]) -> str:
-    host_identity = analysis_context["host_identity"].replace(" | ", "<br>")
+    hostname = analysis_context["hostname"].replace(" | ", "<br>")
+    operating_system = analysis_context["operating_system"].replace(" | ", "<br>")
     return (
         '\n      <section id="analysis-context" class="card secondary">'
         '\n        <div class="section-kicker">Analysis Context</div>'
         "\n        <h2>Analysis Information</h2>"
         '\n        <div class="provider-grid">'
-        '\n          <div class="provider-box"><strong>Host / Instance</strong><div>'
-        + host_identity
+        '\n          <div class="provider-box"><strong>Hostname</strong><div>'
+        + hostname
+        + "</div></div>"
+        '\n          <div class="provider-box"><strong>Operating System</strong><div>'
+        + operating_system
         + "</div></div>"
         '\n          <div class="provider-box"><strong>Source Database</strong><div>'
         + analysis_context["source_database"]
         + "</div></div>"
-        '\n          <div class="provider-box"><strong>Instances Count</strong><div>'
+        '\n          <div class="provider-box"><strong>Number of Instances</strong><div>'
         + analysis_context["instance_count"]
+        + "</div></div>"
+        '\n          <div class="provider-box"><strong>Database Version</strong><div>'
+        + analysis_context["db_version"]
         + "</div></div>"
         '\n          <div class="provider-box"><strong>Database Role</strong><div>'
         + analysis_context["database_role"]
+        + "</div></div>"
+        '\n          <div class="provider-box"><strong>Cumulative OCPUs / Cores</strong><div>'
+        + analysis_context["ocpus_cores"]
+        + "</div></div>"
+        '\n          <div class="provider-box"><strong>Memory per Instance</strong><div>'
+        + analysis_context["memory_per_instance"]
         + "</div></div>"
         '\n          <div class="provider-box"><strong>Platform Detected</strong><div>'
         + analysis_context["platform_detected"]
@@ -3219,7 +3372,7 @@ if __name__ == "__main__":
     )
 
     report_data = {
-        "title": "OCI AWR Sizing Advisor Dashboard",
+        "title": "AWR Sizing Advisor Dashboard",
         "generated_at": generated_at_display,
         "executive_summary": executive_summary,
         "issues": issues,

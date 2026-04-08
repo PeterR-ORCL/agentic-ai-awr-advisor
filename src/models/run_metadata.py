@@ -18,5 +18,10 @@ class RunMetadata:
     instance_number: str | None = None
     host_name: str | None = None
     platform: str | None = None
+    db_version: str | None = None
+    cpu_count: int | None = None
+    core_count: int | None = None
+    socket_count: int | None = None
+    memory_gb: float | None = None
     begin_snapshot_time: str | None = None
     end_snapshot_time: str | None = None

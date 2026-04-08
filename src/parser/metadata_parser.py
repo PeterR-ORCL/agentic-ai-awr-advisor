@@ -29,6 +29,11 @@ class AwrMetadata(TypedDict):
     instance_number: str | None
     host_name: str | None
     platform: str | None
+    db_version: str | None
+    cpu_count: int | None
+    core_count: int | None
+    socket_count: int | None
+    memory_gb: float | None
     begin_snapshot_time: str | None
     end_snapshot_time: str | None
 
@@ -70,6 +75,11 @@ def parse_awr_metadata(
         "instance_number": None,
         "host_name": None,
         "platform": None,
+        "db_version": None,
+        "cpu_count": None,
+        "core_count": None,
+        "socket_count": None,
+        "memory_gb": None,
         "begin_snapshot_time": None,
         "end_snapshot_time": None,
     }
@@ -83,14 +93,19 @@ def parse_awr_metadata(
         metadata["db_id"] = identity_values[1]
         metadata["instance_name"] = identity_values[2]
         metadata["instance_number"] = identity_values[3]
+        metadata["db_version"] = identity_values[4]
 
-    host_row_values = _extract_table_row(
-        candidate_lines,
-        required_headers=("host name", "platform"),
-    )
-    if host_row_values:
-        metadata["host_name"] = host_row_values[0] if len(host_row_values) > 0 else None
-        metadata["platform"] = host_row_values[1] if len(host_row_values) > 1 else None
+    host_platform_values = _extract_host_platform_fields(candidate_lines)
+    if host_platform_values:
+        metadata["host_name"] = host_platform_values[0]
+        metadata["platform"] = host_platform_values[1]
+
+    resource_values = _extract_system_resource_fields(candidate_lines)
+    if resource_values:
+        metadata["cpu_count"] = resource_values[0]
+        metadata["core_count"] = resource_values[1]
+        metadata["socket_count"] = resource_values[2]
+        metadata["memory_gb"] = resource_values[3]
 
     metadata["database_name"] = metadata["database_name"] or _search_patterns(
         candidate_text,
@@ -123,13 +138,20 @@ def parse_awr_metadata(
     metadata["host_name"] = metadata["host_name"] or _search_patterns(
         candidate_text,
         (
-            r"host name\s*[:=]\s*(.+)",
-            r"host\s*[:=]\s*(.+)",
+            r"^host name\s*[:=]\s*(\S+)\s*$",
+            r"^host\s*[:=]\s*(\S+)\s*$",
         ),
     )
     metadata["platform"] = metadata["platform"] or _search_patterns(
         candidate_text,
-        (r"platform\s*[:=]\s*(.+)",),
+        (r"^platform\s*[:=]\s*([^\n]+)",),
+    )
+    metadata["db_version"] = metadata["db_version"] or _search_patterns(
+        candidate_text,
+        (
+            r"^\s*version\s*[:=]?\s*([0-9][0-9A-Za-z\.\-_]+)",
+            r"release\s+([0-9][0-9A-Za-z\.\-_]+)",
+        ),
     )
     metadata["begin_snapshot_time"] = _extract_snapshot_time(
         candidate_text,
@@ -189,14 +211,17 @@ def _extract_table_row(
 
 def _extract_identity_table_fields(
     lines: list[str],
-) -> tuple[str, str, str, str] | None:
-    """Extract the first four fields from the main AWR identity row."""
+) -> tuple[str, str, str, str, str | None] | None:
+    """Extract the main AWR identity row including release/version when present."""
 
     header_pattern = re.compile(
         r"\bDB\s+Name\b.*\bDB\s+Id\b.*\bInstance\b.*\bInst\s+Num\b",
         flags=re.IGNORECASE,
     )
     value_pattern = re.compile(
+        r"^\s*(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(.+?)\s+([0-9][0-9A-Za-z\.\-_]+)(?:\s+\S+)?\s*$",
+    )
+    fallback_pattern = re.compile(
         r"^\s*(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\b",
     )
 
@@ -210,7 +235,50 @@ def _extract_identity_table_fields(
 
         match = value_pattern.match(value_line)
         if match:
-            return match.group(1), match.group(2), match.group(3), match.group(4)
+            return (
+                match.group(1),
+                match.group(2),
+                match.group(3),
+                match.group(4),
+                match.group(6),
+            )
+
+        fallback_match = fallback_pattern.match(value_line)
+        if fallback_match:
+            return (
+                fallback_match.group(1),
+                fallback_match.group(2),
+                fallback_match.group(3),
+                fallback_match.group(4),
+                None,
+            )
+
+    return None
+
+
+def _extract_host_platform_fields(
+    lines: list[str],
+) -> tuple[str, str] | None:
+    """Extract host and platform from the AWR host/platform header row."""
+
+    for index, line in enumerate(lines):
+        normalized_line = _normalize_line(line)
+        if "host name" not in normalized_line or "platform" not in normalized_line:
+            continue
+
+        value_line = _find_value_line(lines[index + 1 :])
+        if value_line is None:
+            return None
+
+        match = re.match(r"^\s*(\S+)\s+(.+?)\s*$", value_line)
+        if not match:
+            return None
+
+        host_name = match.group(1).strip()
+        platform = match.group(2).strip()
+        if not host_name or not platform:
+            return None
+        return host_name, platform
 
     return None
 
@@ -230,6 +298,47 @@ def _find_value_line(lines: list[str]) -> str | None:
     return None
 
 
+def _extract_system_resource_fields(
+    lines: list[str],
+) -> tuple[int, int, int, float] | None:
+    """Extract CPU/core/socket/memory values from the AWR header table."""
+
+    for index, line in enumerate(lines):
+        normalized_line = _normalize_line(line)
+        if not all(
+            token in normalized_line
+            for token in ("cpu", "cores", "sockets", "memory")
+        ):
+            continue
+
+        value_line = _find_value_line(lines[index + 1 :])
+        if value_line is None:
+            return None
+
+        values = [
+            part.strip()
+            for part in re.split(r"\s{2,}", value_line.strip())
+            if part.strip()
+        ]
+        if len(values) < 4:
+            return None
+
+        cpu_count = _to_int(values[0])
+        core_count = _to_int(values[1])
+        socket_count = _to_int(values[2])
+        memory_gb = _to_float(values[3])
+        if (
+            cpu_count is None
+            or core_count is None
+            or socket_count is None
+            or memory_gb is None
+        ):
+            return None
+        return cpu_count, core_count, socket_count, memory_gb
+
+    return None
+
+
 def _extract_snapshot_time(text: str, label: str) -> str | None:
     """Extract a begin or end snapshot time using simple text patterns."""
 
@@ -244,7 +353,7 @@ def _search_patterns(text: str, patterns: tuple[str, ...]) -> str | None:
     """Return the first regex capture group found from the given patterns."""
 
     for pattern in patterns:
-        match = re.search(pattern, text, flags=re.IGNORECASE)
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
         if not match:
             continue
 
@@ -267,6 +376,7 @@ def _build_warnings(metadata: AwrMetadata) -> list[str]:
         "instance_number",
         "host_name",
         "platform",
+        "db_version",
         "begin_snapshot_time",
         "end_snapshot_time",
     ):
@@ -290,3 +400,17 @@ def _normalize_line(line: str) -> str:
     """Normalize a line for case-insensitive header detection."""
 
     return " ".join(line.strip().lower().split())
+
+
+def _to_int(value: str) -> int | None:
+    try:
+        return int(value.replace(",", ""))
+    except (AttributeError, ValueError):
+        return None
+
+
+def _to_float(value: str) -> float | None:
+    try:
+        return float(value.replace(",", ""))
+    except (AttributeError, ValueError):
+        return None

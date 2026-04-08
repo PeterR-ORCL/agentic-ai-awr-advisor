@@ -1,249 +1,185 @@
 # OCI AWR Agentic AI Sizing Advisor
 
-<p align="center">
-  <b>From AWR → Decision → Action</b><br/>
-  Autonomous Performance & OCI Sizing Advisor
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue"/>
-  <img src="https://img.shields.io/badge/Oracle-ADB-red"/>
-  <img src="https://img.shields.io/badge/Status-Active-green"/>
-  <img src="https://img.shields.io/badge/AI-Agentic-orange"/>
-</p>
-
----
-
 ## Overview
 
-The OCI AWR Agentic AI Sizing Advisor is an **agentic AI system** that transforms Oracle AWR reports into:
+The OCI AWR Agentic AI Sizing Advisor is an **agentic AI-driven platform** that transforms Oracle AWR reports into **structured intelligence and actionable performance and sizing decisions**.
 
-- Performance insights  
-- Root cause analysis  
-- Actionable recommendations  
-- OCI sizing guidance  
+It enables:
+- Performance diagnostics  
+- Multi-snapshot trend analysis  
+- Decision-oriented insights  
+- Infrastructure sizing guidance  
 
-It replaces manual AWR interpretation with a **deterministic, explainable, and automation-ready system**.
-
----
-
-## Environment Awareness (Key Differentiator)
-
-The system automatically identifies the database environment from AWR data, including:
-
-- Single Instance
-- RAC (Clustered databases)
-- Exadata
-- Data Guard (DG)
-- Active Data Guard (ADG)
-
-This enables:
-- Context-aware analysis  
-- Correct interpretation of wait events (e.g., GC vs local waits)  
-- Environment-specific recommendations  
-- Accurate OCI sizing decisions  
+The architecture is **platform-agnostic** and can run across OCI, on-prem, and DB@X environments.
 
 ---
 
-## Key Capabilities
+## Core Value Proposition
 
-- Deterministic AWR analysis (no guesswork)
-- Issue detection (CPU, I/O, SQL, waits)
-- Evidence-based recommendations
-- AI-generated executive summaries
-- Interactive HTML dashboard
-- Multi-AWR ready architecture
-- OCI sizing guidance
-- Environment-aware diagnostics (RAC, Exadata, DG/ADG)
+**From AWR → to insight → to decision**
+
+- NOT a static report generator  
+- NOT a chatbot  
+
+This IS:
+
+- An **autonomous performance and infrastructure sizing advisor**
 
 ---
 
 ## Architecture
 
-```
-AWR (.out)
-   ↓
-Parser
-   ↓
-Metrics Extraction
-   ↓
-Environment Detection
-   ↓
-Issue Detection
-   ↓
-Recommendations
-   ↓
----------------------------
-Deterministic Truth Layer
----------------------------
-   ↓
-AI Narrative Layer
-   ↓
----------------------------
-Context Layer (ADB)
----------------------------
-   ↓
-Decision Engine
-   ↓
-OCI Sizing Guidance
+### Data Flow
+
+AWR (.out files)  
+→ Parsing Pipeline  
+→ Structured Metrics + Metadata  
+→ Autonomous Database (ADB)  
+→ Intelligence Layer  
+→ Agentic Decision Engine  
+→ Dashboard / HTML Output  
+
+---
+
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    A[AWR Files] --> B[Parsing Pipeline]
+    B --> C[Structured Metrics & Metadata]
+    C --> D[Autonomous Database (ADB)]
+    D --> E[Intelligence Layer
+(Analysis + Scoring)]
+    E --> F[Agentic Decision Engine
+(LLM + Rules)]
+    F --> G[Dashboard / HTML Output]
 ```
 
 ---
 
-## Dashboard
+## OCI Services (Current Implementation)
 
-### Includes
-- Executive Summary
-- Decision Layer
-- Supporting Evidence
-
-### Visualizations
-- DB Time Breakdown
-- Top SQL Contribution
-- Violin Workload Distributions
-
-### Design Rules
-- No synthetic distributions
-- No interpolation
-- Only real AWR-derived data
+- Object Storage – raw AWR files  
+- Autonomous Database (ADB) – structured storage  
+- Python processing layer – parsing and analytics  
+- HTML dashboard – visualization  
 
 ---
 
-## ADB Integration
+## Current System Status
 
-Fully implemented ingestion pipeline into **Oracle Autonomous Database (ADB)**
+- Parsing: Complete  
+- ADB Ingestion: Complete  
+- Multi-AWR Support: Implemented  
+- Metadata Normalization: Complete  
+- Dashboard: Presentation-ready  
+- Deterministic Analysis: Complete  
 
-### Tables
-- AWR_INGEST_RUN
-- AWR_SOURCE_SYSTEM
-- AWR_REPORT
-- AWR_METRIC_FACT
-- AWR_TOP_SQL_FACT
-- AWR_WAIT_EVENT_FACT
-- AWR_FEATURE_VECTOR
-
-### Capabilities
-- Wallet-based secure connection
-- Transaction-safe ingestion
-- Structured analytics-ready data
+- Scoring Engine: In Progress  
+- Recommendation Persistence: Planned  
+- Action Tracking: Planned  
+- Outcome Tracking: Planned  
+- Agentic Decision Layer: Evolving  
 
 ---
 
-## Deterministic Analysis
+## Key Capabilities
 
+### Multi-AWR Time-Series Analysis
+- Processes multiple AWR snapshots  
+- Builds workload behavior over time  
+- Enables trend analysis and anomaly detection  
+
+---
+
+### Cluster-Aware System Context
+
+The system normalizes AWR metadata across single-instance and clustered environments:
+
+- Multi-node hostname aggregation (RAC)  
+- Cumulative CPU/core calculation  
+- Memory per instance normalization  
+- Version consistency across snapshots  
+- Time-window alignment  
+
+---
+
+### Environment Awareness
 Detects:
-- CPU pressure
-- SQL concentration
-- I/O bottlenecks
-- Commit latency
-- Concurrency contention
-- Cluster (GC) contention (RAC)
-- Interconnect-related waits
-- Storage offload inefficiencies (Exadata)
-- Replication / transport lag signals (DG/ADG)
+- Single Instance  
+- RAC  
+- Exadata  
+- Data Guard  
 
 ---
 
-## Recommendation Engine
-
-- Deterministic mapping: issue → action
-- Prioritized recommendations
-- Evidence-backed decisions
-
-Focus:
-**Fix workload before scaling infrastructure**
-
----
-
-## AI Narrative Layer
-
-Generates:
-- Executive Summary
-- Root Cause Analysis
-- Action Plan
-- OCI Sizing Considerations
-- Confidence & Risk
-
-Constraints:
-- No fabricated metrics
-- No contradiction of facts
+### Structured Metadata Extraction
+- Database version  
+- Host and OS  
+- Instance count  
+- CPU / cores  
+- Memory per instance  
+- Platform and topology  
 
 ---
 
-## Multi-AWR Vision
-
-- Historical trend analysis
-- Anomaly detection
-- Capacity planning
-- Learning via ADB
-
----
-
-## Quick Start
-
-```
-pip install -r requirements.txt
-python scripts/run_analysis.py
-```
+### Deterministic Analysis Layer
+Identifies:
+- CPU pressure  
+- I/O bottlenecks  
+- SQL concentration  
+- Concurrency issues  
 
 ---
 
-## Project Structure
+### Dashboard Output
+- Time-series visualization  
+- Performance breakdowns  
+- Risk indicators  
+- Actionable insights  
 
-```
-src/
-  parser/
-  analysis/
-  reporting/
-scripts/
-data/
-dbschema/
-```
+---
+
+## Agentic AI Direction
+
+The platform is evolving into an **agentic decision system**:
+
+- Converts signals → decisions  
+- Produces execution guidance  
+- Assigns confidence  
+- Tracks outcomes  
 
 ---
 
 ## Roadmap
 
-- Multi-AWR time-series analysis
-- Scoring engine
-- Decision automation
-- OCI sizing integration
-- Learning feedback loop
+- Advanced time-series analytics  
+- Scoring engine (CPU, I/O, SQL, concurrency)  
+- Agentic decision orchestration  
+- OCI sizing recommendation engine  
+- Action + outcome tracking  
+- Continuous learning loop  
 
 ---
 
-## Value Proposition
+## Strategic Vision
 
-**From AWR → Decision → Action**
+Bridges:
 
-This is:
-- Not a report  
-- Not a chatbot  
+Performance diagnostics → Infrastructure decisions  
 
-This is:
-- Autonomous performance advisor  
-- OCI sizing decision engine  
+Enables:
 
----
-
-## Status
-
-- Parsing: Complete  
-- Analysis: Complete  
-- Recommendations: Complete  
-- AI Layer: Complete  
-- Dashboard: Complete  
-- ADB Ingestion: Complete  
-
-Next:
-- Multi-AWR intelligence  
-- Agentic decision layer  
+- Real-time tuning  
+- Future sizing  
 
 ---
 
-## Final Note
+## Status Summary
 
-This project has moved beyond reporting.
+This is a **production-grade foundation** for an agentic performance and sizing platform.
 
-It is now:
-**An autonomous performance and sizing system.**
+Next phase introduces:
+- scoring  
+- decision automation  
+- learning feedback

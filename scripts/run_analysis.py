@@ -2,7 +2,7 @@ import os
 import json
 import re
 import html
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -459,10 +459,13 @@ def _dashboard_recommendation_dicts(
         ):
             recommendation_dict = dict(recommendation_dict)
             recommendation_dict["recommendation"] = (
-                "Validate Data Guard role, transition state, and replication health before treating this interval as a pure sizing problem."
+                "Validate Data Guard role, transition state, and replication "
+                "health before treating this interval as a pure sizing problem."
             )
             recommendation_dict["rationale"] = (
-                "Deterministic topology evidence indicates Data Guard transition or replication-state activity, but explicit transport/apply lag values are unavailable."
+                "Deterministic topology evidence indicates Data Guard "
+                "transition or replication-state activity, but explicit "
+                "transport/apply lag values are unavailable."
             )
             recommendation_dict["next_step"] = (
                 "Review broker status, alert history, and redo transport/apply state for the interval."
@@ -667,7 +670,6 @@ def _collapse_transition_event_windows(
         "Role Transition",
         "Post-Failover Recovery",
     ]
-    transition_set = set(transition_order)
     grouped_windows: dict[str, list[dict[str, Any]]] = {}
     passthrough: list[dict[str, Any]] = []
 
@@ -868,7 +870,7 @@ def _build_anomaly_windows(
                 floor=30.0,
                 multiplier=1.5,
             )
-    )
+        )
     anomalies.extend(_build_topology_event_windows(snapshot_contexts))
     anomalies = _dedupe_anomaly_windows(anomalies)
     anomalies = _collapse_transition_event_windows(anomalies)
@@ -1067,7 +1069,9 @@ def _build_trend_findings(time_series: dict[str, Any]) -> list[str]:
         offload_direction = trend_directions["exa_offload_efficiency"]
         if offload_direction == "stable":
             findings.append(
-                "Exadata offload efficiency remained materially present across the analysis window, indicating that smart-scan benefits were persistent rather than episodic."
+                "Exadata offload efficiency remained materially present across "
+                "the analysis window, indicating that smart-scan benefits were "
+                "persistent rather than episodic."
             )
         else:
             findings.append(
@@ -1116,7 +1120,8 @@ def _build_topology_assessment(context: dict[str, Any]) -> str | None:
         statements.append(
             "Topology assessment indicates RAC behavior is present"
             + (
-                f", with cluster waits at {cluster_wait} and combined GC current + GC CR wait pressure at {gc_wait} of DB time."
+                f", with cluster waits at {cluster_wait} and combined GC "
+                f"current + GC CR wait pressure at {gc_wait} of DB time."
                 if (
                     context["metrics"].get("cluster_wait_pct_db_time") is not None
                     or context["metrics"].get("gc_total_wait_pct_db_time") is not None
@@ -1171,11 +1176,12 @@ def _build_topology_window_summary(
     multi_snapshot_analysis: dict[str, Any],
 ) -> str | None:
     snapshot_contexts = multi_snapshot_analysis["ordered_snapshots"]
-    latest_snapshot = multi_snapshot_analysis["latest_snapshot"]
-    latest_topology = latest_snapshot.get("topology") or {}
     time_series = multi_snapshot_analysis["time_series"]
 
-    has_rac = any((context.get("topology") or {}).get("is_rac") for context in snapshot_contexts)
+    has_rac = any(
+        (context.get("topology") or {}).get("is_rac")
+        for context in snapshot_contexts
+    )
     has_dataguard = any(
         (context.get("topology") or {}).get("is_dataguard")
         for context in snapshot_contexts
@@ -1190,7 +1196,10 @@ def _build_topology_window_summary(
     if unique_event_classes:
         parts.append(
             "The window includes operational-event phases such as "
-            + ", ".join(_humanize_classification(event_class) for event_class in unique_event_classes)
+            + ", ".join(
+                _humanize_classification(event_class)
+                for event_class in unique_event_classes
+            )
             + "."
         )
     elif any(
@@ -1198,7 +1207,8 @@ def _build_topology_window_summary(
         for context in snapshot_contexts
     ):
         parts.append(
-            "The window includes deterministic interconnect-stress phases even though no failover-style event classification was recorded."
+            "The window includes deterministic interconnect-stress phases even "
+            "though no failover-style event classification was recorded."
         )
     if has_rac:
         cluster_avg = _average_metric(time_series.get("cluster_wait_trend", []))
@@ -1206,7 +1216,9 @@ def _build_topology_window_summary(
         parts.append(
             "RAC behavior is present across the window"
             + (
-                f", with cluster waits averaging {_format_metric(cluster_avg, '%')} and combined GC current + GC CR wait pressure averaging {_format_metric(gc_avg, '%')}."
+                f", with cluster waits averaging "
+                f"{_format_metric(cluster_avg, '%')} and combined GC current "
+                f"+ GC CR wait pressure averaging {_format_metric(gc_avg, '%')}."
                 if cluster_avg is not None or gc_avg is not None
                 else "."
             )
@@ -1218,17 +1230,22 @@ def _build_topology_window_summary(
         if transport_avg is None and apply_avg is None:
             if role == "Unknown":
                 parts.append(
-                    "Data Guard behavior is present, but the report does not state a definitive role and no explicit transport/apply lag values were available across the window."
+                    "Data Guard behavior is present, but the report does not "
+                    "state a definitive role and no explicit transport/apply "
+                    "lag values were available across the window."
                 )
             else:
                 parts.append(
-                    f"Data Guard role is {role}, but explicit transport/apply lag values were unavailable across the window."
+                    f"Data Guard role is {role}, but explicit transport/apply "
+                    "lag values were unavailable across the window."
                 )
         elif role == "Unknown":
             parts.append(
                 "Data Guard behavior is present, but the report does not state a definitive role"
                 + (
-                    f"; transport lag averages {_format_metric(transport_avg, 's')} and apply lag averages {_format_metric(apply_avg, 's')}."
+                    f"; transport lag averages "
+                    f"{_format_metric(transport_avg, 's')} and apply lag "
+                    f"averages {_format_metric(apply_avg, 's')}."
                     if transport_avg is not None or apply_avg is not None
                     else "."
                 )
@@ -1237,7 +1254,9 @@ def _build_topology_window_summary(
             parts.append(
                 f"Data Guard role is {role}"
                 + (
-                    f", with transport lag averaging {_format_metric(transport_avg, 's')} and apply lag averaging {_format_metric(apply_avg, 's')}."
+                    f", with transport lag averaging "
+                    f"{_format_metric(transport_avg, 's')} and apply lag "
+                    f"averaging {_format_metric(apply_avg, 's')}."
                     if transport_avg is not None or apply_avg is not None
                     else "."
                 )
@@ -1273,9 +1292,12 @@ def _build_topology_narrative_sections(
                 "RAC / Cluster Findings",
                 (
                     "RAC evidence is explicitly present, with cluster waits at "
-                    f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} and "
-                    f"combined GC current + GC CR wait pressure at {_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')} in the latest interval. "
-                    "Those signals should be interpreted as cluster coordination behavior rather than as a generic single-instance bottleneck."
+                    f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} "
+                    "and combined GC current + GC CR wait pressure at "
+                    f"{_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')} "
+                    "in the latest interval. Those signals should be "
+                    "interpreted as cluster coordination behavior rather than "
+                    "as a generic single-instance bottleneck."
                 ),
             ]
         )
@@ -1293,7 +1315,9 @@ def _build_topology_narrative_sections(
                         metrics.get("apply_lag_sec"),
                         topology.get("database_role"),
                     )
-                    + " Those values should be interpreted as replication-state evidence rather than generic CPU or I/O pressure."
+                    + " Those values should be interpreted as "
+                    "replication-state evidence rather than generic CPU or I/O "
+                    "pressure."
                 ),
             ]
         )
@@ -1304,8 +1328,11 @@ def _build_topology_narrative_sections(
                 (
                     "Exadata-specific behavior is present, with cell-related waits at "
                     f"{_format_metric(metrics.get('exa_cell_io_pct_db_time'), '%')} and "
-                    f"offload efficiency at {_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}. "
-                    "That means storage behavior should be interpreted through smart-scan/offload effects rather than generic storage assumptions."
+                    f"offload efficiency at "
+                    f"{_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}. "
+                    "That means storage behavior should be interpreted through "
+                    "smart-scan/offload effects rather than generic storage "
+                    "assumptions."
                 ),
             ]
         )
@@ -1316,7 +1343,8 @@ def _build_topology_narrative_sections(
                 (
                     "Operational event classification is "
                     f"{_humanize_classification(str(topology.get('operational_event_class')))}, "
-                    "so the latest interval should be read in the context of topology transition behavior as well as workload behavior."
+                    "so the latest interval should be read in the context of "
+                    "topology transition behavior as well as workload behavior."
                 ),
             ]
         )
@@ -1326,7 +1354,9 @@ def _build_topology_narrative_sections(
                 "Operational Event Interpretation",
                 (
                     "Deterministic topology evidence flags interconnect stress in the latest interval, "
-                    "so cluster communication efficiency is part of the interpretation even without a failover-style event classification."
+                    "so cluster communication efficiency is part of the "
+                    "interpretation even without a failover-style event "
+                    "classification."
                 ),
             ]
         )
@@ -1377,9 +1407,11 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
     if topology.get("is_rac"):
         statements.append(
             (
-                "RAC coordination is also part of the current-interval picture, with cluster waits at "
-                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} and "
-                f"combined GC current + GC CR wait pressure at {_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')}."
+                "RAC coordination is also part of the current-interval "
+                "picture, with cluster waits at "
+                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} "
+                "and combined GC current + GC CR wait pressure at "
+                f"{_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')}."
             )
         )
     if (
@@ -1533,20 +1565,23 @@ def _build_analysis_context(
     cumulative_cpu_total = None
     if host_capacity_by_name:
         core_values = [
-            value["core_count"]
+            numeric_value
             for value in host_capacity_by_name.values()
-            if isinstance(value.get("core_count"), (int, float))
+            if (numeric_value := _safe_float(value.get("core_count"))) is not None
         ]
         cpu_values = [
-            value["cpu_count"]
+            numeric_value
             for value in host_capacity_by_name.values()
-            if isinstance(value.get("cpu_count"), (int, float))
+            if (numeric_value := _safe_float(value.get("cpu_count"))) is not None
         ]
         if core_values and observed_host_count:
-            cumulative_core_total = sum(float(value) for value in core_values)
+            cumulative_core_total = sum(core_values)
         if cpu_values and observed_host_count:
-            cumulative_cpu_total = sum(float(value) for value in cpu_values)
-    if normalized_instance_count and normalized_instance_count > max(observed_host_count, 1):
+            cumulative_cpu_total = sum(cpu_values)
+    if (
+        normalized_instance_count
+        and normalized_instance_count > max(observed_host_count, 1)
+    ):
         if latest_core_count is not None:
             cumulative_core_total = latest_core_count * normalized_instance_count
         elif latest_cpu_count is not None:
@@ -1568,13 +1603,13 @@ def _build_analysis_context(
         ocpus_cores = "Unknown"
 
     memory_values = [
-        value["memory_gb"]
+        numeric_value
         for value in host_capacity_by_name.values()
-        if isinstance(value.get("memory_gb"), (int, float))
+        if (numeric_value := _safe_float(value.get("memory_gb"))) is not None
     ]
     if not memory_values and latest_memory_gb is not None:
         memory_values = [latest_memory_gb]
-    unique_memory_values = sorted({round(float(value), 2) for value in memory_values})
+    unique_memory_values = sorted({round(value, 2) for value in memory_values})
     if not unique_memory_values:
         memory_per_instance = "Unknown"
     elif len(unique_memory_values) == 1:
@@ -1647,7 +1682,8 @@ def _build_latest_snapshot_summary(context: dict[str, Any]) -> str:
         f"User I/O {_format_metric(metrics.get('user_io_pct'), '%')}, "
         f"commit {_format_metric(metrics.get('commit_pct'), '%')}, "
         f"concurrency {_format_metric(metrics.get('concurrency_pct'), '%')}, and "
-        f"Top SQL concentration (top 3 share) {_format_metric(metrics.get('top_sql_concentration'), '%')}."
+        "Top SQL concentration (top 3 share) "
+        f"{_format_metric(metrics.get('top_sql_concentration'), '%')}."
     )
     interpretation = _build_latest_interval_interpretation(context)
     return f"{latest_metrics_sentence} {interpretation}"
@@ -1669,9 +1705,6 @@ def _build_multi_snapshot_summary(
     latest_context = snapshot_contexts[-1]
     worst_context = max(snapshot_contexts, key=_snapshot_score)
     trend_findings = _build_trend_findings(time_series)
-    avg_cpu = _average_metric(time_series["cpu_trend"])
-    avg_io = _average_metric(time_series["io_trend"])
-    avg_sql = _average_metric(time_series["sql_concentration_trend"])
     anomaly_text = (
         "No deterministic anomaly or event windows were detected."
         if not anomaly_windows
@@ -1687,9 +1720,13 @@ def _build_multi_snapshot_summary(
             f"{len(snapshot_contexts)} snapshots were analyzed in chronological order.",
             (
                 f"Across the full window, the workload remained primarily CPU-led, "
-                f"with multi-snapshot summary values of average CPU {_format_metric(avg_cpu, '%')}, "
-                f"average User I/O {_format_metric(avg_io, '%')}, and average Top SQL "
-                f"concentration (top 3 share) {_format_metric(avg_sql, '%')}. The same broad workload "
+                "with multi-snapshot summary values of average CPU "
+                f"{_format_metric(_average_metric(time_series['cpu_trend']), '%')}, "
+                "average User I/O "
+                f"{_format_metric(_average_metric(time_series['io_trend']), '%')}, "
+                "and average Top SQL concentration (top 3 share) "
+                f"{_format_metric(_average_metric(time_series['sql_concentration_trend']), '%')}. "
+                "The same broad workload "
                 "shape persisted throughout the series rather than rotating between unrelated bottlenecks."
             ),
         ]
@@ -1733,25 +1770,10 @@ def _build_multi_snapshot_executive_summary(
 ) -> str:
     snapshot_count = len(multi_snapshot_analysis["ordered_snapshots"])
     posture = multi_snapshot_analysis["decision_posture"]
-    latest_snapshot = multi_snapshot_analysis["latest_snapshot"]
     time_series = multi_snapshot_analysis["time_series"]
-    anomaly_windows = multi_snapshot_analysis["anomaly_windows"]
-    avg_cpu = _average_metric(time_series["cpu_trend"])
-    avg_io = _average_metric(time_series["io_trend"])
-    avg_sql = _average_metric(time_series["sql_concentration_trend"])
     latest_cpu = _latest_non_null(time_series["cpu_trend"])
     latest_io = _latest_non_null(time_series["io_trend"])
     latest_sql = _latest_non_null(time_series["sql_concentration_trend"])
-    cpu_direction = time_series["trend_directions"]["cpu"]
-    io_direction = time_series["trend_directions"]["io"]
-    commit_direction = time_series["trend_directions"]["commit"]
-    sql_direction = time_series["trend_directions"]["sql_concentration"]
-    module_name = _top_sql_module_name(latest_snapshot["result"])
-    module_phrase = (
-        f" SQL concentration stays centered on {module_name}."
-        if module_name
-        else ""
-    )
     if snapshot_count < 2:
         return " ".join(
             [
@@ -1769,25 +1791,6 @@ def _build_multi_snapshot_executive_summary(
                 "The latest-interval evidence below shows why that interval-level posture was chosen.",
             ]
         )
-
-    anomaly_sentence = (
-        "No material anomaly window altered the broader workload pattern."
-        if not anomaly_windows
-        else (
-            f"The most material anomaly was the isolated {anomaly_windows[0]['metric']} spike "
-            f"in {anomaly_windows[0]['snapshot_label']}, which temporarily elevated pressure "
-            "without changing the overall workload shape."
-        )
-    )
-    sql_sentence = (
-        "Top SQL concentration remained effectively unchanged across the analysis window, "
-        "indicating a persistent concentrated SQL footprint rather than a one-off spike."
-        if sql_direction == "stable"
-        else (
-            f"Top SQL concentration was {sql_direction} across the window, "
-            "showing that the concentrated SQL footprint changed gradually rather than appearing as a one-off spike."
-        )
-    )
     return _build_executive_summary_rationale(multi_snapshot_analysis)
 
 
@@ -1807,7 +1810,6 @@ def _build_confidence(
         _severity_score(str(issue.get("severity") or ""))
         for issue in latest_context["issues"]
     )
-    cpu_direction = time_series["trend_directions"]["cpu"]
     io_direction = time_series["trend_directions"]["io"]
     commit_direction = time_series["trend_directions"]["commit"]
     latest_cpu = _latest_non_null(time_series["cpu_trend"])
@@ -1824,7 +1826,9 @@ def _build_confidence(
         )
     else:
         trend_phrase = (
-            f"User I/O followed a {io_direction} pattern while commit pressure followed a {commit_direction} pattern over the same window"
+            f"User I/O followed a {io_direction} pattern while commit "
+            f"pressure followed a {commit_direction} pattern over the same "
+            "window"
         )
     anomaly_phrase = (
         "The observed anomalies were isolated rather than persistent"
@@ -1832,17 +1836,31 @@ def _build_confidence(
         else "Multiple anomaly windows recur across the history"
     )
     latest_phrase = (
-        f"The latest interval stays aligned with that broader picture, with CPU at {_format_metric(latest_cpu, '%')} and Top SQL concentration (top 3 share) at {_format_metric(latest_sql, '%')}."
+        "The latest interval stays aligned with that broader picture, with "
+        f"CPU at {_format_metric(latest_cpu, '%')} and Top SQL concentration "
+        f"(top 3 share) at {_format_metric(latest_sql, '%')}."
         if latest_cpu is not None or latest_sql is not None
         else "The latest interval does not contradict the broader pattern."
     )
     topology_phrase = ""
     if latest_topology.get("is_rac"):
-        topology_phrase = " RAC coordination signals, including combined GC current + GC CR waits, were interpreted as topology evidence rather than generic CPU pressure."
+        topology_phrase = (
+            " RAC coordination signals, including combined GC current + GC CR "
+            "waits, were interpreted as topology evidence rather than generic "
+            "CPU pressure."
+        )
     elif latest_topology.get("is_dataguard"):
-        topology_phrase = " Data Guard role and replication-state evidence are explicitly present and were interpreted separately from generic workload pressure."
+        topology_phrase = (
+            " Data Guard role and replication-state evidence are explicitly "
+            "present and were interpreted separately from generic workload "
+            "pressure."
+        )
     elif latest_topology.get("is_exadata"):
-        topology_phrase = " Exadata-specific cell/offload evidence is explicitly present and was interpreted as platform behavior rather than generic storage pressure."
+        topology_phrase = (
+            " Exadata-specific cell/offload evidence is explicitly present and "
+            "was interpreted as platform behavior rather than generic storage "
+            "pressure."
+        )
 
     if snapshot_count >= 4 and non_insufficient >= 4 and (
         anomaly_windows or latest_issue_strength >= 3
@@ -1851,7 +1869,10 @@ def _build_confidence(
             "level": "HIGH",
             "reason": (
                 f"{pattern_phrase}. {trend_phrase}. {anomaly_phrase}. "
-                f"{latest_phrase}{topology_phrase} Taken together, the repeated dominant pattern, the isolated anomaly behavior, and the latest interval all reinforce the same posture with very little contradiction."
+                f"{latest_phrase}{topology_phrase} Taken together, the "
+                "repeated dominant pattern, the isolated anomaly behavior, "
+                "and the latest interval all reinforce the same posture with "
+                "very little contradiction."
             ),
         }
     if snapshot_count >= 2 and non_insufficient >= 2:
@@ -1859,7 +1880,10 @@ def _build_confidence(
             "level": "MEDIUM",
             "reason": (
                 f"{pattern_phrase}. {trend_phrase}. {anomaly_phrase}. "
-                f"{latest_phrase}{topology_phrase} The posture is credible overall because the broader pattern and the latest interval still point in the same direction, even though some signals carry more weight than others."
+                f"{latest_phrase}{topology_phrase} The posture is credible "
+                "overall because the broader pattern and the latest interval "
+                "still point in the same direction, even though some signals "
+                "carry more weight than others."
             ),
         }
     return {
@@ -1921,7 +1945,8 @@ def _build_root_cause_interpretation(
         root_cause_sentences.append(
             (
                 "RAC topology is part of the story, with cluster waits at "
-                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} and combined GC current + GC CR wait pressure at "
+                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} "
+                "and combined GC current + GC CR wait pressure at "
                 f"{_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')} "
                 "of DB time, so cross-instance coordination should be interpreted "
                 "separately from generic single-instance CPU pressure."
@@ -1935,7 +1960,8 @@ def _build_root_cause_interpretation(
                     metrics.get("apply_lag_sec"),
                     topology.get("database_role"),
                 )
-                + " That points to replication health or transition state rather than to a simple workload shortfall."
+                + " That points to replication health or transition state "
+                "rather than to a simple workload shortfall."
             )
         )
     if topology.get("is_exadata"):
@@ -1943,15 +1969,18 @@ def _build_root_cause_interpretation(
             (
                 "Exadata behavior is also present, with cell-related waits at "
                 f"{_format_metric(metrics.get('exa_cell_io_pct_db_time'), '%')} and "
-                f"offload efficiency at {_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}. "
-                "Those signals should be interpreted as engineered-system behavior rather than generic storage pressure."
+                f"offload efficiency at "
+                f"{_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}. "
+                "Those signals should be interpreted as engineered-system "
+                "behavior rather than generic storage pressure."
             )
         )
     root_cause_sentences.append(concurrency_text)
     root_cause_sentences.append(
         (
             f"Together these drivers support {posture} because they point first to "
-            "tunable workload behavior, topology state, and platform-specific execution paths rather "
+            "tunable workload behavior, topology state, and platform-specific "
+            "execution paths rather "
             "than to an immediate need for capacity expansion."
         )
     )
@@ -1980,16 +2009,21 @@ def _build_executive_summary_rationale(
 
     if snapshot_count < 2:
         return (
-            f"{posture['posture']}: the current snapshot shows CPU at {_format_metric(latest_cpu, '%')}, "
-            f"User I/O at {_format_metric(latest_io, '%')}, and Top SQL concentration (top 3 share) at {_format_metric(latest_sql, '%')}. "
-            "No historical trend is available, so this posture is anchored to the current interval alone. "
+            f"{posture['posture']}: the current snapshot shows CPU at "
+            f"{_format_metric(latest_cpu, '%')}, User I/O at "
+            f"{_format_metric(latest_io, '%')}, and Top SQL concentration "
+            f"(top 3 share) at {_format_metric(latest_sql, '%')}. "
+            "No historical trend is available, so this posture is anchored to "
+            "the current interval alone. "
             "The latest-interval evidence below explains why that single-snapshot conclusion was chosen."
         )
 
     first_sentence = (
-        f"Across the full {snapshot_count}-snapshot window, the workload remained predominantly CPU-led, "
-        f"with average CPU at {_format_metric(avg_cpu, '%')}, average User I/O at {_format_metric(avg_io, '%')}, "
-        f"and average Top SQL concentration (top 3 share) at {_format_metric(avg_sql, '%')}."
+        f"Across the full {snapshot_count}-snapshot window, the workload "
+        "remained predominantly CPU-led, "
+        f"with average CPU at {_format_metric(avg_cpu, '%')}, average User "
+        f"I/O at {_format_metric(avg_io, '%')}, and average Top SQL "
+        f"concentration (top 3 share) at {_format_metric(avg_sql, '%')}."
     )
 
     topology_text = _join_readable_labels(topology_labels)
@@ -2050,11 +2084,13 @@ def _build_executive_summary_rationale(
         lead_metric = str(lead_window.get("metric") or "deterministic event")
         if lead_window.get("anomaly_type") == "topology_event":
             second_sentence += (
-                f", with the most material deterministic window occurring as {lead_metric} in {lead_window['snapshot_label']}"
+                f", with the most material deterministic window occurring as "
+                f"{lead_metric} in {lead_window['snapshot_label']}"
             )
         else:
             second_sentence += (
-                f", with the most material deterministic window occurring as the {lead_metric} spike in {lead_window['snapshot_label']}"
+                f", with the most material deterministic window occurring as "
+                f"the {lead_metric} spike in {lead_window['snapshot_label']}"
             )
     second_sentence += "."
 
@@ -2081,8 +2117,11 @@ def _build_executive_summary_rationale(
             first_sentence,
             second_sentence,
             (
-                f"The latest interval remains aligned with that broader picture, showing CPU at {_format_metric(latest_cpu, '%')}, "
-                f"User I/O at {_format_metric(latest_io, '%')}, and Top SQL concentration (top 3 share) at {_format_metric(latest_sql, '%')}{latest_state_text}, "
+                "The latest interval remains aligned with that broader "
+                f"picture, showing CPU at {_format_metric(latest_cpu, '%')}, "
+                f"User I/O at {_format_metric(latest_io, '%')}, and Top SQL "
+                f"concentration (top 3 share) at "
+                f"{_format_metric(latest_sql, '%')}{latest_state_text}, "
                 f"so the posture remains {posture['posture']} before immediate scaling."
             ),
         ]
@@ -2480,11 +2519,19 @@ def _replace_executive_summary_rationale(
     escaped_rationale = html.escape(rationale).replace("\n", " ")
     patterns = [
         re.compile(
-            r'(<section id="ai-summary" class="card primary">.*?<div class="decision-banner[^"]*">.*?</div>\s*<p[^>]*>)(.*?)(</p>)',
+            (
+                r'(<section id="ai-summary" class="card primary">.*?<div '
+                r'class="decision-banner[^"]*">.*?</div>\s*<p[^>]*>)'
+                r'(.*?)(</p>)'
+            ),
             re.DOTALL,
         ),
         re.compile(
-            r'(<section id="ai-summary" class="card primary">.*?<div class="decision-banner[^"]*">.*?</div>\s*<div class="summary-text">\s*<p[^>]*>)(.*?)(</p>)',
+            (
+                r'(<section id="ai-summary" class="card primary">.*?<div '
+                r'class="decision-banner[^"]*">.*?</div>\s*<div '
+                r'class="summary-text">\s*<p[^>]*>)(.*?)(</p>)'
+            ),
             re.DOTALL,
         ),
     ]

@@ -1316,7 +1316,8 @@ def build_feature_vector_record(
         ),
     }
     LOGGER.info(
-        "Feature classifications derived: AWR_ID=%s workload_class=%s topology_class=%s platform_class=%s event_class=%s",
+        "Feature classifications derived: AWR_ID=%s workload_class=%s "
+        "topology_class=%s platform_class=%s event_class=%s",
         awr_id,
         feature_record["workload_class"],
         feature_record["topology_class"],
@@ -1395,7 +1396,9 @@ def insert_feature_vector(
         raise RuntimeError("Failed to insert AWR_FEATURE_VECTOR row.")
     feature_vector_id = int(row[0])
     LOGGER.info(
-        "Feature vector inserted: FEATURE_VECTOR_ID=%s AWR_ID=%s SOURCE_SYSTEM_ID=%s topology_class=%s platform_class=%s event_class=%s",
+        "Feature vector inserted: FEATURE_VECTOR_ID=%s AWR_ID=%s "
+        "SOURCE_SYSTEM_ID=%s topology_class=%s platform_class=%s "
+        "event_class=%s",
         feature_vector_id,
         feature_vector_record["awr_id"],
         feature_vector_record["source_system_id"],
@@ -1566,7 +1569,9 @@ def insert_score_result(conn: Any, score_result_record: dict[str, Any]) -> None:
             score_result_record,
         )
     LOGGER.info(
-        "Score result inserted: AWR_ID=%s MODEL_ID=%s TOTAL_SCORE=%s RISK=%s workload_class=%s topology_class=%s platform_class=%s event_class=%s primary_signal_domain=%s",
+        "Score result inserted: AWR_ID=%s MODEL_ID=%s TOTAL_SCORE=%s "
+        "RISK=%s workload_class=%s topology_class=%s platform_class=%s "
+        "event_class=%s primary_signal_domain=%s",
         score_result_record["awr_id"],
         score_result_record["scoring_model_id"],
         score_result_record["total_score"],
@@ -2196,7 +2201,9 @@ def persist_deterministic_score(
         return
     insert_score_result(conn, score_result_record)
     LOGGER.info(
-        "Score calculation completed: AWR_ID=%s total_score=%s confidence=%s workload_class=%s topology_class=%s platform_class=%s event_class=%s primary_signal_domain=%s",
+        "Score calculation completed: AWR_ID=%s total_score=%s confidence=%s "
+        "workload_class=%s topology_class=%s platform_class=%s "
+        "event_class=%s primary_signal_domain=%s",
         awr_id,
         score_result_record["total_score"],
         score_result_record["confidence_score"],
@@ -2322,7 +2329,9 @@ def _build_score_result_record(
     }
     _, snap_end = _require_snapshot_window(parse_result)
     LOGGER.info(
-        "Score classifications derived: AWR_ID=%s workload_class=%s topology_class=%s platform_class=%s event_class=%s primary_signal_domain=%s",
+        "Score classifications derived: AWR_ID=%s workload_class=%s "
+        "topology_class=%s platform_class=%s event_class=%s "
+        "primary_signal_domain=%s",
         awr_id,
         workload_class,
         topology_class,

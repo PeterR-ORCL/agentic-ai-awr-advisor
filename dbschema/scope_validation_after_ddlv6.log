@@ -1,0 +1,369 @@
+============================================================
+AWR Sizing Advisor - Scoped Validation
+Override any DEFINE values before running if needed
+Example:
+DEFINE DB_NAME='FINDB'
+DEFINE HOST_NAME='exa-rac-node01'
+@scope_validation_queries.sql
+============================================================
+
+============================================================
+1. Confirm scoped views exist
+============================================================
+
+VIEW_NAME
+______________________________
+VW_AWR_FEATURE_METRIC_SCOPE
+VW_AWR_FEATURE_SCOPE
+VW_AWR_METRIC_SCOPE
+VW_AWR_SCOPE_CONTEXT
+VW_AWR_SCORE_SCOPE
+VW_AWR_SQL_SCOPE
+VW_AWR_WAIT_SCOPE
+
+7 rows selected.
+
+Elapsed: 00:00:00.172
+
+============================================================
+2. Discover available raw metric names for DB/timeframe
+============================================================
+
+METRIC_NAME
+_______________
+DB CPU(s)
+DB Time(s)
+Redo size
+Transactions
+
+4 rows selected.
+
+Elapsed: 00:00:00.274
+
+============================================================
+3. Database-wide raw metric history
+============================================================
+
+DB_NAME             DBID HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  SNAP_END_TIME                    METRIC_DOMAIN    METRIC_NAME       METRIC_VALUE_NUM UNIT_OF_MEASURE
+__________ _____________ _________________ ________________ __________________ ________________________________ ________________________________ ________________ ______________ ___________________ __________________
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    2026-03-29 01:00:00.000000000    load_profile     DB CPU(s)                      210 per_second
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    2026-03-29 01:00:00.000000000    load_profile     DB CPU(s)                     0.55 per_transaction
+FINDB         1234567890 exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000    2026-03-29 02:00:00.000000000    load_profile     DB CPU(s)                      255 per_second
+FINDB         1234567890 exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000    2026-03-29 02:00:00.000000000    load_profile     DB CPU(s)                     0.56 per_transaction
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    2026-03-29 03:00:00.000000000    load_profile     DB CPU(s)                      276 per_second
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    2026-03-29 03:00:00.000000000    load_profile     DB CPU(s)                     0.59 per_transaction
+FINDB         1234567890 exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000    2026-03-29 04:00:00.000000000    load_profile     DB CPU(s)                     0.62 per_transaction
+FINDB         1234567890 exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000    2026-03-29 04:00:00.000000000    load_profile     DB CPU(s)                      288 per_second
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    2026-03-29 05:00:00.000000000    load_profile     DB CPU(s)                     0.58 per_transaction
+FINDB         1234567890 exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    2026-03-29 05:00:00.000000000    load_profile     DB CPU(s)                      262 per_second
+FINDB         1234567890 exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000    2026-03-29 06:00:00.000000000    load_profile     DB CPU(s)                      290 per_second
+FINDB         1234567890 exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000    2026-03-29 06:00:00.000000000    load_profile     DB CPU(s)                     0.58 per_transaction
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000    2026-03-29 07:00:00.000000000    load_profile     DB CPU(s)                        0 per_transaction
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000    2026-03-29 07:00:00.000000000    load_profile     DB CPU(s)                      198 per_second
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000    2026-03-29 08:00:00.000000000    load_profile     DB CPU(s)                     0.74 per_transaction
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000    2026-03-29 08:00:00.000000000    load_profile     DB CPU(s)                      250 per_second
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000    2026-03-29 09:00:00.000000000    load_profile     DB CPU(s)                     0.66 per_transaction
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000    2026-03-29 09:00:00.000000000    load_profile     DB CPU(s)                      282 per_second
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000    2026-03-29 10:00:00.000000000    load_profile     DB CPU(s)                      296 per_second
+FINDB         1234567890 exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000    2026-03-29 10:00:00.000000000    load_profile     DB CPU(s)                     0.65 per_transaction
+
+20 rows selected.
+
+Elapsed: 00:00:00.199
+
+============================================================
+4. Host-specific raw metric history
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  METRIC_NAME       METRIC_VALUE_NUM UNIT_OF_MEASURE
+__________ _________________ ________________ __________________ ________________________________ ______________ ___________________ __________________
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    DB CPU(s)                      210 per_second
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    DB CPU(s)                     0.55 per_transaction
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    DB CPU(s)                      276 per_second
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    DB CPU(s)                     0.59 per_transaction
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    DB CPU(s)                      262 per_second
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    DB CPU(s)                     0.58 per_transaction
+
+6 rows selected.
+
+Elapsed: 00:00:00.193
+
+============================================================
+5. Instance-specific raw metric history
+============================================================
+
+DB_NAME    INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  METRIC_NAME       METRIC_VALUE_NUM UNIT_OF_MEASURE
+__________ ________________ __________________ ________________________________ ______________ ___________________ __________________
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    DB CPU(s)                     0.55 per_transaction
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    DB CPU(s)                      210 per_second
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    DB CPU(s)                      276 per_second
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    DB CPU(s)                     0.59 per_transaction
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    DB CPU(s)                      262 per_second
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    DB CPU(s)                     0.58 per_transaction
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    DB CPU(s)                     0.58 per_transaction
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    DB CPU(s)                      290 per_second
+
+8 rows selected.
+
+Elapsed: 00:00:00.194
+
+============================================================
+6. Host-specific wait history
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME    SNAP_BEGIN_TIME                  WAIT_CLASS     EVENT_NAME                            PCT_DB_TIME
+__________ _________________ ________________ ________________________________ ______________ __________________________________ ______________
+FINDB      exa-rac-node01    FINDB1           2026-03-29 00:00:00.000000000    CPU            DB CPU                                       68.9
+FINDB      exa-rac-node01    FINDB1           2026-03-29 00:00:00.000000000    User I/O       cell single block physical read              11.8
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    CPU            DB CPU                                       64.2
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    User I/O       cell single block physical read              10.1
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    Commit         log file sync                                 6.3
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    Cluster        gc cr grant 2-way                             2.4
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    Cluster        gc current block 2-way                        0.8
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    Application    enq: TX - row lock contention                 0.8
+FINDB      exa-rac-node01    FINDB1           2026-03-29 02:00:00.000000000    Concurrency    latch: cache buffers chains                   0.4
+FINDB      exa-rac-node01    FINDB1           2026-03-29 04:00:00.000000000    CPU            DB CPU                                       68.6
+FINDB      exa-rac-node01    FINDB1           2026-03-29 04:00:00.000000000    User I/O       cell single block physical read              11.9
+
+11 rows selected.
+
+Elapsed: 00:00:00.183
+
+============================================================
+7. Instance-specific SQL history
+============================================================
+
+DB_NAME    INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  SQL_ID              ELAPSED_TIME_SEC    CPU_TIME_SEC    EXECUTIONS
+__________ ________________ __________________ ________________________________ ________________ ___________________ _______________ _____________
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    8f7a1xk3d9abc                   2562            NULL     229057920
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    b9d2k3l4m5xyz                   2013            NULL     179974080
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    c7k9d2l8p3abc                   1281            NULL     114528960
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    d4n7s1v2q8mno                    915            NULL      81806400
+FINDB      FINDB1                            1 2026-03-29 00:00:00.000000000    q8w7e6r5t4y3u                    732            NULL      65445119
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    8f7a1xk3d9abc                   3612            NULL     283308480
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    b9d2k3l4m5xyz                   2838            NULL     222599519
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    c7k9d2l8p3abc                   1806            NULL     141654240
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    d4n7s1v2q8mno                   1290            NULL     101181599
+FINDB      FINDB1                            1 2026-03-29 02:00:00.000000000    q8w7e6r5t4y3u                   1032            NULL      80945280
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    8f7a1xk3d9abc                   3208            NULL     270047232
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    b9d2k3l4m5xyz                   2521            NULL     212179967
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    c7k9d2l8p3abc                   1604            NULL     135023616
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    q8w7e6r5t4y3u                   1375            NULL     115734527
+FINDB      FINDB1                            1 2026-03-29 04:00:00.000000000    d4n7s1v2q8mno                   1146            NULL      96445440
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    8f7a1xk3d9abc                   3354            NULL     252720000
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    b9d2k3l4m5xyz                   2580            NULL     194400000
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    c7k9d2l8p3abc                   1548            NULL     116640000
+FINDB      FINDB1                            1 2026-03-29 05:00:00.000000000    d4n7s1v2q8mno                   1032            NULL      77760000
+
+19 rows selected.
+
+Elapsed: 00:00:00.209
+
+============================================================
+8. Canonical feature history by report scope
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                     FEATURE_VECTOR_ID OBSERVED_AT                      WORKLOAD_CLASS    FEATURE_TOPOLOGY_CLASS    FEATURE_PLATFORM_CLASS    FEATURE_EVENT_CLASS
+__________ _________________ ________________ __________________ ________________________________ ____________________ ________________________________ _________________ _________________________ _________________________ _________________________
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000                      57 2026-03-29 01:00:00.000000000    CPU_BOUND         RAC                       EXADATA                   INTERCONNECT_STRESS
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000                      58 2026-03-29 02:00:00.000000000    CPU_BOUND         RAC                       EXADATA                   INTERCONNECT_STRESS
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000                      59 2026-03-29 03:00:00.000000000    CPU_BOUND         RAC                       EXADATA                   INTERCONNECT_STRESS
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000                      60 2026-03-29 04:00:00.000000000    CPU_BOUND         RAC                       EXADATA                   INTERCONNECT_STRESS
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000                      61 2026-03-29 05:00:00.000000000    CPU_BOUND         RAC                       EXADATA                   INTERCONNECT_STRESS
+FINDB      exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000                      52 2026-03-29 06:00:00.000000000    CPU_BOUND         SINGLE_INSTANCE           EXADATA                   POST_FAILOVER_RECOVERY
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000                      53 2026-03-29 07:00:00.000000000    CPU_BOUND         SINGLE_INSTANCE           GENERIC                   FAILOVER_EVENT
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000                      54 2026-03-29 08:00:00.000000000    CPU_BOUND         SINGLE_INSTANCE           EXADATA                   FAILOVER_EVENT
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000                      55 2026-03-29 09:00:00.000000000    CPU_BOUND         SINGLE_INSTANCE           EXADATA                   FAILOVER_EVENT
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000                      56 2026-03-29 10:00:00.000000000    CPU_BOUND         SINGLE_INSTANCE           EXADATA                   FAILOVER_EVENT
+
+10 rows selected.
+
+Elapsed: 00:00:00.230
+
+============================================================
+9. Canonical score history by report scope
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                     SCORE_RESULT_ID SCORED_AT                        WORKLOAD_CLASS    PRIMARY_SIGNAL_DOMAIN       TOTAL_SCORE    CONFIDENCE_SCORE
+__________ _________________ ________________ __________________ ________________________________ __________________ ________________________________ _________________ ________________________ ______________ ___________________
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000                    46 2026-03-29 01:00:00.000000000    CPU_BOUND         CPU                             24.0915                  72
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000                    47 2026-03-29 02:00:00.000000000    CPU_BOUND         CPU                             19.2077                  80
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000                    48 2026-03-29 03:00:00.000000000    CPU_BOUND         CPU                              19.126                  80
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000                    49 2026-03-29 04:00:00.000000000    CPU_BOUND         CPU                             23.1384                  72
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000                    50 2026-03-29 05:00:00.000000000    CPU_BOUND         CPU                             24.2825                  72
+FINDB      exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000                    41 2026-03-29 06:00:00.000000000    CPU_BOUND         TOPOLOGY_EVENT                  38.5518                  72
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000                    42 2026-03-29 07:00:00.000000000    CPU_BOUND         TOPOLOGY_EVENT                  60.2039                  72
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000                    43 2026-03-29 08:00:00.000000000    CPU_BOUND         TOPOLOGY_EVENT                  51.5796                  72
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000                    44 2026-03-29 09:00:00.000000000    CPU_BOUND         TOPOLOGY_EVENT                  51.9142                  72
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000                    45 2026-03-29 10:00:00.000000000    CPU_BOUND         TOPOLOGY_EVENT                  51.7744                  72
+
+10 rows selected.
+
+Elapsed: 00:00:00.247
+
+============================================================
+10. Engineered metric history by report scope
+Note: current engineered metrics are DB-scoped semantically,
+but may repeat per canonical report/instance context
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  METRIC_SCOPE    METRIC_NAME     METRIC_CATEGORY       METRIC_VALUE_NUM
+__________ _________________ ________________ __________________ ________________________________ _______________ _______________ __________________ ___________________
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        68.8525
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        70.8333
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                         64.186
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        57.0297
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        68.5864
+FINDB      exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        67.4419
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                           52.8
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        60.9756
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        70.8543
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000    DB              CPU_UTIL_P95    GENERAL                        70.1422
+
+10 rows selected.
+
+Elapsed: 00:00:00.532
+
+============================================================
+11. Engineered metric history collapsed to DB + snapshot
+This is the practical DB-level validation for DB-scoped features
+============================================================
+
+DB_NAME    SNAP_BEGIN_TIME                  METRIC_NAME        METRIC_VALUE_NUM    CONTRIBUTING_ROWS
+__________ ________________________________ _______________ ___________________ ____________________
+FINDB      2026-03-29 00:00:00.000000000    CPU_UTIL_P95                68.8525                    1
+FINDB      2026-03-29 01:00:00.000000000    CPU_UTIL_P95                70.8333                    1
+FINDB      2026-03-29 02:00:00.000000000    CPU_UTIL_P95                 64.186                    1
+FINDB      2026-03-29 03:00:00.000000000    CPU_UTIL_P95                57.0297                    1
+FINDB      2026-03-29 04:00:00.000000000    CPU_UTIL_P95                68.5864                    1
+FINDB      2026-03-29 05:00:00.000000000    CPU_UTIL_P95                67.4419                    1
+FINDB      2026-03-29 06:00:00.000000000    CPU_UTIL_P95                   52.8                    1
+FINDB      2026-03-29 07:00:00.000000000    CPU_UTIL_P95                60.9756                    1
+FINDB      2026-03-29 08:00:00.000000000    CPU_UTIL_P95                70.8543                    1
+FINDB      2026-03-29 09:00:00.000000000    CPU_UTIL_P95                70.1422                    1
+
+10 rows selected.
+
+Elapsed: 00:00:00.527
+
+============================================================
+12. Feature-scope duplicate check by report scope
+Expect zero rows if canonical logical report selection is working
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.230
+
+============================================================
+13. Feature metric duplicate check by report scope
+Expect zero rows if canonical report selection is working
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.527
+
+============================================================
+14. DB-level repeated engineered metric rows
+This shows DB-scoped feature repetition across report contexts
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.536
+
+============================================================
+15. Score-scope duplicate check by report scope
+Expect zero rows if canonical score selection is working
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.226
+
+============================================================
+16. Raw logical duplicate reports in AWR_REPORT
+Historical duplicates may still exist in base data
+============================================================
+
+   SOURCE_SYSTEM_ID CANONICAL_KEY_TYPE             DBID    INSTANCE_NUMBER    SNAP_ID_BEGIN    SNAP_ID_END SNAP_TIME_BEGIN                  SNAP_TIME_END                    FILE_HASH_SHA256                                                       ROW_COUNT
+___________________ _____________________ _____________ __________________ ________________ ______________ ________________________________ ________________________________ ___________________________________________________________________ ____________
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            11231          11232 2026-03-29 00:00:00.000000000    2026-03-29 01:00:00.000000000    e38d4cc464b8d993f95d4307d3747ba04e1a74f3026d730c0f24b998d14e1318               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  2            11232          11233 2026-03-29 01:00:00.000000000    2026-03-29 02:00:00.000000000    f3c1d45678b501fb940f2bf964650b895cf43dd6343da4b1b19b3a7d90e67e61               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            11233          11234 2026-03-29 02:00:00.000000000    2026-03-29 03:00:00.000000000    1f21d23317ffc47c695dba1c76e710d6e4cc505602d5d6bfa390bc631585906c               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  2            11234          11235 2026-03-29 03:00:00.000000000    2026-03-29 04:00:00.000000000    d83d4cd207d1803f12428588420739d8a4294a5067462e9f9fce10aeb9856131               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            11235          11236 2026-03-29 04:00:00.000000000    2026-03-29 05:00:00.000000000    2988073b2a51af6c39ae8eb4ce6ae813ff30166ad7b583481b2aabb06a5c505e               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            12236          12237 2026-03-29 05:00:00.000000000    2026-03-29 06:00:00.000000000    e615e613efe29338d4b8994df4cdb0c969ca47db483cf2ab021f129b7447c464               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            12237          12238 2026-03-29 06:00:00.000000000    2026-03-29 07:00:00.000000000    e18ed24cfc6de89c83a20dbb388b97f4df3e6d7bb44d724b3237864e474ecbec               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            12238          12239 2026-03-29 07:00:00.000000000    2026-03-29 08:00:00.000000000    9f7d5e4d9551209d5f54f3074f7bbf265004df44ea0927cac2920588d7829a5c               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            12239          12240 2026-03-29 08:00:00.000000000    2026-03-29 09:00:00.000000000    2413b9a101abbb006346782eeb2f74a01fa924ccf73bc145f3a9a6c1bb7a554d               5
+                  4 LOGICAL_SNAPSHOT         1234567890                  1            12240          12241 2026-03-29 09:00:00.000000000    2026-03-29 10:00:00.000000000    7c2ce8ce789e10e36cd956e28b181c780cbcf10a1d271608ac819a9b77a515ad               5
+
+10 rows selected.
+
+Elapsed: 00:00:00.162
+
+============================================================
+17. Exact duplicate file hash check
+============================================================
+
+   SOURCE_SYSTEM_ID FILE_HASH_SHA256                                                       ROW_COUNT
+___________________ ___________________________________________________________________ ____________
+                  4 1f21d23317ffc47c695dba1c76e710d6e4cc505602d5d6bfa390bc631585906c               5
+                  4 2413b9a101abbb006346782eeb2f74a01fa924ccf73bc145f3a9a6c1bb7a554d               5
+                  4 2988073b2a51af6c39ae8eb4ce6ae813ff30166ad7b583481b2aabb06a5c505e               5
+                  4 7c2ce8ce789e10e36cd956e28b181c780cbcf10a1d271608ac819a9b77a515ad               5
+                  4 9f7d5e4d9551209d5f54f3074f7bbf265004df44ea0927cac2920588d7829a5c               5
+                  4 d83d4cd207d1803f12428588420739d8a4294a5067462e9f9fce10aeb9856131               5
+                  4 e18ed24cfc6de89c83a20dbb388b97f4df3e6d7bb44d724b3237864e474ecbec               5
+                  4 e38d4cc464b8d993f95d4307d3747ba04e1a74f3026d730c0f24b998d14e1318               5
+                  4 e615e613efe29338d4b8994df4cdb0c969ca47db483cf2ab021f129b7447c464               5
+                  4 f3c1d45678b501fb940f2bf964650b895cf43dd6343da4b1b19b3a7d90e67e61               5
+
+10 rows selected.
+
+Elapsed: 00:00:00.150
+
+============================================================
+18. Duplicate-ingest guardrail verification (exact hash)
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.144
+
+============================================================
+19. Duplicate-ingest guardrail verification (logical snapshot identity)
+============================================================
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.153
+
+============================================================
+20. Chosen engineered metric history
+============================================================
+
+DB_NAME    HOST_NAME         INSTANCE_NAME       INSTANCE_NUMBER SNAP_BEGIN_TIME                  METRIC_NAME     METRIC_SCOPE    METRIC_CATEGORY       METRIC_VALUE_NUM
+__________ _________________ ________________ __________________ ________________________________ _______________ _______________ __________________ ___________________
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 00:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        68.8525
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 01:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        70.8333
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 02:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                         64.186
+FINDB      exa-rac-node02    FINDB2                            2 2026-03-29 03:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        57.0297
+FINDB      exa-rac-node01    FINDB1                            1 2026-03-29 04:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        68.5864
+FINDB      exa-adg-node01    FINDB1                            1 2026-03-29 05:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        67.4419
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 06:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                           52.8
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 07:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        60.9756
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 08:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        70.8543
+FINDB      exa-adg-node01    FINDB_STBY                        1 2026-03-29 09:00:00.000000000    CPU_UTIL_P95    DB              GENERAL                        70.1422
+
+10 rows selected.
+
+Elapsed: 00:00:00.536

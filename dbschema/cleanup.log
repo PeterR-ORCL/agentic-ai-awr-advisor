@@ -1,0 +1,342 @@
+SP2-0158: unknown SET option "server"
+,cyan [AWRAI_APP]@AWRAI_high > set feedback on
+,cyan [AWRAI_APP]@AWRAI_high > set pagesize 200
+,cyan [AWRAI_APP]@AWRAI_high > set linesize 220
+,cyan [AWRAI_APP]@AWRAI_high > set verify off
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt PRE-CLEANUP ROW COUNTS
+PRE-CLEANUP ROW COUNTS
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select 'AWR_ACTION'           as table_name, count(*) as row_count from AWR_ACTION
+  2  union all
+  3  select 'AWR_OUTCOME'          as table_name, count(*) as row_count from AWR_OUTCOME
+  4  union all
+  5  select 'AWR_RECOMMENDATION'   as table_name, count(*) as row_count from AWR_RECOMMENDATION
+  6  union all
+  7  select 'AWR_SCORE_RESULT'     as table_name, count(*) as row_count from AWR_SCORE_RESULT
+  8  union all
+  9  select 'AWR_FEATURE_VECTOR'   as table_name, count(*) as row_count from AWR_FEATURE_VECTOR
+ 10  union all
+ 11  select 'AWR_WAIT_EVENT_FACT'  as table_name, count(*) as row_count from AWR_WAIT_EVENT_FACT
+ 12  union all
+ 13  select 'AWR_TOP_SQL_FACT'     as table_name, count(*) as row_count from AWR_TOP_SQL_FACT
+ 14  union all
+ 15  select 'AWR_METRIC_FACT'      as table_name, count(*) as row_count from AWR_METRIC_FACT
+ 16  union all
+ 17  select 'AWR_SECTION_DOC'      as table_name, count(*) as row_count from AWR_SECTION_DOC
+ 18  union all
+ 19  select 'AWR_REPORT'           as table_name, count(*) as row_count from AWR_REPORT
+ 20  union all
+ 21  select 'AWR_INGEST_RUN'       as table_name, count(*) as row_count from AWR_INGEST_RUN
+ 22  union all
+ 23  select 'AWR_SOURCE_SYSTEM'    as table_name, count(*) as row_count from AWR_SOURCE_SYSTEM
+ 24  union all
+ 25  select 'AWR_SCORING_MODEL'    as table_name, count(*) as row_count from AWR_SCORING_MODEL
+ 26  union all
+ 27  select 'AWR_SCORING_WEIGHT'   as table_name, count(*) as row_count from AWR_SCORING_WEIGHT
+ 28  union all
+ 29  select 'AWR_MODEL_RUN'        as table_name, count(*) as row_count from AWR_MODEL_RUN
+ 30  order by 1;
+
+TABLE_NAME                ROW_COUNT
+______________________ ____________
+AWR_ACTION                        0
+AWR_FEATURE_VECTOR               61
+AWR_INGEST_RUN                   15
+AWR_METRIC_FACT                 817
+AWR_MODEL_RUN                     0
+AWR_OUTCOME                       0
+AWR_RECOMMENDATION                0
+AWR_REPORT                       61
+AWR_SCORE_RESULT                 50
+AWR_SCORING_MODEL                 1
+AWR_SCORING_WEIGHT               16
+AWR_SECTION_DOC                   0
+AWR_SOURCE_SYSTEM                 1
+AWR_TOP_SQL_FACT                295
+AWR_WAIT_EVENT_FACT             357
+
+15 rows selected.
+
+Elapsed: 00:00:00.239
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt DUPLICATE REPORT CHECK BEFORE CLEANUP
+DUPLICATE REPORT CHECK BEFORE CLEANUP
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      source_system_id,
+  3      dbid,
+  4      instance_number,
+  5      snap_id_begin,
+  6      snap_id_end,
+  7      snap_time_begin,
+  8      snap_time_end,
+  9      count(*) as row_count
+ 10  from AWR_REPORT
+ 11  group by
+ 12      source_system_id,
+ 13      dbid,
+ 14      instance_number,
+ 15      snap_id_begin,
+ 16      snap_id_end,
+ 17      snap_time_begin,
+ 18      snap_time_end
+ 19  having count(*) > 1
+ 20  order by snap_time_begin, source_system_id, dbid, instance_number;
+
+   SOURCE_SYSTEM_ID          DBID    INSTANCE_NUMBER    SNAP_ID_BEGIN    SNAP_ID_END SNAP_TIME_BEGIN                  SNAP_TIME_END                       ROW_COUNT
+___________________ _____________ __________________ ________________ ______________ ________________________________ ________________________________ ____________
+                  4    1234567890                  1            11231          11232 2026-03-29 00:00:00.000000000    2026-03-29 01:00:00.000000000               5
+                  4    1234567890                  2            11232          11233 2026-03-29 01:00:00.000000000    2026-03-29 02:00:00.000000000               5
+                  4    1234567890                  1            11233          11234 2026-03-29 02:00:00.000000000    2026-03-29 03:00:00.000000000               5
+                  4    1234567890                  2            11234          11235 2026-03-29 03:00:00.000000000    2026-03-29 04:00:00.000000000               5
+                  4    1234567890                  1            11235          11236 2026-03-29 04:00:00.000000000    2026-03-29 05:00:00.000000000               5
+                  4    1234567890                  1            12236          12237 2026-03-29 05:00:00.000000000    2026-03-29 06:00:00.000000000               5
+                  4    1234567890                  1            12237          12238 2026-03-29 06:00:00.000000000    2026-03-29 07:00:00.000000000               5
+                  4    1234567890                  1            12238          12239 2026-03-29 07:00:00.000000000    2026-03-29 08:00:00.000000000               5
+                  4    1234567890                  1            12239          12240 2026-03-29 08:00:00.000000000    2026-03-29 09:00:00.000000000               5
+                  4    1234567890                  1            12240          12241 2026-03-29 09:00:00.000000000    2026-03-29 10:00:00.000000000               5
+
+10 rows selected.
+
+Elapsed: 00:00:00.165
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt EXACT FILE HASH DUPLICATE CHECK BEFORE CLEANUP
+EXACT FILE HASH DUPLICATE CHECK BEFORE CLEANUP
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      source_system_id,
+  3      file_hash_sha256,
+  4      count(*) as row_count
+  5  from AWR_REPORT
+  6  group by source_system_id, file_hash_sha256
+  7  having count(*) > 1
+  8  order by row_count desc, source_system_id, file_hash_sha256;
+
+   SOURCE_SYSTEM_ID FILE_HASH_SHA256                                                       ROW_COUNT
+___________________ ___________________________________________________________________ ____________
+                  4 1f21d23317ffc47c695dba1c76e710d6e4cc505602d5d6bfa390bc631585906c               5
+                  4 2413b9a101abbb006346782eeb2f74a01fa924ccf73bc145f3a9a6c1bb7a554d               5
+                  4 2988073b2a51af6c39ae8eb4ce6ae813ff30166ad7b583481b2aabb06a5c505e               5
+                  4 7c2ce8ce789e10e36cd956e28b181c780cbcf10a1d271608ac819a9b77a515ad               5
+                  4 9f7d5e4d9551209d5f54f3074f7bbf265004df44ea0927cac2920588d7829a5c               5
+                  4 d83d4cd207d1803f12428588420739d8a4294a5067462e9f9fce10aeb9856131               5
+                  4 e18ed24cfc6de89c83a20dbb388b97f4df3e6d7bb44d724b3237864e474ecbec               5
+                  4 e38d4cc464b8d993f95d4307d3747ba04e1a74f3026d730c0f24b998d14e1318               5
+                  4 e615e613efe29338d4b8994df4cdb0c969ca47db483cf2ab021f129b7447c464               5
+                  4 f3c1d45678b501fb940f2bf964650b895cf43dd6343da4b1b19b3a7d90e67e61               5
+
+10 rows selected.
+
+Elapsed: 00:00:00.155
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt STARTING CLEANUP
+STARTING CLEANUP
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > --------------------------------------------------------------------------------
+,cyan [AWRAI_APP]@AWRAI_high > -- Delete in dependency order (children first)
+,cyan [AWRAI_APP]@AWRAI_high > --------------------------------------------------------------------------------
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_ACTION;
+
+0 rows deleted.
+
+Elapsed: 00:00:00.143
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_ACTION
+Deleted AWR_ACTION
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_OUTCOME;
+
+0 rows deleted.
+
+Elapsed: 00:00:00.142
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_OUTCOME
+Deleted AWR_OUTCOME
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_RECOMMENDATION;
+
+0 rows deleted.
+
+Elapsed: 00:00:00.144
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_RECOMMENDATION
+Deleted AWR_RECOMMENDATION
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_SCORE_RESULT;
+
+50 rows deleted.
+
+Elapsed: 00:00:00.162
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_SCORE_RESULT
+Deleted AWR_SCORE_RESULT
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_FEATURE_VECTOR;
+
+61 rows deleted.
+
+Elapsed: 00:00:00.209
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_FEATURE_VECTOR
+Deleted AWR_FEATURE_VECTOR
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_WAIT_EVENT_FACT;
+
+357 rows deleted.
+
+Elapsed: 00:00:00.189
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_WAIT_EVENT_FACT
+Deleted AWR_WAIT_EVENT_FACT
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_TOP_SQL_FACT;
+
+295 rows deleted.
+
+Elapsed: 00:00:00.164
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_TOP_SQL_FACT
+Deleted AWR_TOP_SQL_FACT
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_METRIC_FACT;
+
+817 rows deleted.
+
+Elapsed: 00:00:00.183
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_METRIC_FACT
+Deleted AWR_METRIC_FACT
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_SECTION_DOC;
+
+0 rows deleted.
+
+Elapsed: 00:00:00.203
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_SECTION_DOC
+Deleted AWR_SECTION_DOC
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_REPORT;
+
+61 rows deleted.
+
+Elapsed: 00:00:00.223
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_REPORT
+Deleted AWR_REPORT
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > delete from AWR_INGEST_RUN;
+
+15 rows deleted.
+
+Elapsed: 00:00:00.172
+,cyan [AWRAI_APP]@AWRAI_high > prompt Deleted AWR_INGEST_RUN
+Deleted AWR_INGEST_RUN
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > --------------------------------------------------------------------------------
+,cyan [AWRAI_APP]@AWRAI_high > -- OPTIONAL: clear model runs if desired
+,cyan [AWRAI_APP]@AWRAI_high > -- Uncomment only if you want a fully clean analytical history
+,cyan [AWRAI_APP]@AWRAI_high > --------------------------------------------------------------------------------
+,cyan [AWRAI_APP]@AWRAI_high > -- delete from AWR_MODEL_RUN;
+,cyan [AWRAI_APP]@AWRAI_high > -- prompt Deleted AWR_MODEL_RUN
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > commit;
+
+Commit complete.
+
+Elapsed: 00:00:00.224
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt POST-CLEANUP ROW COUNTS
+POST-CLEANUP ROW COUNTS
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select 'AWR_ACTION'           as table_name, count(*) as row_count from AWR_ACTION
+  2  union all
+  3  select 'AWR_OUTCOME'          as table_name, count(*) as row_count from AWR_OUTCOME
+  4  union all
+  5  select 'AWR_RECOMMENDATION'   as table_name, count(*) as row_count from AWR_RECOMMENDATION
+  6  union all
+  7  select 'AWR_SCORE_RESULT'     as table_name, count(*) as row_count from AWR_SCORE_RESULT
+  8  union all
+  9  select 'AWR_FEATURE_VECTOR'   as table_name, count(*) as row_count from AWR_FEATURE_VECTOR
+ 10  union all
+ 11  select 'AWR_WAIT_EVENT_FACT'  as table_name, count(*) as row_count from AWR_WAIT_EVENT_FACT
+ 12  union all
+ 13  select 'AWR_TOP_SQL_FACT'     as table_name, count(*) as row_count from AWR_TOP_SQL_FACT
+ 14  union all
+ 15  select 'AWR_METRIC_FACT'      as table_name, count(*) as row_count from AWR_METRIC_FACT
+ 16  union all
+ 17  select 'AWR_SECTION_DOC'      as table_name, count(*) as row_count from AWR_SECTION_DOC
+ 18  union all
+ 19  select 'AWR_REPORT'           as table_name, count(*) as row_count from AWR_REPORT
+ 20  union all
+ 21  select 'AWR_INGEST_RUN'       as table_name, count(*) as row_count from AWR_INGEST_RUN
+ 22  union all
+ 23  select 'AWR_SOURCE_SYSTEM'    as table_name, count(*) as row_count from AWR_SOURCE_SYSTEM
+ 24  union all
+ 25  select 'AWR_SCORING_MODEL'    as table_name, count(*) as row_count from AWR_SCORING_MODEL
+ 26  union all
+ 27  select 'AWR_SCORING_WEIGHT'   as table_name, count(*) as row_count from AWR_SCORING_WEIGHT
+ 28  union all
+ 29  select 'AWR_MODEL_RUN'        as table_name, count(*) as row_count from AWR_MODEL_RUN
+ 30  order by 1;
+
+TABLE_NAME                ROW_COUNT
+______________________ ____________
+AWR_ACTION                        0
+AWR_FEATURE_VECTOR                0
+AWR_INGEST_RUN                    0
+AWR_METRIC_FACT                   0
+AWR_MODEL_RUN                     0
+AWR_OUTCOME                       0
+AWR_RECOMMENDATION                0
+AWR_REPORT                        0
+AWR_SCORE_RESULT                  0
+AWR_SCORING_MODEL                 1
+AWR_SCORING_WEIGHT               16
+AWR_SECTION_DOC                   0
+AWR_SOURCE_SYSTEM                 1
+AWR_TOP_SQL_FACT                  0
+AWR_WAIT_EVENT_FACT               0
+
+15 rows selected.
+
+Elapsed: 00:00:00.200
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt CLEANUP COMPLETE
+CLEANUP COMPLETE
+,cyan [AWRAI_APP]@AWRAI_high > prompt Next steps:
+Next steps:
+,cyan [AWRAI_APP]@AWRAI_high > prompt 1. Reload AWR reports once
+1. Reload AWR reports once
+,cyan [AWRAI_APP]@AWRAI_high > prompt 2. Validate duplicate guardrail
+2. Validate duplicate guardrail
+,cyan [AWRAI_APP]@AWRAI_high > prompt 3. Re-run scoped validation
+3. Re-run scoped validation
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > spool off

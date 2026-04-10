@@ -1,0 +1,16 @@
+
+Table AWR_DB_METRIC_TREND created.
+
+Elapsed: 00:00:00.267
+
+INDEX IX_AWR_DB_METRIC_TREND_U01 created.
+
+Elapsed: 00:00:00.166
+
+Index IX_AWR_DB_METRIC_TREND_01 created.
+
+Elapsed: 00:00:00.148
+
+Index IX_AWR_DB_METRIC_TREND_02 created.
+
+Elapsed: 00:00:00.146

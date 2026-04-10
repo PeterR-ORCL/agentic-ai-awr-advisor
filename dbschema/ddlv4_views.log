@@ -1,0 +1,24 @@
+
+View VW_AWR_SCOPE_CONTEXT created.
+
+Elapsed: 00:00:00.246
+
+View VW_AWR_METRIC_SCOPE created.
+
+Elapsed: 00:00:00.173
+
+View VW_AWR_SQL_SCOPE created.
+
+Elapsed: 00:00:00.197
+
+View VW_AWR_WAIT_SCOPE created.
+
+Elapsed: 00:00:00.180
+
+View VW_AWR_FEATURE_SCOPE created.
+
+Elapsed: 00:00:00.203
+
+View VW_AWR_SCORE_SCOPE created.
+
+Elapsed: 00:00:00.221

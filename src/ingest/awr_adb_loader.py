@@ -20,10 +20,18 @@ from dotenv import load_dotenv
 from src.analysis.derived_metric_extractor import (
     extract_derived_pressure_metrics,
 )
+from src.analysis.trend_engine import persist_db_metric_trends
 from src.models.parse_result import ParseResult
+from src.models.run_metadata import RunMetadata
 from src.parser.awr_parser import parse_awr_file as parse_awr_report
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _resolve_log_level() -> int:
+    raw_level = str(os.getenv("AWR_LOG_LEVEL", "INFO")).strip().upper()
+    resolved_level = getattr(logging, raw_level, logging.INFO)
+    return resolved_level if isinstance(resolved_level, int) else logging.INFO
 
 PIPELINE_NAME = "oci-awr-agentic-ai-sizing-advisor"
 PIPELINE_VERSION = "1.0.0"
@@ -51,6 +59,26 @@ FEATURE_SET_VERSION = "3.0.0"
 SCORING_VECTOR_VERSION = "3.0.0"
 SCORING_MODEL_CODE = "AWR_WEIGHTED_CORE"
 SCORING_MODEL_DOMAIN = "SIZING"
+FEATURE_REBUILD_MODE = "REBUILD_FEATURE_VECTORS"
+DB_TREND_ANALYSIS_MODE = "DB_TREND_ANALYSIS"
+PROMOTED_ENGINEERED_FEATURE_KEYS = (
+    "WRITE_LATENCY_MS",
+    "TEMP_WRITE_LATENCY_MS",
+    "LOG_WRITE_LATENCY_MS",
+    "NETWORK_WAIT_PCT_DB_TIME",
+    "HARD_PARSE_PCT",
+    "PGA_CACHE_HIT_PCT",
+    "TEMP_SPILL_PCT",
+    "SORTS_DISK_PCT",
+    "WORKAREA_ONEPASS_PCT",
+    "WORKAREA_MULTIPASS_PCT",
+    "CURSOR_MUTEX_WAIT_PCT_DB_TIME",
+    "CELL_SINGLE_BLOCK_LATENCY_MS",
+    "CELL_MULTIBLOCK_LATENCY_MS",
+    "STORAGE_INDEX_SAVINGS_PCT",
+    "DB_CPU_PCT_DB_TIME",
+    "REDO_GENERATION_PER_SEC",
+)
 SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "CPU_UTIL_P95": {"min": 0.0, "max": 100.0},
     "DB_TIME_PER_TXN": {"median": 0.1, "iqr": 0.5},
@@ -782,6 +810,93 @@ def build_report_record(
     return report_record
 
 
+def _allow_duplicate_report_ingest(report_record: dict[str, Any]) -> bool:
+    """Return True when duplicate logical reports are explicitly allowed."""
+
+    ingest_mode = str(report_record.get("ingest_mode") or "").upper()
+    override_flag = str(
+        os.getenv("AWR_ALLOW_DUPLICATE_REPORTS", "N")
+    ).strip().upper()
+    return ingest_mode == "REPLAY" or override_flag in {
+        "1",
+        "Y",
+        "YES",
+        "TRUE",
+    }
+
+
+def find_duplicate_report(
+    conn: Any,
+    report_record: dict[str, Any],
+) -> tuple[int, str] | None:
+    """Return an existing AWR_ID when the logical report already exists."""
+
+    exact_hash_binds = {
+        "source_system_id": report_record["source_system_id"],
+        "file_hash_sha256": report_record["file_hash_sha256"],
+    }
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select AWR_ID
+              from AWR_REPORT
+             where SOURCE_SYSTEM_ID = :source_system_id
+               and FILE_HASH_SHA256 = :file_hash_sha256
+             order by AWR_ID desc
+             fetch first 1 rows only
+            """,
+            exact_hash_binds,
+        )
+        row = cursor.fetchone()
+    if row:
+        return int(row[0]), "source_system_id + file_hash_sha256"
+
+    logical_key_fields = (
+        report_record.get("dbid"),
+        report_record.get("instance_number"),
+        report_record.get("snap_id_begin"),
+        report_record.get("snap_id_end"),
+        report_record.get("snap_time_begin"),
+        report_record.get("snap_time_end"),
+    )
+    if not all(value is not None for value in logical_key_fields):
+        return None
+
+    logical_binds = {
+        "source_system_id": report_record["source_system_id"],
+        "dbid": report_record["dbid"],
+        "instance_number": report_record["instance_number"],
+        "snap_id_begin": report_record["snap_id_begin"],
+        "snap_id_end": report_record["snap_id_end"],
+        "snap_time_begin": report_record["snap_time_begin"],
+        "snap_time_end": report_record["snap_time_end"],
+    }
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select AWR_ID
+              from AWR_REPORT
+             where SOURCE_SYSTEM_ID = :source_system_id
+               and DBID = :dbid
+               and INSTANCE_NUMBER = :instance_number
+               and SNAP_ID_BEGIN = :snap_id_begin
+               and SNAP_ID_END = :snap_id_end
+               and SNAP_TIME_BEGIN = :snap_time_begin
+               and SNAP_TIME_END = :snap_time_end
+             order by AWR_ID desc
+             fetch first 1 rows only
+            """,
+            logical_binds,
+        )
+        row = cursor.fetchone()
+    if row:
+        return (
+            int(row[0]),
+            "source_system_id + dbid + instance_number + snapshot window",
+        )
+    return None
+
+
 def insert_report(conn: Any, report_record: dict[str, Any]) -> int:
     """Insert one AWR_REPORT row and return its identity."""
 
@@ -1409,6 +1524,80 @@ def insert_feature_vector(
     return feature_vector_id
 
 
+def upsert_feature_vector(
+    conn: Any,
+    feature_vector_record: dict[str, Any],
+) -> tuple[int, str]:
+    """Update an existing feature vector in place or insert a new one."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select FEATURE_VECTOR_ID
+              from AWR_FEATURE_VECTOR
+             where AWR_ID = :awr_id
+               and FEATURE_SET_NAME = :feature_set_name
+               and FEATURE_SET_VERSION = :feature_set_version
+             fetch first 1 rows only
+            """,
+            {
+                "awr_id": feature_vector_record["awr_id"],
+                "feature_set_name": feature_vector_record["feature_set_name"],
+                "feature_set_version": feature_vector_record["feature_set_version"],
+            },
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        feature_vector_id = insert_feature_vector(conn, feature_vector_record)
+        return feature_vector_id, "inserted"
+
+    feature_vector_id = int(row[0])
+    update_record = {
+        "observed_at": feature_vector_record["observed_at"],
+        "vector_version": feature_vector_record["vector_version"],
+        "workload_class": feature_vector_record["workload_class"],
+        "topology_class": feature_vector_record.get("topology_class"),
+        "platform_class": feature_vector_record.get("platform_class"),
+        "event_class": feature_vector_record.get("event_class"),
+        "vector_status": feature_vector_record["vector_status"],
+        "feature_vector": feature_vector_record["feature_vector"],
+        "narrative_embedding": feature_vector_record.get("narrative_embedding"),
+        "feature_json": feature_vector_record["feature_json"],
+        "normalization_json": feature_vector_record["normalization_json"],
+        "explanation_json": feature_vector_record["explanation_json"],
+        "source_lineage_json": feature_vector_record["source_lineage_json"],
+        "feature_vector_id": feature_vector_id,
+    }
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            update AWR_FEATURE_VECTOR
+               set OBSERVED_AT = :observed_at,
+                   VECTOR_VERSION = :vector_version,
+                   WORKLOAD_CLASS = :workload_class,
+                   TOPOLOGY_CLASS = :topology_class,
+                   PLATFORM_CLASS = :platform_class,
+                   EVENT_CLASS = :event_class,
+                   VECTOR_STATUS = :vector_status,
+                   FEATURE_VECTOR = :feature_vector,
+                   NARRATIVE_EMBEDDING = :narrative_embedding,
+                   FEATURE_JSON = :feature_json,
+                   NORMALIZATION_JSON = :normalization_json,
+                   EXPLANATION_JSON = :explanation_json,
+                   SOURCE_LINEAGE_JSON = :source_lineage_json
+             where FEATURE_VECTOR_ID = :feature_vector_id
+            """,
+            update_record,
+        )
+    LOGGER.info(
+        "Feature vector updated in place: FEATURE_VECTOR_ID=%s AWR_ID=%s",
+        feature_vector_id,
+        feature_vector_record["awr_id"],
+    )
+    return feature_vector_id, "updated"
+
+
 def load_active_scoring_model(
     conn: Any,
     decision_domain: str = SCORING_MODEL_DOMAIN,
@@ -1623,8 +1812,10 @@ def process_awr_batch(
 
         file_count = len(awr_files)
         success_count = 0
+        skipped_count = 0
         error_count = 0
         errors: list[dict[str, Any]] = []
+        affected_databases: set[tuple[str, int | None]] = set()
 
         for file_path in awr_files:
             LOGGER.info("Processing AWR file: %s", file_path)
@@ -1644,6 +1835,20 @@ def process_awr_batch(
                     source_system_id=source_system_id,
                     ingest_run_id=ingest_run_id,
                 )
+                duplicate_match = None
+                if not _allow_duplicate_report_ingest(report_record):
+                    duplicate_match = find_duplicate_report(db_conn, report_record)
+                if duplicate_match is not None:
+                    db_conn.rollback()
+                    LOGGER.info(
+                        "Duplicate AWR report skipped: file=%s existing_awr_id=%s reason=%s ingest_mode=%s",
+                        Path(file_path).name,
+                        duplicate_match[0],
+                        duplicate_match[1],
+                        report_record["ingest_mode"],
+                    )
+                    skipped_count += 1
+                    continue
                 awr_id = insert_report(db_conn, report_record)
 
                 metric_rows = build_metric_fact_rows(
@@ -1712,6 +1917,10 @@ def process_awr_batch(
                     Path(file_path).name,
                     awr_id,
                 )
+                db_name = str(report_record["db_name"] or "").strip()
+                dbid = _to_int(report_record["dbid"])
+                if db_name:
+                    affected_databases.add((db_name, dbid))
                 success_count += 1
             except Exception as exc:  # noqa: BLE001
                 db_conn.rollback()
@@ -1735,6 +1944,18 @@ def process_awr_batch(
         else:
             final_status = "COMPLETED"
 
+        trend_analysis_results: list[dict[str, Any]] = []
+        if affected_databases:
+            try:
+                trend_analysis_results = run_db_trend_analysis(
+                    conn=db_conn,
+                    affected_databases=affected_databases,
+                )
+                db_conn.commit()
+            except Exception:  # noqa: BLE001
+                db_conn.rollback()
+                LOGGER.exception("DB trend analysis failed after ingest batch")
+
         finalize_ingest_run(
             conn=db_conn,
             ingest_run_id=ingest_run_id,
@@ -1744,7 +1965,8 @@ def process_awr_batch(
             error_count=error_count,
             notes=(
                 f"Processed {file_count} file(s); "
-                f"{success_count} succeeded, {error_count} failed."
+                f"{success_count} succeeded, {skipped_count} skipped as duplicates, "
+                f"{error_count} failed."
             ),
             error_json=errors or None,
         )
@@ -1754,8 +1976,10 @@ def process_awr_batch(
             "status": final_status,
             "file_count": file_count,
             "success_count": success_count,
+            "skipped_count": skipped_count,
             "error_count": error_count,
             "errors": errors,
+            "trend_analysis_results": trend_analysis_results,
         }
     except Exception:  # noqa: BLE001
         if db_conn is not None:
@@ -1778,6 +2002,663 @@ def process_awr_batch(
                         "Failed to finalize ingest run after batch failure"
                     )
         raise
+    finally:
+        if managed_connection and db_conn is not None:
+            db_conn.close()
+
+
+def _parse_result_from_persisted_json(
+    parser_output_json: Any,
+) -> ParseResult | None:
+    payload = _json_loads(parser_output_json)
+    if not isinstance(payload, dict):
+        return None
+
+    run_metadata_payload = payload.get("run_metadata") or {}
+    if not isinstance(run_metadata_payload, dict):
+        return None
+
+    try:
+        run_metadata = RunMetadata(**run_metadata_payload)
+    except TypeError:
+        LOGGER.exception("Persisted run metadata could not be reconstructed")
+        return None
+
+    return ParseResult(
+        run_metadata=run_metadata,
+        sections_found=_extract_payload_dict(
+            payload,
+            "sections_found",
+            aliases=("sections",),
+        ),
+        cpu_metrics=_extract_payload_list(
+            payload,
+            "cpu_metrics",
+            aliases=("metrics", "load_profile_metrics"),
+        ),
+        io_metrics=_extract_payload_list(payload, "io_metrics"),
+        wait_events=_extract_payload_list(
+            payload,
+            "wait_events",
+            aliases=("foreground_wait_events", "wait_event_rows"),
+        ),
+        top_sql=_extract_payload_list(payload, "top_sql", aliases=("top_sql_rows",)),
+        instance_activity_stats=_extract_payload_list(
+            payload,
+            "instance_activity_stats",
+            aliases=("instance_activity",),
+        ),
+        datafile_io_stats=_extract_payload_list(
+            payload,
+            "datafile_io_stats",
+            aliases=("datafile_io",),
+        ),
+        tablespace_io_stats=_extract_payload_list(
+            payload,
+            "tablespace_io_stats",
+            aliases=("tablespace_io",),
+        ),
+        pga_advisory=_normalize_pga_advisory_payload(
+            _extract_payload_value(
+                payload,
+                "pga_advisory",
+                aliases=("pga_target_advisory",),
+            )
+        ),
+        workarea_histogram=_normalize_workarea_histogram_payload(
+            _extract_payload_value(
+                payload,
+                "workarea_histogram",
+                aliases=("workarea_executions",),
+            )
+        ),
+        event_histograms=_extract_payload_dict(payload, "event_histograms"),
+        ash_samples=_extract_payload_list(payload, "ash_samples"),
+        session_metrics=_extract_payload_list(payload, "session_metrics"),
+        topology_signals=_extract_payload_dict(payload, "topology_signals"),
+        parse_warnings=_extract_payload_list(payload, "parse_warnings"),
+        parse_errors=_extract_payload_list(payload, "parse_errors"),
+    )
+
+
+def _extract_payload_value(
+    payload: dict[str, Any],
+    key: str,
+    aliases: tuple[str, ...] = (),
+) -> Any:
+    if key in payload and payload[key] is not None:
+        return payload[key]
+    for alias in aliases:
+        if alias in payload and payload[alias] is not None:
+            return payload[alias]
+    return None
+
+
+def _extract_payload_list(
+    payload: dict[str, Any],
+    key: str,
+    aliases: tuple[str, ...] = (),
+) -> list[Any]:
+    value = _extract_payload_value(payload, key, aliases)
+    if isinstance(value, list):
+        return value
+    return []
+
+
+def _extract_payload_dict(
+    payload: dict[str, Any],
+    key: str,
+    aliases: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    value = _extract_payload_value(payload, key, aliases)
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _normalize_pga_advisory_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        rows = value.get("rows")
+        if isinstance(rows, list):
+            return value
+        if isinstance(value.get("advisory_rows"), list):
+            return {
+                "current_target_mb": value.get("current_target_mb"),
+                "rows": value.get("advisory_rows"),
+            }
+        return value
+    if isinstance(value, list):
+        return {
+            "current_target_mb": None,
+            "rows": value,
+        }
+    return {}
+
+
+def _normalize_workarea_histogram_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        if {"optimal_executions", "onepass_executions", "multipass_executions"} <= set(
+            value
+        ):
+            return value
+        rows = value.get("rows")
+        if isinstance(rows, list):
+            optimal = sum(
+                _safe_float(row.get("optimal_executions")) or 0.0 for row in rows
+            )
+            onepass = sum(
+                _safe_float(row.get("onepass_executions")) or 0.0 for row in rows
+            )
+            multipass = sum(
+                _safe_float(row.get("multipass_executions")) or 0.0 for row in rows
+            )
+            return {
+                **value,
+                "optimal_executions": optimal,
+                "onepass_executions": onepass,
+                "multipass_executions": multipass,
+            }
+    return {}
+
+
+def _load_metric_facts(
+    conn: Any,
+    awr_id: int,
+    source_system_id: int,
+) -> list[dict[str, Any]]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select METRIC_DOMAIN,
+                   METRIC_NAME,
+                   METRIC_SUBTYPE,
+                   METRIC_VALUE_NUM,
+                   UNIT_OF_MEASURE
+              from AWR_METRIC_FACT
+             where AWR_ID = :awr_id
+               and SOURCE_SYSTEM_ID = :source_system_id
+               and METRIC_DOMAIN in ('load_profile', 'instance_efficiency', 'host_cpu')
+            """,
+            {
+                "awr_id": awr_id,
+                "source_system_id": source_system_id,
+            },
+        )
+        rows = cursor.fetchall()
+
+    load_profile_map: dict[str, dict[str, Any]] = {}
+    metrics: list[dict[str, Any]] = []
+    for row in rows:
+        domain = str(row[0] or "")
+        metric_name = str(row[1] or "")
+        subtype = str(row[2] or "") if row[2] is not None else None
+        value = _safe_float(row[3])
+        unit = str(row[4] or "") if row[4] is not None else None
+        if domain == "load_profile":
+            metric_row = load_profile_map.setdefault(
+                metric_name,
+                {
+                    "metric_name": metric_name,
+                    "per_second": None,
+                    "per_transaction": None,
+                    "metric_source_section": "metric_fact",
+                    "metric_group": "load_profile",
+                },
+            )
+            if subtype == "per_transaction":
+                metric_row["per_transaction"] = value
+            else:
+                metric_row["per_second"] = value
+            continue
+
+        metrics.append(
+            {
+                "metric_name": metric_name,
+                "metric_value": value,
+                "metric_unit": unit,
+                "metric_source_section": "metric_fact",
+                "metric_group": domain,
+            }
+        )
+
+    metrics.extend(load_profile_map.values())
+    return metrics
+
+
+def _load_wait_event_facts(
+    conn: Any,
+    awr_id: int,
+    source_system_id: int,
+) -> list[dict[str, Any]]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select EVENT_NAME,
+                   TOTAL_WAITS,
+                   TIME_WAITED_SEC,
+                   AVG_WAIT_MS,
+                   PCT_DB_TIME,
+                   WAIT_CLASS
+              from AWR_WAIT_EVENT_FACT
+             where AWR_ID = :awr_id
+               and SOURCE_SYSTEM_ID = :source_system_id
+               and FOREGROUND_FLAG = 'Y'
+            """,
+            {
+                "awr_id": awr_id,
+                "source_system_id": source_system_id,
+            },
+        )
+        rows = cursor.fetchall()
+
+    return [
+        {
+            "event_name": str(row[0] or ""),
+            "waits": _safe_float(row[1]),
+            "time_seconds": _safe_float(row[2]),
+            "avg_wait_ms": _safe_float(row[3]),
+            "pct_db_time": _safe_float(row[4]),
+            "wait_class": str(row[5] or ""),
+            "source_section": "wait_event_fact",
+        }
+        for row in rows
+        if row[0] is not None and row[5] is not None
+    ]
+
+
+def _merge_cpu_metrics(
+    primary_metrics: list[dict[str, Any]],
+    supplemental_metrics: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for metric in supplemental_metrics:
+        key = (
+            str(metric.get("metric_group") or ""),
+            str(metric.get("metric_name") or ""),
+        )
+        merged[key] = dict(metric)
+    for metric in primary_metrics:
+        key = (
+            str(metric.get("metric_group") or ""),
+            str(metric.get("metric_name") or ""),
+        )
+        if key not in merged:
+            merged[key] = dict(metric)
+            continue
+        merged[key] = _merge_missing_fields(
+            primary=dict(metric),
+            fallback=merged[key],
+        )
+    return list(merged.values())
+
+
+def _merge_wait_events(
+    primary_events: list[dict[str, Any]],
+    supplemental_events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for event in supplemental_events:
+        key = str(event.get("event_name") or "").strip()
+        if key:
+            merged[key] = dict(event)
+    for event in primary_events:
+        key = str(event.get("event_name") or "").strip()
+        if key:
+            if key not in merged:
+                merged[key] = dict(event)
+                continue
+            merged[key] = _merge_missing_fields(
+                primary=dict(event),
+                fallback=merged[key],
+            )
+    return list(merged.values())
+
+
+def _merge_missing_fields(
+    primary: dict[str, Any],
+    fallback: dict[str, Any],
+) -> dict[str, Any]:
+    merged = dict(primary)
+    for key, value in fallback.items():
+        if key not in merged or merged[key] is None:
+            merged[key] = value
+    return merged
+
+
+def _merge_parse_result_sources(
+    parse_result: ParseResult,
+    metric_facts: list[dict[str, Any]],
+    wait_facts: list[dict[str, Any]],
+) -> ParseResult:
+    cpu_metrics = _merge_cpu_metrics(parse_result.cpu_metrics, metric_facts)
+    wait_events = _merge_wait_events(parse_result.wait_events, wait_facts)
+    parse_result.cpu_metrics = cpu_metrics
+    parse_result.wait_events = wait_events
+    return parse_result
+
+
+def _hydrate_parse_result_for_rebuild(
+    conn: Any,
+    parse_result: ParseResult,
+    awr_id: int,
+    source_system_id: int,
+) -> ParseResult:
+    metric_facts = _load_metric_facts(conn, awr_id, source_system_id)
+    wait_facts = _load_wait_event_facts(conn, awr_id, source_system_id)
+    return _merge_parse_result_sources(parse_result, metric_facts, wait_facts)
+
+
+def _missing_promoted_feature_keys(feature_json: dict[str, Any]) -> list[str]:
+    missing = []
+    for key in PROMOTED_ENGINEERED_FEATURE_KEYS:
+        if feature_json.get(key) is None:
+            missing.append(key)
+    return missing
+
+
+def _parse_comma_separated_ids(value: str | None) -> set[int]:
+    if not value:
+        return set()
+    ids: set[int] = set()
+    for token in value.split(","):
+        normalized = token.strip()
+        if not normalized:
+            continue
+        try:
+            ids.add(int(normalized))
+        except ValueError:
+            LOGGER.warning("Ignoring non-numeric AWR_ID filter token: %s", normalized)
+    return ids
+
+
+def load_reports_for_feature_rebuild(
+    conn: Any,
+    source_system_id: int | None = None,
+    awr_ids: set[int] | None = None,
+    only_missing_promoted_keys: bool = True,
+) -> list[dict[str, Any]]:
+    """Load canonical AWR reports plus current feature vectors for rebuild."""
+
+    binds: dict[str, Any] = {}
+    where_clauses = [
+        "r.PARSER_OUTPUT_JSON is not null",
+        "r.REPLAY_OF_AWR_ID is null",
+        "r.PARSE_STATUS in ('PARSED', 'PARTIAL')",
+    ]
+    if source_system_id is not None:
+        where_clauses.append("r.SOURCE_SYSTEM_ID = :source_system_id")
+        binds["source_system_id"] = source_system_id
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select
+                r.AWR_ID,
+                r.SOURCE_SYSTEM_ID,
+                r.SOURCE_FILE_NAME,
+                r.SOURCE_FILE_PATH,
+                r.DB_NAME,
+                r.DBID,
+                r.INSTANCE_NAME,
+                r.INSTANCE_NUMBER,
+                r.SNAP_TIME_BEGIN,
+                r.SNAP_TIME_END,
+                r.PARSER_OUTPUT_JSON,
+                fv.FEATURE_VECTOR_ID,
+                fv.FEATURE_JSON,
+                fv.OBSERVED_AT
+            from AWR_REPORT r
+            left join AWR_FEATURE_VECTOR fv
+              on fv.AWR_ID = r.AWR_ID
+             and fv.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+             and fv.FEATURE_SET_NAME = :feature_set_name
+             and fv.FEATURE_SET_VERSION = :feature_set_version
+            where {' and '.join(where_clauses)}
+            order by r.SNAP_TIME_BEGIN, r.AWR_ID
+            """,
+            {
+                **binds,
+                "feature_set_name": FEATURE_SET_NAME,
+                "feature_set_version": FEATURE_SET_VERSION,
+            },
+        )
+        rows = cursor.fetchall()
+
+    selected_awr_ids = awr_ids or set()
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        row_dict = {
+            "awr_id": int(row[0]),
+            "source_system_id": int(row[1]),
+            "source_file_name": row[2],
+            "source_file_path": row[3],
+            "db_name": row[4],
+            "dbid": row[5],
+            "instance_name": row[6],
+            "instance_number": row[7],
+            "snap_time_begin": row[8],
+            "snap_time_end": row[9],
+            "parser_output_json": row[10],
+            "feature_vector_id": row[11],
+            "feature_json": _json_loads(row[12]) or {},
+            "observed_at": row[13],
+        }
+        if selected_awr_ids and row_dict["awr_id"] not in selected_awr_ids:
+            continue
+        if only_missing_promoted_keys:
+            feature_json = row_dict["feature_json"]
+            if feature_json and not _missing_promoted_feature_keys(feature_json):
+                continue
+        results.append(row_dict)
+    return results
+
+
+def run_db_trend_analysis(
+    conn: DbConnection,
+    affected_databases: set[tuple[str, int | None]],
+) -> list[dict[str, Any]]:
+    """Recompute DB-scoped trend rows for affected DB identities only."""
+
+    results: list[dict[str, Any]] = []
+    for db_name, dbid in sorted(affected_databases, key=lambda item: (item[0], item[1] or -1)):
+        if not db_name:
+            continue
+        trend_result = persist_db_metric_trends(
+            conn=conn,
+            db_name=db_name,
+            dbid=dbid,
+        )
+        LOGGER.info(
+            "DB trend analysis complete: db_name=%s dbid=%s metric_count=%s row_count=%s",
+            db_name,
+            dbid,
+            trend_result["metric_count"],
+            trend_result["row_count"],
+        )
+        results.append(trend_result)
+    return results
+
+
+def load_db_trend_targets(
+    conn: DbConnection,
+    db_name: str | None = None,
+    dbid: int | None = None,
+) -> set[tuple[str, int | None]]:
+    """Load DB identities that currently have DB-scoped engineered metrics."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT DISTINCT DB_NAME, DBID
+              FROM VW_AWR_FEATURE_METRIC_DB_SCOPE
+             WHERE (:db_name IS NULL OR DB_NAME = :db_name)
+               AND (:dbid IS NULL OR DBID = :dbid)
+            """,
+            {
+                "db_name": db_name,
+                "dbid": dbid,
+            },
+        )
+        rows = cursor.fetchall()
+
+    return {
+        (str(row[0] or "").strip(), _to_int(row[1]))
+        for row in rows
+        if str(row[0] or "").strip()
+    }
+
+
+def rebuild_feature_vectors(
+    conn: DbConnection | None = None,
+    source_system_id: int | None = None,
+    awr_ids: set[int] | None = None,
+    only_missing_promoted_keys: bool = True,
+) -> dict[str, Any]:
+    """Rebuild feature vectors for existing canonical AWR reports only."""
+
+    managed_connection = conn is None
+    db_conn: DbConnection | None = conn
+    try:
+        if db_conn is None:
+            db_conn = get_db_connection()
+
+        scoring_model: dict[str, Any] | None = None
+        scoring_weights: list[dict[str, Any]] = []
+        try:
+            scoring_model = load_active_scoring_model(db_conn)
+            if scoring_model is not None:
+                scoring_weights = load_scoring_weights(
+                    db_conn,
+                    scoring_model["scoring_model_id"],
+                )
+        except Exception:  # noqa: BLE001
+            LOGGER.exception(
+                "Scoring model initialization failed for feature rebuild"
+            )
+            scoring_model = None
+            scoring_weights = []
+
+        candidate_reports = load_reports_for_feature_rebuild(
+            conn=db_conn,
+            source_system_id=source_system_id,
+            awr_ids=awr_ids,
+            only_missing_promoted_keys=only_missing_promoted_keys,
+        )
+        updated_count = 0
+        inserted_count = 0
+        skipped_count = 0
+        score_regenerated_count = 0
+        error_count = 0
+        errors: list[dict[str, Any]] = []
+        affected_databases: set[tuple[str, int | None]] = set()
+
+        for report_row in candidate_reports:
+            awr_id = report_row["awr_id"]
+            try:
+                parse_result = _parse_result_from_persisted_json(
+                    report_row["parser_output_json"]
+                )
+                if parse_result is None:
+                    raise ValueError(
+                        "Persisted PARSER_OUTPUT_JSON could not be reconstructed."
+                    )
+                parse_result = _hydrate_parse_result_for_rebuild(
+                    db_conn,
+                    parse_result,
+                    awr_id,
+                    report_row["source_system_id"],
+                )
+
+                feature_vector_record = build_feature_vector_record(
+                    parse_result=parse_result,
+                    awr_id=awr_id,
+                    source_system_id=report_row["source_system_id"],
+                )
+                source_lineage = _json_loads(
+                    feature_vector_record.get("source_lineage_json")
+                ) or {}
+                source_lineage["rebuild_mode"] = FEATURE_REBUILD_MODE
+                source_lineage["rebuilt_from"] = "AWR_REPORT.PARSER_OUTPUT_JSON"
+                source_lineage["rebuilt_at"] = datetime.utcnow().isoformat()
+                feature_vector_record["source_lineage_json"] = _json_dumps(
+                    source_lineage
+                )
+
+                feature_vector_id, action = upsert_feature_vector(
+                    db_conn,
+                    feature_vector_record,
+                )
+
+                if action == "inserted":
+                    inserted_count += 1
+                else:
+                    updated_count += 1
+
+                db_name = str(report_row["db_name"] or "").strip()
+                dbid = _to_int(report_row["dbid"])
+                if db_name:
+                    affected_databases.add((db_name, dbid))
+
+                if scoring_model and scoring_weights:
+                    persist_deterministic_score(
+                        conn=db_conn,
+                        parse_result=parse_result,
+                        awr_id=awr_id,
+                        source_system_id=report_row["source_system_id"],
+                        feature_vector_id=feature_vector_id,
+                        feature_vector_record=feature_vector_record,
+                        scoring_model=scoring_model,
+                        scoring_weights=scoring_weights,
+                    )
+                    score_regenerated_count += 1
+
+                db_conn.commit()
+                LOGGER.info(
+                    "Feature rebuild complete: awr_id=%s action=%s file=%s",
+                    awr_id,
+                    action,
+                    report_row["source_file_name"],
+                )
+            except Exception as exc:  # noqa: BLE001
+                db_conn.rollback()
+                LOGGER.exception("Feature rebuild failed for AWR_ID=%s", awr_id)
+                error_count += 1
+                errors.append(
+                    {
+                        "awr_id": awr_id,
+                        "source_file_name": report_row["source_file_name"],
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                    }
+                )
+
+        if not candidate_reports:
+            skipped_count = 0
+
+        trend_analysis_results: list[dict[str, Any]] = []
+        if affected_databases:
+            try:
+                trend_analysis_results = run_db_trend_analysis(
+                    conn=db_conn,
+                    affected_databases=affected_databases,
+                )
+                db_conn.commit()
+            except Exception:  # noqa: BLE001
+                db_conn.rollback()
+                LOGGER.exception("DB trend analysis failed after feature rebuild")
+
+        return {
+            "mode": FEATURE_REBUILD_MODE,
+            "candidate_count": len(candidate_reports),
+            "updated_count": updated_count,
+            "inserted_count": inserted_count,
+            "skipped_count": skipped_count,
+            "score_regenerated_count": score_regenerated_count,
+            "error_count": error_count,
+            "errors": errors,
+            "promoted_metric_keys": list(PROMOTED_ENGINEERED_FEATURE_KEYS),
+            "trend_analysis_results": trend_analysis_results,
+        }
     finally:
         if managed_connection and db_conn is not None:
             db_conn.close()
@@ -2011,23 +2892,70 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
     topology = parse_result.topology_signals or {}
     base_features = {
         "cpu_pct": _compute_cpu_pct(parse_result),
+        "db_cpu_pct_db_time": _compute_cpu_pct(parse_result),
         "user_io_pct": _sum_wait_class_pct(parse_result, "User I/O"),
         "commit_pct": _sum_wait_class_pct(parse_result, "Commit"),
         "concurrency_pct": _sum_wait_class_pct(parse_result, "Concurrency"),
+        "network_wait_pct_db_time": _sum_wait_class_pct(parse_result, "Network"),
         "read_iops": _extract_load_profile_metric(parse_result, "Physical reads"),
         "write_iops": _extract_load_profile_metric(parse_result, "Physical writes"),
         "read_mb_per_sec": _aggregate_datafile_metric(parse_result, "read_mb"),
         "write_mb_per_sec": _aggregate_datafile_metric(parse_result, "write_mb"),
+        "write_latency_ms": _aggregate_datafile_latency(
+            parse_result,
+            "avg_write_ms",
+            "writes",
+        ),
+        "temp_write_latency_ms": _extract_temp_tablespace_metric(
+            parse_result,
+            "avg_write_ms",
+        ),
         "hard_parses_per_sec": derived.get("hard_parses_per_sec"),
+        "hard_parse_pct": _compute_hard_parse_pct(parse_result),
+        "soft_parse_pct": _extract_instance_efficiency_metric(
+            parse_result,
+            "Soft Parse %",
+        ),
         "temp_io_pressure": derived.get("temp_io_pressure"),
         "pga_spill_pressure": derived.get("pga_spill_pressure"),
+        "temp_spill_pct": _compute_temp_spill_pct(derived),
+        "sorts_disk_pct": _compute_sorts_disk_pct(parse_result),
+        "workarea_onepass_pct": _compute_workarea_execution_pct(
+            parse_result,
+            "onepass_executions",
+        ),
+        "workarea_multipass_pct": _compute_workarea_execution_pct(
+            parse_result,
+            "multipass_executions",
+        ),
         "log_file_sync_ms": _extract_log_file_sync_ms(parse_result),
+        "log_write_latency_ms": _extract_exact_wait_event_avg_wait_ms(
+            parse_result,
+            ("log file parallel write",),
+        ),
         "top_sql_concentration": _top_sql_concentration(parse_result),
         "db_time_per_txn": _extract_load_profile_transaction_metric(
             parse_result,
             "DB Time(s)",
         ),
         "read_latency_ms": _extract_wait_class_avg_wait_ms(parse_result, "User I/O"),
+        "buffer_cache_hit_ratio_pct": _extract_instance_efficiency_metric(
+            parse_result,
+            "Buffer Hit %",
+        ),
+        "library_cache_hit_ratio_pct": _extract_instance_efficiency_metric(
+            parse_result,
+            "Library Hit %",
+        ),
+        "parse_cpu_to_parse_elapsed_pct": _extract_instance_efficiency_metric(
+            parse_result,
+            "Parse CPU to Parse Elapsd %",
+        ),
+        "pga_cache_hit_pct": _extract_pga_cache_hit_pct(parse_result),
+        "cursor_mutex_wait_pct_db_time": _sum_exact_event_pct(
+            parse_result,
+            ("cursor: mutex S", "cursor: mutex X"),
+        ),
         "db_time_per_sec": _extract_load_profile_metric(parse_result, "DB Time(s)"),
         "db_cpu_per_sec": _extract_load_profile_metric(parse_result, "DB CPU(s)"),
         "executions_per_sec": _extract_load_profile_metric(parse_result, "Executions"),
@@ -2037,6 +2965,10 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
             "Transactions",
         ),
         "redo_size_per_sec": _extract_load_profile_metric(parse_result, "Redo size"),
+        "redo_generation_per_sec": _extract_load_profile_metric(
+            parse_result,
+            "Redo size",
+        ),
         "host_cpu_busy_pct": _extract_host_cpu_metric(parse_result, "busy"),
         "is_rac": _flag_to_float(topology.get("is_rac")),
         "instance_count": _safe_float(topology.get("instance_count")),
@@ -2079,6 +3011,19 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "exa_storage_index_savings": _safe_float(
             topology.get("exa_storage_index_savings")
         ),
+        "storage_index_savings_pct": (
+            round(_safe_float(topology.get("exa_storage_index_savings")) * 100.0, 4)
+            if _safe_float(topology.get("exa_storage_index_savings")) is not None
+            else None
+        ),
+        "cell_single_block_latency_ms": _extract_exact_wait_event_avg_wait_ms(
+            parse_result,
+            ("cell single block physical read",),
+        ),
+        "cell_multiblock_latency_ms": _extract_exact_wait_event_avg_wait_ms(
+            parse_result,
+            ("cell multiblock physical read",),
+        ),
         "flash_cache_hit_flag": _flag_to_float(topology.get("flash_cache_hit_flag")),
         "exadata_io_benefit_flag": _flag_to_float(
             topology.get("exadata_io_benefit_flag")
@@ -2089,21 +3034,44 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
     }
     scoring_features = {
         "CPU_UTIL_P95": base_features["cpu_pct"],
+        "DB_CPU_PCT_DB_TIME": base_features["db_cpu_pct_db_time"],
         "DB_TIME_PER_TXN": base_features["db_time_per_txn"],
         "READ_LATENCY_MS": base_features["read_latency_ms"],
+        "WRITE_LATENCY_MS": base_features["write_latency_ms"],
+        "TEMP_WRITE_LATENCY_MS": base_features["temp_write_latency_ms"],
         "LOG_FILE_SYNC_MS": base_features["log_file_sync_ms"],
+        "LOG_WRITE_LATENCY_MS": base_features["log_write_latency_ms"],
+        "REDO_GENERATION_PER_SEC": base_features["redo_generation_per_sec"],
         "TOP_SQL_LOAD_CONCENTRATION": base_features["top_sql_concentration"],
         "AAS_PER_CPU": _derive_aas_per_cpu(parse_result),
         "USER_IO_PRESSURE": base_features["user_io_pct"],
         "COMMIT_PRESSURE": base_features["commit_pct"],
         "CONCURRENCY_PRESSURE": base_features["concurrency_pct"],
+        "NETWORK_WAIT_PCT_DB_TIME": base_features["network_wait_pct_db_time"],
         "HARD_PARSES_PER_SEC": base_features["hard_parses_per_sec"],
+        "HARD_PARSE_PCT": base_features["hard_parse_pct"],
+        "SOFT_PARSE_PCT": base_features["soft_parse_pct"],
         "PGA_SPILL_PRESSURE": base_features["pga_spill_pressure"],
+        "PGA_CACHE_HIT_PCT": base_features["pga_cache_hit_pct"],
         "TEMP_IO_PRESSURE": base_features["temp_io_pressure"],
+        "TEMP_SPILL_PCT": base_features["temp_spill_pct"],
+        "SORTS_DISK_PCT": base_features["sorts_disk_pct"],
+        "WORKAREA_ONEPASS_PCT": base_features["workarea_onepass_pct"],
+        "WORKAREA_MULTIPASS_PCT": base_features["workarea_multipass_pct"],
         "THROUGHPUT_EXECUTIONS_PER_SEC": base_features["executions_per_sec"],
         "THROUGHPUT_USER_CALLS_PER_SEC": base_features["user_calls_per_sec"],
         "READ_MB_PER_SEC": base_features["read_mb_per_sec"],
         "WRITE_MB_PER_SEC": base_features["write_mb_per_sec"],
+        "BUFFER_CACHE_HIT_RATIO_PCT": base_features["buffer_cache_hit_ratio_pct"],
+        "LIBRARY_CACHE_HIT_RATIO_PCT": base_features[
+            "library_cache_hit_ratio_pct"
+        ],
+        "PARSE_CPU_TO_PARSE_ELAPSED_PCT": base_features[
+            "parse_cpu_to_parse_elapsed_pct"
+        ],
+        "CURSOR_MUTEX_WAIT_PCT_DB_TIME": base_features[
+            "cursor_mutex_wait_pct_db_time"
+        ],
         "CLUSTER_WAIT_PCT_DB_TIME": base_features["cluster_wait_pct_db_time"],
         "GC_CR_WAIT_PCT_DB_TIME": base_features["gc_cr_wait_pct_db_time"],
         "GC_CURRENT_WAIT_PCT_DB_TIME": base_features["gc_current_wait_pct_db_time"],
@@ -2120,6 +3088,9 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         ],
         "EXA_CELL_IO_PCT_DB_TIME": base_features["exa_cell_io_pct_db_time"],
         "EXA_OFFLOAD_EFFICIENCY": base_features["exa_offload_efficiency"],
+        "STORAGE_INDEX_SAVINGS_PCT": base_features["storage_index_savings_pct"],
+        "CELL_SINGLE_BLOCK_LATENCY_MS": base_features["cell_single_block_latency_ms"],
+        "CELL_MULTIBLOCK_LATENCY_MS": base_features["cell_multiblock_latency_ms"],
         "EXA_STORAGE_INDEX_SAVINGS": base_features["exa_storage_index_savings"],
         "SMART_SCAN_FLAG": base_features["smart_scan_flag"],
     }
@@ -2142,11 +3113,19 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "scoring_feature_keys": sorted(scoring_features),
         "feature_sources": {
             "CPU_UTIL_P95": "cpu_pct proxy from DB CPU(s) / DB Time(s)",
+            "DB_CPU_PCT_DB_TIME": "cpu_pct proxy from DB CPU(s) / DB Time(s)",
             "DB_TIME_PER_TXN": "load_profile.DB Time(s).per_transaction",
             "READ_LATENCY_MS": "User I/O wait-class average wait",
+            "WRITE_LATENCY_MS": "weighted Datafile IO Stats avg_write_ms",
+            "TEMP_WRITE_LATENCY_MS": "Tablespace IO Stats TEMP avg_write_ms",
             "LOG_FILE_SYNC_MS": "wait event log file sync avg_wait_ms",
+            "LOG_WRITE_LATENCY_MS": "wait event log file parallel write avg_wait_ms",
+            "REDO_GENERATION_PER_SEC": "load_profile.Redo size.per_second",
             "TOP_SQL_LOAD_CONCENTRATION": "sum of top SQL pct_total values",
             "AAS_PER_CPU": "derived only when host CPU count evidence exists",
+            "HARD_PARSE_PCT": "Hard parses / Parses from load profile",
+            "PGA_CACHE_HIT_PCT": "PGA advisory nearest current target cache hit percentage",
+            "NETWORK_WAIT_PCT_DB_TIME": "wait-class Network pct_db_time",
             "CLUSTER_WAIT_PCT_DB_TIME": "topology_signals.cluster_wait_pct_db_time",
             "TRANSPORT_LAG_SEC": "topology_signals.transport_lag_sec",
             "EXA_OFFLOAD_EFFICIENCY": "topology_signals.exa_offload_efficiency",
@@ -2632,6 +3611,197 @@ def _extract_wait_class_avg_wait_ms(
     return round(numerator / denominator, 4)
 
 
+def _extract_wait_event_avg_wait_ms(
+    parse_result: ParseResult,
+    event_fragments: tuple[str, ...],
+) -> float | None:
+    weighted_pairs: list[tuple[float, float]] = []
+    normalized_fragments = tuple(fragment.lower() for fragment in event_fragments)
+    for row in parse_result.wait_events:
+        event_name = str(row.get("event_name") or "").strip().lower()
+        if not any(fragment in event_name for fragment in normalized_fragments):
+            continue
+        avg_wait_ms = _safe_float(row.get("avg_wait_ms"))
+        pct_db_time = _safe_float(row.get("pct_db_time")) or 1.0
+        if avg_wait_ms is None:
+            continue
+        weighted_pairs.append((avg_wait_ms, pct_db_time))
+    if not weighted_pairs:
+        return None
+    numerator = sum(value * weight for value, weight in weighted_pairs)
+    denominator = sum(weight for _, weight in weighted_pairs)
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 4)
+
+
+def _extract_exact_wait_event_avg_wait_ms(
+    parse_result: ParseResult,
+    event_names: tuple[str, ...],
+) -> float | None:
+    weighted_pairs: list[tuple[float, float]] = []
+    valid_names = set(event_names)
+    for row in parse_result.wait_events:
+        event_name = str(row.get("event_name") or "").strip()
+        if event_name not in valid_names:
+            continue
+        avg_wait_ms = _safe_float(row.get("avg_wait_ms"))
+        pct_db_time = _safe_float(row.get("pct_db_time")) or 1.0
+        if avg_wait_ms is None:
+            continue
+        weighted_pairs.append((avg_wait_ms, pct_db_time))
+    if not weighted_pairs:
+        return None
+    numerator = sum(value * weight for value, weight in weighted_pairs)
+    denominator = sum(weight for _, weight in weighted_pairs)
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 4)
+
+
+def _sum_event_pct(
+    parse_result: ParseResult,
+    event_fragments: tuple[str, ...],
+) -> float | None:
+    normalized_fragments = tuple(fragment.lower() for fragment in event_fragments)
+    values = _compact_floats(
+        [
+            _safe_float(row.get("pct_db_time"))
+            for row in parse_result.wait_events
+            if any(
+                fragment in str(row.get("event_name") or "").strip().lower()
+                for fragment in normalized_fragments
+            )
+        ]
+    )
+    if not values:
+        return None
+    return round(sum(values), 4)
+
+
+def _sum_exact_event_pct(
+    parse_result: ParseResult,
+    event_names: tuple[str, ...],
+) -> float | None:
+    valid_names = set(event_names)
+    values = _compact_floats(
+        [
+            _safe_float(row.get("pct_db_time"))
+            for row in parse_result.wait_events
+            if str(row.get("event_name") or "").strip() in valid_names
+        ]
+    )
+    if not values:
+        return None
+    return round(sum(values), 4)
+
+
+def _aggregate_datafile_latency(
+    parse_result: ParseResult,
+    latency_key: str,
+    weight_key: str,
+) -> float | None:
+    weighted_pairs: list[tuple[float, float]] = []
+    for row in parse_result.datafile_io_stats:
+        latency_value = _safe_float(row.get(latency_key))
+        weight_value = _safe_float(row.get(weight_key))
+        if latency_value is None or weight_value is None or weight_value < 0:
+            continue
+        weighted_pairs.append((latency_value, weight_value))
+    if not weighted_pairs:
+        return None
+    numerator = sum(value * weight for value, weight in weighted_pairs)
+    denominator = sum(weight for _, weight in weighted_pairs)
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 4)
+
+
+def _extract_temp_tablespace_metric(
+    parse_result: ParseResult,
+    metric_key: str,
+) -> float | None:
+    for row in parse_result.tablespace_io_stats:
+        if str(row.get("tablespace") or "").strip().upper() != "TEMP":
+            continue
+        return _safe_float(row.get(metric_key))
+    return None
+
+
+def _extract_instance_efficiency_metric(
+    parse_result: ParseResult,
+    metric_name: str,
+) -> float | None:
+    for metric in parse_result.cpu_metrics:
+        if metric.get("metric_group") != "instance_efficiency":
+            continue
+        if str(metric.get("metric_name") or "").strip() != metric_name:
+            continue
+        return _safe_float(metric.get("metric_value"))
+    return None
+
+
+def _compute_hard_parse_pct(parse_result: ParseResult) -> float | None:
+    hard_parses = _extract_load_profile_metric(parse_result, "Hard parses")
+    parses = _extract_load_profile_metric(parse_result, "Parses")
+    if hard_parses is None or parses is None or parses <= 0:
+        return None
+    return round((hard_parses / parses) * 100.0, 4)
+
+
+def _extract_pga_cache_hit_pct(parse_result: ParseResult) -> float | None:
+    advisory_rows = list(parse_result.pga_advisory.get("rows") or [])
+    if not advisory_rows:
+        return None
+
+    current_target_mb = _safe_float(parse_result.pga_advisory.get("current_target_mb"))
+    if current_target_mb is not None:
+        nearest_row = min(
+            advisory_rows,
+            key=lambda row: abs(
+                (_safe_float(row.get("target_mb")) or current_target_mb)
+                - current_target_mb
+            ),
+        )
+        return _safe_float(nearest_row.get("cache_hit_pct"))
+
+    return _safe_float(advisory_rows[0].get("cache_hit_pct"))
+
+
+def _compute_temp_spill_pct(derived: dict[str, Any]) -> float | None:
+    spill_ratio = _safe_float(derived.get("pga_spill_pressure"))
+    if spill_ratio is None:
+        return None
+    return round(spill_ratio * 100.0, 4)
+
+
+def _compute_sorts_disk_pct(parse_result: ParseResult) -> float | None:
+    in_memory_sort_pct = _extract_instance_efficiency_metric(
+        parse_result,
+        "In-memory Sort %",
+    )
+    if in_memory_sort_pct is None:
+        return None
+    return round(max(0.0, 100.0 - in_memory_sort_pct), 4)
+
+
+def _compute_workarea_execution_pct(
+    parse_result: ParseResult,
+    numerator_key: str,
+) -> float | None:
+    workarea_histogram = parse_result.workarea_histogram or {}
+    optimal = _safe_float(workarea_histogram.get("optimal_executions"))
+    onepass = _safe_float(workarea_histogram.get("onepass_executions"))
+    multipass = _safe_float(workarea_histogram.get("multipass_executions"))
+    numerator = _safe_float(workarea_histogram.get(numerator_key))
+    if None in {optimal, onepass, multipass, numerator}:
+        return None
+    total = float(optimal) + float(onepass) + float(multipass)
+    if total <= 0:
+        return None
+    return round((float(numerator) / total) * 100.0, 4)
+
+
 def _extract_host_cpu_metric(
     parse_result: ParseResult,
     metric_name: str,
@@ -2699,6 +3869,8 @@ def _truncate(value: str, max_length: int) -> str | None:
 
 
 def _safe_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str):
@@ -2706,7 +3878,10 @@ def _safe_float(value: Any) -> float | None:
             return float(value.replace(",", ""))
         except ValueError:
             return None
-    return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _to_int(value: Any) -> int | None:
@@ -2753,7 +3928,7 @@ def _configure_logging() -> None:
     if logging.getLogger().handlers:
         return
     logging.basicConfig(
-        level=os.getenv("AWR_INGEST_LOG_LEVEL", "INFO").upper(),
+        level=_resolve_log_level(),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
@@ -2761,10 +3936,53 @@ def _configure_logging() -> None:
 def main(argv: list[str] | None = None) -> int:
     _configure_logging()
     args = argv if argv is not None else sys.argv[1:]
-    input_dir = (
-        Path(args[0]) if args else Path(os.getenv("AWR_INPUT_DIR", "data/input"))
-    )
-    result = process_awr_batch(input_dir=input_dir)
+    maintenance_mode = str(os.getenv("AWR_MAINTENANCE_MODE", "")).strip().upper()
+    if args and args[0].strip().upper() == FEATURE_REBUILD_MODE:
+        maintenance_mode = FEATURE_REBUILD_MODE
+        args = args[1:]
+    elif args and args[0].strip().upper() == DB_TREND_ANALYSIS_MODE:
+        maintenance_mode = DB_TREND_ANALYSIS_MODE
+        args = args[1:]
+
+    if maintenance_mode == FEATURE_REBUILD_MODE:
+        source_system_id = _to_int(os.getenv("AWR_BACKFILL_SOURCE_SYSTEM_ID"))
+        awr_ids = _parse_comma_separated_ids(os.getenv("AWR_BACKFILL_AWR_IDS"))
+        only_missing_promoted_keys = (
+            str(os.getenv("AWR_BACKFILL_MISSING_ONLY", "Y")).strip().upper()
+            not in {"N", "NO", "FALSE", "0"}
+        )
+        result = rebuild_feature_vectors(
+            source_system_id=source_system_id,
+            awr_ids=awr_ids,
+            only_missing_promoted_keys=only_missing_promoted_keys,
+        )
+    elif maintenance_mode == DB_TREND_ANALYSIS_MODE:
+        db_conn = get_db_connection()
+        try:
+            db_name = str(os.getenv("AWR_TREND_DB_NAME", "")).strip() or None
+            dbid = _to_int(os.getenv("AWR_TREND_DBID"))
+            targets = load_db_trend_targets(
+                conn=db_conn,
+                db_name=db_name,
+                dbid=dbid,
+            )
+            trend_analysis_results = run_db_trend_analysis(
+                conn=db_conn,
+                affected_databases=targets,
+            )
+            db_conn.commit()
+            result = {
+                "mode": DB_TREND_ANALYSIS_MODE,
+                "target_count": len(targets),
+                "trend_analysis_results": trend_analysis_results,
+            }
+        finally:
+            db_conn.close()
+    else:
+        input_dir = (
+            Path(args[0]) if args else Path(os.getenv("AWR_INPUT_DIR", "data/input"))
+        )
+        result = process_awr_batch(input_dir=input_dir)
     print(json.dumps(result, indent=2, default=str))
     return 0
 

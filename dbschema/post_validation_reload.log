@@ -1,0 +1,402 @@
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > set pagesize 200
+,cyan [AWRAI_APP]@AWRAI_high > set linesize 220
+,cyan [AWRAI_APP]@AWRAI_high > set verify off
+,cyan [AWRAI_APP]@AWRAI_high > set feedback on
+,cyan [AWRAI_APP]@AWRAI_high > set define on
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > define DB_NAME='FINDB'
+,cyan [AWRAI_APP]@AWRAI_high > define START_TIME='2026-03-28 00:00:00'
+,cyan [AWRAI_APP]@AWRAI_high > define END_TIME='2026-03-30 00:00:00'
+,cyan [AWRAI_APP]@AWRAI_high > define METRIC_NAME='CPU_UTIL_P95'
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 1. Row counts (sanity check)
+1. Row counts (sanity check)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select 'AWR_REPORT' as table_name, count(*) from AWR_REPORT
+  2  union all
+  3  select 'AWR_FEATURE_VECTOR', count(*) from AWR_FEATURE_VECTOR
+  4  union all
+  5  select 'AWR_SCORE_RESULT', count(*) from AWR_SCORE_RESULT
+  6  union all
+  7  select 'AWR_METRIC_FACT', count(*) from AWR_METRIC_FACT
+  8  order by 1;
+
+TABLE_NAME               COUNT(*)
+_____________________ ___________
+AWR_FEATURE_VECTOR             10
+AWR_METRIC_FACT                70
+AWR_REPORT                     10
+AWR_SCORE_RESULT               10
+
+4 rows selected.
+
+Elapsed: 00:00:00.177
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 2. Duplicate logical AWR reports (MUST BE ZERO)
+2. Duplicate logical AWR reports (MUST BE ZERO)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      source_system_id,
+  3      dbid,
+  4      instance_number,
+  5      snap_id_begin,
+  6      snap_id_end,
+  7      snap_time_begin,
+  8      snap_time_end,
+  9      count(*) as row_count
+ 10  from awr_report
+ 11  group by
+ 12      source_system_id,
+ 13      dbid,
+ 14      instance_number,
+ 15      snap_id_begin,
+ 16      snap_id_end,
+ 17      snap_time_begin,
+ 18      snap_time_end
+ 19  having count(*) > 1
+ 20  order by snap_time_begin;
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.147
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 3. Duplicate file hash (MUST BE ZERO)
+3. Duplicate file hash (MUST BE ZERO)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      source_system_id,
+  3      file_hash_sha256,
+  4      count(*) as row_count
+  5  from awr_report
+  6  group by source_system_id, file_hash_sha256
+  7  having count(*) > 1;
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.151
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 4. Snapshot coverage (should be clean hourly sequence)
+4. Snapshot coverage (should be clean hourly sequence)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      snap_begin_time,
+  4      snap_end_time
+  5  from vw_awr_scope_context
+  6  where db_name = '&DB_NAME'
+  7  order by snap_begin_time;
+
+DB_NAME    SNAP_BEGIN_TIME                  SNAP_END_TIME
+__________ ________________________________ ________________________________
+FINDB      2026-03-29 00:00:00.000000000    2026-03-29 01:00:00.000000000
+FINDB      2026-03-29 01:00:00.000000000    2026-03-29 02:00:00.000000000
+FINDB      2026-03-29 02:00:00.000000000    2026-03-29 03:00:00.000000000
+FINDB      2026-03-29 03:00:00.000000000    2026-03-29 04:00:00.000000000
+FINDB      2026-03-29 04:00:00.000000000    2026-03-29 05:00:00.000000000
+FINDB      2026-03-29 05:00:00.000000000    2026-03-29 06:00:00.000000000
+FINDB      2026-03-29 06:00:00.000000000    2026-03-29 07:00:00.000000000
+FINDB      2026-03-29 07:00:00.000000000    2026-03-29 08:00:00.000000000
+FINDB      2026-03-29 08:00:00.000000000    2026-03-29 09:00:00.000000000
+FINDB      2026-03-29 09:00:00.000000000    2026-03-29 10:00:00.000000000
+
+10 rows selected.
+
+Elapsed: 00:00:00.197
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 5. Feature scope cardinality (EXPECTED: 1 per instance)
+5. Feature scope cardinality (EXPECTED: 1 per instance)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      snap_begin_time,
+  4      count(*) as row_count
+  5  from vw_awr_feature_scope
+  6  where db_name = '&DB_NAME'
+  7  group by db_name, snap_begin_time
+  8  order by snap_begin_time;
+
+DB_NAME    SNAP_BEGIN_TIME                     ROW_COUNT
+__________ ________________________________ ____________
+FINDB      2026-03-29 00:00:00.000000000               1
+FINDB      2026-03-29 01:00:00.000000000               1
+FINDB      2026-03-29 02:00:00.000000000               1
+FINDB      2026-03-29 03:00:00.000000000               1
+FINDB      2026-03-29 04:00:00.000000000               1
+FINDB      2026-03-29 05:00:00.000000000               1
+FINDB      2026-03-29 06:00:00.000000000               1
+FINDB      2026-03-29 07:00:00.000000000               1
+FINDB      2026-03-29 08:00:00.000000000               1
+FINDB      2026-03-29 09:00:00.000000000               1
+
+10 rows selected.
+
+Elapsed: 00:00:00.254
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 6. Feature scope duplicates per instance (MUST BE ZERO)
+6. Feature scope duplicates per instance (MUST BE ZERO)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      host_name,
+  4      instance_number,
+  5      snap_begin_time,
+  6      count(*) as row_count
+  7  from vw_awr_feature_scope
+  8  where db_name = '&DB_NAME'
+  9  group by db_name, host_name, instance_number, snap_begin_time
+ 10  having count(*) > 1;
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.255
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 7. Score scope duplicates (MUST BE ZERO)
+7. Score scope duplicates (MUST BE ZERO)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      host_name,
+  4      instance_number,
+  5      snap_begin_time,
+  6      count(*) as row_count
+  7  from vw_awr_score_scope
+  8  where db_name = '&DB_NAME'
+  9  group by db_name, host_name, instance_number, snap_begin_time
+ 10  having count(*) > 1;
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.246
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 8. Engineered metric history (raw scope)
+8. Engineered metric history (raw scope)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      host_name,
+  4      instance_number,
+  5      snap_begin_time,
+  6      metric_name,
+  7      metric_value_num
+  8  from vw_awr_feature_metric_scope
+  9  where db_name = '&DB_NAME'
+ 10    and metric_name = '&METRIC_NAME'
+ 11  order by snap_begin_time, instance_number;
+
+DB_NAME    HOST_NAME            INSTANCE_NUMBER SNAP_BEGIN_TIME                  METRIC_NAME        METRIC_VALUE_NUM
+__________ _________________ __________________ ________________________________ _______________ ___________________
+FINDB      exa-rac-node01                     1 2026-03-29 00:00:00.000000000    CPU_UTIL_P95                68.8525
+FINDB      exa-rac-node02                     2 2026-03-29 01:00:00.000000000    CPU_UTIL_P95                70.8333
+FINDB      exa-rac-node01                     1 2026-03-29 02:00:00.000000000    CPU_UTIL_P95                 64.186
+FINDB      exa-rac-node02                     2 2026-03-29 03:00:00.000000000    CPU_UTIL_P95                57.0297
+FINDB      exa-rac-node01                     1 2026-03-29 04:00:00.000000000    CPU_UTIL_P95                68.5864
+FINDB      exa-adg-node01                     1 2026-03-29 05:00:00.000000000    CPU_UTIL_P95                67.4419
+FINDB      exa-adg-node01                     1 2026-03-29 06:00:00.000000000    CPU_UTIL_P95                   52.8
+FINDB      exa-adg-node01                     1 2026-03-29 07:00:00.000000000    CPU_UTIL_P95                60.9756
+FINDB      exa-adg-node01                     1 2026-03-29 08:00:00.000000000    CPU_UTIL_P95                70.8543
+FINDB      exa-adg-node01                     1 2026-03-29 09:00:00.000000000    CPU_UTIL_P95                70.1422
+
+10 rows selected.
+
+Elapsed: 00:00:00.526
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 9. Engineered metric DB-level collapse (KEY CHECK)
+9. Engineered metric DB-level collapse (KEY CHECK)
+,cyan [AWRAI_APP]@AWRAI_high > prompt EXPECT: 1 row per snapshot
+EXPECT: 1 row per snapshot
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      snap_begin_time,
+  4      metric_name,
+  5      min(metric_value_num) as metric_value,
+  6      count(*) as contributing_rows
+  7  from vw_awr_feature_metric_scope
+  8  where db_name = '&DB_NAME'
+  9    and metric_name = '&METRIC_NAME'
+ 10  group by db_name, snap_begin_time, metric_name
+ 11  order by snap_begin_time;
+
+DB_NAME    SNAP_BEGIN_TIME                  METRIC_NAME        METRIC_VALUE    CONTRIBUTING_ROWS
+__________ ________________________________ _______________ _______________ ____________________
+FINDB      2026-03-29 00:00:00.000000000    CPU_UTIL_P95            68.8525                    1
+FINDB      2026-03-29 01:00:00.000000000    CPU_UTIL_P95            70.8333                    1
+FINDB      2026-03-29 02:00:00.000000000    CPU_UTIL_P95             64.186                    1
+FINDB      2026-03-29 03:00:00.000000000    CPU_UTIL_P95            57.0297                    1
+FINDB      2026-03-29 04:00:00.000000000    CPU_UTIL_P95            68.5864                    1
+FINDB      2026-03-29 05:00:00.000000000    CPU_UTIL_P95            67.4419                    1
+FINDB      2026-03-29 06:00:00.000000000    CPU_UTIL_P95               52.8                    1
+FINDB      2026-03-29 07:00:00.000000000    CPU_UTIL_P95            60.9756                    1
+FINDB      2026-03-29 08:00:00.000000000    CPU_UTIL_P95            70.8543                    1
+FINDB      2026-03-29 09:00:00.000000000    CPU_UTIL_P95            70.1422                    1
+
+10 rows selected.
+
+Elapsed: 00:00:00.531
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 10. Engineered metric duplicates (EXPECTED > 1 for RAC)
+10. Engineered metric duplicates (EXPECTED > 1 for RAC)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      snap_begin_time,
+  4      metric_name,
+  5      count(*) as row_count
+  6  from vw_awr_feature_metric_scope
+  7  where db_name = '&DB_NAME'
+  8  group by db_name, snap_begin_time, metric_name
+  9  having count(*) > 1
+ 10  order by snap_begin_time;
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.522
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 11. RAC sanity check (instance distribution)
+11. RAC sanity check (instance distribution)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      db_name,
+  3      snap_begin_time,
+  4      instance_number,
+  5      count(*) as row_count
+  6  from vw_awr_feature_scope
+  7  where db_name = '&DB_NAME'
+  8  group by db_name, snap_begin_time, instance_number
+  9  order by snap_begin_time, instance_number;
+
+DB_NAME    SNAP_BEGIN_TIME                     INSTANCE_NUMBER    ROW_COUNT
+__________ ________________________________ __________________ ____________
+FINDB      2026-03-29 00:00:00.000000000                     1            1
+FINDB      2026-03-29 01:00:00.000000000                     2            1
+FINDB      2026-03-29 02:00:00.000000000                     1            1
+FINDB      2026-03-29 03:00:00.000000000                     2            1
+FINDB      2026-03-29 04:00:00.000000000                     1            1
+FINDB      2026-03-29 05:00:00.000000000                     1            1
+FINDB      2026-03-29 06:00:00.000000000                     1            1
+FINDB      2026-03-29 07:00:00.000000000                     1            1
+FINDB      2026-03-29 08:00:00.000000000                     1            1
+FINDB      2026-03-29 09:00:00.000000000                     1            1
+
+10 rows selected.
+
+Elapsed: 00:00:00.272
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt 12. CPU_UTIL_P95 trend (final sanity check)
+12. CPU_UTIL_P95 trend (final sanity check)
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > select
+  2      snap_begin_time,
+  3      min(metric_value_num) as cpu_p95,
+  4      count(*) as rows_per_snapshot
+  5  from vw_awr_feature_metric_scope
+  6  where db_name = '&DB_NAME'
+  7    and metric_name = 'CPU_UTIL_P95'
+  8  group by snap_begin_time
+  9  order by snap_begin_time;
+
+SNAP_BEGIN_TIME                     CPU_P95    ROWS_PER_SNAPSHOT
+________________________________ __________ ____________________
+2026-03-29 00:00:00.000000000       68.8525                    1
+2026-03-29 01:00:00.000000000       70.8333                    1
+2026-03-29 02:00:00.000000000        64.186                    1
+2026-03-29 03:00:00.000000000       57.0297                    1
+2026-03-29 04:00:00.000000000       68.5864                    1
+2026-03-29 05:00:00.000000000       67.4419                    1
+2026-03-29 06:00:00.000000000          52.8                    1
+2026-03-29 07:00:00.000000000       60.9756                    1
+2026-03-29 08:00:00.000000000       70.8543                    1
+2026-03-29 09:00:00.000000000       70.1422                    1
+
+10 rows selected.
+
+Elapsed: 00:00:00.575
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > prompt
+
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high > prompt VALIDATION COMPLETE
+VALIDATION COMPLETE
+,cyan [AWRAI_APP]@AWRAI_high > prompt ============================================================
+============================================================
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > spool off

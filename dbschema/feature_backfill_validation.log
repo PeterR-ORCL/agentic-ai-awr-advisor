@@ -1,0 +1,86 @@
+1. Duplicate AWR_REPORT logical identity check (must remain zero new duplicates)
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.166
+2. FEATURE_JSON uppercase engineered-key presence after backfill
+
+METRIC_NAME                         FEATURE_VECTOR_ROWS_WITH_KEY
+________________________________ _______________________________
+CELL_MULTIBLOCK_LATENCY_MS                                     0
+CELL_SINGLE_BLOCK_LATENCY_MS                                   0
+CURSOR_MUTEX_WAIT_PCT_DB_TIME                                  0
+DB_CPU_PCT_DB_TIME                                             0
+HARD_PARSE_PCT                                                 0
+LOG_WRITE_LATENCY_MS                                           0
+NETWORK_WAIT_PCT_DB_TIME                                       0
+PGA_CACHE_HIT_PCT                                              0
+REDO_GENERATION_PER_SEC                                        0
+SORTS_DISK_PCT                                                 0
+STORAGE_INDEX_SAVINGS_PCT                                      0
+TEMP_SPILL_PCT                                                 0
+TEMP_WRITE_LATENCY_MS                                          0
+WORKAREA_MULTIPASS_PCT                                         0
+WORKAREA_ONEPASS_PCT                                           0
+WRITE_LATENCY_MS                                               0
+
+16 rows selected.
+
+Elapsed: 00:00:00.804
+3. Sample rebuilt feature vectors
+
+Error starting at line : 133 File @ file:/Users/probev/Projects/oci-awr-sizing-advisor/dbschema/feature_backfill_validation.sql
+In command -
+select *
+from (
+    select
+        fv.feature_vector_id,
+        fv.awr_id,
+        r.db_name,
+        r.dbid,
+        r.instance_name,
+        r.snap_time_begin,
+        r.snap_time_end,
+        json_serialize(fv.feature_json pretty returning clob) as feature_json_pretty
+    from awr_feature_vector fv
+    join awr_report r
+      on r.awr_id = fv.awr_id
+     and r.source_system_id = fv.source_system_id
+    where r.db_name = 'FINDB'
+      and r.dbid = 2932457402
+    order by r.snap_time_begin, fv.feature_vector_id
+)
+where rownum <= 20
+Error at Command Line : 143 Column : 47 File @ file:/Users/probev/Projects/oci-awr-sizing-advisor/dbschema/feature_backfill_validation.sql
+Error report -
+SQL Error: ORA-00907: missing right parenthesis
+
+https://docs.oracle.com/error-help/db/ora-00907/00907. 00000 -  "missing right parenthesis"
+*Document: YES
+*Cause:    A left parenthesis was entered without a closing
+           right parenthesis, or there was unrecognized information in the
+           parentheses. All parentheses must be entered in pairs.
+*Action:   Correct the syntax and retry the statement.
+
+More Details :
+https://docs.oracle.com/error-help/db/ora-00907/
+Elapsed: 00:00:00.369
+4. Report-scope engineered metric exposure for newly promoted metrics
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.516
+5. DB-scope engineered metric exposure for newly promoted metrics
+
+
+0 rows selected.
+
+Elapsed: 00:00:01.458
+6. Latest score results after feature rebuild
+
+
+0 rows selected.
+
+Elapsed: 00:00:00.239

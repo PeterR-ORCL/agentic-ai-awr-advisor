@@ -2,6 +2,7 @@ import os
 import json
 import re
 import html
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,9 +12,14 @@ from src.analysis.ai_provider import generate_ai_response
 from src.analysis.derived_metric_extractor import (
     extract_derived_pressure_metrics,
 )
+from src.analysis.engineered_metric_catalog import (
+    DOMAIN_DISPLAY_ORDER,
+    get_implemented_metric_definitions,
+)
 from src.analysis.issue_detector import detect_issues
 from src.analysis.recommendation_engine import generate_recommendations
 from src.analysis.violin_panel_builder import build_violin_panel_data
+from src.ingest.awr_adb_loader import get_db_connection
 from src.parser.awr_parser import parse_awr_file
 from src.reporting.html_dashboard import generate_html_dashboard
 
@@ -137,6 +143,310 @@ def _format_duration(start: datetime | None, end: datetime | None) -> str:
 
 def _json_for_html(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"))
+
+
+def _metric_series_key(metric_name: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", metric_name.strip().lower())
+    return normalized.strip("_") + "_trend"
+
+
+def _selected_snapshot_windows(
+    snapshot_contexts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    windows_by_key: dict[tuple[datetime, datetime], dict[str, Any]] = {}
+    for context in snapshot_contexts:
+        begin_time = context.get("begin_time")
+        end_time = context.get("end_time")
+        if begin_time is None or end_time is None:
+            continue
+        window_key = (begin_time, end_time)
+        windows_by_key.setdefault(
+            window_key,
+            {
+                "key": window_key,
+                "begin_time": begin_time,
+                "end_time": end_time,
+                "label": _snapshot_label(context),
+            },
+        )
+    return sorted(windows_by_key.values(), key=lambda window: window["begin_time"])
+
+
+def _resolve_scope_db_identity(
+    snapshot_contexts: list[dict[str, Any]],
+) -> tuple[str | None, str | None]:
+    db_ids = list(
+        dict.fromkeys(
+            str(context["result"].run_metadata.db_id or "").strip()
+            for context in snapshot_contexts
+            if str(context["result"].run_metadata.db_id or "").strip()
+        )
+    )
+    db_names = list(
+        dict.fromkeys(
+            str(context["result"].run_metadata.database_name or "").strip()
+            for context in snapshot_contexts
+            if str(context["result"].run_metadata.database_name or "").strip()
+        )
+    )
+    db_id = db_ids[0] if len(db_ids) == 1 else None
+    db_name = db_names[0] if len(db_names) == 1 else None
+    return db_id, db_name
+
+
+def _fetch_db_scope_metric_rows(
+    snapshot_contexts: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    debug_lines: list[str] = []
+    selected_windows = _selected_snapshot_windows(snapshot_contexts)
+    if not selected_windows:
+        return [], ["DB-scope metric retrieval skipped: no canonical snapshot windows."]
+
+    db_id, db_name = _resolve_scope_db_identity(snapshot_contexts)
+    if db_id is None and db_name is None:
+        return [], [
+            "DB-scope metric retrieval skipped: current analysis scope did not resolve to a single DB identity."
+        ]
+
+    min_begin = selected_windows[0]["begin_time"]
+    max_end = selected_windows[-1]["end_time"]
+    selected_window_keys = {window["key"] for window in selected_windows}
+    query = """
+        SELECT
+            DB_NAME,
+            DBID,
+            SNAP_BEGIN_TIME,
+            SNAP_END_TIME,
+            DB_VERSION,
+            DATABASE_ROLE,
+            INSTANCE_COUNT,
+            PLATFORM,
+            TOPOLOGY_CLASS,
+            PLATFORM_CLASS,
+            METRIC_NAME,
+            METRIC_SCOPE,
+            METRIC_CATEGORY,
+            METRIC_VALUE_NUM,
+            CONTRIBUTING_REPORT_COUNT,
+            AWR_COUNT,
+            SNAPSHOT_LABEL,
+            DISTINCT_VALUE_COUNT,
+            VALUE_COLLAPSE_RULE,
+            DATA_QUALITY_FLAG
+        FROM VW_AWR_FEATURE_METRIC_DB_SCOPE
+        WHERE SNAP_BEGIN_TIME >= :min_begin
+          AND SNAP_END_TIME <= :max_end
+          AND (
+                (:dbid IS NOT NULL AND DBID = :dbid)
+             OR (:dbid IS NULL AND :db_name IS NOT NULL AND DB_NAME = :db_name)
+          )
+        ORDER BY SNAP_BEGIN_TIME, METRIC_NAME
+    """
+    bindings = {
+        "min_begin": min_begin,
+        "max_end": max_end,
+        "dbid": int(db_id) if db_id and db_id.isdigit() else None,
+        "db_name": db_name,
+    }
+
+    connection = None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute(query, bindings)
+            rows = cursor.fetchall()
+            cursor_description = getattr(cursor, "description", None)
+            column_names = [column[0] for column in cursor_description or []]
+    except Exception as exc:  # noqa: BLE001
+        if connection is not None:
+            connection.close()
+            connection = None
+        return [], [f"DB-scope metric retrieval unavailable: {exc}"]
+    finally:
+        if connection is not None:
+            connection.close()
+
+    scoped_rows = []
+    for row in rows:
+        row_dict = dict(zip(column_names, row, strict=True))
+        window_key = (
+            row_dict.get("SNAP_BEGIN_TIME"),
+            row_dict.get("SNAP_END_TIME"),
+        )
+        if window_key in selected_window_keys:
+            scoped_rows.append(row_dict)
+
+    debug_lines.append(
+        "DB-scope metric retrieval source: VW_AWR_FEATURE_METRIC_DB_SCOPE"
+    )
+    debug_lines.append(
+        "DB-scope metric retrieval rows: "
+        + str(len(scoped_rows))
+        + f" for DBID={db_id or 'n/a'} DB_NAME={db_name or 'n/a'}"
+    )
+    return scoped_rows, debug_lines
+
+
+def _series_note_from_rows(metric_rows: list[dict[str, Any]]) -> str | None:
+    if not metric_rows:
+        return None
+    data_quality_flags = sorted(
+        {
+            str(row.get("DATA_QUALITY_FLAG") or "").strip()
+            for row in metric_rows
+            if str(row.get("DATA_QUALITY_FLAG") or "").strip()
+        }
+    )
+    collapse_rules = sorted(
+        {
+            str(row.get("VALUE_COLLAPSE_RULE") or "").strip()
+            for row in metric_rows
+            if str(row.get("VALUE_COLLAPSE_RULE") or "").strip()
+        }
+    )
+    if data_quality_flags == ["CONSISTENT"] and collapse_rules == ["IDENTICAL_VALUE"]:
+        return None
+    quality_text = ", ".join(data_quality_flags) if data_quality_flags else "Unknown"
+    collapse_text = ", ".join(collapse_rules) if collapse_rules else "Unknown"
+    return (
+        "Data quality: "
+        + quality_text
+        + "; collapse rule: "
+        + collapse_text
+    )
+
+
+def _build_db_scope_metric_history(
+    snapshot_contexts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    selected_windows = _selected_snapshot_windows(snapshot_contexts)
+    snapshot_labels = [window["label"] for window in selected_windows]
+    metric_rows, debug_lines = _fetch_db_scope_metric_rows(snapshot_contexts)
+    if not metric_rows:
+        return {
+            "available": False,
+            "rows": [],
+            "chart_specs": [],
+            "chart_payload": {"snapshot_labels": snapshot_labels},
+            "metrics_by_name": {},
+            "metrics_by_domain": {},
+            "snapshot_labels": snapshot_labels,
+            "debug_lines": debug_lines,
+        }
+
+    rows_by_metric: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in metric_rows:
+        rows_by_metric[str(row.get("METRIC_NAME") or "")].append(row)
+
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    metrics_by_domain: dict[str, list[dict[str, Any]]] = {
+        domain: [] for domain in DOMAIN_DISPLAY_ORDER
+    }
+    chart_specs: list[dict[str, Any]] = []
+    chart_payload: dict[str, Any] = {"snapshot_labels": snapshot_labels}
+
+    for definition in get_implemented_metric_definitions():
+        metric_name = definition.source_metric_name or definition.metric_name
+        metric_scope_rows = rows_by_metric.get(metric_name, [])
+        if not metric_scope_rows:
+            continue
+
+        row_by_window = {
+            (row["SNAP_BEGIN_TIME"], row["SNAP_END_TIME"]): row
+            for row in metric_scope_rows
+        }
+        values = [
+            _safe_float(row_by_window.get(window["key"], {}).get("METRIC_VALUE_NUM"))
+            for window in selected_windows
+        ]
+        if not any(value is not None for value in values):
+            continue
+
+        chart_key = _metric_series_key(definition.metric_name)
+        chart_payload[chart_key] = values
+        note = _series_note_from_rows(metric_scope_rows)
+        spec = {
+            "key": chart_key,
+            "title": definition.chart_title,
+            "label": definition.chart_label,
+            "color": definition.color,
+            "container_id": chart_key + "Chart",
+            "domain": definition.domain,
+        }
+        if note:
+            spec["note"] = note
+        chart_specs.append(spec)
+
+        sql_row_count = len(metric_scope_rows)
+        point_count = sum(1 for value in values if value is not None)
+        metrics_by_name[definition.metric_name] = {
+            "definition": definition,
+            "rows": metric_scope_rows,
+            "values": values,
+            "snapshot_labels": snapshot_labels,
+            "chart_key": chart_key,
+            "sql_row_count": sql_row_count,
+            "point_count": point_count,
+            "chronological": all(
+                earlier["SNAP_BEGIN_TIME"] <= later["SNAP_BEGIN_TIME"]
+                for earlier, later in zip(metric_scope_rows, metric_scope_rows[1:], strict=False)
+            ),
+            "data_quality_flags": sorted(
+                {
+                    str(row.get("DATA_QUALITY_FLAG") or "").strip()
+                    for row in metric_scope_rows
+                    if str(row.get("DATA_QUALITY_FLAG") or "").strip()
+                }
+            ),
+            "value_collapse_rules": sorted(
+                {
+                    str(row.get("VALUE_COLLAPSE_RULE") or "").strip()
+                    for row in metric_scope_rows
+                    if str(row.get("VALUE_COLLAPSE_RULE") or "").strip()
+                }
+            ),
+        }
+        metrics_by_domain[definition.domain].append(metrics_by_name[definition.metric_name])
+        debug_lines.append(
+            "DB metric "
+            + definition.metric_name
+            + f": sql_rows={sql_row_count} points={point_count} "
+            + f"chronological={metrics_by_name[definition.metric_name]['chronological']} "
+            + f"domain={definition.domain} source=VW_AWR_FEATURE_METRIC_DB_SCOPE"
+        )
+
+    non_empty_domain_metrics = {
+        domain: metrics
+        for domain, metrics in metrics_by_domain.items()
+        if metrics
+    }
+    rendered_domains = list(non_empty_domain_metrics)
+    debug_lines.append(
+        "Rendered domains from DB-scope metrics: "
+        + (", ".join(rendered_domains) if rendered_domains else "None")
+    )
+    return {
+        "available": bool(chart_specs),
+        "rows": metric_rows,
+        "chart_specs": chart_specs,
+        "chart_payload": chart_payload,
+        "metrics_by_name": metrics_by_name,
+        "metrics_by_domain": non_empty_domain_metrics,
+        "snapshot_labels": snapshot_labels,
+        "debug_lines": debug_lines,
+    }
+
+
+def _history_values_for_metric(
+    db_scope_metrics: dict[str, Any],
+    *metric_names: str,
+) -> list[float | None]:
+    snapshot_labels = db_scope_metrics.get("snapshot_labels") or []
+    for metric_name in metric_names:
+        metric_history = (db_scope_metrics.get("metrics_by_name") or {}).get(metric_name)
+        if metric_history:
+            return list(metric_history["values"])
+    return [None] * len(snapshot_labels)
 
 
 def _join_factors(factors: list[str]) -> str:
@@ -729,7 +1039,7 @@ def _collapse_transition_event_windows(
     return passthrough
 
 
-def _build_time_series(snapshot_contexts: list[dict[str, Any]]) -> dict[str, Any]:
+def _build_local_time_series(snapshot_contexts: list[dict[str, Any]]) -> dict[str, Any]:
     snapshot_labels = [context["snapshot_label"] for context in snapshot_contexts]
     cpu_trend = [context["metrics"]["cpu_pct"] for context in snapshot_contexts]
     io_trend = [context["metrics"]["user_io_pct"] for context in snapshot_contexts]
@@ -773,6 +1083,113 @@ def _build_time_series(snapshot_contexts: list[dict[str, Any]]) -> dict[str, Any
     exa_offload_efficiency_trend = [
         context["metrics"]["exa_offload_efficiency"] for context in snapshot_contexts
     ]
+
+    return {
+        "snapshot_labels": snapshot_labels,
+        "cpu_trend": cpu_trend,
+        "io_trend": io_trend,
+        "commit_trend": commit_trend,
+        "concurrency_trend": concurrency_trend,
+        "sql_concentration_trend": sql_concentration_trend,
+        "hard_parses_trend": hard_parses_trend,
+        "log_file_sync_trend": log_file_sync_trend,
+        "temp_io_trend": temp_io_trend,
+        "pga_spill_trend": pga_spill_trend,
+        "cluster_wait_trend": cluster_wait_trend,
+        "gc_wait_trend": gc_wait_trend,
+        "dg_transport_lag_trend": dg_transport_lag_trend,
+        "dg_apply_lag_trend": dg_apply_lag_trend,
+        "exa_cell_io_trend": exa_cell_io_trend,
+        "exa_offload_efficiency_trend": exa_offload_efficiency_trend,
+        "trend_directions": {
+            "cpu": _trend_direction(cpu_trend),
+            "io": _trend_direction(io_trend),
+            "commit": _trend_direction(commit_trend),
+            "concurrency": _trend_direction(concurrency_trend),
+            "sql_concentration": _trend_direction(sql_concentration_trend),
+            "hard_parses": _trend_direction(hard_parses_trend),
+            "cluster_wait": _trend_direction(cluster_wait_trend),
+            "gc_wait": _trend_direction(gc_wait_trend),
+            "dg_transport_lag": _trend_direction(dg_transport_lag_trend),
+            "dg_apply_lag": _trend_direction(dg_apply_lag_trend),
+            "exa_cell_io": _trend_direction(exa_cell_io_trend),
+            "exa_offload_efficiency": _trend_direction(
+                exa_offload_efficiency_trend
+            ),
+        },
+    }
+
+
+def _build_time_series(
+    snapshot_contexts: list[dict[str, Any]],
+    db_scope_metrics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not db_scope_metrics or not db_scope_metrics.get("available"):
+        return _build_local_time_series(snapshot_contexts)
+
+    snapshot_labels = db_scope_metrics.get("snapshot_labels") or []
+    cpu_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "DB_CPU_PCT_DB_TIME",
+        "CPU_UTIL_P95",
+    )
+    io_trend = _history_values_for_metric(db_scope_metrics, "USER_IO_PRESSURE")
+    commit_trend = _history_values_for_metric(db_scope_metrics, "LOG_FILE_SYNC_MS")
+    concurrency_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "CONCURRENCY_PRESSURE",
+    )
+    sql_concentration_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "TOP_SQL_LOAD_CONCENTRATION",
+    )
+    hard_parses_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "HARD_PARSES_PER_SEC",
+    )
+    log_file_sync_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "LOG_FILE_SYNC_MS",
+    )
+    temp_io_trend = _history_values_for_metric(db_scope_metrics, "TEMP_IO_PRESSURE")
+    pga_spill_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "PGA_SPILL_PRESSURE",
+    )
+    cluster_wait_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "CLUSTER_WAIT_PCT_DB_TIME",
+    )
+    gc_current_wait = _history_values_for_metric(
+        db_scope_metrics,
+        "GC_CURRENT_WAIT_PCT_DB_TIME",
+    )
+    gc_cr_wait = _history_values_for_metric(
+        db_scope_metrics,
+        "GC_CR_WAIT_PCT_DB_TIME",
+    )
+    gc_wait_trend = []
+    for current_wait, cr_wait in zip(gc_current_wait, gc_cr_wait, strict=True):
+        if current_wait is None and cr_wait is None:
+            gc_wait_trend.append(None)
+            continue
+        gc_wait_trend.append(round((current_wait or 0.0) + (cr_wait or 0.0), 4))
+    dg_transport_lag_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "TRANSPORT_LAG_SEC",
+    )
+    dg_apply_lag_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "APPLY_LAG_SEC",
+    )
+    exa_cell_io_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "EXA_CELL_IO_PCT_DB_TIME",
+    )
+    exa_offload_efficiency_trend = _history_values_for_metric(
+        db_scope_metrics,
+        "EXA_OFFLOAD_EFFICIENCY",
+    )
 
     return {
         "snapshot_labels": snapshot_labels,
@@ -1634,11 +2051,15 @@ def _build_analysis_context(
         )
         memory_per_instance = f"{low_text}-{high_text} GB"
 
+    snapshot_count = _count_canonical_reports(snapshot_contexts)
+    time_window = _format_duration(analysis_start, analysis_end)
+
     return {
-        "snapshot_count": str(len(snapshot_contexts)),
+        "snapshot_count": str(snapshot_count),
         "analysis_start": _format_datetime_display(analysis_start),
         "analysis_end": _format_datetime_display(analysis_end),
-        "time_window": _format_duration(analysis_start, analysis_end),
+        "time_window": time_window,
+        "awr_count_and_window": f"{snapshot_count} / {time_window}",
         "latest_snapshot_interval": latest_label,
         "topology_detected": topology_detected,
         "platform_detected": platform_detected,
@@ -1651,6 +2072,49 @@ def _build_analysis_context(
         "hostname": hostname,
         "instance_count": str(normalized_instance_count) if normalized_instance_count else "Unknown",
     }
+
+
+def _count_canonical_reports(
+    snapshot_contexts: list[dict[str, Any]],
+) -> int:
+    """Count canonical logical AWR reports within the current dashboard scope."""
+
+    canonical_keys: set[tuple[Any, ...]] = set()
+    for context in snapshot_contexts:
+        run_metadata = context["result"].run_metadata
+        db_id = str(run_metadata.db_id or "").strip() or None
+        instance_number = str(run_metadata.instance_number or "").strip() or None
+        snap_id_begin = getattr(run_metadata, "snap_id_begin", None)
+        snap_id_end = getattr(run_metadata, "snap_id_end", None)
+        begin_time = context.get("begin_time")
+        end_time = context.get("end_time")
+
+        if (
+            db_id is not None
+            and instance_number is not None
+            and snap_id_begin is not None
+            and snap_id_end is not None
+            and begin_time is not None
+            and end_time is not None
+        ):
+            canonical_key = (
+                "logical_snapshot",
+                db_id,
+                instance_number,
+                int(snap_id_begin),
+                int(snap_id_end),
+                begin_time.isoformat(),
+                end_time.isoformat(),
+            )
+        else:
+            canonical_key = (
+                "selected_file",
+                str(context.get("file_path") or context.get("file_name") or ""),
+            )
+
+        canonical_keys.add(canonical_key)
+
+    return len(canonical_keys)
 
 
 def _severity_score(severity: str) -> int:
@@ -2181,6 +2645,11 @@ def _series_has_chart_data(values: list[float | None]) -> bool:
 def _build_time_series_chart_specs(
     multi_snapshot_analysis: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    db_scope_metrics = multi_snapshot_analysis.get("db_scope_metrics") or {}
+    db_scope_chart_specs = db_scope_metrics.get("chart_specs") or []
+    if db_scope_chart_specs:
+        return db_scope_chart_specs
+
     time_series = multi_snapshot_analysis["time_series"]
     chart_candidates = [
         {
@@ -2273,30 +2742,49 @@ def _build_time_series_section_html(
             "</div>\n      </section>\n"
         )
 
-    chart_panels = "\n".join(
-        [
+    grouped_specs: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for spec in chart_specs:
+        grouped_specs[str(spec.get("domain") or "General")].append(spec)
+
+    ordered_domains = [
+        domain for domain in DOMAIN_DISPLAY_ORDER if grouped_specs.get(domain)
+    ]
+    ordered_domains.extend(
+        domain
+        for domain in grouped_specs
+        if domain not in ordered_domains
+    )
+    domain_sections = []
+    for domain in ordered_domains:
+        specs = grouped_specs[domain]
+        chart_panels = "\n".join(
             (
-                '          <section class="chart-panel">'
-                + f"\n            <h3>{spec['title']}</h3>"
+                '            <section class="chart-panel">'
+                + f"\n              <h3>{spec['title']}</h3>"
                 + (
-                    f'\n            <p class="chart-note">{spec["note"]}</p>'
+                    f'\n              <p class="chart-note">{spec["note"]}</p>'
                     if spec.get("note")
                     else ""
                 )
-                + '\n            <div class="chart-canvas">'
-                + f'\n              <canvas id="{spec["container_id"]}"></canvas>'
-                + "\n            </div>\n          </section>"
+                + '\n              <div class="chart-canvas">'
+                + f'\n                <canvas id="{spec["container_id"]}"></canvas>'
+                + "\n              </div>\n            </section>"
             )
-            for spec in chart_specs
-        ]
-    )
+            for spec in specs
+        )
+        domain_sections.append(
+            '          <div class="chart-domain-group">'
+            + f'\n            <div class="chart-domain-heading">{domain}</div>'
+            + '\n            <div class="chart-grid">'
+            + f"\n{chart_panels}"
+            + "\n            </div>\n          </div>"
+        )
     return (
         '\n      <section id="time-series-charts" class="card secondary">'
         f'\n        <div class="section-kicker">{kicker}</div>'
         "\n        <h2>Time-Series Charts</h2>"
-        '\n        <div class="chart-grid">'
-        f"\n{chart_panels}"
-        "\n        </div>\n      </section>\n"
+        + ("\n" + "\n".join(domain_sections) if domain_sections else "")
+        + "\n      </section>\n"
     )
 
 
@@ -2649,6 +3137,20 @@ def _inject_dashboard_style_overrides(html: str) -> str:
       font-size: 12px;
       line-height: 1.35;
     }
+    .chart-domain-group {
+      margin-top: 20px;
+    }
+    .chart-domain-group:first-of-type {
+      margin-top: 14px;
+    }
+    .chart-domain-heading {
+      margin: 0 0 12px;
+      color: rgba(216, 228, 242, 0.92);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
 """
     if css_block.strip() in html:
         return html
@@ -2699,8 +3201,8 @@ def _build_analysis_context_html(analysis_context: dict[str, str]) -> str:
         '\n          <div class="provider-box"><strong>Snapshot End</strong><div>'
         + analysis_context["analysis_end"]
         + "</div></div>"
-        '\n          <div class="provider-box"><strong>Total Snapshot Window</strong><div>'
-        + analysis_context["time_window"]
+        '\n          <div class="provider-box"><strong>Total Number of Reports / Total Snapshot Window</strong><div>'
+        + analysis_context["awr_count_and_window"]
         + "</div></div>"
         '\n          <div class="provider-box"><strong>Last Snapshot</strong><div>'
         + analysis_context["latest_snapshot_interval"]
@@ -3218,7 +3720,8 @@ def _build_snapshot_context(file_path: Path) -> dict[str, Any]:
 def _build_multi_snapshot_analysis(
     snapshot_contexts: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    time_series = _build_time_series(snapshot_contexts)
+    db_scope_metrics = _build_db_scope_metric_history(snapshot_contexts)
+    time_series = _build_time_series(snapshot_contexts, db_scope_metrics)
     anomaly_windows = _build_anomaly_windows(snapshot_contexts, time_series)
     latest_snapshot = snapshot_contexts[-1]
     worst_snapshot = max(snapshot_contexts, key=_snapshot_score)
@@ -3244,6 +3747,7 @@ def _build_multi_snapshot_analysis(
         "ordered_snapshots": snapshot_contexts,
         "snapshot_labels": [context["snapshot_label"] for context in snapshot_contexts],
         "analysis_context": _build_analysis_context(snapshot_contexts),
+        "db_scope_metrics": db_scope_metrics,
         "time_series": time_series,
         "latest_snapshot": latest_snapshot,
         "worst_snapshot": worst_snapshot,
@@ -3445,30 +3949,35 @@ if __name__ == "__main__":
         "analysis_context": multi_snapshot_analysis["analysis_context"],
         "snapshot_labels": multi_snapshot_analysis["snapshot_labels"],
         "time_series": multi_snapshot_analysis["time_series"],
-        "time_series_charts": {
-            "snapshot_labels": multi_snapshot_analysis["snapshot_labels"],
-            "cpu_trend": multi_snapshot_analysis["time_series"]["cpu_trend"],
-            "io_trend": multi_snapshot_analysis["time_series"]["io_trend"],
-            "commit_trend": multi_snapshot_analysis["time_series"]["commit_trend"],
-            "concurrency_trend": multi_snapshot_analysis["time_series"][
-                "concurrency_trend"
-            ],
-            "sql_concentration_trend": multi_snapshot_analysis["time_series"][
-                "sql_concentration_trend"
-            ],
-            "cluster_wait_trend": multi_snapshot_analysis["time_series"][
-                "cluster_wait_trend"
-            ],
-            "gc_wait_trend": multi_snapshot_analysis["time_series"][
-                "gc_wait_trend"
-            ],
-            "dg_transport_lag_trend": multi_snapshot_analysis["time_series"][
-                "dg_transport_lag_trend"
-            ],
-            "exa_offload_efficiency_trend": multi_snapshot_analysis["time_series"][
-                "exa_offload_efficiency_trend"
-            ],
-        },
+        "db_scope_metrics": multi_snapshot_analysis["db_scope_metrics"],
+        "time_series_charts": (
+            multi_snapshot_analysis["db_scope_metrics"]["chart_payload"]
+            if multi_snapshot_analysis["db_scope_metrics"].get("available")
+            else {
+                "snapshot_labels": multi_snapshot_analysis["snapshot_labels"],
+                "cpu_trend": multi_snapshot_analysis["time_series"]["cpu_trend"],
+                "io_trend": multi_snapshot_analysis["time_series"]["io_trend"],
+                "commit_trend": multi_snapshot_analysis["time_series"]["commit_trend"],
+                "concurrency_trend": multi_snapshot_analysis["time_series"][
+                    "concurrency_trend"
+                ],
+                "sql_concentration_trend": multi_snapshot_analysis["time_series"][
+                    "sql_concentration_trend"
+                ],
+                "cluster_wait_trend": multi_snapshot_analysis["time_series"][
+                    "cluster_wait_trend"
+                ],
+                "gc_wait_trend": multi_snapshot_analysis["time_series"][
+                    "gc_wait_trend"
+                ],
+                "dg_transport_lag_trend": multi_snapshot_analysis["time_series"][
+                    "dg_transport_lag_trend"
+                ],
+                "exa_offload_efficiency_trend": multi_snapshot_analysis["time_series"][
+                    "exa_offload_efficiency_trend"
+                ],
+            }
+        ),
         "anomaly_windows": multi_snapshot_analysis["anomaly_windows"],
         "multi_snapshot_summary": multi_snapshot_analysis["multi_snapshot_summary"],
         "latest_snapshot_summary": multi_snapshot_analysis["latest_snapshot_summary"],
@@ -3489,6 +3998,10 @@ if __name__ == "__main__":
     print("\nTrend Findings:")
     for finding in multi_snapshot_analysis["trend_findings"]:
         print(f"  - {finding}")
+
+    print("\nDB-Scope Engineered Metric Debug:")
+    for line in multi_snapshot_analysis["db_scope_metrics"]["debug_lines"]:
+        print(f"  - {line}")
 
     print("\nAnomaly Windows:")
     if not multi_snapshot_analysis["anomaly_windows"]:

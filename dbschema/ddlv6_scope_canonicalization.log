@@ -1,0 +1,623 @@
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > CREATE OR REPLACE VIEW VW_AWR_SCOPE_CONTEXT AS
+  2  WITH report_scope_candidates AS (
+  3      SELECT
+  4          r.*,
+  5          COALESCE(
+  6              r.DBID,
+  7              JSON_VALUE(
+  8                  r.RAW_METADATA_JSON,
+  9                  '$.dbid' RETURNING NUMBER NULL ON ERROR
+ 10              )
+ 11          ) AS RESOLVED_DBID,
+ 12          COALESCE(
+ 13              r.INSTANCE_NUMBER,
+ 14              JSON_VALUE(
+ 15                  r.RAW_METADATA_JSON,
+ 16                  '$.instance_number' RETURNING NUMBER NULL ON ERROR
+ 17              )
+ 18          ) AS RESOLVED_INSTANCE_NUMBER,
+ 19          CASE
+ 20              WHEN COALESCE(
+ 21                  r.DBID,
+ 22                  JSON_VALUE(
+ 23                      r.RAW_METADATA_JSON,
+ 24                      '$.dbid' RETURNING NUMBER NULL ON ERROR
+ 25                  )
+ 26              ) IS NOT NULL
+ 27               AND COALESCE(
+ 28                  r.INSTANCE_NUMBER,
+ 29                  JSON_VALUE(
+ 30                      r.RAW_METADATA_JSON,
+ 31                      '$.instance_number' RETURNING NUMBER NULL ON ERROR
+ 32                  )
+ 33              ) IS NOT NULL
+ 34               AND r.SNAP_ID_BEGIN IS NOT NULL
+ 35               AND r.SNAP_ID_END IS NOT NULL
+ 36               AND r.SNAP_TIME_BEGIN IS NOT NULL
+ 37               AND r.SNAP_TIME_END IS NOT NULL
+ 38              THEN 1
+ 39              ELSE 0
+ 40          END AS HAS_LOGICAL_SNAPSHOT_ID
+ 41      FROM AWR_REPORT r
+ 42  ),
+ 43  canonical_report_per_scope AS (
+ 44      SELECT
+ 45          c.*,
+ 46          ROW_NUMBER() OVER (
+ 47              PARTITION BY
+ 48                  c.SOURCE_SYSTEM_ID,
+ 49                  CASE
+ 50                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 51                      THEN 'LOGICAL_SNAPSHOT'
+ 52                      ELSE 'FILE_HASH'
+ 53                  END,
+ 54                  CASE
+ 55                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 56                      THEN c.RESOLVED_DBID
+ 57                  END,
+ 58                  CASE
+ 59                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 60                      THEN c.RESOLVED_INSTANCE_NUMBER
+ 61                  END,
+ 62                  CASE
+ 63                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 64                      THEN c.SNAP_ID_BEGIN
+ 65                  END,
+ 66                  CASE
+ 67                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 68                      THEN c.SNAP_ID_END
+ 69                  END,
+ 70                  CASE
+ 71                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 72                      THEN c.SNAP_TIME_BEGIN
+ 73                  END,
+ 74                  CASE
+ 75                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 1
+ 76                      THEN c.SNAP_TIME_END
+ 77                  END,
+ 78                  CASE
+ 79                      WHEN c.HAS_LOGICAL_SNAPSHOT_ID = 0
+ 80                      THEN c.FILE_HASH_SHA256
+ 81                  END
+ 82              ORDER BY c.CREATED_AT DESC, c.AWR_ID DESC
+ 83          ) AS RN
+ 84      FROM report_scope_candidates c
+ 85  ),
+ 86  canonical_report_set AS (
+ 87      SELECT *
+ 88      FROM canonical_report_per_scope
+ 89      WHERE RN = 1
+ 90  ),
+ 91  latest_feature_per_awr AS (
+ 92      SELECT
+ 93          fv.AWR_ID,
+ 94          fv.SOURCE_SYSTEM_ID,
+ 95          fv.FEATURE_VECTOR_ID,
+ 96          fv.OBSERVED_AT,
+ 97          fv.TOPOLOGY_CLASS,
+ 98          fv.PLATFORM_CLASS,
+ 99          fv.EVENT_CLASS,
+100          ROW_NUMBER() OVER (
+101              PARTITION BY fv.AWR_ID, fv.SOURCE_SYSTEM_ID
+102              ORDER BY fv.OBSERVED_AT DESC, fv.FEATURE_VECTOR_ID DESC
+103          ) AS RN
+104      FROM AWR_FEATURE_VECTOR fv
+105      JOIN canonical_report_set cr
+106        ON cr.AWR_ID = fv.AWR_ID
+107       AND cr.SOURCE_SYSTEM_ID = fv.SOURCE_SYSTEM_ID
+108  ),
+109  latest_score_per_awr AS (
+110      SELECT
+111          sr.AWR_ID,
+112          sr.SOURCE_SYSTEM_ID,
+113          sr.SCORE_RESULT_ID,
+114          sr.SCORED_AT,
+115          sr.TOPOLOGY_CLASS,
+116          sr.PLATFORM_CLASS,
+117          sr.EVENT_CLASS,
+118          ROW_NUMBER() OVER (
+119              PARTITION BY sr.AWR_ID, sr.SOURCE_SYSTEM_ID
+120              ORDER BY sr.SCORED_AT DESC, sr.SCORE_RESULT_ID DESC
+121          ) AS RN
+122      FROM AWR_SCORE_RESULT sr
+123      JOIN canonical_report_set cr
+124        ON cr.AWR_ID = sr.AWR_ID
+125       AND cr.SOURCE_SYSTEM_ID = sr.SOURCE_SYSTEM_ID
+126  )
+127  SELECT
+128      r.AWR_ID,
+129      r.SOURCE_SYSTEM_ID,
+130      s.SOURCE_SYSTEM_CODE,
+131      COALESCE(r.DB_NAME, s.DB_NAME, s.DB_UNIQUE_NAME) AS DB_NAME,
+132      COALESCE(r.RESOLVED_DBID, s.DBID) AS DBID,
+133      COALESCE(
+134          r.HOST_NAME,
+135          s.PRIMARY_HOST_NAME,
+136          JSON_VALUE(
+137              r.RAW_METADATA_JSON,
+138              '$.host_name' RETURNING VARCHAR2(256) NULL ON ERROR
+139          )
+140      ) AS HOST_NAME,
+141      COALESCE(
+142          r.INSTANCE_NAME,
+143          JSON_VALUE(
+144              r.RAW_METADATA_JSON,
+145              '$.instance_name' RETURNING VARCHAR2(128) NULL ON ERROR
+146          )
+147      ) AS INSTANCE_NAME,
+148      r.RESOLVED_INSTANCE_NUMBER AS INSTANCE_NUMBER,
+149      r.SNAP_TIME_BEGIN AS SNAP_BEGIN_TIME,
+150      r.SNAP_TIME_END AS SNAP_END_TIME,
+151      COALESCE(
+152          r.DB_VERSION,
+153          s.DB_VERSION,
+154          JSON_VALUE(
+155              r.RAW_METADATA_JSON,
+156              '$.db_version' RETURNING VARCHAR2(64) NULL ON ERROR
+157          )
+158      ) AS DB_VERSION,
+159      COALESCE(
+160          s.DATABASE_ROLE,
+161          JSON_VALUE(
+162              r.PARSER_OUTPUT_JSON,
+163              '$.topology_signals.database_role' RETURNING VARCHAR2(64)
+164              NULL ON ERROR
+165          ),
+166          JSON_VALUE(
+167              s.TAGS_JSON,
+168              '$.database_role' RETURNING VARCHAR2(64) NULL ON ERROR
+169          )
+170      ) AS DATABASE_ROLE,
+171      COALESCE(
+172          s.INSTANCE_COUNT,
+173          JSON_VALUE(
+174              r.PARSER_OUTPUT_JSON,
+175              '$.topology_signals.instance_count' RETURNING NUMBER NULL ON ERROR
+176          ),
+177          JSON_VALUE(
+178              s.TAGS_JSON,
+179              '$.instance_count' RETURNING NUMBER NULL ON ERROR
+180          )
+181      ) AS INSTANCE_COUNT,
+182      COALESCE(
+183          r.PLATFORM_NAME,
+184          s.PLATFORM_NAME,
+185          JSON_VALUE(
+186              r.RAW_METADATA_JSON,
+187              '$.platform' RETURNING VARCHAR2(256) NULL ON ERROR
+188          )
+189      ) AS PLATFORM,
+190      COALESCE(
+191          fv.TOPOLOGY_CLASS,
+192          ls.TOPOLOGY_CLASS,
+193          JSON_VALUE(
+194              r.PARSER_OUTPUT_JSON,
+195              '$.topology_signals.topology_class' RETURNING VARCHAR2(64)
+196              NULL ON ERROR
+197          ),
+198          JSON_VALUE(
+199              s.TAGS_JSON,
+200              '$.topology_class' RETURNING VARCHAR2(64) NULL ON ERROR
+201          )
+202      ) AS TOPOLOGY_CLASS,
+203      COALESCE(
+204          fv.PLATFORM_CLASS,
+205          ls.PLATFORM_CLASS,
+206          JSON_VALUE(
+207              r.PARSER_OUTPUT_JSON,
+208              '$.topology_signals.platform_class' RETURNING VARCHAR2(64)
+209              NULL ON ERROR
+210          ),
+211          JSON_VALUE(
+212              s.TAGS_JSON,
+213              '$.platform_class' RETURNING VARCHAR2(64) NULL ON ERROR
+214          )
+215      ) AS PLATFORM_CLASS
+216  FROM canonical_report_set r
+217  JOIN AWR_SOURCE_SYSTEM s
+218    ON s.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+219  LEFT JOIN latest_feature_per_awr fv
+220    ON fv.AWR_ID = r.AWR_ID
+221   AND fv.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+222   AND fv.RN = 1
+223  LEFT JOIN latest_score_per_awr ls
+224    ON ls.AWR_ID = r.AWR_ID
+225   AND ls.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
+226   AND ls.RN = 1;
+
+View VW_AWR_SCOPE_CONTEXT created.
+
+Elapsed: 00:00:00.216
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > CREATE OR REPLACE VIEW VW_AWR_FEATURE_SCOPE AS
+  2  WITH canonical_awr AS (
+  3      SELECT AWR_ID, SOURCE_SYSTEM_ID
+  4      FROM VW_AWR_SCOPE_CONTEXT
+  5  ),
+  6  latest_feature_per_awr AS (
+  7      SELECT
+  8          fv.*,
+  9          ROW_NUMBER() OVER (
+ 10              PARTITION BY fv.AWR_ID, fv.SOURCE_SYSTEM_ID
+ 11              ORDER BY fv.OBSERVED_AT DESC, fv.FEATURE_VECTOR_ID DESC
+ 12          ) AS RN
+ 13      FROM AWR_FEATURE_VECTOR fv
+ 14      JOIN canonical_awr ca
+ 15        ON ca.AWR_ID = fv.AWR_ID
+ 16       AND ca.SOURCE_SYSTEM_ID = fv.SOURCE_SYSTEM_ID
+ 17  )
+ 18  SELECT
+ 19      sc.AWR_ID,
+ 20      sc.SOURCE_SYSTEM_ID,
+ 21      sc.SOURCE_SYSTEM_CODE,
+ 22      sc.DB_NAME,
+ 23      sc.DBID,
+ 24      sc.HOST_NAME,
+ 25      sc.INSTANCE_NAME,
+ 26      sc.INSTANCE_NUMBER,
+ 27      sc.SNAP_BEGIN_TIME,
+ 28      sc.SNAP_END_TIME,
+ 29      sc.DB_VERSION,
+ 30      sc.DATABASE_ROLE,
+ 31      sc.INSTANCE_COUNT,
+ 32      sc.PLATFORM,
+ 33      sc.TOPOLOGY_CLASS,
+ 34      sc.PLATFORM_CLASS,
+ 35      fv.FEATURE_VECTOR_ID,
+ 36      fv.OBSERVED_AT,
+ 37      fv.VECTOR_VERSION,
+ 38      fv.FEATURE_SET_NAME,
+ 39      fv.FEATURE_SET_VERSION,
+ 40      fv.WORKLOAD_CLASS,
+ 41      fv.TOPOLOGY_CLASS AS FEATURE_TOPOLOGY_CLASS,
+ 42      fv.PLATFORM_CLASS AS FEATURE_PLATFORM_CLASS,
+ 43      fv.EVENT_CLASS AS FEATURE_EVENT_CLASS,
+ 44      fv.VECTOR_STATUS,
+ 45      fv.FEATURE_VECTOR,
+ 46      fv.NARRATIVE_EMBEDDING,
+ 47      fv.FEATURE_JSON,
+ 48      fv.NORMALIZATION_JSON,
+ 49      fv.EXPLANATION_JSON,
+ 50      fv.SOURCE_LINEAGE_JSON,
+ 51      fv.CREATED_AT
+ 52  FROM latest_feature_per_awr fv
+ 53  JOIN VW_AWR_SCOPE_CONTEXT sc
+ 54    ON sc.AWR_ID = fv.AWR_ID
+ 55   AND sc.SOURCE_SYSTEM_ID = fv.SOURCE_SYSTEM_ID
+ 56  WHERE fv.RN = 1;
+
+View VW_AWR_FEATURE_SCOPE created.
+
+Elapsed: 00:00:00.187
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > CREATE OR REPLACE VIEW VW_AWR_SCORE_SCOPE AS
+  2  WITH canonical_awr AS (
+  3      SELECT AWR_ID, SOURCE_SYSTEM_ID
+  4      FROM VW_AWR_SCOPE_CONTEXT
+  5  ),
+  6  latest_score_per_awr AS (
+  7      SELECT
+  8          sr.*,
+  9          ROW_NUMBER() OVER (
+ 10              PARTITION BY sr.AWR_ID, sr.SOURCE_SYSTEM_ID
+ 11              ORDER BY sr.SCORED_AT DESC, sr.SCORE_RESULT_ID DESC
+ 12          ) AS RN
+ 13      FROM AWR_SCORE_RESULT sr
+ 14      JOIN canonical_awr ca
+ 15        ON ca.AWR_ID = sr.AWR_ID
+ 16       AND ca.SOURCE_SYSTEM_ID = sr.SOURCE_SYSTEM_ID
+ 17  )
+ 18  SELECT
+ 19      sc.AWR_ID,
+ 20      sc.SOURCE_SYSTEM_ID,
+ 21      sc.SOURCE_SYSTEM_CODE,
+ 22      sc.DB_NAME,
+ 23      sc.DBID,
+ 24      sc.HOST_NAME,
+ 25      sc.INSTANCE_NAME,
+ 26      sc.INSTANCE_NUMBER,
+ 27      sc.SNAP_BEGIN_TIME,
+ 28      sc.SNAP_END_TIME,
+ 29      sc.DB_VERSION,
+ 30      sc.DATABASE_ROLE,
+ 31      sc.INSTANCE_COUNT,
+ 32      sc.PLATFORM,
+ 33      sc.TOPOLOGY_CLASS,
+ 34      sc.PLATFORM_CLASS,
+ 35      sr.SCORE_RESULT_ID,
+ 36      sr.FEATURE_VECTOR_ID,
+ 37      sr.SCORING_MODEL_ID,
+ 38      sm.MODEL_CODE,
+ 39      sm.MODEL_NAME,
+ 40      sm.MODEL_VERSION,
+ 41      sr.SCORED_AT,
+ 42      sr.DECISION_DOMAIN,
+ 43      sr.RISK_LEVEL,
+ 44      sr.TOTAL_SCORE,
+ 45      sr.CONFIDENCE_SCORE,
+ 46      sr.SEVERITY_SCORE,
+ 47      sr.URGENCY_SCORE,
+ 48      sr.BUSINESS_IMPACT_SCORE,
+ 49      sr.WORKLOAD_CLASS,
+ 50      sr.TOPOLOGY_CLASS AS SCORE_TOPOLOGY_CLASS,
+ 51      sr.PLATFORM_CLASS AS SCORE_PLATFORM_CLASS,
+ 52      sr.EVENT_CLASS,
+ 53      sr.PRIMARY_SIGNAL_DOMAIN,
+ 54      sr.EXPLANATION_JSON,
+ 55      sr.CONTRIBUTION_JSON,
+ 56      sr.SCORECARD_JSON,
+ 57      sr.CREATED_AT
+ 58  FROM latest_score_per_awr sr
+ 59  JOIN VW_AWR_SCOPE_CONTEXT sc
+ 60    ON sc.AWR_ID = sr.AWR_ID
+ 61   AND sc.SOURCE_SYSTEM_ID = sr.SOURCE_SYSTEM_ID
+ 62  LEFT JOIN AWR_SCORING_MODEL sm
+ 63    ON sm.SCORING_MODEL_ID = sr.SCORING_MODEL_ID
+ 64  WHERE sr.RN = 1;
+
+View VW_AWR_SCORE_SCOPE created.
+
+Elapsed: 00:00:00.188
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > CREATE OR REPLACE VIEW VW_AWR_FEATURE_METRIC_SCOPE AS
+  2  WITH feature_metric_base AS (
+  3      SELECT
+  4          fs.AWR_ID,
+  5          fs.SOURCE_SYSTEM_ID,
+  6          fs.DB_NAME,
+  7          fs.DBID,
+  8          fs.HOST_NAME,
+  9          fs.INSTANCE_NAME,
+ 10          fs.INSTANCE_NUMBER,
+ 11          fs.SNAP_BEGIN_TIME,
+ 12          fs.SNAP_END_TIME,
+ 13          fs.DB_VERSION,
+ 14          fs.DATABASE_ROLE,
+ 15          fs.INSTANCE_COUNT,
+ 16          fs.PLATFORM,
+ 17          fs.TOPOLOGY_CLASS,
+ 18          fs.PLATFORM_CLASS,
+ 19          fs.FEATURE_VECTOR_ID,
+ 20          fs.OBSERVED_AT,
+ 21          jt.*
+ 22      FROM VW_AWR_FEATURE_SCOPE fs
+ 23      CROSS APPLY JSON_TABLE(
+ 24          fs.FEATURE_JSON,
+ 25          '$'
+ 26          COLUMNS (
+ 27              CPU_UTIL_P95 NUMBER PATH '$.CPU_UTIL_P95' NULL ON ERROR,
+ 28              DB_CPU_PCT_DB_TIME NUMBER PATH '$.DB_CPU_PCT_DB_TIME' NULL ON ERROR,
+ 29              DB_TIME_PER_TXN NUMBER PATH '$.DB_TIME_PER_TXN' NULL ON ERROR,
+ 30              DB_TIME_PER_SEC NUMBER PATH '$.db_time_per_sec' NULL ON ERROR,
+ 31              DB_CPU_PER_SEC NUMBER PATH '$.db_cpu_per_sec' NULL ON ERROR,
+ 32              READ_LATENCY_MS NUMBER PATH '$.READ_LATENCY_MS' NULL ON ERROR,
+ 33              WRITE_LATENCY_MS NUMBER PATH '$.WRITE_LATENCY_MS' NULL ON ERROR,
+ 34              TEMP_WRITE_LATENCY_MS NUMBER PATH '$.TEMP_WRITE_LATENCY_MS' NULL ON ERROR,
+ 35              LOG_FILE_SYNC_MS NUMBER PATH '$.LOG_FILE_SYNC_MS' NULL ON ERROR,
+ 36              LOG_WRITE_LATENCY_MS NUMBER PATH '$.LOG_WRITE_LATENCY_MS' NULL ON ERROR,
+ 37              REDO_GENERATION_PER_SEC NUMBER PATH '$.REDO_GENERATION_PER_SEC' NULL ON ERROR,
+ 38              TOP_SQL_LOAD_CONCENTRATION NUMBER PATH '$.TOP_SQL_LOAD_CONCENTRATION' NULL ON ERROR,
+ 39              HARD_PARSES_PER_SEC NUMBER PATH '$.HARD_PARSES_PER_SEC' NULL ON ERROR,
+ 40              HARD_PARSE_PCT NUMBER PATH '$.HARD_PARSE_PCT' NULL ON ERROR,
+ 41              SOFT_PARSE_PCT NUMBER PATH '$.SOFT_PARSE_PCT' NULL ON ERROR,
+ 42              BUFFER_CACHE_HIT_RATIO_PCT NUMBER PATH '$.BUFFER_CACHE_HIT_RATIO_PCT' NULL ON ERROR,
+ 43              LIBRARY_CACHE_HIT_RATIO_PCT NUMBER PATH '$.LIBRARY_CACHE_HIT_RATIO_PCT' NULL ON ERROR,
+ 44              PARSE_CPU_TO_PARSE_ELAPSED_PCT NUMBER PATH '$.PARSE_CPU_TO_PARSE_ELAPSED_PCT' NULL ON ERROR,
+ 45              PGA_CACHE_HIT_PCT NUMBER PATH '$.PGA_CACHE_HIT_PCT' NULL ON ERROR,
+ 46              THROUGHPUT_USER_CALLS_PER_SEC NUMBER PATH '$.THROUGHPUT_USER_CALLS_PER_SEC' NULL ON ERROR,
+ 47              TRANSACTIONS_PER_SEC NUMBER PATH '$.transactions_per_sec' NULL ON ERROR,
+ 48              TEMP_IO_PRESSURE NUMBER PATH '$.TEMP_IO_PRESSURE' NULL ON ERROR,
+ 49              PGA_SPILL_PRESSURE NUMBER PATH '$.PGA_SPILL_PRESSURE' NULL ON ERROR,
+ 50              TEMP_SPILL_PCT NUMBER PATH '$.TEMP_SPILL_PCT' NULL ON ERROR,
+ 51              SORTS_DISK_PCT NUMBER PATH '$.SORTS_DISK_PCT' NULL ON ERROR,
+ 52              WORKAREA_ONEPASS_PCT NUMBER PATH '$.WORKAREA_ONEPASS_PCT' NULL ON ERROR,
+ 53              WORKAREA_MULTIPASS_PCT NUMBER PATH '$.WORKAREA_MULTIPASS_PCT' NULL ON ERROR,
+ 54              USER_IO_PRESSURE NUMBER PATH '$.USER_IO_PRESSURE' NULL ON ERROR,
+ 55              COMMIT_PRESSURE NUMBER PATH '$.COMMIT_PRESSURE' NULL ON ERROR,
+ 56              CONCURRENCY_PRESSURE NUMBER PATH '$.CONCURRENCY_PRESSURE' NULL ON ERROR,
+ 57              NETWORK_WAIT_PCT_DB_TIME NUMBER PATH '$.NETWORK_WAIT_PCT_DB_TIME' NULL ON ERROR,
+ 58              CURSOR_MUTEX_WAIT_PCT_DB_TIME NUMBER PATH '$.CURSOR_MUTEX_WAIT_PCT_DB_TIME' NULL ON ERROR,
+ 59              READ_MB_PER_SEC NUMBER PATH '$.READ_MB_PER_SEC' NULL ON ERROR,
+ 60              WRITE_MB_PER_SEC NUMBER PATH '$.WRITE_MB_PER_SEC' NULL ON ERROR,
+ 61              CLUSTER_WAIT_PCT_DB_TIME NUMBER PATH '$.CLUSTER_WAIT_PCT_DB_TIME' NULL ON ERROR,
+ 62              GC_CR_WAIT_PCT_DB_TIME NUMBER PATH '$.GC_CR_WAIT_PCT_DB_TIME' NULL ON ERROR,
+ 63              GC_CURRENT_WAIT_PCT_DB_TIME NUMBER PATH '$.GC_CURRENT_WAIT_PCT_DB_TIME' NULL ON ERROR,
+ 64              GC_BUFFER_BUSY_PCT_DB_TIME NUMBER PATH '$.GC_BUFFER_BUSY_PCT_DB_TIME' NULL ON ERROR,
+ 65              INTERCONNECT_STRESS_FLAG NUMBER PATH '$.INTERCONNECT_STRESS_FLAG' NULL ON ERROR,
+ 66              RAC_CONTENTION_FLAG NUMBER PATH '$.RAC_CONTENTION_FLAG' NULL ON ERROR,
+ 67              EXA_CELL_IO_PCT_DB_TIME NUMBER PATH '$.EXA_CELL_IO_PCT_DB_TIME' NULL ON ERROR,
+ 68              EXA_OFFLOAD_EFFICIENCY NUMBER PATH '$.EXA_OFFLOAD_EFFICIENCY' NULL ON ERROR,
+ 69              STORAGE_INDEX_SAVINGS_PCT NUMBER PATH '$.STORAGE_INDEX_SAVINGS_PCT' NULL ON ERROR,
+ 70              CELL_SINGLE_BLOCK_LATENCY_MS NUMBER PATH '$.CELL_SINGLE_BLOCK_LATENCY_MS' NULL ON ERROR,
+ 71              CELL_MULTIBLOCK_LATENCY_MS NUMBER PATH '$.CELL_MULTIBLOCK_LATENCY_MS' NULL ON ERROR,
+ 72              EXA_STORAGE_INDEX_SAVINGS NUMBER PATH '$.EXA_STORAGE_INDEX_SAVINGS' NULL ON ERROR,
+ 73              SMART_SCAN_FLAG NUMBER PATH '$.SMART_SCAN_FLAG' NULL ON ERROR,
+ 74              FLASH_CACHE_HIT_FLAG NUMBER PATH '$.flash_cache_hit_flag' NULL ON ERROR,
+ 75              EXADATA_IO_BENEFIT_FLAG NUMBER PATH '$.exadata_io_benefit_flag' NULL ON ERROR,
+ 76              TRANSPORT_LAG_SEC NUMBER PATH '$.TRANSPORT_LAG_SEC' NULL ON ERROR,
+ 77              APPLY_LAG_SEC NUMBER PATH '$.APPLY_LAG_SEC' NULL ON ERROR,
+ 78              REDO_TRANSPORT_ISSUE_FLAG NUMBER PATH '$.REDO_TRANSPORT_ISSUE_FLAG' NULL ON ERROR,
+ 79              FAILOVER_EVENT_FLAG NUMBER PATH '$.FAILOVER_EVENT_FLAG' NULL ON ERROR,
+ 80              ROLE_TRANSITION_FLAG NUMBER PATH '$.ROLE_TRANSITION_FLAG' NULL ON ERROR,
+ 81              POST_FAILOVER_RECOVERY_FLAG NUMBER PATH '$.POST_FAILOVER_RECOVERY_FLAG' NULL ON ERROR
+ 82          )
+ 83      ) jt
+ 84  ),
+ 85  feature_metric_unpivot AS (
+ 86      SELECT
+ 87          AWR_ID,
+ 88          SOURCE_SYSTEM_ID,
+ 89          DB_NAME,
+ 90          DBID,
+ 91          HOST_NAME,
+ 92          INSTANCE_NAME,
+ 93          INSTANCE_NUMBER,
+ 94          SNAP_BEGIN_TIME,
+ 95          SNAP_END_TIME,
+ 96          DB_VERSION,
+ 97          DATABASE_ROLE,
+ 98          INSTANCE_COUNT,
+ 99          PLATFORM,
+100          TOPOLOGY_CLASS,
+101          PLATFORM_CLASS,
+102          FEATURE_VECTOR_ID,
+103          OBSERVED_AT,
+104          METRIC_NAME,
+105          METRIC_VALUE_NUM
+106      FROM feature_metric_base
+107      UNPIVOT (
+108          METRIC_VALUE_NUM FOR METRIC_NAME IN (
+109              CPU_UTIL_P95,
+110              DB_CPU_PCT_DB_TIME,
+111              DB_TIME_PER_TXN,
+112              DB_TIME_PER_SEC,
+113              DB_CPU_PER_SEC,
+114              READ_LATENCY_MS,
+115              WRITE_LATENCY_MS,
+116              TEMP_WRITE_LATENCY_MS,
+117              LOG_FILE_SYNC_MS,
+118              LOG_WRITE_LATENCY_MS,
+119              REDO_GENERATION_PER_SEC,
+120              TOP_SQL_LOAD_CONCENTRATION,
+121              HARD_PARSES_PER_SEC,
+122              HARD_PARSE_PCT,
+123              SOFT_PARSE_PCT,
+124              BUFFER_CACHE_HIT_RATIO_PCT,
+125              LIBRARY_CACHE_HIT_RATIO_PCT,
+126              PARSE_CPU_TO_PARSE_ELAPSED_PCT,
+127              PGA_CACHE_HIT_PCT,
+128              THROUGHPUT_USER_CALLS_PER_SEC,
+129              TRANSACTIONS_PER_SEC,
+130              TEMP_IO_PRESSURE,
+131              PGA_SPILL_PRESSURE,
+132              TEMP_SPILL_PCT,
+133              SORTS_DISK_PCT,
+134              WORKAREA_ONEPASS_PCT,
+135              WORKAREA_MULTIPASS_PCT,
+136              USER_IO_PRESSURE,
+137              COMMIT_PRESSURE,
+138              CONCURRENCY_PRESSURE,
+139              NETWORK_WAIT_PCT_DB_TIME,
+140              CURSOR_MUTEX_WAIT_PCT_DB_TIME,
+141              READ_MB_PER_SEC,
+142              WRITE_MB_PER_SEC,
+143              CLUSTER_WAIT_PCT_DB_TIME,
+144              GC_CR_WAIT_PCT_DB_TIME,
+145              GC_CURRENT_WAIT_PCT_DB_TIME,
+146              GC_BUFFER_BUSY_PCT_DB_TIME,
+147              INTERCONNECT_STRESS_FLAG,
+148              RAC_CONTENTION_FLAG,
+149              EXA_CELL_IO_PCT_DB_TIME,
+150              EXA_OFFLOAD_EFFICIENCY,
+151              STORAGE_INDEX_SAVINGS_PCT,
+152              CELL_SINGLE_BLOCK_LATENCY_MS,
+153              CELL_MULTIBLOCK_LATENCY_MS,
+154              EXA_STORAGE_INDEX_SAVINGS,
+155              SMART_SCAN_FLAG,
+156              FLASH_CACHE_HIT_FLAG,
+157              EXADATA_IO_BENEFIT_FLAG,
+158              TRANSPORT_LAG_SEC,
+159              APPLY_LAG_SEC,
+160              REDO_TRANSPORT_ISSUE_FLAG,
+161              FAILOVER_EVENT_FLAG,
+162              ROLE_TRANSITION_FLAG,
+163              POST_FAILOVER_RECOVERY_FLAG
+164          )
+165      )
+166  )
+167  SELECT
+168      AWR_ID,
+169      SOURCE_SYSTEM_ID,
+170      DB_NAME,
+171      DBID,
+172      HOST_NAME,
+173      INSTANCE_NAME,
+174      INSTANCE_NUMBER,
+175      SNAP_BEGIN_TIME,
+176      SNAP_END_TIME,
+177      DB_VERSION,
+178      DATABASE_ROLE,
+179      INSTANCE_COUNT,
+180      PLATFORM,
+181      TOPOLOGY_CLASS,
+182      PLATFORM_CLASS,
+183      METRIC_NAME,
+184      'DB' AS METRIC_SCOPE,
+185      CASE
+186          WHEN METRIC_NAME IN (
+187              'CPU_UTIL_P95',
+188              'DB_CPU_PCT_DB_TIME',
+189              'DB_TIME_PER_TXN',
+190              'DB_TIME_PER_SEC',
+191              'DB_CPU_PER_SEC',
+192              'READ_LATENCY_MS',
+193              'WRITE_LATENCY_MS',
+194              'TEMP_WRITE_LATENCY_MS',
+195              'LOG_FILE_SYNC_MS',
+196              'LOG_WRITE_LATENCY_MS',
+197              'REDO_GENERATION_PER_SEC',
+198              'TOP_SQL_LOAD_CONCENTRATION',
+199              'HARD_PARSES_PER_SEC',
+200              'HARD_PARSE_PCT',
+201              'SOFT_PARSE_PCT',
+202              'BUFFER_CACHE_HIT_RATIO_PCT',
+203              'LIBRARY_CACHE_HIT_RATIO_PCT',
+204              'PARSE_CPU_TO_PARSE_ELAPSED_PCT',
+205              'PGA_CACHE_HIT_PCT',
+206              'THROUGHPUT_USER_CALLS_PER_SEC',
+207              'TRANSACTIONS_PER_SEC',
+208              'TEMP_IO_PRESSURE',
+209              'PGA_SPILL_PRESSURE',
+210              'TEMP_SPILL_PCT',
+211              'SORTS_DISK_PCT',
+212              'WORKAREA_ONEPASS_PCT',
+213              'WORKAREA_MULTIPASS_PCT',
+214              'USER_IO_PRESSURE',
+215              'COMMIT_PRESSURE',
+216              'CONCURRENCY_PRESSURE',
+217              'NETWORK_WAIT_PCT_DB_TIME',
+218              'CURSOR_MUTEX_WAIT_PCT_DB_TIME',
+219              'READ_MB_PER_SEC',
+220              'WRITE_MB_PER_SEC'
+221          ) THEN 'GENERAL'
+222          WHEN METRIC_NAME IN (
+223              'CLUSTER_WAIT_PCT_DB_TIME',
+224              'GC_CR_WAIT_PCT_DB_TIME',
+225              'GC_CURRENT_WAIT_PCT_DB_TIME',
+226              'GC_BUFFER_BUSY_PCT_DB_TIME',
+227              'INTERCONNECT_STRESS_FLAG',
+228              'RAC_CONTENTION_FLAG'
+229          ) THEN 'RAC_CLUSTER'
+230          WHEN METRIC_NAME IN (
+231              'EXA_CELL_IO_PCT_DB_TIME',
+232              'EXA_OFFLOAD_EFFICIENCY',
+233              'STORAGE_INDEX_SAVINGS_PCT',
+234              'CELL_SINGLE_BLOCK_LATENCY_MS',
+235              'CELL_MULTIBLOCK_LATENCY_MS',
+236              'EXA_STORAGE_INDEX_SAVINGS',
+237              'SMART_SCAN_FLAG',
+238              'FLASH_CACHE_HIT_FLAG',
+239              'EXADATA_IO_BENEFIT_FLAG'
+240          ) THEN 'EXADATA'
+241          WHEN METRIC_NAME IN (
+242              'TRANSPORT_LAG_SEC',
+243              'APPLY_LAG_SEC',
+244              'REDO_TRANSPORT_ISSUE_FLAG'
+245          ) THEN 'DATA_GUARD'
+246          ELSE 'TOPOLOGY_EVENT'
+247      END AS METRIC_CATEGORY,
+248      METRIC_VALUE_NUM,
+249      FEATURE_VECTOR_ID,
+250      OBSERVED_AT
+251  FROM feature_metric_unpivot
+252  WHERE METRIC_VALUE_NUM IS NOT NULL;
+
+View VW_AWR_FEATURE_METRIC_SCOPE created.
+
+Elapsed: 00:00:00.204
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > spool off

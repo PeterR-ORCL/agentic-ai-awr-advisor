@@ -35,149 +35,66 @@ AWR (.out files)
 → Parsing Pipeline  
 → Structured Metrics + Metadata  
 → Autonomous Database (ADB)  
-→ Intelligence Layer  
+→ Intelligence Layer (Scoring + Trend + Anomaly Detection)  
 → Agentic Decision Engine  
 → Dashboard / HTML Output  
 
 ---
 
-## Architecture Diagram
-
-```mermaid
-flowchart LR
-    A[AWR Files] --> B[Parsing Pipeline]
-    B --> C[Structured Metrics and Metadata]
-    C --> D[Autonomous Database ADB]
-    D --> E[Intelligence Layer - Analysis and Scoring]
-    E --> F[Agentic Decision Engine - LLM and Rules]
-    F --> G[Dashboard / HTML Output]
-```
-
----
-
-## OCI Services (Current Implementation)
-
-- Object Storage – raw AWR files  
-- Autonomous Database (ADB) – structured storage  
-- Python processing layer – parsing and analytics  
-- HTML dashboard – visualization  
-
----
-
 ## Current System Status
 
-- Parsing: Complete  
-- ADB Ingestion: Complete  
-- Multi-AWR Support: Implemented  
-- Metadata Normalization: Complete  
-- Dashboard: Presentation-ready  
-- Deterministic Analysis: Complete  
+### Completed
+- Parsing Engine  
+- ADB Ingestion  
+- Multi-AWR Support  
+- Metadata Normalization  
+- Feature Vector Generation  
+- Scoring Engine  
+- DB-Scope Trend Engine  
+- Refined Anomaly Detection  
 
-- Scoring Engine: In Progress  
-- Recommendation Persistence: Planned  
-- Action Tracking: Planned  
-- Outcome Tracking: Planned  
-- Agentic Decision Layer: Evolving  
+### In Progress
+- Dashboard Wiring  
 
----
-
-## Key Capabilities
-
-### Multi-AWR Time-Series Analysis
-- Processes multiple AWR snapshots  
-- Builds workload behavior over time  
-- Enables trend analysis and anomaly detection  
+### Planned
+- Recommendation Persistence  
+- Action Tracking  
+- Outcome Tracking  
+- ML Feedback Loop  
 
 ---
 
-### Cluster-Aware System Context
+## Trend & Anomaly Engine
 
-The system normalizes AWR metadata across single-instance and clustered environments:
-
-- Multi-node hostname aggregation (RAC)  
-- Cumulative CPU/core calculation  
-- Memory per instance normalization  
-- Version consistency across snapshots  
-- Time-window alignment  
+- Table: AWR_DB_METRIC_TREND  
+- Rolling Mean, Std, Slope, Percent Change  
+- Continuous anomalies: SPIKE, DROP, TREND_SHIFT, VOLATILITY_INCREASE, ZERO_ANOMALY  
+- State anomalies: ACTIVATED, CLEARED, STATE_CHANGE  
 
 ---
 
-### Environment Awareness
-Detects:
-- Single Instance  
-- RAC  
-- Exadata  
-- Data Guard  
+## Execution Modes
 
----
+### Feature Rebuild
+AWR_MAINTENANCE_MODE=REBUILD_FEATURE_VECTORS
 
-### Structured Metadata Extraction
-- Database version  
-- Host and OS  
-- Instance count  
-- CPU / cores  
-- Memory per instance  
-- Platform and topology  
+### Trend Analysis
+AWR_MAINTENANCE_MODE=DB_TREND_ANALYSIS
 
----
-
-### Deterministic Analysis Layer
-Identifies:
-- CPU pressure  
-- I/O bottlenecks  
-- SQL concentration  
-- Concurrency issues  
-
----
-
-### Dashboard Output
-- Time-series visualization  
-- Performance breakdowns  
-- Risk indicators  
-- Actionable insights  
-
----
-
-## Agentic AI Direction
-
-The platform is evolving into an **agentic decision system**:
-
-- Converts signals → decisions  
-- Produces execution guidance  
-- Assigns confidence  
-- Tracks outcomes  
+Optional:
+AWR_TREND_METRIC_NAME=DB_CPU_PCT_DB_TIME
 
 ---
 
 ## Roadmap
 
-- Advanced time-series analytics  
-- Scoring engine (CPU, I/O, SQL, concurrency)  
-- Agentic decision orchestration  
-- OCI sizing recommendation engine  
-- Action + outcome tracking  
-- Continuous learning loop  
-
----
-
-## Strategic Vision
-
-Bridges:
-
-Performance diagnostics → Infrastructure decisions  
-
-Enables:
-
-- Real-time tuning  
-- Future sizing  
+Phase 4: Dashboard Wiring  
+Phase 5: Recommendation Engine  
+Phase 6: ML + Outcome Tracking  
 
 ---
 
 ## Status Summary
 
-This is a **production-grade foundation** for an agentic performance and sizing platform.
-
-Next phase introduces:
-- scoring  
-- decision automation  
-- learning feedback
+Production-grade analytical backend complete.
+Next phase: visualization and decision surfacing.

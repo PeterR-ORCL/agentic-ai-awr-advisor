@@ -34,6 +34,8 @@ class AwrMetadata(TypedDict):
     core_count: int | None
     socket_count: int | None
     memory_gb: float | None
+    snap_id_begin: int | None
+    snap_id_end: int | None
     begin_snapshot_time: str | None
     end_snapshot_time: str | None
 
@@ -80,6 +82,8 @@ def parse_awr_metadata(
         "core_count": None,
         "socket_count": None,
         "memory_gb": None,
+        "snap_id_begin": None,
+        "snap_id_end": None,
         "begin_snapshot_time": None,
         "end_snapshot_time": None,
     }
@@ -151,6 +155,22 @@ def parse_awr_metadata(
         (
             r"^\s*version\s*[:=]?\s*([0-9][0-9A-Za-z\.\-_]+)",
             r"release\s+([0-9][0-9A-Za-z\.\-_]+)",
+        ),
+    )
+    metadata["snap_id_begin"] = _search_int_patterns(
+        candidate_text,
+        (
+            r"begin snap id\s*[:=]?\s*(\d+)",
+            r"begin snapshot id\s*[:=]?\s*(\d+)",
+            r"begin snap:\s*(\d+)",
+        ),
+    )
+    metadata["snap_id_end"] = _search_int_patterns(
+        candidate_text,
+        (
+            r"end snap id\s*[:=]?\s*(\d+)",
+            r"end snapshot id\s*[:=]?\s*(\d+)",
+            r"end snap:\s*(\d+)",
         ),
     )
     metadata["begin_snapshot_time"] = _extract_snapshot_time(
@@ -364,6 +384,21 @@ def _search_patterns(text: str, patterns: tuple[str, ...]) -> str | None:
     return None
 
 
+def _search_int_patterns(text: str, patterns: tuple[str, ...]) -> int | None:
+    """Return the first integer capture group found from the given patterns."""
+
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+        if not match:
+            continue
+
+        value = _to_int(match.group(1).strip())
+        if value is not None:
+            return value
+
+    return None
+
+
 def _build_warnings(metadata: AwrMetadata) -> list[str]:
     """Create warnings for metadata fields that were not confidently found."""
 
@@ -377,6 +412,8 @@ def _build_warnings(metadata: AwrMetadata) -> list[str]:
         "host_name",
         "platform",
         "db_version",
+        "snap_id_begin",
+        "snap_id_end",
         "begin_snapshot_time",
         "end_snapshot_time",
     ):

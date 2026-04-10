@@ -1,0 +1,106 @@
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > CREATE OR REPLACE VIEW VW_AWR_FEATURE_METRIC_DB_SCOPE AS
+  2  WITH db_metric_rollup AS (
+  3      SELECT
+  4          COALESCE(fms.DB_NAME, 'UNKNOWN') AS NORMALIZED_DB_NAME,
+  5          NVL(fms.DBID, -1) AS NORMALIZED_DBID,
+  6          fms.DB_NAME,
+  7          fms.DBID,
+  8          fms.SNAP_BEGIN_TIME,
+  9          fms.SNAP_END_TIME,
+ 10          fms.METRIC_NAME,
+ 11          COUNT(*) AS CONTRIBUTING_REPORT_COUNT,
+ 12          COUNT(DISTINCT fms.AWR_ID) AS AWR_COUNT,
+ 13          COUNT(DISTINCT fms.METRIC_VALUE_NUM) AS DISTINCT_VALUE_COUNT,
+ 14          MIN(fms.METRIC_VALUE_NUM) AS IDENTICAL_METRIC_VALUE_NUM
+ 15      FROM VW_AWR_FEATURE_METRIC_SCOPE fms
+ 16      GROUP BY
+ 17          COALESCE(fms.DB_NAME, 'UNKNOWN'),
+ 18          NVL(fms.DBID, -1),
+ 19          fms.DB_NAME,
+ 20          fms.DBID,
+ 21          fms.SNAP_BEGIN_TIME,
+ 22          fms.SNAP_END_TIME,
+ 23          fms.METRIC_NAME
+ 24  ),
+ 25  db_metric_context_winner AS (
+ 26      SELECT
+ 27          fms.DB_NAME,
+ 28          fms.DBID,
+ 29          fms.SNAP_BEGIN_TIME,
+ 30          fms.SNAP_END_TIME,
+ 31          fms.DB_VERSION,
+ 32          fms.DATABASE_ROLE,
+ 33          fms.INSTANCE_COUNT,
+ 34          fms.PLATFORM,
+ 35          fms.TOPOLOGY_CLASS,
+ 36          fms.PLATFORM_CLASS,
+ 37          fms.METRIC_NAME,
+ 38          fms.METRIC_CATEGORY,
+ 39          fms.METRIC_VALUE_NUM,
+ 40          fms.AWR_ID,
+ 41          COALESCE(fms.DB_NAME, 'UNKNOWN') AS NORMALIZED_DB_NAME,
+ 42          NVL(fms.DBID, -1) AS NORMALIZED_DBID,
+ 43          ROW_NUMBER() OVER (
+ 44              PARTITION BY
+ 45                  COALESCE(fms.DB_NAME, 'UNKNOWN'),
+ 46                  NVL(fms.DBID, -1),
+ 47                  fms.SNAP_BEGIN_TIME,
+ 48                  fms.SNAP_END_TIME,
+ 49                  fms.METRIC_NAME
+ 50              ORDER BY r.CREATED_AT DESC, fms.AWR_ID DESC
+ 51          ) AS RN
+ 52      FROM VW_AWR_FEATURE_METRIC_SCOPE fms
+ 53      JOIN AWR_REPORT r
+ 54        ON r.AWR_ID = fms.AWR_ID
+ 55       AND r.SOURCE_SYSTEM_ID = fms.SOURCE_SYSTEM_ID
+ 56  )
+ 57  SELECT
+ 58      winner.DB_NAME,
+ 59      winner.DBID,
+ 60      winner.SNAP_BEGIN_TIME,
+ 61      winner.SNAP_END_TIME,
+ 62      winner.DB_VERSION,
+ 63      winner.DATABASE_ROLE,
+ 64      winner.INSTANCE_COUNT,
+ 65      winner.PLATFORM,
+ 66      winner.TOPOLOGY_CLASS,
+ 67      winner.PLATFORM_CLASS,
+ 68      rollup.METRIC_NAME,
+ 69      'DB' AS METRIC_SCOPE,
+ 70      winner.METRIC_CATEGORY,
+ 71      CASE
+ 72          WHEN rollup.DISTINCT_VALUE_COUNT <= 1
+ 73          THEN rollup.IDENTICAL_METRIC_VALUE_NUM
+ 74          ELSE winner.METRIC_VALUE_NUM
+ 75      END AS METRIC_VALUE_NUM,
+ 76      rollup.CONTRIBUTING_REPORT_COUNT,
+ 77      rollup.AWR_COUNT,
+ 78      TO_CHAR(winner.SNAP_BEGIN_TIME, 'YYYY-MM-DD HH24:MI')
+ 79      || ' - '
+ 80      || TO_CHAR(winner.SNAP_END_TIME, 'YYYY-MM-DD HH24:MI') AS SNAPSHOT_LABEL,
+ 81      rollup.DISTINCT_VALUE_COUNT,
+ 82      CASE
+ 83          WHEN rollup.DISTINCT_VALUE_COUNT <= 1
+ 84          THEN 'IDENTICAL_VALUE'
+ 85          ELSE 'CANONICAL_REPORT_WINNER'
+ 86      END AS VALUE_COLLAPSE_RULE,
+ 87      CASE
+ 88          WHEN rollup.DISTINCT_VALUE_COUNT <= 1
+ 89          THEN 'CONSISTENT'
+ 90          ELSE 'CONFLICTING_REPORT_CONTEXT_VALUES'
+ 91      END AS DATA_QUALITY_FLAG
+ 92  FROM db_metric_rollup rollup
+ 93  JOIN db_metric_context_winner winner
+ 94    ON winner.NORMALIZED_DB_NAME = rollup.NORMALIZED_DB_NAME
+ 95   AND winner.NORMALIZED_DBID = rollup.NORMALIZED_DBID
+ 96   AND winner.SNAP_BEGIN_TIME = rollup.SNAP_BEGIN_TIME
+ 97   AND winner.SNAP_END_TIME = rollup.SNAP_END_TIME
+ 98   AND winner.METRIC_NAME = rollup.METRIC_NAME
+ 99   AND winner.RN = 1;
+
+View VW_AWR_FEATURE_METRIC_DB_SCOPE created.
+
+Elapsed: 00:00:00.238
+,cyan [AWRAI_APP]@AWRAI_high >
+,cyan [AWRAI_APP]@AWRAI_high > spool off

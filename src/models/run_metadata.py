@@ -23,5 +23,7 @@ class RunMetadata:
     core_count: int | None = None
     socket_count: int | None = None
     memory_gb: float | None = None
+    snap_id_begin: int | None = None
+    snap_id_end: int | None = None
     begin_snapshot_time: str | None = None
     end_snapshot_time: str | None = None

@@ -41,35 +41,74 @@ AWR (.out files)
 
 ---
 
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    A[AWR Files] --> B[Parsing Pipeline]
+    B --> C[Structured Metrics and Metadata]
+    C --> D[Autonomous Database ADB]
+    D --> E[Intelligence Layer - Scoring and Trend Analysis]
+    E --> F[Agentic Decision Engine - LLM and Rules]
+    F --> G[Dashboard / HTML Output]
+```
+
+---
+
+## OCI Services (Current Implementation)
+
+- Object Storage – raw AWR files  
+- Autonomous Database (ADB) – structured storage  
+- Python processing layer – parsing, scoring, and analytics  
+- HTML dashboard – visualization  
+
+---
+
 ## Current System Status
 
 ### Completed
-- Parsing Engine  
-- ADB Ingestion  
-- Multi-AWR Support  
-- Metadata Normalization  
-- Feature Vector Generation  
-- Scoring Engine  
-- DB-Scope Trend Engine  
-- Refined Anomaly Detection  
+
+- Parsing: Complete  
+- ADB Ingestion: Complete  
+- Multi-AWR Support: Implemented  
+- Metadata Normalization: Complete  
+- Deterministic Analysis: Complete  
+
+- Feature Vector System: Implemented  
+- Scoring Engine: Implemented  
+- DB-Scope Trend Engine: Implemented  
+- Anomaly Detection (Refined): Implemented  
 
 ### In Progress
-- Dashboard Wiring  
+
+- Dashboard Wiring (Trend + Anomaly Visualization)
 
 ### Planned
+
 - Recommendation Persistence  
 - Action Tracking  
 - Outcome Tracking  
+- Agentic Decision Layer (LLM + orchestration)  
 - ML Feedback Loop  
 
 ---
 
-## Trend & Anomaly Engine
+## Key Capabilities
 
-- Table: AWR_DB_METRIC_TREND  
-- Rolling Mean, Std, Slope, Percent Change  
-- Continuous anomalies: SPIKE, DROP, TREND_SHIFT, VOLATILITY_INCREASE, ZERO_ANOMALY  
-- State anomalies: ACTIVATED, CLEARED, STATE_CHANGE  
+### Multi-AWR Time-Series Analysis
+
+- Processes multiple AWR snapshots  
+- Builds workload behavior over time  
+- Enables trend analysis and anomaly detection  
+
+---
+
+### DB-Level Trend & Anomaly Engine
+
+- Table: AWR_DB_METRIC_TREND
+- Rolling Mean, Std, Slope, Percent Change
+- Continuous anomalies: SPIKE, DROP, TREND_SHIFT, VOLATILITY_INCREASE, ZERO_ANOMALY
+- State anomalies: ACTIVATED, CLEARED, STATE_CHANGE
 
 ---
 

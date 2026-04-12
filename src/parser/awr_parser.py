@@ -10,7 +10,7 @@ from src.parser.awr_file_loader import load_awr_file
 from src.parser.ash_parser import parse_ash_samples
 from src.parser.awr_section_locator import (
     AwrSectionLocation,
-    locate_awr_sections,
+    locate_awr_sections_with_diagnostics,
 )
 from src.parser.cpu_parser import parse_cpu_section
 from src.parser.datafile_io_parser import parse_datafile_io_stats
@@ -46,7 +46,13 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
 
     loaded_file = load_awr_file(file_path)
     lines = loaded_file["lines"]
-    sections_found = locate_awr_sections(loaded_file["lines"])
+    section_detection = locate_awr_sections_with_diagnostics(
+        loaded_file["lines"],
+        source_file_name=loaded_file["file_name"],
+        source_file_path=loaded_file["file_path"],
+    )
+    sections_found = section_detection.sections_found
+    parse_diagnostics = section_detection.diagnostics
 
     metadata_dict, metadata_warnings = parse_awr_metadata(
         file_path=loaded_file["file_path"],
@@ -59,6 +65,8 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
     cpu_lines = _slice_section_lines(lines, sections_found.get("cpu"))
     waits_lines = _slice_section_lines(lines, sections_found.get("waits"))
     top_sql_lines = _slice_section_lines(lines, sections_found.get("top_sql"))
+    workload_note_lines = _slice_section_lines(lines, sections_found.get("workload_note"))
+    anomaly_flag_lines = _slice_section_lines(lines, sections_found.get("anomaly_flags"))
 
     cpu_metrics = parse_cpu_section(cpu_lines) if cpu_lines else []
     wait_events = parse_waits_section(waits_lines) if waits_lines else []
@@ -70,6 +78,8 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
     workarea_histogram = parse_workarea_histogram(lines)
     event_histograms = parse_event_histograms(lines)
     ash_samples = parse_ash_samples(lines)
+    workload_notes = _extract_annotation_content(workload_note_lines)
+    anomaly_flags = _extract_annotation_content(anomaly_flag_lines)
     topology_signals = parse_topology_signals(
         lines=lines,
         wait_events=wait_events,
@@ -92,7 +102,10 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
         ash_samples=ash_samples,
         session_metrics=[],
         topology_signals=topology_signals,
-        parse_warnings=metadata_warnings,
+        workload_notes=workload_notes,
+        anomaly_flags=anomaly_flags,
+        parse_diagnostics=parse_diagnostics,
+        parse_warnings=metadata_warnings + parse_diagnostics.to_warning_messages(),
         parse_errors=[],
     )
 
@@ -115,3 +128,31 @@ def _slice_section_lines(
         return []
 
     return lines[start_line - 1 : end_line]
+
+
+def _extract_annotation_content(lines: list[str]) -> list[str]:
+    """Return non-header, non-divider content lines for a lightweight annotation section."""
+
+    if not lines:
+        return []
+
+    content_lines: list[str] = []
+    for index, line in enumerate(lines):
+        stripped_line = line.strip()
+        if not stripped_line:
+            continue
+        if index == 0:
+            continue
+        if _is_section_divider(stripped_line):
+            continue
+        if stripped_line.lower() == "end of report":
+            continue
+        content_lines.append(stripped_line)
+    return content_lines
+
+
+def _is_section_divider(line: str) -> bool:
+    stripped_line = line.strip()
+    if not stripped_line:
+        return False
+    return all(character in {"~", "-", "="} for character in stripped_line)

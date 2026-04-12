@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from src.models.parse_diagnostics import ParseDiagnostics
 from src.models.run_metadata import RunMetadata
 from src.parser.awr_section_locator import AwrSectionMap
 
@@ -28,6 +29,9 @@ class ParseResult:
     ash_samples: list[dict[str, Any]] = field(default_factory=list)
     session_metrics: list[dict[str, Any]] = field(default_factory=list)
     topology_signals: dict[str, Any] = field(default_factory=dict)
+    workload_notes: list[str] = field(default_factory=list)
+    anomaly_flags: list[str] = field(default_factory=list)
+    parse_diagnostics: ParseDiagnostics = field(default_factory=ParseDiagnostics)
     parse_warnings: list[str] = field(default_factory=list)
     parse_errors: list[str] = field(default_factory=list)
 

@@ -18,12 +18,12 @@
 
 ## Executive Overview
 
-The OCI AWR Agentic AI Sizing Advisor is a **deterministic + agentic AI system** that transforms Oracle AWR reports into:
+The Agentic AI  AWR Sizing Advisor is a **deterministic + agentic AI system** that transforms Oracle AWR reports into:
 
 - Root-cause performance diagnostics  
 - Prioritized remediation actions  
 - AI-guided decision support  
-- OCI infrastructure sizing recommendations  
+- Infrastructure sizing recommendations  
 
 This system eliminates subjective interpretation and replaces it with:
 

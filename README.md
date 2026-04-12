@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>From AWR → Decision → Action</b><br/>
-  Autonomous Performance & OCI Sizing Advisor
+  Autonomous Performance & Sizing Advisor
 </p>
 
 <p align="center">

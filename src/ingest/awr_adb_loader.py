@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import logging
 import os
 import socket
 import sys
+import tempfile
 import uuid
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 import re
 from typing import Any, Protocol
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -21,9 +24,11 @@ from src.analysis.derived_metric_extractor import (
     extract_derived_pressure_metrics,
 )
 from src.analysis.trend_engine import persist_db_metric_trends
+from src.models.parse_diagnostics import UnknownParserElement
 from src.models.parse_result import ParseResult
 from src.models.run_metadata import RunMetadata
 from src.parser.awr_parser import parse_awr_file as parse_awr_report
+from src.parser.section_registry import get_section_registry
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +66,11 @@ SCORING_VECTOR_VERSION = "3.0.0"
 SCORING_MODEL_CODE = "AWR_WEIGHTED_CORE"
 SCORING_MODEL_DOMAIN = "SIZING"
 FEATURE_REBUILD_MODE = "REBUILD_FEATURE_VECTORS"
+REFRESH_PARSER_OUTPUT_JSON_MODE = "REFRESH_PARSER_OUTPUT_JSON"
 DB_TREND_ANALYSIS_MODE = "DB_TREND_ANALYSIS"
+SOURCE_MODE_LOCAL = "LOCAL"
+SOURCE_MODE_OBJECT_STORAGE = "OBJECT_STORAGE"
+_UNSET = object()
 PROMOTED_ENGINEERED_FEATURE_KEYS = (
     "WRITE_LATENCY_MS",
     "TEMP_WRITE_LATENCY_MS",
@@ -232,6 +241,295 @@ def _load_project_env() -> None:
     """Load the project .env file from a stable repo-root location."""
 
     load_dotenv(dotenv_path=DOTENV_PATH, override=False)
+
+
+def _load_oci_config() -> dict[str, Any]:
+    """Load OCI config for offline Object Storage and embedding helpers."""
+
+    _load_project_env()
+    try:
+        import oci
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(
+            "oci is required for Object Storage and embedding hook integration. "
+            "Install it with `pip install oci`."
+        ) from exc
+
+    config_profile = os.getenv("OCI_CONFIG_PROFILE", "DEFAULT")
+    config_path = os.getenv("OCI_CONFIG_FILE", "~/.oci/config")
+    return oci.config.from_file(os.path.expanduser(config_path), config_profile)
+
+
+def _resolve_source_mode() -> str:
+    raw_value = str(os.getenv("AWR_SOURCE_MODE", SOURCE_MODE_LOCAL)).strip().upper()
+    if raw_value in {SOURCE_MODE_LOCAL, SOURCE_MODE_OBJECT_STORAGE}:
+        return raw_value
+    raise ValueError("AWR_SOURCE_MODE must be LOCAL or OBJECT_STORAGE.")
+
+
+def _get_object_storage_namespace_from_env() -> str | None:
+    for env_name in ("OCI_NAMESPACE", "OCI_OBJECT_STORAGE_NAMESPACE"):
+        value = str(os.getenv(env_name, "")).strip()
+        if value:
+            return value
+    return None
+
+
+def _get_object_storage_bucket_name() -> str | None:
+    for env_name in ("OCI_BUCKET_NAME", "OCI_OBJECT_STORAGE_BUCKET"):
+        value = str(os.getenv(env_name, "")).strip()
+        if value:
+            return value
+    return None
+
+
+def _get_object_storage_prefix() -> str:
+    for env_name in ("OCI_OBJECT_PREFIX", "OCI_OBJECT_STORAGE_PREFIX"):
+        value = str(os.getenv(env_name, "")).strip().strip("/")
+        if value:
+            return value
+    return "awr/raw"
+
+
+def _has_any_object_storage_env() -> bool:
+    return any(
+        str(os.getenv(env_name, "")).strip()
+        for env_name in (
+            "OCI_NAMESPACE",
+            "OCI_BUCKET_NAME",
+            "OCI_OBJECT_PREFIX",
+            "OCI_OBJECT_STORAGE_NAMESPACE",
+            "OCI_OBJECT_STORAGE_BUCKET",
+            "OCI_OBJECT_STORAGE_PREFIX",
+        )
+    )
+
+
+def _resolve_object_storage_namespace_name(object_storage_client: Any) -> str:
+    namespace_name = _get_object_storage_namespace_from_env()
+    if namespace_name:
+        return namespace_name
+    namespace_response = object_storage_client.get_namespace()
+    resolved_namespace = str(getattr(namespace_response, "data", "")).strip()
+    if not resolved_namespace:
+        raise ValueError("Unable to resolve OCI namespace for Object Storage.")
+    return resolved_namespace
+
+
+def _validate_optional_object_storage_upload_configuration() -> bool:
+    bucket_name = _get_object_storage_bucket_name()
+    if bucket_name:
+        return True
+    if _has_any_object_storage_env():
+        LOGGER.warning(
+            "Object Storage upload disabled: bucket name is not configured. "
+            "Set OCI_BUCKET_NAME or OCI_OBJECT_STORAGE_BUCKET to enable uploads."
+        )
+    return False
+
+
+def _validate_required_object_storage_configuration() -> tuple[str, str]:
+    bucket_name = _get_object_storage_bucket_name()
+    if not bucket_name:
+        raise ValueError(
+            "OBJECT_STORAGE mode requires OCI_BUCKET_NAME or OCI_OBJECT_STORAGE_BUCKET."
+        )
+    return bucket_name, _get_object_storage_prefix()
+
+
+def _object_storage_is_configured() -> bool:
+    return _validate_optional_object_storage_upload_configuration()
+
+
+def _get_object_storage_client() -> Any:
+    config = _load_oci_config()
+    import oci
+
+    return oci.object_storage.ObjectStorageClient(config)
+
+
+def _build_object_storage_object_name(
+    source_system_id: int,
+    file_hash: str,
+    source_file_name: str,
+) -> str:
+    prefix = _get_object_storage_prefix()
+    safe_file_name = re.sub(r"[^A-Za-z0-9._-]+", "_", source_file_name)
+    return f"{prefix}/source_system_{source_system_id}/{file_hash}/{safe_file_name}"
+
+
+def _build_object_store_uri(
+    namespace_name: str,
+    bucket_name: str,
+    object_name: str,
+) -> str:
+    return f"oci://{namespace_name}/{bucket_name}/{object_name}"
+
+
+def _parse_object_store_uri(object_store_uri: str) -> tuple[str, str, str]:
+    parsed = urlparse(object_store_uri)
+    if parsed.scheme != "oci":
+        raise ValueError(f"Unsupported object URI scheme: {object_store_uri}")
+    namespace_name = parsed.netloc
+    object_path = parsed.path.lstrip("/")
+    path_parts = object_path.split("/", 1)
+    if not namespace_name or len(path_parts) != 2:
+        raise ValueError(f"Invalid OCI object URI: {object_store_uri}")
+    bucket_name, object_name = path_parts
+    if not bucket_name or not object_name:
+        raise ValueError(f"Invalid OCI object URI: {object_store_uri}")
+    return namespace_name, bucket_name, object_name
+
+
+def upload_raw_awr_to_object_storage(
+    file_path: str | Path,
+    source_system_id: int,
+    file_hash: str,
+    object_storage_client: Any | None = None,
+    namespace_name: str | None = None,
+    bucket_name: str | None = None,
+) -> str | None:
+    """Upload one raw AWR file to Object Storage when configured."""
+
+    if not _object_storage_is_configured():
+        return None
+
+    file_path_obj = Path(file_path)
+    client = object_storage_client or _get_object_storage_client()
+    resolved_namespace_name = namespace_name or _resolve_object_storage_namespace_name(
+        client
+    )
+    resolved_bucket_name = bucket_name or _get_object_storage_bucket_name()
+    if not resolved_bucket_name:
+        raise ValueError(
+            "Object Storage upload requires OCI_BUCKET_NAME or OCI_OBJECT_STORAGE_BUCKET."
+        )
+    object_name = _build_object_storage_object_name(
+        source_system_id=source_system_id,
+        file_hash=file_hash,
+        source_file_name=file_path_obj.name,
+    )
+    with file_path_obj.open("rb") as source_handle:
+        client.put_object(
+            namespace_name=resolved_namespace_name,
+            bucket_name=resolved_bucket_name,
+            object_name=object_name,
+            put_object_body=source_handle,
+        )
+    object_store_uri = _build_object_store_uri(
+        resolved_namespace_name,
+        resolved_bucket_name,
+        object_name,
+    )
+    LOGGER.info("Raw AWR uploaded to Object Storage: %s", object_store_uri)
+    return object_store_uri
+
+
+def list_awr_objects(
+    object_storage_client: Any,
+    namespace_name: str,
+    bucket_name: str,
+    prefix: str,
+) -> list[str]:
+    """List candidate AWR objects under one Object Storage prefix."""
+
+    response = object_storage_client.list_objects(
+        namespace_name=namespace_name,
+        bucket_name=bucket_name,
+        prefix=prefix,
+        fields="name,size,timeCreated",
+        limit=1000,
+    )
+    data = getattr(response, "data", None)
+    object_summaries = list(getattr(data, "objects", []) or [])
+    object_names: list[str] = []
+    for object_summary in object_summaries:
+        object_name = str(getattr(object_summary, "name", "")).strip()
+        if (
+            not object_name
+            or object_name.endswith("/")
+            or not object_name.lower().endswith(".out")
+        ):
+            continue
+        object_names.append(object_name)
+    return sorted(object_names)
+
+
+def download_object_to_temp(
+    object_storage_client: Any,
+    namespace_name: str,
+    bucket_name: str,
+    object_name: str,
+) -> Path:
+    """Download one Object Storage AWR object to a temp file for parsing."""
+
+    response = object_storage_client.get_object(
+        namespace_name=namespace_name,
+        bucket_name=bucket_name,
+        object_name=object_name,
+    )
+    suffix = Path(object_name).suffix or ".out"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_handle:
+        temp_handle.write(response.data.content)
+        return Path(temp_handle.name)
+
+
+def _download_object_to_temp_file(object_store_uri: str) -> Path:
+    """Download one Object Storage AWR object to a temp file for parsing."""
+
+    namespace_name, bucket_name, object_name = _parse_object_store_uri(object_store_uri)
+    client = _get_object_storage_client()
+    return download_object_to_temp(
+        object_storage_client=client,
+        namespace_name=namespace_name,
+        bucket_name=bucket_name,
+        object_name=object_name,
+    )
+
+
+def _load_embedding_hook() -> Any:
+    hook_path = str(os.getenv("AWR_EMBEDDING_HOOK", "")).strip()
+    if not hook_path:
+        return None
+    module_name, separator, function_name = hook_path.partition(":")
+    if not separator or not module_name or not function_name:
+        raise ValueError(
+            "AWR_EMBEDDING_HOOK must use the format 'module.path:function_name'."
+        )
+    module = importlib.import_module(module_name)
+    hook = getattr(module, function_name, None)
+    if hook is None or not callable(hook):
+        raise ValueError(f"Configured embedding hook is not callable: {hook_path}")
+    return hook
+
+
+def _embedding_to_vector_literal(embedding: Any) -> str | None:
+    if embedding is None:
+        return None
+    if isinstance(embedding, str):
+        normalized = embedding.strip()
+        return normalized or None
+    if isinstance(embedding, (list, tuple)):
+        numeric_values: list[str] = []
+        for value in embedding:
+            numeric_value = _safe_float(value)
+            if numeric_value is None:
+                return None
+            numeric_values.append(str(numeric_value))
+        return "[" + ",".join(numeric_values) + "]"
+    return None
+
+
+def generate_text_embedding(text: str) -> str | None:
+    """Return a VECTOR literal string when an external embedding hook is configured."""
+
+    normalized_text = text.strip()
+    if not normalized_text:
+        return None
+    hook = _load_embedding_hook()
+    if hook is None:
+        return None
+    return _embedding_to_vector_literal(hook(normalized_text))
 
 
 class DbCursor(Protocol):
@@ -753,11 +1051,21 @@ def build_report_record(
     file_hash: str,
     source_system_id: int,
     ingest_run_id: int,
+    object_store_uri: str | None = None,
+    source_file_name_override: str | None = None,
+    source_file_path_override: Any = _UNSET,
 ) -> dict[str, Any]:
     """Map one parsed AWR file into an AWR_REPORT row."""
 
     metadata = parse_result.run_metadata
     file_path_obj = Path(file_path)
+    source_file_name = source_file_name_override or file_path_obj.name
+    if source_file_path_override is _UNSET:
+        source_file_path = str(file_path_obj.resolve())
+    elif source_file_path_override is None:
+        source_file_path = None
+    else:
+        source_file_path = str(Path(source_file_path_override).expanduser())
     header_fields = _extract_report_header_fields(file_path_obj)
     snap_begin = normalize_timestamp(metadata.begin_snapshot_time)
     snap_end = normalize_timestamp(metadata.end_snapshot_time)
@@ -785,9 +1093,9 @@ def build_report_record(
         "source_system_id": source_system_id,
         "ingest_run_id": ingest_run_id,
         "replay_of_awr_id": None,
-        "source_file_name": file_path_obj.name,
-        "source_file_path": str(file_path_obj.resolve()),
-        "object_store_uri": None,
+        "source_file_name": source_file_name,
+        "source_file_path": source_file_path,
+        "object_store_uri": object_store_uri,
         "file_hash_sha256": file_hash,
         "file_size_bytes": file_path_obj.stat().st_size,
         "report_format": "AWR_OUT",
@@ -1800,13 +2108,66 @@ def process_awr_batch(
             db_conn = get_db_connection()
 
         LOGGER.info("Entering DB ingest flow")
-        awr_files = load_awr_files(input_dir)
+        source_mode = _resolve_source_mode()
+        object_storage_client: Any | None = None
+        object_storage_namespace: str | None = None
+        object_storage_bucket: str | None = None
+        upload_to_object_storage = False
+        if source_mode == SOURCE_MODE_OBJECT_STORAGE:
+            object_storage_bucket, object_storage_prefix = (
+                _validate_required_object_storage_configuration()
+            )
+            object_storage_client = _get_object_storage_client()
+            object_storage_namespace = _resolve_object_storage_namespace_name(
+                object_storage_client
+            )
+            LOGGER.info(
+                "Listing AWR objects from Object Storage: namespace=%s bucket=%s prefix=%s",
+                object_storage_namespace,
+                object_storage_bucket,
+                object_storage_prefix,
+            )
+            awr_sources: list[dict[str, Any]] = [
+                {
+                    "source_mode": SOURCE_MODE_OBJECT_STORAGE,
+                    "object_name": object_name,
+                    "display_name": object_name,
+                    "source_file_name": Path(object_name).name,
+                    "object_store_uri": _build_object_store_uri(
+                        object_storage_namespace,
+                        object_storage_bucket,
+                        object_name,
+                    ),
+                }
+                for object_name in list_awr_objects(
+                    object_storage_client=object_storage_client,
+                    namespace_name=object_storage_namespace,
+                    bucket_name=object_storage_bucket,
+                    prefix=object_storage_prefix,
+                )
+            ]
+        else:
+            awr_files = load_awr_files(input_dir)
+            awr_sources = [
+                {
+                    "source_mode": SOURCE_MODE_LOCAL,
+                    "file_path": file_path,
+                    "display_name": str(file_path),
+                    "source_file_name": Path(file_path).name,
+                    "object_store_uri": None,
+                }
+                for file_path in awr_files
+            ]
+            upload_to_object_storage = _validate_optional_object_storage_upload_configuration()
+
         ingest_run_id = start_ingest_run(
             conn=db_conn,
             pipeline_name=PIPELINE_NAME,
             pipeline_version=PIPELINE_VERSION,
             trigger_type=os.getenv("AWR_TRIGGER_TYPE", "MANUAL"),
         )
+        upsert_parser_knowledge_registry(db_conn)
+        db_conn.commit()
         scoring_model: dict[str, Any] | None = None
         scoring_weights: list[dict[str, Any]] = []
         try:
@@ -1834,16 +2195,48 @@ def process_awr_batch(
             downstream_error_count = 0
             downstream_errors: list[dict[str, Any]] = []
 
-        file_count = len(awr_files)
+        file_count = len(awr_sources)
         success_count = 0
         skipped_count = 0
         error_count = 0
         errors: list[dict[str, Any]] = []
         affected_databases: set[tuple[str, int | None]] = set()
 
-        for file_path in awr_files:
-            LOGGER.info("Processing AWR file: %s", file_path)
+        for source_entry in awr_sources:
+            temp_file_path: Path | None = None
+            file_path: Path | None = None
+            source_display_name = str(source_entry["display_name"])
+            source_file_name = str(source_entry["source_file_name"])
+            source_reference = str(
+                source_entry.get("object_store_uri") or source_entry.get("file_path") or source_display_name
+            )
+            LOGGER.info("Processing AWR file: %s", source_display_name)
             try:
+                if source_entry["source_mode"] == SOURCE_MODE_OBJECT_STORAGE:
+                    if (
+                        object_storage_client is None
+                        or object_storage_namespace is None
+                        or object_storage_bucket is None
+                    ):
+                        raise RuntimeError(
+                            "Object Storage client is not initialized for OBJECT_STORAGE mode."
+                        )
+                    object_name = str(source_entry["object_name"])
+                    LOGGER.info("Downloading object: %s", object_name)
+                    temp_file_path = download_object_to_temp(
+                        object_storage_client=object_storage_client,
+                        namespace_name=object_storage_namespace,
+                        bucket_name=object_storage_bucket,
+                        object_name=object_name,
+                    )
+                    file_path = temp_file_path
+                    LOGGER.info("Processing object: %s", object_name)
+                else:
+                    file_path = Path(source_entry["file_path"])
+
+                if file_path is None:
+                    raise RuntimeError("AWR source file path could not be resolved.")
+
                 parse_result = parse_awr_file(file_path)
                 file_hash = compute_file_hash(file_path)
                 source_system_record = build_source_system_record(parse_result)
@@ -1851,6 +2244,16 @@ def process_awr_batch(
                     db_conn,
                     source_system_record,
                 )
+                if source_entry["source_mode"] == SOURCE_MODE_OBJECT_STORAGE:
+                    object_store_uri = source_entry["object_store_uri"]
+                elif upload_to_object_storage:
+                    object_store_uri = upload_raw_awr_to_object_storage(
+                        file_path=file_path,
+                        source_system_id=source_system_id,
+                        file_hash=file_hash,
+                    )
+                else:
+                    object_store_uri = None
 
                 report_record = build_report_record(
                     parse_result=parse_result,
@@ -1858,6 +2261,13 @@ def process_awr_batch(
                     file_hash=file_hash,
                     source_system_id=source_system_id,
                     ingest_run_id=ingest_run_id,
+                    object_store_uri=object_store_uri,
+                    source_file_name_override=source_file_name,
+                    source_file_path_override=(
+                        None
+                        if source_entry["source_mode"] == SOURCE_MODE_OBJECT_STORAGE
+                        else _UNSET
+                    ),
                 )
                 duplicate_match = None
                 if not _allow_duplicate_report_ingest(report_record):
@@ -1866,7 +2276,7 @@ def process_awr_batch(
                     db_conn.rollback()
                     LOGGER.info(
                         "Duplicate AWR report skipped: file=%s existing_awr_id=%s reason=%s ingest_mode=%s",
-                        Path(file_path).name,
+                        source_file_name,
                         duplicate_match[0],
                         duplicate_match[1],
                         report_record["ingest_mode"],
@@ -1874,6 +2284,11 @@ def process_awr_batch(
                     skipped_count += 1
                     continue
                 awr_id = insert_report(db_conn, report_record)
+                replace_parser_unknowns(
+                    db_conn,
+                    awr_id=awr_id,
+                    parse_result=parse_result,
+                )
 
                 metric_rows = build_metric_fact_rows(
                     parse_result=parse_result,
@@ -1928,7 +2343,7 @@ def process_awr_batch(
                             {
                                 "stage": "scoring",
                                 "awr_id": awr_id,
-                                "file_name": Path(file_path).name,
+                                "file_name": source_file_name,
                                 "error_type": "ScorePersistenceError",
                                 "error_message": (
                                     "Deterministic scoring failed after raw ingest commit boundary."
@@ -1950,7 +2365,7 @@ def process_awr_batch(
                 db_conn.commit()
                 LOGGER.info(
                     "Commit complete: file=%s awr_id=%s",
-                    Path(file_path).name,
+                    source_file_name,
                     awr_id,
                 )
                 db_name = str(report_record["db_name"] or "").strip()
@@ -1962,16 +2377,26 @@ def process_awr_batch(
                 db_conn.rollback()
                 LOGGER.exception(
                     "Per-file ingest failure; rollback complete for %s",
-                    file_path,
+                    source_display_name,
                 )
                 error_count += 1
                 error_entry = {
-                    "file_name": Path(file_path).name,
-                    "file_path": str(Path(file_path).resolve()),
+                    "file_name": source_file_name,
+                    "file_path": source_reference,
                     "error_type": type(exc).__name__,
                     "error_message": str(exc),
                 }
                 errors.append(error_entry)
+            finally:
+                if temp_file_path is not None:
+                    try:
+                        temp_file_path.unlink(missing_ok=True)
+                        LOGGER.info("Temporary file removed: %s", temp_file_path)
+                    except OSError:
+                        LOGGER.warning(
+                            "Failed to remove temporary Object Storage download: %s",
+                            temp_file_path,
+                        )
 
         final_status = _derive_operation_status(
             processed_count=success_count,
@@ -2006,7 +2431,7 @@ def process_awr_batch(
                 )
 
         summary_notes = (
-            f"Processed {file_count} file(s); "
+            f"Processed {file_count} file(s) from {source_mode}; "
             f"{success_count} succeeded, {skipped_count} skipped as duplicates, "
             f"{error_count} failed."
         )
@@ -2035,6 +2460,7 @@ def process_awr_batch(
         )
         return {
             "ingest_run_id": ingest_run_id,
+            "source_mode": source_mode,
             "status": final_status,
             "file_count": file_count,
             "success_count": success_count,
@@ -2517,6 +2943,336 @@ def load_reports_for_feature_rebuild(
     return results
 
 
+def load_reports_for_parser_refresh(
+    conn: Any,
+    source_system_id: int | None = None,
+    awr_ids: set[int] | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """Load canonical AWR reports eligible for parser-output refresh."""
+
+    binds: dict[str, Any] = {}
+    where_clauses = [
+        "r.REPLAY_OF_AWR_ID is null",
+    ]
+    if source_system_id is not None:
+        where_clauses.append("r.SOURCE_SYSTEM_ID = :source_system_id")
+        binds["source_system_id"] = source_system_id
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select
+                r.AWR_ID,
+                r.SOURCE_SYSTEM_ID,
+                r.SOURCE_FILE_NAME,
+                r.SOURCE_FILE_PATH,
+                r.OBJECT_STORE_URI,
+                r.DB_NAME,
+                r.DBID
+              from AWR_REPORT r
+             where {' and '.join(where_clauses)}
+             order by r.AWR_ID
+            """,
+            binds,
+        )
+        rows = cursor.fetchall()
+
+    selected_awr_ids = awr_ids or set()
+    results: list[dict[str, Any]] = []
+    found_awr_ids: set[int] = set()
+    for row in rows:
+        awr_id = int(row[0])
+        if selected_awr_ids and awr_id not in selected_awr_ids:
+            continue
+        found_awr_ids.add(awr_id)
+        results.append(
+            {
+                "awr_id": awr_id,
+                "source_system_id": int(row[1]),
+                "source_file_name": row[2],
+                "source_file_path": row[3],
+                "source_object_uri": row[4],
+                "object_store_uri": row[4],
+                "db_name": row[5],
+                "dbid": row[6],
+            }
+        )
+
+    skipped_count = (
+        len(selected_awr_ids - found_awr_ids)
+        if selected_awr_ids
+        else 0
+    )
+    return results, skipped_count
+
+
+def _resolve_report_source_to_local_path(
+    report_row: dict[str, Any],
+) -> tuple[Path | None, Path | None]:
+    """Resolve raw AWR content to a local file path, downloading from Object Storage if needed."""
+
+    direct_path_value = str(report_row.get("source_file_path") or "").strip()
+    if direct_path_value:
+        direct_path = Path(direct_path_value)
+        if direct_path.exists() and direct_path.is_file():
+            return direct_path.resolve(), None
+
+    object_store_uri = str(
+        report_row.get("source_object_uri")
+        or report_row.get("object_store_uri")
+        or ""
+    ).strip()
+    if object_store_uri:
+        temp_path = _download_object_to_temp_file(object_store_uri)
+        return temp_path, temp_path
+
+    source_file_name = str(report_row.get("source_file_name") or "").strip()
+    if not source_file_name:
+        return None, None
+
+    fallback_directories = [
+        Path(os.getenv("AWR_INPUT_DIR", "")).expanduser(),
+        PROJECT_ROOT / "data" / "input",
+    ]
+    for directory in fallback_directories:
+        if not str(directory):
+            continue
+        candidate_path = directory / source_file_name
+        if candidate_path.exists() and candidate_path.is_file():
+            return candidate_path.resolve(), None
+
+    return None, None
+
+
+def update_report_parser_output_json(
+    conn: Any,
+    awr_id: int,
+    parse_result: ParseResult,
+) -> None:
+    """Refresh persisted parser payload fields in place for one AWR report."""
+
+    parse_warnings = list(parse_result.parse_warnings)
+    parse_status = "PARTIAL" if parse_warnings else "PARSED"
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            update AWR_REPORT
+               set RAW_METADATA_JSON = :raw_metadata_json,
+                   PARSER_OUTPUT_JSON = :parser_output_json,
+                   PARSER_WARNINGS_JSON = :parser_warnings_json,
+                   PARSE_STATUS = :parse_status
+             where AWR_ID = :awr_id
+            """,
+            {
+                "awr_id": awr_id,
+                "raw_metadata_json": _json_dumps(asdict(parse_result.run_metadata)),
+                "parser_output_json": _json_dumps(parse_result.to_dict()),
+                "parser_warnings_json": _json_dumps(parse_warnings),
+                "parse_status": parse_status,
+            },
+        )
+
+
+def upsert_parser_knowledge_registry(conn: Any) -> None:
+    """Persist canonical parser section knowledge for offline evolution workflows."""
+
+    for definition in get_section_registry():
+        description = (
+            f"Deterministic parser registry entry for {definition.canonical_name} "
+            f"({definition.section_kind} section, extractor={definition.extractor_id})."
+        )
+        embedding = generate_text_embedding(
+            f"{definition.canonical_name}. {description}"
+        )
+        aliases_json = _json_dumps(list(definition.aliases))
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                select KNOWLEDGE_ID
+                  from AWR_PARSER_KNOWLEDGE
+                 where CONCEPT_TYPE = :concept_type
+                   and CANONICAL_NAME = :canonical_name
+                 fetch first 1 rows only
+                """,
+                {
+                    "concept_type": "SECTION",
+                    "canonical_name": definition.canonical_name,
+                },
+            )
+            row = cursor.fetchone()
+        if row:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    update AWR_PARSER_KNOWLEDGE
+                       set ALIASES_JSON = :aliases_json,
+                           DESCRIPTION = :description,
+                           EMBEDDING = :embedding,
+                           UPDATED_AT = SYSTIMESTAMP
+                     where KNOWLEDGE_ID = :knowledge_id
+                    """,
+                    {
+                        "knowledge_id": int(row[0]),
+                        "aliases_json": aliases_json,
+                        "description": description,
+                        "embedding": embedding,
+                    },
+                )
+        else:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    insert into AWR_PARSER_KNOWLEDGE (
+                        CONCEPT_TYPE,
+                        CANONICAL_NAME,
+                        ALIASES_JSON,
+                        DESCRIPTION,
+                        EMBEDDING
+                    ) values (
+                        :concept_type,
+                        :canonical_name,
+                        :aliases_json,
+                        :description,
+                        :embedding
+                    )
+                    """,
+                    {
+                        "concept_type": "SECTION",
+                        "canonical_name": definition.canonical_name,
+                        "aliases_json": aliases_json,
+                        "description": description,
+                        "embedding": embedding,
+                    },
+                )
+
+
+def replace_parser_unknowns(
+    conn: Any,
+    awr_id: int,
+    parse_result: ParseResult,
+) -> int:
+    """Replace persisted parser unknown rows for one AWR report."""
+
+    diagnostics = parse_result.parse_diagnostics
+    unknown_sections = diagnostics.unknown_sections if diagnostics else []
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "delete from AWR_PARSER_UNKNOWN where AWR_ID = :awr_id",
+            {"awr_id": awr_id},
+        )
+
+    rows = [
+        _parser_unknown_row(awr_id, unknown_section)
+        for unknown_section in unknown_sections
+    ]
+    if rows:
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                """
+                insert into AWR_PARSER_UNKNOWN (
+                    AWR_ID,
+                    PARSER_STAGE,
+                    RAW_TEXT,
+                    CONTEXT_BEFORE,
+                    CONTEXT_AFTER,
+                    STATUS,
+                    EMBEDDING
+                ) values (
+                    :awr_id,
+                    :parser_stage,
+                    :raw_text,
+                    :context_before,
+                    :context_after,
+                    :status,
+                    :embedding
+                )
+                """,
+                rows,
+            )
+    return len(rows)
+
+
+def _parser_unknown_row(
+    awr_id: int,
+    unknown_section: UnknownParserElement,
+) -> dict[str, Any]:
+    return {
+        "awr_id": awr_id,
+        "parser_stage": unknown_section.parser_stage,
+        "raw_text": unknown_section.raw_text,
+        "context_before": _json_dumps(unknown_section.context_before),
+        "context_after": _json_dumps(unknown_section.context_after),
+        "status": "NEW",
+        "embedding": generate_text_embedding(unknown_section.raw_text),
+    }
+
+
+def find_similar_parser_knowledge(
+    conn: Any,
+    query_vector: str,
+    top_n: int = 5,
+) -> list[dict[str, Any]]:
+    """Return the nearest parser knowledge rows for one query vector."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select
+                KNOWLEDGE_ID,
+                CONCEPT_TYPE,
+                CANONICAL_NAME,
+                DESCRIPTION,
+                VECTOR_DISTANCE(EMBEDDING, :query_vector, COSINE) as distance
+              from AWR_PARSER_KNOWLEDGE
+             where EMBEDDING is not null
+             order by VECTOR_DISTANCE(EMBEDDING, :query_vector, COSINE)
+             fetch first :top_n rows only
+            """,
+            {
+                "query_vector": query_vector,
+                "top_n": top_n,
+            },
+        )
+        rows = cursor.fetchall()
+    return [
+        {
+            "knowledge_id": int(row[0]),
+            "concept_type": row[1],
+            "canonical_name": row[2],
+            "description": row[3],
+            "distance": _safe_float(row[4]),
+        }
+        for row in rows
+    ]
+
+
+def find_similar_knowledge_for_unknown(
+    conn: Any,
+    unknown_id: int,
+    top_n: int = 5,
+) -> list[dict[str, Any]]:
+    """Return the nearest parser knowledge rows for one persisted unknown."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            select EMBEDDING
+              from AWR_PARSER_UNKNOWN
+             where UNKNOWN_ID = :unknown_id
+            """,
+            {"unknown_id": unknown_id},
+        )
+        row = cursor.fetchone()
+    if not row or row[0] is None:
+        return []
+    query_vector = str(row[0])
+    return find_similar_parser_knowledge(
+        conn=conn,
+        query_vector=query_vector,
+        top_n=top_n,
+    )
+
+
 def run_db_trend_analysis(
     conn: DbConnection,
     affected_databases: set[tuple[str, int | None]],
@@ -2541,6 +3297,181 @@ def run_db_trend_analysis(
         )
         results.append(trend_result)
     return results
+
+
+def refresh_parser_output_json(
+    conn: DbConnection | None = None,
+    source_system_id: int | None = None,
+    awr_ids: set[int] | None = None,
+    refresh_rebuild_derived: bool = False,
+) -> dict[str, Any]:
+    """Refresh persisted parser output using the current parser and raw source files."""
+
+    managed_connection = conn is None
+    db_conn: DbConnection | None = conn
+    try:
+        if db_conn is None:
+            db_conn = get_db_connection()
+
+        upsert_parser_knowledge_registry(db_conn)
+        db_conn.commit()
+
+        candidate_reports, skipped_count = load_reports_for_parser_refresh(
+            conn=db_conn,
+            source_system_id=source_system_id,
+            awr_ids=awr_ids,
+        )
+        candidate_count = len(candidate_reports)
+        processed_count = 0
+        updated_count = 0
+        missing_file_count = 0
+        parse_error_count = 0
+        refresh_error_count = 0
+        downstream_error_count = 0
+        errors: list[dict[str, Any]] = []
+        refreshed_awr_ids: set[int] = set()
+
+        for report_row in candidate_reports:
+            awr_id = int(report_row["awr_id"])
+            processed_count += 1
+            temp_file_path: Path | None = None
+            try:
+                source_file_path, temp_file_path = _resolve_report_source_to_local_path(
+                    report_row
+                )
+                if source_file_path is None:
+                    missing_file_count += 1
+                    errors.append(
+                        {
+                            "awr_id": awr_id,
+                            "stage": "source_file_resolution",
+                            "error_type": "MissingSourceFile",
+                            "error_message": "Raw source file could not be resolved for parser refresh.",
+                            "source_file_name": report_row["source_file_name"],
+                            "source_file_path": report_row["source_file_path"],
+                        }
+                    )
+                    db_conn.rollback()
+                    continue
+
+                try:
+                    parse_result = parse_awr_file(source_file_path)
+                except Exception as exc:  # noqa: BLE001
+                    parse_error_count += 1
+                    errors.append(
+                        {
+                            "awr_id": awr_id,
+                            "stage": "parse",
+                            "error_type": type(exc).__name__,
+                            "error_message": str(exc),
+                            "source_file_path": str(source_file_path),
+                        }
+                    )
+                    db_conn.rollback()
+                    continue
+
+                update_report_parser_output_json(
+                    db_conn,
+                    awr_id=awr_id,
+                    parse_result=parse_result,
+                )
+                replace_parser_unknowns(
+                    db_conn,
+                    awr_id=awr_id,
+                    parse_result=parse_result,
+                )
+                db_conn.commit()
+                updated_count += 1
+                refreshed_awr_ids.add(awr_id)
+                LOGGER.info(
+                    "Parser output refresh complete: awr_id=%s source_file=%s",
+                    awr_id,
+                    source_file_path.name,
+                )
+            except Exception as exc:  # noqa: BLE001
+                db_conn.rollback()
+                refresh_error_count += 1
+                LOGGER.exception("Parser output refresh failed for AWR_ID=%s", awr_id)
+                errors.append(
+                    {
+                        "awr_id": awr_id,
+                        "stage": "refresh_update",
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                        "source_file_name": report_row["source_file_name"],
+                    }
+                )
+            finally:
+                if temp_file_path is not None:
+                    try:
+                        temp_file_path.unlink(missing_ok=True)
+                    except OSError:
+                        LOGGER.warning(
+                            "Failed to remove temporary Object Storage download: %s",
+                            temp_file_path,
+                        )
+
+        derived_refresh_result: dict[str, Any] | None = None
+        if refresh_rebuild_derived and refreshed_awr_ids:
+            try:
+                derived_refresh_result = rebuild_feature_vectors(
+                    conn=db_conn,
+                    awr_ids=refreshed_awr_ids,
+                    only_missing_promoted_keys=False,
+                )
+                downstream_error_count = int(
+                    derived_refresh_result.get("error_count", 0)
+                ) + int(
+                    derived_refresh_result.get("downstream_error_count", 0)
+                )
+            except Exception as exc:  # noqa: BLE001
+                downstream_error_count += 1
+                LOGGER.exception("Optional downstream rebuild failed after parser refresh")
+                errors.append(
+                    {
+                        "stage": "downstream_rebuild",
+                        "error_type": type(exc).__name__,
+                        "error_message": str(exc),
+                    }
+                )
+
+        status = _derive_operation_status(
+            processed_count=updated_count,
+            error_count=skipped_count + missing_file_count + parse_error_count + refresh_error_count,
+            downstream_error_count=downstream_error_count,
+        )
+        notes = (
+            f"Processed {processed_count} parser refresh candidate(s); "
+            f"{updated_count} updated, {skipped_count} skipped, "
+            f"{missing_file_count} missing files, {parse_error_count} parse failures."
+        )
+        if refresh_error_count:
+            notes += f" {refresh_error_count} refresh update failure(s)."
+        if refresh_rebuild_derived:
+            if refreshed_awr_ids:
+                notes += " Optional downstream rebuild was requested."
+            else:
+                notes += " Optional downstream rebuild was requested but no parser refreshes succeeded."
+        if candidate_count == 0:
+            notes = "No canonical AWR reports matched parser refresh selection."
+
+        return {
+            "mode": REFRESH_PARSER_OUTPUT_JSON_MODE,
+            "candidate_count": candidate_count,
+            "processed_count": processed_count,
+            "updated_count": updated_count,
+            "skipped_count": skipped_count,
+            "missing_file_count": missing_file_count,
+            "parse_error_count": parse_error_count,
+            "downstream_error_count": downstream_error_count,
+            "status": status,
+            "errors": errors,
+            "notes": notes,
+            "derived_refresh_result": derived_refresh_result,
+        }
+    finally:
+        if managed_connection and db_conn is not None:
+            db_conn.close()
 
 
 def load_db_trend_targets(
@@ -4054,6 +4985,9 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].strip().upper() == FEATURE_REBUILD_MODE:
         maintenance_mode = FEATURE_REBUILD_MODE
         args = args[1:]
+    elif args and args[0].strip().upper() == REFRESH_PARSER_OUTPUT_JSON_MODE:
+        maintenance_mode = REFRESH_PARSER_OUTPUT_JSON_MODE
+        args = args[1:]
     elif args and args[0].strip().upper() == DB_TREND_ANALYSIS_MODE:
         maintenance_mode = DB_TREND_ANALYSIS_MODE
         args = args[1:]
@@ -4069,6 +5003,18 @@ def main(argv: list[str] | None = None) -> int:
             source_system_id=source_system_id,
             awr_ids=awr_ids,
             only_missing_promoted_keys=only_missing_promoted_keys,
+        )
+    elif maintenance_mode == REFRESH_PARSER_OUTPUT_JSON_MODE:
+        source_system_id = _to_int(os.getenv("AWR_BACKFILL_SOURCE_SYSTEM_ID"))
+        awr_ids = _parse_comma_separated_ids(os.getenv("AWR_BACKFILL_AWR_IDS"))
+        refresh_rebuild_derived = (
+            str(os.getenv("AWR_REFRESH_REBUILD_DERIVED", "FALSE")).strip().upper()
+            in {"1", "Y", "YES", "TRUE"}
+        )
+        result = refresh_parser_output_json(
+            source_system_id=source_system_id,
+            awr_ids=awr_ids,
+            refresh_rebuild_derived=refresh_rebuild_derived,
         )
     elif maintenance_mode == DB_TREND_ANALYSIS_MODE:
         db_conn = get_db_connection()

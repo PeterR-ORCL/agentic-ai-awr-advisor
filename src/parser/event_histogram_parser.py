@@ -10,7 +10,9 @@ EVENT_HEADER_PATTERN = re.compile(r"^\s*Event:\s+(.+?)\s*$", re.IGNORECASE)
 BUCKET_PATTERN = re.compile(r"^\s*([0-9,]+(?:\.\d+)?)\s+([0-9,]+)\s*$")
 
 
-def parse_event_histograms(lines: list[str]) -> dict[str, list[dict[str, Any]]]:
+def parse_event_histograms(
+    lines: list[str],
+) -> dict[str, list[dict[str, Any]]]:
     """Parse event histograms keyed by event name."""
 
     histograms: dict[str, list[dict[str, Any]]] = {}

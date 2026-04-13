@@ -65,8 +65,12 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
     cpu_lines = _slice_section_lines(lines, sections_found.get("cpu"))
     waits_lines = _slice_section_lines(lines, sections_found.get("waits"))
     top_sql_lines = _slice_section_lines(lines, sections_found.get("top_sql"))
-    workload_note_lines = _slice_section_lines(lines, sections_found.get("workload_note"))
-    anomaly_flag_lines = _slice_section_lines(lines, sections_found.get("anomaly_flags"))
+    workload_note_lines = _slice_section_lines(
+        lines, sections_found.get("workload_note")
+    )
+    anomaly_flag_lines = _slice_section_lines(
+        lines, sections_found.get("anomaly_flags")
+    )
 
     cpu_metrics = parse_cpu_section(cpu_lines) if cpu_lines else []
     wait_events = parse_waits_section(waits_lines) if waits_lines else []
@@ -83,7 +87,7 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
     topology_signals = parse_topology_signals(
         lines=lines,
         wait_events=wait_events,
-        metadata=metadata_dict,
+        metadata=dict(metadata_dict),
     )
 
     return ParseResult(
@@ -105,7 +109,9 @@ def parse_awr_file(file_path: str | Path) -> ParseResult:
         workload_notes=workload_notes,
         anomaly_flags=anomaly_flags,
         parse_diagnostics=parse_diagnostics,
-        parse_warnings=metadata_warnings + parse_diagnostics.to_warning_messages(),
+        parse_warnings=(
+            metadata_warnings + parse_diagnostics.to_warning_messages()
+        ),
         parse_errors=[],
     )
 
@@ -114,7 +120,10 @@ def _slice_section_lines(
     lines: list[str],
     section_bounds: AwrSectionLocation | None,
 ) -> list[str]:
-    """Return the lines for a detected section using inclusive 1-based bounds."""
+    """
+    Return the lines for a detected section using inclusive 1-based
+    bounds.
+    """
 
     if not section_bounds:
         return []
@@ -127,11 +136,14 @@ def _slice_section_lines(
     if start_line < 1 or end_line < start_line:
         return []
 
-    return lines[start_line - 1 : end_line]
+    return lines[start_line - 1:end_line]
 
 
 def _extract_annotation_content(lines: list[str]) -> list[str]:
-    """Return non-header, non-divider content lines for a lightweight annotation section."""
+    """
+    Return non-header, non-divider content lines for a lightweight
+    annotation section.
+    """
 
     if not lines:
         return []

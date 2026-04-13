@@ -1,8 +1,8 @@
 # Agentic AI AWR Advisor
 
 <p align="center">
-  <b>From AWR → Decision → Action</b><br/>
-  Autonomous Performance & Sizing Advisor
+  <b>From AWR Data to Intelligent Decisions and Automated Action</b><br/>
+  Autonomous Database Performance Intelligence Platform
 </p>
 
 <p align="center">
@@ -12,24 +12,24 @@
   <img src="https://img.shields.io/badge/Status-Phase%204%20In%20Progress-blue"/>
   <img src="https://img.shields.io/badge/AI-Agentic-orange"/>
   <img src="https://img.shields.io/badge/Trend%20Engine-Enabled-purple"/>
-  <img src="https://img.shields.io/badge/Architecture-Deterministic-blueviolet"/>
+  <img src="https://img.shields.io/badge/Architecture-Cloud%20Native-blueviolet"/>
+  <img src="https://img.shields.io/badge/Intelligence-Deterministic-purple"/>
 </p>
 
 ---
 
 # Executive Summary
 
-This system represents a **new category of database intelligence platform**.
+The Agentic AI AWR Advisor is an Autonomous Database Performance Intelligence Platform that transforms Oracle AWR data into deterministic insights, autonomous decisions, and actionable outcomes.
 
-It transforms Oracle AWR reports into:
+It combines a deterministic analysis engine with an agentic AI layer to deliver:
 
-- Deterministic performance diagnostics  
-- Autonomous decision recommendations  
-- OCI-aware infrastructure sizing  
-- Future ML-ready feature vectors  
+- Root-cause diagnostics with full explainability  
+- Prioritized and evidence-based recommendations  
+- Autonomous decision support  
+- Scalable, cloud-native performance intelligence  
 
-> This is not reporting.  
-> This is a **decision system for database performance and cloud architecture.**
+> **This system replaces manual AWR interpretation with a repeatable, auditable, and automation-ready decision framework.**
 
 ---
 
@@ -109,7 +109,7 @@ flowchart LR
 
 ---
 
-# Object Storage Ingestion Flow (ADDED)
+## Object Storage Ingestion Flow (ADDED)
 
 ```mermaid
 flowchart LR
@@ -121,6 +121,32 @@ flowchart LR
     F --> G[Decision Engine]
     G --> H[Insights + Recommendations]
 ```
+
+---
+
+## Cloud-Native Design
+
+The platform is designed as a cloud-native pipeline:
+
+- Object Storage for raw AWR ingestion
+- Autonomous Database (ADB) for state and analytics
+- Deterministic parsing and feature extraction
+- Scalable ingestion for multi-AWR workloads
+
+**This enables enterprise-scale performance intelligence across environments.**
+
+---
+
+## Machine Learning Readiness
+
+The feature vector layer provides a foundation for:
+
+- Similarity-based workload analysis  
+- Pattern recognition across environments  
+- Future supervised learning models  
+- Outcome-based optimization  
+
+This **enables a transition from deterministic intelligence to adaptive learning systems.**
 
 ---
 

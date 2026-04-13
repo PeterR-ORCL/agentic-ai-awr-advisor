@@ -28,6 +28,7 @@ It combines a deterministic analysis engine with an agentic AI layer to deliver:
 - Prioritized and evidence-based recommendations  
 - Autonomous decision support  
 - Scalable, cloud-native performance intelligence  
+- Built to operate reliably across heterogeneous AWR formats without requiring schema normalization or manual adjustment
 
 > **This system replaces manual AWR interpretation with a repeatable, auditable, and automation-ready decision framework.**
 
@@ -75,6 +76,52 @@ This platform introduces:
 - No fabricated data or synthetic distributions  
 - Observability-first architecture  
 - Full auditability of decisions  
+
+---
+
+## AWR Format Resilience (NEW)
+
+AWR parsing is inherently **non-deterministic** due to format variability in report structure across database versions, configurations, and deployment topologies.
+
+Observed sources of variability include:
+- Version differences (11g, 12c, 19c, 23ai)
+- Topology differences (Single Instance, RAC, Data Guard, Exadata)
+- Feature-dependent sections (licensing / options enabled)
+- Section ordering inconsistencies
+- Formatting drift across patch levels and platforms
+
+This variability makes position-based or rigid parsing approaches unreliable in production environments.
+
+### Design Approach
+
+The parsing engine is implemented using a **section-driven, pattern-based architecture.**
+
+Key characteristics:
+- **Section discovery via semantic headers**
+Sections are identified using pattern matching rather than fixed offsets
+- **Loose coupling between detection and extraction**
+Section boundaries are resolved independently from parsing logic
+- **Content normalization layer**
+Raw text is sanitized to remove formatting artifacts and delimiters
+- **Graceful degradation model**
+Missing or partial sections do not interrupt ingestion
+- **Deterministic extraction rules**
+All parsed outputs are derived from explicit patterns (no inference)
+- **Parse diagnostics and validation signals**
+The system produces structured diagnostics for traceability and audit
+
+### Operational Behavior
+- Parsing is resilient to missing sections
+- Partial data is still ingested and classified
+- Invalid or ambiguous content is isolated without pipeline failure
+- All outputs remain deterministic and reproducible
+
+### Outcome
+- Stable ingestion across heterogeneous AWR datasets
+- Compatibility with mixed-version enterprise environments
+- No dependency on a canonical AWR format
+
+> **The system is engineered to operate on real-world AWR data, not controlled or idealized report structures.**
 
 ---
 

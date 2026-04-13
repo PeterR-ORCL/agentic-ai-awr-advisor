@@ -180,7 +180,7 @@ Feature vectors enable:
 
 ---
 
-# Vector Intelligence Layer (ADDED)
+## Vector Intelligence Layer (ADDED)
 
 The feature vector layer is the foundation for:
 
@@ -358,7 +358,7 @@ Enables:
 
 ---
 
-# Learning Loop (ADDED)
+## Learning Loop (ADDED)
 
 ```mermaid
 flowchart LR

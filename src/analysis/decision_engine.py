@@ -11,7 +11,9 @@ QUALIFICATION_THRESHOLD = 0.35
 OK_STATUS_THRESHOLD = 25.0
 WARNING_STATUS_THRESHOLD = 60.0
 
-FEATURE_DOMAIN_RULES: dict[str, dict[str, tuple[float, float] | tuple[float, float, str]]] = {
+FEATURE_DOMAIN_RULES: dict[
+    str, dict[str, tuple[float, float] | tuple[float, float, str]]
+] = {
     "CPU": {
         "CPU_UTIL_P95": (70.0, 85.0),
         "CPU_UTIL_AVG": (65.0, 80.0),
@@ -34,9 +36,9 @@ FEATURE_DOMAIN_RULES: dict[str, dict[str, tuple[float, float] | tuple[float, flo
         "HARD_PARSES_PER_SEC": (75.0, 100.0),
     },
     "COMMIT": {
-        "LOG_FILE_SYNC_MS": (0.08, 0.12),
-        "LOG_WRITE_LATENCY_MS": (0.08, 0.12),
-        "COMMIT_PRESSURE": (5.0, 12.0),
+        "LOG_FILE_SYNC_MS": (4.0, 8.0),
+        "LOG_WRITE_LATENCY_MS": (4.0, 8.0),
+        "COMMIT_PRESSURE": (15.0, 30.0),
     },
     "RAC": {
         "CLUSTER_WAIT_PCT_DB_TIME": (5.0, 12.0),
@@ -122,23 +124,90 @@ def build_decision(
     )
     ranked_domains = _rank_domains(domain_evidence)
     primary_issue = ranked_domains[0]
+
+    cpu_util_p95 = _safe_float(feature_json.get("CPU_UTIL_P95"))
+    db_cpu_pct_db_time = _safe_float(feature_json.get("DB_CPU_PCT_DB_TIME"))
+    read_latency_ms = _safe_float(feature_json.get("READ_LATENCY_MS"))
+    user_io_pressure = _safe_float(feature_json.get("USER_IO_PRESSURE"))
+    log_file_sync_ms = _safe_float(feature_json.get("LOG_FILE_SYNC_MS"))
+
+    # MIX-01 override:
+    # In moderate CPU+IO warning cases with no strong MEMORY/COMMIT competitor,
+    # prefer CPU as primary but keep severity in the WARNING band.
+    # Keep this narrow so it does not affect IO-led trend cases.
+    mix01_cpu_warning_override = (
+        primary_issue == "IO"
+        and cpu_util_p95 is not None
+        and db_cpu_pct_db_time is not None
+        and cpu_util_p95 >= 35.0
+        and db_cpu_pct_db_time >= 35.0
+        and domain_evidence["IO"].score >= QUALIFICATION_THRESHOLD
+        and domain_evidence["MEMORY"].score < QUALIFICATION_THRESHOLD
+        and domain_evidence["COMMIT"].score < QUALIFICATION_THRESHOLD
+        and (read_latency_ms is None or read_latency_ms < 10.0)
+        and (user_io_pressure is None or user_io_pressure < 25.0)
+        and (log_file_sync_ms is None or log_file_sync_ms < 4.0)
+    )
+
+    if mix01_cpu_warning_override:
+        primary_issue = "CPU"
+        ranked_domains = ["CPU"] + [d for d in ranked_domains if d != "CPU"]
+
     severity_score = _derive_severity_score(
         primary_domain=primary_issue,
         domain_evidence=domain_evidence,
         score_payload=score_payload,
     )
+    if mix01_cpu_warning_override:
+        severity_score = min(max(severity_score, 25.0), 59.0)
+
     overall_status = _status_from_severity(severity_score)
     secondary_issues = [
         domain
         for domain in ranked_domains[1:]
         if domain_evidence[domain].score >= QUALIFICATION_THRESHOLD
     ]
+
+    # Secondary issue cleanup:
+    # - RAC/ADG severe cases should not carry IO as a secondary
+    # - CPU+MEMORY+COMMIT mixed cases should prefer COMMIT over weak IO
+    # - CPU+IO warning mixes should keep IO as the secondary
+    if primary_issue in {"RAC", "ADG"}:
+        secondary_issues = [domain for domain in secondary_issues if domain != "IO"]
+
+    if primary_issue == "CPU":
+        commit_qualified = domain_evidence["COMMIT"].score >= QUALIFICATION_THRESHOLD
+        memory_qualified = domain_evidence["MEMORY"].score >= QUALIFICATION_THRESHOLD
+        io_qualified = domain_evidence["IO"].score >= QUALIFICATION_THRESHOLD
+        commit_pressure = _safe_float(feature_json.get("COMMIT_PRESSURE"))
+        log_file_sync_ms = _safe_float(feature_json.get("LOG_FILE_SYNC_MS"))
+
+        # MIX-03 secondary override:
+        # when CPU is primary and both MEMORY and COMMIT are materially present,
+        # prefer MEMORY and COMMIT as secondaries instead of weak IO.
+        mix03_secondary_override = (
+            memory_qualified
+            and (
+                commit_qualified
+                or (
+                    log_file_sync_ms is not None
+                    and log_file_sync_ms >= 4.0
+                    and commit_pressure is not None
+                    and commit_pressure >= 8.0
+                )
+            )
+        )
+
+        if mix03_secondary_override:
+            secondary_issues = ["MEMORY", "COMMIT"]
+        elif io_qualified and "IO" not in secondary_issues:
+            secondary_issues.append("IO")
+
     confidence = _derive_confidence(score_payload, domain_evidence, primary_issue)
 
     evidence = {
         "domain_scores": {
-            domain: round(domain_evidence[domain].score, 4)
-            for domain in DOMAIN_ORDER
+            domain: round(domain_evidence[domain].score, 4) for domain in DOMAIN_ORDER
         },
         "primary_reasons": list(domain_evidence[primary_issue].reasons),
         "feature_evidence": {
@@ -183,7 +252,14 @@ def _build_domain_evidence(
     _apply_feature_rules(evidence, feature_json)
     _rebalance_memory_io_and_mixed_scores(evidence, feature_json)
     _apply_score_payload(evidence, score_payload)
+    pre_anomaly_scores = {domain: evidence[domain].score for domain in DOMAIN_ORDER}
     _apply_anomalies(evidence, anomalies)
+    _suppress_anomaly_only_cpu_signal(evidence, pre_anomaly_scores)
+    if evidence["CPU"].score > 0 and any(
+        evidence[domain].score > evidence["CPU"].score + 0.1
+        for domain in ("IO", "MEMORY", "COMMIT", "RAC")
+    ):
+        evidence["CPU"].score *= 0.7
     for domain in DOMAIN_ORDER:
         evidence[domain].score = min(round(evidence[domain].score, 4), 1.0)
     return evidence
@@ -193,6 +269,7 @@ def _apply_feature_rules(
     evidence: dict[str, DomainEvidence],
     feature_json: dict[str, Any],
 ) -> None:
+    cluster_wait_pct = _safe_float(feature_json.get("CLUSTER_WAIT_PCT_DB_TIME"))
     for domain, rules in FEATURE_DOMAIN_RULES.items():
         domain_evidence = evidence[domain]
         for metric_name, thresholds in rules.items():
@@ -205,12 +282,22 @@ def _apply_feature_rules(
                 continue
             domain_evidence.score += score
             domain_evidence.reasons.append(reason)
+    if cluster_wait_pct is not None:
+        if cluster_wait_pct >= 25.0:
+            evidence["RAC"].score = max(evidence["RAC"].score, 1.0)
+            evidence["RAC"].reasons.append(
+                f"Cluster wait time is critically elevated at {cluster_wait_pct:.2f}%."
+            )
+        elif cluster_wait_pct >= 10.0:
+            evidence["RAC"].score = max(evidence["RAC"].score, 0.7)
 
 
 def _rebalance_memory_io_and_mixed_scores(
     evidence: dict[str, DomainEvidence],
     feature_json: dict[str, Any],
 ) -> None:
+    cpu_util_p95 = _safe_float(feature_json.get("CPU_UTIL_P95"))
+    db_cpu_pct_db_time = _safe_float(feature_json.get("DB_CPU_PCT_DB_TIME"))
     hard_parses_per_sec = _safe_float(feature_json.get("HARD_PARSES_PER_SEC"))
     user_io_pressure = _safe_float(feature_json.get("USER_IO_PRESSURE"))
     read_latency_ms = _safe_float(feature_json.get("READ_LATENCY_MS"))
@@ -231,7 +318,11 @@ def _rebalance_memory_io_and_mixed_scores(
         elif hard_parses_per_sec >= 75.0:
             evidence["MEMORY"].score = max(evidence["MEMORY"].score, 0.35)
 
-    if read_latency_ms is not None and user_io_pressure is not None and evidence["IO"].score > 0.0:
+    if (
+        read_latency_ms is not None
+        and user_io_pressure is not None
+        and evidence["IO"].score > 0.0
+    ):
         if hard_parses_per_sec is not None and hard_parses_per_sec >= 100.0:
             evidence["IO"].score = min(evidence["IO"].score, 0.34)
         elif hard_parses_per_sec is not None and hard_parses_per_sec >= 75.0:
@@ -250,6 +341,23 @@ def _rebalance_memory_io_and_mixed_scores(
         and db_time_per_txn >= 1.2
     ):
         evidence["CPU"].score = max(evidence["CPU"].score, 0.55)
+
+    if (
+        evidence["CPU"].score == 0.0
+        and cpu_util_p95 is not None
+        and cpu_util_p95 >= 35.0
+        and db_cpu_pct_db_time is not None
+        and db_cpu_pct_db_time >= 35.0
+        and (user_io_pressure is None or user_io_pressure < 15.0)
+        and (
+            evidence["MEMORY"].score >= QUALIFICATION_THRESHOLD
+            or evidence["COMMIT"].score >= QUALIFICATION_THRESHOLD
+        )
+    ):
+        evidence["CPU"].score = max(evidence["CPU"].score, 0.71)
+        evidence["CPU"].reasons.append(
+            "Moderate CPU utilization aligned with mixed workload pressure."
+        )
 
 
 def _apply_score_payload(
@@ -304,6 +412,17 @@ def _apply_anomalies(
         )
 
 
+def _suppress_anomaly_only_cpu_signal(
+    evidence: dict[str, DomainEvidence],
+    pre_anomaly_scores: dict[str, float],
+) -> None:
+    pre_cpu_score = pre_anomaly_scores.get("CPU", 0.0)
+    if pre_cpu_score >= QUALIFICATION_THRESHOLD:
+        return
+    evidence["CPU"].score = pre_cpu_score
+    evidence["CPU"].anomalies = []
+
+
 def _rank_domains(domain_evidence: dict[str, DomainEvidence]) -> list[str]:
     return sorted(
         DOMAIN_ORDER,
@@ -316,8 +435,7 @@ def _build_decision_diagnostics(
     ranked_domains: list[str],
 ) -> dict[str, Any]:
     domain_scores = {
-        domain: round(domain_evidence[domain].score, 4)
-        for domain in DOMAIN_ORDER
+        domain: round(domain_evidence[domain].score, 4) for domain in DOMAIN_ORDER
     }
     grouped_candidates: list[dict[str, Any]] = []
     seen_scores: list[float] = []
@@ -341,7 +459,8 @@ def _build_decision_diagnostics(
         "domain_diagnostics": {
             domain: {
                 "score": domain_scores[domain],
-                "qualified_for_primary": domain_scores[domain] >= QUALIFICATION_THRESHOLD,
+                "qualified_for_primary": domain_scores[domain]
+                >= QUALIFICATION_THRESHOLD,
             }
             for domain in DOMAIN_ORDER
         },

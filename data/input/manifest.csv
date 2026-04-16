@@ -1,0 +1,16 @@
+filename,scenario_name,expected_primary_issue,expected_status,expected_secondary_issues,notes
+awr_cpu_severe.out,CPU-SEVERE,CPU,CRITICAL,,Injected severe CPU pressure with dominant SQL CPU consumption and minimal foreground waits.
+awr_io_severe.out,IO-SEVERE,IO,CRITICAL,,Injected severe read-latency increase with db file sequential read dominating DB time.
+awr_memory_severe.out,MEMORY-SEVERE,MEMORY,CRITICAL,,Injected severe PGA spill pressure with advisory-driven improvement potential and cache inefficiency.
+awr_commit_severe.out,COMMIT-SEVERE,COMMIT,CRITICAL,,Injected severe commit pressure with elevated log file sync and redo generation.
+awr_rac_severe.out,RAC-SEVERE,RAC,CRITICAL,,Injected severe RAC global cache contention with interconnect-sensitive gc events.
+awr_adg_severe.out,ADG-SEVERE,ADG,CRITICAL,,Injected severe Active Data Guard transport/apply lag with replication throughput imbalance.
+awr_mix_cpu_io.out,MIX-01,CPU,WARNING,IO,CPU and IO both elevated with no single dominant metric; tie-break should resolve to CPU.
+awr_mix_io_memory.out,MIX-02,IO,WARNING,MEMORY,IO latency and memory spill pressure both present; IO should remain primary.
+awr_mix_cpu_memory_commit.out,MIX-03,CPU,CRITICAL,"MEMORY,COMMIT","CPU, memory, and commit all elevated with comparable weight; tie-break should resolve to CPU."
+awr_trend_io_01.out,TREND-01,,OK,,Healthy baseline before onset of I/O degradation.
+awr_trend_io_02.out,TREND-02,IO,WARNING,,Emerging storage latency; db file sequential read increasing from baseline.
+awr_trend_io_03.out,TREND-03,IO,CRITICAL,,Severe storage latency; user I/O dominates strongly and CPU collapses as a share of DB time.
+awr_recovery_cpu_01.out,REC-01,CPU,CRITICAL,,Initial bad state with severe CPU pressure and dominant SQL CPU demand.
+awr_recovery_cpu_02.out,REC-02,CPU,WARNING,,Improving state after remediation; CPU still elevated but reduced.
+awr_recovery_cpu_03.out,REC-03,,OK,,Recovered healthy state with balanced resource profile.

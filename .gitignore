@@ -6,6 +6,7 @@ data/output/
 Old_Versions/
 .env
 .venv
+.flake8
 .DS_Store
 awr_dashboard-Fixed.html
 awr_dashboard.html

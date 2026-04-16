@@ -19,6 +19,12 @@ class AwrSectionLocation(TypedDict):
 
 
 AwrSectionMap = dict[str, AwrSectionLocation]
+WAITS_SECTION_CONTINUATION_HEADERS = (
+    "top 10 foreground events by total wait time",
+    "wait classes by total wait time",
+    "foreground wait events",
+    "background wait events",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +88,9 @@ def locate_awr_sections_with_diagnostics(
             end_line = next_start_line - 1
         else:
             end_line = file_end_line
+
+        if section_key == "waits":
+            end_line = _resolve_waits_section_end(lines, start_line, end_line)
 
         section_map[section_key] = {
             "start_line": start_line,
@@ -456,6 +465,39 @@ def _find_next_nonblank_line(lines: list[str], start_index: int) -> str | None:
         if line.strip():
             return line
     return None
+
+def _resolve_waits_section_end(
+    lines: list[str],
+    start_line: int,
+    default_end_line: int,
+) -> int:
+    """Extend native waits sections through later detailed foreground wait blocks."""
+
+    latest_wait_header_line = start_line
+    for zero_index, line in enumerate(lines[start_line - 1 :], start=start_line - 1):
+        normalized_line = _normalize_line(line)
+        if not normalized_line or line.strip().startswith("*"):
+            continue
+        if any(
+            header in normalized_line for header in WAITS_SECTION_CONTINUATION_HEADERS
+        ):
+            latest_wait_header_line = zero_index + 1
+
+    if latest_wait_header_line <= default_end_line:
+        return default_end_line
+
+    for zero_index in range(latest_wait_header_line, len(lines)):
+        normalized_line = _normalize_line(lines[zero_index])
+        if not normalized_line:
+            continue
+        if any(
+            header in normalized_line for header in WAITS_SECTION_CONTINUATION_HEADERS
+        ):
+            continue
+        if _looks_like_section_header_candidate(lines, zero_index):
+            return zero_index
+
+    return len(lines)
 
 
 def _match_alias(normalized_line: str, aliases: tuple[str, ...]) -> str | None:

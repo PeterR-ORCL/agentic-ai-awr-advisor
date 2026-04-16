@@ -1,0 +1,328 @@
+WORKLOAD REPOSITORY report for
+
+DB Name          DB Id        Instance         Inst num Startup Time       Release      RAC
+IOPRD            1182736402   ioprd1           1        20-Feb-26 19:00    19.19.0.0.0  NO
+
+Host Name        Platform                 CPUs   Cores  Sockets  Memory (GB)
+ioprd-db01       Linux x86 64-bit         16     8      1        64.00
+
+Snap Id            Snap Time              Sessions   Cursors/Session   CDB
+Begin Snap: 1319   01-Mar-26 19:00:00     612        6.8               YES
+End Snap:   1320   01-Mar-26 20:00:00     618        7.0               YES
+Elapsed:     60.00 (mins)
+DB Time:    660.00 (mins)
+
+Report Summary
+
+Load Profile
+
+Per Second       Per Transaction  Per Exec     Per Call
+DB Time (s):             11               0.1              0.00         0.01
+DB CPU (s):              2.0              0.0              0.00         0.00
+Background CPU (s):      0.2              0.0              0.00         0.00
+Redo size (bytes):       7,200,000        42,352.9
+Logical read (blocks):   64,000           376.5
+Block changes:           4,200            24.7
+Physical read (blocks):  920              5.4
+Physical write (blocks): 280              1.6
+Read IO requests:        210              1.2
+Write IO requests:       88               0.5
+Read IO (MB):            14.5             0.1
+Write IO (MB):           3.8              0.0
+User calls:              740              4.4
+Parses (SQL):            720              4.2
+Hard parses (SQL):       0.9              0.0
+SQL Work Area (MB):      24               0.1
+Logons:                  0.2              0.0
+Executes (SQL):          4,200            24.7
+Rollbacks:               0.4              0.0
+Transactions:            170
+
+Instance Efficiency Percentages (Target 100%)
+
+Buffer Nowait %:       99.70    Redo NoWait %:         100.00
+Buffer Hit %:          95.70    In-memory Sort %:      98.40
+Library Hit %:         98.60    Soft Parse %:          99.20
+Execute to Parse %:    83.40    Latch Hit %:           99.00
+Parse CPU to Parse Elapsd %:  84.00    % Non-Parse CPU:     99.40
+Flash Cache Hit %:     0.00
+
+Top 10 Foreground Events by Total Wait Time
+Event                                      Waits     Total Wait Time (sec) Wait Avg(ms) % DB time Wait Class
+DB CPU                                     7.1K       18.0
+db file sequential read                    420,000    15586.6                16.80        39.4       User I/O
+db file scattered read                     120,000    5845.0                 21.40        14.8       User I/O
+read by other session                      88,000     2922.5                 5.20         7.4        User I/O
+direct path read temp                      52,000     2273.0                 18.20        5.7        User I/O
+log file sync                              76,000     1298.9                 2.70         3.3        Commit
+db file parallel write                     64,000     974.2                  4.40         2.5        System I/O
+
+Wait Classes by Total Wait Time
+
+Wait Class                                Waits     Total Wait Time (sec) Avg Wait (ms) % DB time Avg Active Sessions
+DB CPU                                     7,128      7128.0                                18.0       2.0
+User I/O                                   680,000    26627                  39.16          67.2       7.4
+Commit                                     76,000     1299                   17.09          3.3        0.4
+System I/O                                 64,000     974                    15.22          2.5        0.3
+
+Host CPU
+CPUs  Cores  Sockets  Load Average Begin  Load Average End  %User  %System  %WIO  %Idle
+16    8      1        3.10                7.20              11.0   8.0      34.0  47.0
+
+Instance CPU
+%Total CPU  %Busy CPU  %DB time waiting for CPU (Resource Manager)
+19.0        53.0       42.5
+
+IO Profile
+Read+Write Per Second  Read per Second  Write Per Second
+Total Requests:        298.0            210.0            88.0
+Database Requests:     298.0            210.0            88.0
+Redo Requests:         161.5            0.0              161.5
+Total (MB):            18.3             14.5             3.8
+Database (MB):         18.3             14.5             3.8
+Redo (MB):             6.9              0.0              6.9
+Database (blocks):     1200.0           920.0            280.0
+
+Memory Statistics
+                                   Begin           End
+Host Mem (MB):         65,536         65,536
+SGA use (MB):          20,480         20,480
+PGA use (MB):          2,800          3,320
+% Host Mem used for SGA+PGA:   35.52        36.32
+
+Cache Sizes
+
+                                   Begin           End
+Buffer Cache:      12,288M        12,288M        Std Block Size:    8K
+Shared Pool Size:  5,120M         5,120M         Log Buffer:        262,144K
+In-Memory Area:    0M             0M
+
+Shared Pool Statistics
+
+                                   Begin           End
+Memory Usage %:        41.20        42.70
+% SQL with executions>1:     98.10        98.60
+% Memory for SQL w/exec>1:     92.40        93.10
+
+Main Report
+  * Report Summary
+  * Wait Events Statistics
+  * SQL Statistics
+  * Instance Activity Statistics
+  * IO Stats
+  * Advisory Statistics
+  * Replication Statistics (GoldenGate, XStream, Data Guard)
+
+Back to Top
+
+Wait Events Statistics
+
+Time Model Statistics
+
+  * DB Time represents total time in user calls
+  * DB CPU represents CPU time of foreground processes
+  * Total CPU Time represents foreground and background processes
+  * Ordered by % of DB time in descending order, followed by Statistic Name
+Statistic Name                              Time (s)  % of DB Time  % of Total CPU Time
+sql execute elapsed time                   38,412       97.00
+DB CPU                                     7,128        18.00          93.69
+parse time elapsed                         594          1.50
+PL/SQL execution elapsed time              3,564        4.00
+hard parse elapsed time                    79.20        0.20
+DB time                                    39,600       0.00
+background elapsed time                    1,188        0.00
+background cpu time                        594          0.00
+total CPU time                             7,722        0.00
+
+Back to Top
+
+Operating System Statistics
+
+Statistic                              Value            End Value
+BUSY_TIME                            3,052,800
+IDLE_TIME                            2,707,200
+IOWAIT_TIME                          1,958,400
+SYS_TIME                             460,800
+USER_TIME                            633,600
+LOAD                                 7.20             7.20
+RSRC_MGR_CPU_WAIT_TIME               396
+PHYSICAL_MEMORY_BYTES                68,719,476,736
+NUM_CPUS                             16
+NUM_CPU_CORES                        8
+NUM_CPU_SOCKETS                      1
+
+Back to Top
+
+Foreground Wait Class
+
+  * Captured Time accounts for 96.8% of Total DB time 39600.00 (s)
+  * Total FG Wait Time: 32472.00 (s)   DB CPU time: 7128.00 (s)
+Wait Class                                Waits   %Time-outs Total Wait Time (s) Avg wait (ms) %DB time
+DB CPU                                     7,128                  7128                              18.00
+User I/O                                   680,000   0            26627              39.16          67.24
+Commit                                     76,000    0            1299               17.09          3.28
+System I/O                                 64,000    0            974                15.22          2.46
+
+Back to Top
+
+Foreground Wait Events
+
+Event                                      Waits   %Time-outs Total Wait Time (s) Avg wait (ms) Waits /txn % DB time
+db file sequential read                    420,000   0            15587              16.80          0.69       39.36
+db file scattered read                     120,000   0            5845               21.40          0.20       14.76
+read by other session                      88,000    0            2922               5.20           0.14       7.38
+direct path read temp                      52,000    0            2273               18.20          0.08       5.74
+log file sync                              76,000    0            1299               2.70           0.12       3.28
+db file parallel write                     64,000    0            974                4.40           0.10       2.46
+
+Back to Top
+
+Background Wait Events
+
+Event                                      Waits   %Time-outs Total Wait Time (s) Avg wait (ms) Waits /txn % bg time
+db file parallel write                     320,000   0            640                2.00           0.52       31.00
+log file parallel write                    210,000   0            190                0.90           0.34       9.00
+control file sequential read               32,000    0            24                 0.78           0.05       1.20
+
+Back to Top
+
+SQL Statistics
+
+  * SQL ordered by Elapsed Time
+  * SQL ordered by CPU Time
+  * SQL ordered by User I/O Wait Time
+
+Back to Top
+
+SQL ordered by Elapsed Time
+
+  * Resources reported for PL/SQL code includes the resources used by all SQL statements called by the code.
+  * Captured SQL account for 46.2% of Total DB Time (s): 39600
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+8,347.68         1,857       4.50                        21.08   14.00  82.00 jtp1kaucaj3m0 APPMOD_IO_1          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+5,385.60         928         5.80                        13.60   12.00  88.00 mkhjmfv65h0ux APPMOD_IO_2          APPPDB1  SELECT /* range_scan */ * FROM event_log WHERE account_id ...
+2,962.08         619         4.79                        7.48    18.00  74.00 pm0x2rw11m0t3 APPMOD_IO_3          APPPDB1  SELECT /* fullscan */ COUNT(*) FROM audit_trail WHERE crea...
+1,615.68         464         3.48                        4.08    22.00  66.00 h7d0h7avt0hzt APPMOD_IO_4          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+
+
+SQL ordered by CPU Time
+
+  * Resources reported for PL/SQL code includes the resources used by all SQL statements called by the code.
+  * Captured SQL account for 6.8% of Total DB CPU (s): 7128
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+8,347.68         1,857       4.50                        21.08   14.00  82.00 jtp1kaucaj3m0 APPMOD_IO_1          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+5,385.60         928         5.80                        13.60   12.00  88.00 mkhjmfv65h0ux APPMOD_IO_2          APPPDB1  SELECT /* range_scan */ * FROM event_log WHERE account_id ...
+2,962.08         619         4.79                        7.48    18.00  74.00 pm0x2rw11m0t3 APPMOD_IO_3          APPPDB1  SELECT /* fullscan */ COUNT(*) FROM audit_trail WHERE crea...
+1,615.68         464         3.48                        4.08    22.00  66.00 h7d0h7avt0hzt APPMOD_IO_4          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+
+
+SQL ordered by User I/O Wait Time
+
+  * Resources reported for PL/SQL code includes the resources used by all SQL statements called by the code.
+  * Captured SQL account for 37.5% of Total User I/O Wait Time (s): 27601
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+8,347.68         1,857       4.50                        21.08   14.00  82.00 jtp1kaucaj3m0 APPMOD_IO_1          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+5,385.60         928         5.80                        13.60   12.00  88.00 mkhjmfv65h0ux APPMOD_IO_2          APPPDB1  SELECT /* range_scan */ * FROM event_log WHERE account_id ...
+2,962.08         619         4.79                        7.48    18.00  74.00 pm0x2rw11m0t3 APPMOD_IO_3          APPPDB1  SELECT /* fullscan */ COUNT(*) FROM audit_trail WHERE crea...
+1,615.68         464         3.48                        4.08    22.00  66.00 h7d0h7avt0hzt APPMOD_IO_4          APPPDB1  SELECT /* io_probe */ order_id, status, ship_date FROM ord...
+
+
+Back to Top
+
+Instance Activity Statistics
+
+  * Key Instance Activity Stats
+  * Instance Activity Stats
+
+Back to Top
+
+Key Instance Activity Stats
+
+Statistic                                Total              per Second     per Trans
+db block changes                         15,120,000         4,200          24.71
+execute count                            15,120,000         4,200          24.71
+logons cumulative                        720                0.20           0.00
+opened cursors cumulative                15,876,000         4,410          25.94
+parse count (total)                      2,592,000          720            4.24
+parse time elapsed                       594                0.17           0.00
+physical reads                           3,312,000          920            5.41
+physical writes                          1,008,000          280            1.65
+redo size                                25,920,000,000     7,200,000      42,352.94
+session logical reads                    230,400,000        64,000         376.47
+user calls                               2,664,000          740            4.35
+user commits                             612,000            170            1
+user rollbacks                           1,440              0.40           0.00
+workarea executions - onepass            420                0.12           0.00
+workarea executions - multipass          38                 0.01           0.00
+workarea executions - optimal            5,292,000          1,470          8.65
+
+Instance Activity Stats
+
+Statistic                                Total              per Second     per Trans
+CPU used by this session                 712,800            198            1.16
+CR blocks created                        50,688,000         14,080         82.82
+Commit SCN cached                        1,285,200          357            2.10
+DBWR checkpoint buffers written          947,520            263.20         1.55
+gc cr blocks received                    0                  0              0
+gc current blocks received               0                  0              0
+gc messages sent                         0                  0              0
+
+Back to Top
+
+Advisory Statistics
+
+  * PGA Aggr Summary
+  * PGA Aggr Target Stats
+  * PGA Memory Advisory
+  * Shared Pool Advisory
+  * SGA Target Advisory
+
+Back to Top
+
+PGA Aggr Summary
+
+PGA Cache Hit %  W/A MB Processed  Extra W/A MB Read/Written
+94.20           388,800         18,500
+
+PGA Aggr Target Stats
+
+PGA Aggr Target(M)  Auto PGA Target(M)  PGA Mem Alloc(M)  W/A PGA Used(M)  %PGA W/A Mem  %Auto W/A Mem  %Man W/A Mem  Global Mem Bound(K)
+B  10,624             8,286                2,800            88              3.20           100.00           0.00           131,072
+E  10,624             8,074                3,320            122             4.10           100.00           0.00           131,072
+
+PGA Memory Advisory
+
+PGA Target Est (MB)  Size Factr  W/A MB Processed  Estd Extra W/A MB Read/Written to Disk  Estd PGA Cache Hit %  Estd PGA Overalloc Count  Estd Time
+2,560              0.25        388,800            33,300                                 85.20                  4                          45,540
+5,376              0.50        388,800            33,300                                 88.20                  4                          45,540
+7,936              0.75        388,800            33,300                                 91.20                  4                          45,540
+10,752             1.00        388,800            18,500                                 94.20                  4                          39,600
+13,312             1.25        388,800            12,107.17                              97.20                  2                          39,303
+15,872             1.50        388,800            8,562.46                               100.00                 1                          39,006
+21,248             2.00        388,800            4,956.95                               100.00                 1                          38,412
+
+Shared Pool Advisory
+
+Shared Pool Size(M)  SP Size Factr  Est LC Size (M)  Est LC Mem Obj  Est LC Time Saved (s)  Est LC Time Saved Factr  Est LC Load Time (s)  Est LC Load Time Factr
+2,560               0.50           1,246             46,000           34,847                  0.86                      142,560                3.80
+3,840               0.75           1,809             56,500           36,036                  0.91                      95,040                 2.53
+5,120               1.00           2,372             67,000           37,224                  0.95                      71,280                 1.90
+6,400               1.25           2,936             77,500           38,412                  0.99                      57,024                 1.52
+7,680               1.50           3,499             88,000           39,600                  1.04                      47,520                 1.27
+
+SGA Target Advisory
+SGA Target Size (M)  SGA Size Factor  Est DB Time (s)  Est Physical Reads
+10,240              0.50              53,460            4,802,400
+15,360              0.75              53,460            4,802,400
+20,480              1.00              39,600            3,312,000
+25,600              1.25              38,016            3,146,400
+30,720              1.50              36,432            2,980,800
+40,960              2.00              33,264            2,649,600
+
+Back to Top
+
+Replication Statistics (GoldenGate, XStream, Data Guard)
+
+No significant replication activity captured in this snapshot interval.
+
+Back to Top

@@ -4786,6 +4786,20 @@ def _ensure_topology_lag_signals(
     gc_cr_wait_pct = _sum_event_pct(parse_result, ("gc cr",))
     gc_current_wait_pct = _sum_event_pct(parse_result, ("gc current",))
     gc_buffer_busy_pct = _sum_event_pct(parse_result, ("gc buffer busy",))
+    if topology.get("cluster_wait_pct_db_time") is None and cluster_wait_pct is not None:
+        topology["cluster_wait_pct_db_time"] = round(cluster_wait_pct, 4)
+    if topology.get("gc_cr_wait_pct_db_time") is None and gc_cr_wait_pct is not None:
+        topology["gc_cr_wait_pct_db_time"] = round(gc_cr_wait_pct, 4)
+    if (
+        topology.get("gc_current_wait_pct_db_time") is None
+        and gc_current_wait_pct is not None
+    ):
+        topology["gc_current_wait_pct_db_time"] = round(gc_current_wait_pct, 4)
+    if (
+        topology.get("gc_buffer_busy_pct_db_time") is None
+        and gc_buffer_busy_pct is not None
+    ):
+        topology["gc_buffer_busy_pct_db_time"] = round(gc_buffer_busy_pct, 4)
     normalized_text = f" {' '.join(' '.join(resolved_source_lines).lower().split())} "
     native_rac_detected = any(
         pattern in normalized_text for pattern in NATIVE_RAC_TEXT_PATTERNS
@@ -4854,8 +4868,6 @@ def _apply_low_signal_feature_suppression(base_features: dict[str, Any]) -> None
         base_features["log_file_sync_ms"] = None
         base_features["log_write_latency_ms"] = None
         base_features["commit_pct"] = None
-
-
 
 
 def _extract_wait_class_avg_wait_ms(

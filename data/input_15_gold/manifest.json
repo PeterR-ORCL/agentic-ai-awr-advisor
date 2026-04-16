@@ -1,0 +1,133 @@
+{
+  "dataset": "strict15",
+  "report_count": 15,
+  "reports": [
+    {
+      "filename": "awr_cpu_severe.out",
+      "scenario_name": "CPU-SEVERE",
+      "expected_primary_issue": "CPU",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe CPU pressure with dominant SQL CPU consumption and minimal foreground waits."
+    },
+    {
+      "filename": "awr_io_severe.out",
+      "scenario_name": "IO-SEVERE",
+      "expected_primary_issue": "IO",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe read-latency increase with db file sequential read dominating DB time."
+    },
+    {
+      "filename": "awr_memory_severe.out",
+      "scenario_name": "MEMORY-SEVERE",
+      "expected_primary_issue": "MEMORY",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe PGA spill pressure with advisory-driven improvement potential and cache inefficiency."
+    },
+    {
+      "filename": "awr_commit_severe.out",
+      "scenario_name": "COMMIT-SEVERE",
+      "expected_primary_issue": "COMMIT",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe commit pressure with elevated log file sync and redo generation."
+    },
+    {
+      "filename": "awr_rac_severe.out",
+      "scenario_name": "RAC-SEVERE",
+      "expected_primary_issue": "RAC",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe RAC global cache contention with interconnect-sensitive gc events."
+    },
+    {
+      "filename": "awr_adg_severe.out",
+      "scenario_name": "ADG-SEVERE",
+      "expected_primary_issue": "ADG",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Injected severe Active Data Guard transport/apply lag with replication throughput imbalance."
+    },
+    {
+      "filename": "awr_mix_cpu_io.out",
+      "scenario_name": "MIX-01",
+      "expected_primary_issue": "CPU",
+      "expected_status": "WARNING",
+      "expected_secondary_issues": [
+        "IO"
+      ],
+      "notes": "CPU and IO both elevated with no single dominant metric; tie-break should resolve to CPU."
+    },
+    {
+      "filename": "awr_mix_io_memory.out",
+      "scenario_name": "MIX-02",
+      "expected_primary_issue": "IO",
+      "expected_status": "WARNING",
+      "expected_secondary_issues": [
+        "MEMORY"
+      ],
+      "notes": "IO latency and memory spill pressure both present; IO should remain primary."
+    },
+    {
+      "filename": "awr_mix_cpu_memory_commit.out",
+      "scenario_name": "MIX-03",
+      "expected_primary_issue": "CPU",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [
+        "MEMORY",
+        "COMMIT"
+      ],
+      "notes": "CPU, memory, and commit all elevated with comparable weight; tie-break should resolve to CPU."
+    },
+    {
+      "filename": "awr_trend_io_01.out",
+      "scenario_name": "TREND-01",
+      "expected_primary_issue": "",
+      "expected_status": "OK",
+      "expected_secondary_issues": [],
+      "notes": "Healthy baseline before onset of I/O degradation."
+    },
+    {
+      "filename": "awr_trend_io_02.out",
+      "scenario_name": "TREND-02",
+      "expected_primary_issue": "IO",
+      "expected_status": "WARNING",
+      "expected_secondary_issues": [],
+      "notes": "Emerging storage latency; db file sequential read increasing from baseline."
+    },
+    {
+      "filename": "awr_trend_io_03.out",
+      "scenario_name": "TREND-03",
+      "expected_primary_issue": "IO",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Severe storage latency; user I/O dominates strongly and CPU collapses as a share of DB time."
+    },
+    {
+      "filename": "awr_recovery_cpu_01.out",
+      "scenario_name": "REC-01",
+      "expected_primary_issue": "CPU",
+      "expected_status": "CRITICAL",
+      "expected_secondary_issues": [],
+      "notes": "Initial bad state with severe CPU pressure and dominant SQL CPU demand."
+    },
+    {
+      "filename": "awr_recovery_cpu_02.out",
+      "scenario_name": "REC-02",
+      "expected_primary_issue": "CPU",
+      "expected_status": "WARNING",
+      "expected_secondary_issues": [],
+      "notes": "Improving state after remediation; CPU still elevated but reduced."
+    },
+    {
+      "filename": "awr_recovery_cpu_03.out",
+      "scenario_name": "REC-03",
+      "expected_primary_issue": "",
+      "expected_status": "OK",
+      "expected_secondary_issues": [],
+      "notes": "Recovered healthy state with balanced resource profile."
+    }
+  ]
+}

@@ -12,3 +12,10 @@ awr_dashboard-Fixed.html
 awr_dashboard.html
 !examples/*.html
 adb_wallet
+
+# Validation outputs
+validation_*.json
+
+# Debug backups
+*.old.*
+*.gold.*

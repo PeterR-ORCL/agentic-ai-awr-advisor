@@ -240,6 +240,14 @@ def build_decision(
         elif io_qualified and "IO" not in secondary_issues:
             secondary_issues.append("IO")
 
+    if (
+        primary_issue == "MEMORY"
+        and overall_status == "WARNING"
+        and "IO" in secondary_issues
+        and domain_evidence["IO"].score <= 0.35
+    ):
+        secondary_issues = [domain for domain in secondary_issues if domain != "IO"]
+
     confidence = _derive_confidence(score_payload, domain_evidence, primary_issue)
 
     evidence = {

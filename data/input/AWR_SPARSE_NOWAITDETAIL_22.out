@@ -1,0 +1,136 @@
+WORKLOAD REPOSITORY report for
+
+DB Name          DB Id        Instance         Inst num Startup Time       Release      RAC
+SPRWAT           8101005002   sprwat1          1        28-Mar-26 12:00    19.19.0.0.0  NO
+
+Host Name        Platform                 CPUs   Cores  Sockets  Memory (GB)
+sprwat-db01      Linux x86 64-bit         16     8      1        64.00
+
+Snap Id            Snap Time              Sessions   Cursors/Session   CDB
+Begin Snap: 2012   05-Apr-26 12:00:00     458        6.9               YES
+End Snap:   2013   05-Apr-26 13:00:00     463        7.1               YES
+Elapsed:     60.00 (mins)
+DB Time:    360.00 (mins)
+
+Report Summary
+
+Load Profile
+
+                         Per Second       Per Transaction  Per Exec    Per Call
+DB Time (s):             6                0.04               0.0016      0.0088
+DB CPU (s):              1.4              0.01               0.0004      0.0021
+Background CPU (s):      0.1              0.00               0.0000      0.0001
+Redo size (bytes):       7,000,000        50,000
+Logical read (blocks):   82,000           585.71
+Block changes:           4,200            30
+Physical read (blocks):  420              3
+Physical write (blocks): 340              2.43
+Read IO requests:        130              0.93
+Write IO requests:       100              0.71
+Read IO (MB):            6.2              0.04
+Write IO (MB):           5.4              0.04
+User calls:              680              4.86
+Parses (SQL):            820              5.86
+Hard parses (SQL):       0.7              0.01
+SQL Work Area (MB):      12               0.09
+Logons:                  0.2              0.00
+Executes (SQL):          3,800            27.14
+Rollbacks:               0.2              0.00
+Transactions:            140
+
+Instance Efficiency Percentages (Target 100%)
+
+Buffer Nowait %:       99.60    Redo NoWait %:         99.90
+Buffer Hit %:          95.90    In-memory Sort %:      84.00
+Library Hit %:         98.00    Soft Parse %:          98.40
+Execute to Parse %:    78.00    Latch Hit %:           98.50
+Parse CPU to Parse Elapsd %:  85.00    % Non-Parse CPU:     96.20
+
+
+Top 10 Foreground Events by Total Wait Time
+Event                                      Waits     Total Wait Time (sec) Wait Avg(ms) % DB time Wait Class
+DB CPU                                     5,184      5184.0                              24.0
+direct path read temp                      90,000     3939.8                 43.80        18.2       User I/O
+direct path write temp                     72,000     2790.7                 38.80        12.9       User I/O
+free buffer waits                          14,000     1313.3                 93.80        6.1        Configuratio
+
+Host CPU
+CPUs  Cores  Sockets  Load Average Begin  Load Average End  %User  %System  %WIO  %Idle
+16    8      1        2.60                5.20              18.0   8.0      17.0  57.0
+
+Time Model Statistics
+
+Statistic Name                              Time (s)  % of DB Time  % of Total CPU Time
+sql execute elapsed time                   20,520       95.00
+DB CPU                                     5,184        24.00          92.31
+parse time elapsed                         345.60       1.60
+PL/SQL execution elapsed time              864          4.00
+hard parse elapsed time                    43.20        0.20
+DB time                                    21,600       0.00
+background elapsed time                    648          0.00
+background cpu time                        324          0.00
+total CPU time                             5,508        0.00
+
+Foreground Wait Class
+
+  * Total FG Wait Time: 16416.00 (s)   DB CPU time: 5184.00 (s)
+Wait Class                                Waits   %Time-outs Total Wait Time (s) Avg wait (ms) %DB time
+DB CPU                                     5,184                  5184                              24.00
+User I/O                                   162,000   0            6731               41.55          31.16
+Configuration                              14,000    0            1313               93.81          6.08
+
+Foreground Wait Events
+
+Detailed wait event rows unavailable in captured text; rely on wait class summary and load profile.
+
+SQL Statistics
+
+SQL ordered by Elapsed Time
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+4,017.60         2,500       1.61                        18.60   70.00  18.00 zu2dd5wbu4mgs APPMOD_MEMORY_1      APPPDB1  SELECT /* spill_sort */ customer_id, SUM(amount) FROM invo
+2,142.72         1,481       1.45                        9.92    55.00  24.00 j8dn7by0wtmrg APPMOD_MEMORY_2      APPPDB1  SELECT /* spill_hash */ p.category, COUNT(*) FROM sales_f
+1,071.36         1,052       1.02                        4.96    38.00  32.00 sva6dghqq0nkf APPMOD_MEMORY_3      APPPDB1  BEGIN report_pkg.month_close(:B1,:B2); END;
+669.60           816         0.82                        3.10    30.00  20.00 vmm42mqvqtyby APPMOD_MEMORY_4      APPPDB1  SELECT /* spill_sort */ customer_id, SUM(amount) FROM invo
+
+Instance Activity Statistics
+
+Statistic                                Total              per Second     per Trans
+db block changes                         15,120,000         4,200          30
+execute count                            13,680,000         3,800          27.14
+logons cumulative                        648                0.18           0.00
+parse count (total)                      2,952,000          820            5.86
+physical reads                           1,512,000          420            3
+physical writes                          1,224,000          340            2.43
+redo size                                25,200,000,000     7,000,000      50,000
+session logical reads                    295,200,000        82,000         585.71
+user calls                               2,448,000          680            4.86
+user commits                             504,000            140            1
+user rollbacks                           792                0.22           0.00
+workarea executions - onepass            9,800              2.72           0.02
+workarea executions - multipass          820                0.23           0.00
+gc cr blocks received                    0                  0              0
+gc current blocks received               0                  0              0
+
+Advisory Statistics
+
+PGA Aggr Summary
+PGA Cache Hit %  W/A MB Processed  Extra W/A MB Read/Written
+79.20           125,280         240,000
+
+PGA Memory Advisory
+PGA Target Est (MB)  Size Factr  W/A MB Processed  Estd Extra W/A MB Read/Written to Disk  Estd PGA Cache Hit %  Estd PGA Overalloc Count  Estd Time
+8,448              0.50        125,280            336,000                                73.20                  28                         27,000
+12,544             0.75        125,280            336,000                                76.20                  28                         27,000
+16,896             1.00        125,280            240,000                                79.20                  28                         21,600
+20,992             1.25        125,280            164,234.43                             82.20                  17                         20,844
+25,088             1.50        125,280            120,463.67                             85.20                  12                         20,088
+33,536             2.00        125,280            73,868.66                              91.20                  7                          18,576
+
+SGA Target Advisory
+SGA Target Size (M)  SGA Size Factor  Est DB Time (s)  Est Physical Reads
+7,680               0.50              27,648            2,056,320
+11,520              0.75              27,648            2,056,320
+15,360              1.00              21,600            1,512,000
+19,200              1.25              20,736            1,436,400
+23,040              1.50              19,872            1,360,800
+30,720              2.00              18,144            1,209,600

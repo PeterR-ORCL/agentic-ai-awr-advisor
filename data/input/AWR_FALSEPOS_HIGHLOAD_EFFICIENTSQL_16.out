@@ -1,0 +1,140 @@
+WORKLOAD REPOSITORY report for
+
+DB Name          DB Id        Instance         Inst num Startup Time       Release      RAC
+FPOSTHR          8101003004   fposthr1         1        26-Mar-26 18:00    19.19.0.0.0  NO
+
+Host Name        Platform                 CPUs   Cores  Sockets  Memory (GB)
+fposthr-db01     Linux x86 64-bit         16     8      1        64.00
+
+Snap Id            Snap Time              Sessions   Cursors/Session   CDB
+Begin Snap: 1818   03-Apr-26 18:00:00     630        8.6               YES
+End Snap:   1819   03-Apr-26 19:00:00     642        8.8               YES
+Elapsed:     60.00 (mins)
+DB Time:    240.00 (mins)
+
+Report Summary
+
+Load Profile
+
+                         Per Second       Per Transaction  Per Exec    Per Call
+DB Time (s):             4                0.01               0.0002      0.0013
+DB CPU (s):              3.0              0.00               0.0001      0.0010
+Background CPU (s):      0.1              0.00               0.0000      0.0000
+Redo size (bytes):       26,000,000       41,935.48
+Logical read (blocks):   188,000          303.23
+Block changes:           22,400           36.13
+Physical read (blocks):  44               0.07
+Physical write (blocks): 360              0.58
+Read IO requests:        24               0.04
+Write IO requests:       120              0.19
+Read IO (MB):            0.6              0.00
+Write IO (MB):           5                0.01
+User calls:              3,000            4.84
+Parses (SQL):            1,800            2.90
+Hard parses (SQL):       0.7              0.00
+SQL Work Area (MB):      12               0.02
+Logons:                  0.2              0.00
+Executes (SQL):          21,000           33.87
+Rollbacks:               0.2              0.00
+Transactions:            620
+
+Instance Efficiency Percentages (Target 100%)
+
+Buffer Nowait %:       99.60    Redo NoWait %:         99.90
+Buffer Hit %:          99.70    In-memory Sort %:      99.90
+Library Hit %:         99.60    Soft Parse %:          99.80
+Execute to Parse %:    89.00    Latch Hit %:           99.40
+Parse CPU to Parse Elapsd %:  85.00    % Non-Parse CPU:     98.80
+
+
+Top 10 Foreground Events by Total Wait Time
+Event                                      Waits     Total Wait Time (sec) Wait Avg(ms) % DB time Wait Class
+DB CPU                                     10,656     10656.0                             74.0
+log file sync                              223,200    411.8                  1.80         2.9        Commit
+db file sequential read                    18,000     224.6                  12.50        1.6        User I/O
+resmgr:cpu quantum                         5,200      149.8                  28.80        1.0        Scheduler
+
+Host CPU
+CPUs  Cores  Sockets  Load Average Begin  Load Average End  %User  %System  %WIO  %Idle
+16    8      1        5.20                6.10              64.0   7.0      1.0   28.0
+
+Time Model Statistics
+
+Statistic Name                              Time (s)  % of DB Time  % of Total CPU Time
+sql execute elapsed time                   13,680       95.00
+DB CPU                                     10,656       74.00          97.37
+parse time elapsed                         230.40       1.60
+PL/SQL execution elapsed time              1,152        8.00
+hard parse elapsed time                    28.80        0.20
+DB time                                    14,400       0.00
+background elapsed time                    432          0.00
+background cpu time                        216          0.00
+total CPU time                             10,872       0.00
+
+Foreground Wait Class
+
+  * Total FG Wait Time: 3744.00 (s)   DB CPU time: 10656.00 (s)
+Wait Class                                Waits   %Time-outs Total Wait Time (s) Avg wait (ms) %DB time
+DB CPU                                     10,656                 10656                             74.00
+Commit                                     223,200   0            412                1.85           2.86
+User I/O                                   18,000    0            225                12.48          1.56
+Scheduler                                  5,200     0            150                28.80          1.04
+
+Foreground Wait Events
+
+Event                                      Waits   %Time-outs Total Wait Time (s) Avg wait (ms) Waits /txn % DB time
+log file sync                              223,200   0            412                1.80           0.10       2.86
+db file sequential read                    18,000    0            225                12.50          0.01       1.56
+resmgr:cpu quantum                         5,200     0            150                28.80          0.00       1.04
+
+SQL Statistics
+
+SQL ordered by Elapsed Time
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+1,048.32         7,750       0.14                        7.28    86.00  2.00  3uv0ty2upq006 APPMOD_CPU_1         APPPDB1  SELECT /* cpu_hot */ cust_id, SUM(amount) FROM sales_f WHE
+823.68           4,592       0.18                        5.72    82.00  3.00  vd8bwtjy4mvnh APPMOD_CPU_2         APPPDB1  BEGIN pricing_pkg.reprice_batch(:B1,:B2,:B3); END;
+599.04           3,263       0.18                        4.16    74.00  4.00  ny1x285mqvgwq APPMOD_CPU_3         APPPDB1  SELECT /* cpu_join */ COUNT(*) FROM orders o JOIN items i
+374.40           2,530       0.15                        2.60    69.00  5.00  mwdp42dkvpqjw APPMOD_CPU_4         APPPDB1  SELECT /* cpu_hot */ cust_id, SUM(amount) FROM sales_f WHE
+
+Instance Activity Statistics
+
+Statistic                                Total              per Second     per Trans
+db block changes                         80,640,000         22,400         36.13
+execute count                            75,600,000         21,000         33.87
+logons cumulative                        648                0.18           0.00
+parse count (total)                      6,480,000          1,800          2.90
+physical reads                           158,400            44             0.07
+physical writes                          1,296,000          360            0.58
+redo size                                93,600,000,000     26,000,000     41,935.48
+session logical reads                    676,800,000        188,000        303.23
+user calls                               10,800,000         3,000          4.84
+user commits                             2,232,000          620            1
+user rollbacks                           792                0.22           0.00
+workarea executions - onepass            0                  0              0
+workarea executions - multipass          0                  0              0
+gc cr blocks received                    0                  0              0
+gc current blocks received               0                  0              0
+
+Advisory Statistics
+
+PGA Aggr Summary
+PGA Cache Hit %  W/A MB Processed  Extra W/A MB Read/Written
+99.60           125,280         180
+
+PGA Memory Advisory
+PGA Target Est (MB)  Size Factr  W/A MB Processed  Estd Extra W/A MB Read/Written to Disk  Estd PGA Cache Hit %  Estd PGA Overalloc Count  Estd Time
+3,584              0.50        125,280            252.00                                 93.60                  0                          14,688
+5,376              0.75        125,280            252.00                                 96.60                  0                          14,688
+7,168              1.00        125,280            180                                    99.60                  0                          14,400
+8,960              1.25        125,280            123.18                                 100.00                 0                          14,328
+10,752             1.50        125,280            90.35                                  100.00                 0                          14,256
+14,336             2.00        125,280            55.40                                  100.00                 0                          14,112
+
+SGA Target Advisory
+SGA Target Size (M)  SGA Size Factor  Est DB Time (s)  Est Physical Reads
+10,240              0.50              15,120            171,072
+15,360              0.75              15,120            171,072
+20,480              1.00              14,400            158,400
+25,600              1.25              14,220            156,024
+30,720              1.50              14,040            153,648
+40,960              2.00              13,680            148,896

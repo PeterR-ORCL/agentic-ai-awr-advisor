@@ -1,0 +1,137 @@
+WORKLOAD REPOSITORY report for
+
+DB Name          DB Id        Instance         Inst num Startup Time       Release      RAC
+FPOSCPU          8101003001   fposcpu1         1        26-Mar-26 09:00    19.19.0.0.0  NO
+
+Host Name        Platform                 CPUs   Cores  Sockets  Memory (GB)
+fposcpu-db01     Linux x86 64-bit         16     8      1        64.00
+
+Snap Id            Snap Time              Sessions   Cursors/Session   CDB
+Begin Snap: 1809   03-Apr-26 09:00:00     426        6.6               YES
+End Snap:   1810   03-Apr-26 10:00:00     431        6.8               YES
+Elapsed:     60.00 (mins)
+DB Time:     22.00 (mins)
+
+Report Summary
+
+Load Profile
+
+                         Per Second       Per Transaction  Per Exec    Per Call
+DB Time (s):             0.4              0.02               0.0005      0.0026
+DB CPU (s):              0.3              0.02               0.0004      0.0021
+Background CPU (s):      0.1              0.00               0.0001      0.0004
+Redo size (bytes):       1,500,000        83,333.33
+Logical read (blocks):   14,000           777.78
+Block changes:           480              26.67
+Physical read (blocks):  12               0.67
+Physical write (blocks): 40               2.22
+Read IO requests:        5                0.28
+Write IO requests:       10               0.56
+Read IO (MB):            0.1              0.01
+Write IO (MB):           0.4              0.02
+User calls:              140              7.78
+Parses (SQL):            120              6.67
+Hard parses (SQL):       0.7              0.04
+SQL Work Area (MB):      12               0.67
+Logons:                  0.2              0.01
+Executes (SQL):          680              37.78
+Rollbacks:               0.2              0.01
+Transactions:            18
+
+Instance Efficiency Percentages (Target 100%)
+
+Buffer Nowait %:       99.60    Redo NoWait %:         99.90
+Buffer Hit %:          98.80    In-memory Sort %:      99.10
+Library Hit %:         98.90    Soft Parse %:          99.20
+Execute to Parse %:    81.00    Latch Hit %:           99.00
+Parse CPU to Parse Elapsd %:  85.00    % Non-Parse CPU:     98.80
+
+
+Top 10 Foreground Events by Total Wait Time
+Event                                      Waits     Total Wait Time (sec) Wait Avg(ms) % DB time Wait Class
+DB CPU                                     1,082      1082.4                              82.0
+resmgr:cpu quantum                         1,200      52.4                   43.60        4.0        Scheduler
+log file sync                              648        19.0                   29.40        1.4        Commit
+
+Host CPU
+CPUs  Cores  Sockets  Load Average Begin  Load Average End  %User  %System  %WIO  %Idle
+16    8      1        0.80                1.20              72.0   6.0      1.0   21.0
+
+Time Model Statistics
+
+Statistic Name                              Time (s)  % of DB Time  % of Total CPU Time
+sql execute elapsed time                   1,254        95.00
+DB CPU                                     1,082.40     82.00          92.32
+parse time elapsed                         21.12        1.60
+PL/SQL execution elapsed time              105.60       8.00
+hard parse elapsed time                    2.64         0.20
+DB time                                    1,320        0.00
+background elapsed time                    90           0.00
+background cpu time                        45           0.00
+total CPU time                             1,127.40     0.00
+
+Foreground Wait Class
+
+  * Total FG Wait Time: 237.60 (s)   DB CPU time: 1082.40 (s)
+Wait Class                                Waits   %Time-outs Total Wait Time (s) Avg wait (ms) %DB time
+DB CPU                                     1,082                  1082                              82.00
+Scheduler                                  1,200     0            52                 43.63          3.97
+Commit                                     648       0            19                 29.38          1.44
+
+Foreground Wait Events
+
+Event                                      Waits   %Time-outs Total Wait Time (s) Avg wait (ms) Waits /txn % DB time
+resmgr:cpu quantum                         1,200     0            52                 43.60          0.02       3.97
+log file sync                              648       0            19                 29.40          0.01       1.44
+
+SQL Statistics
+
+SQL ordered by Elapsed Time
+Elapsed Time (s)  Executions  Elapsed Time per Exec (s)  %Total  %CPU  %IO  SQL Id        SQL Module           PDB Name  SQL Text
+202.75           325         0.62                        15.36   92.00  1.00  998v1c03s2svc APPMOD_CPU_1         APPPDB1  SELECT /* cpu_hot */ cust_id, SUM(amount) FROM sales_f WHE
+84.48            192         0.44                        6.40    84.00  2.00  1bad0y05rj9dj APPMOD_CPU_2         APPPDB1  BEGIN pricing_pkg.reprice_batch(:B1,:B2,:B3); END;
+42.24            136         0.31                        3.20    70.00  4.00  czhg639vmrccz APPMOD_CPU_3         APPPDB1  SELECT /* cpu_join */ COUNT(*) FROM orders o JOIN items i
+25.34            106         0.24                        1.92    60.00  4.00  zgjgcpacmzbjv APPMOD_CPU_4         APPPDB1  SELECT /* cpu_hot */ cust_id, SUM(amount) FROM sales_f WHE
+
+Instance Activity Statistics
+
+Statistic                                Total              per Second     per Trans
+db block changes                         1,728,000          480            26.67
+execute count                            2,448,000          680            37.78
+logons cumulative                        648                0.18           0.01
+parse count (total)                      432,000            120            6.67
+physical reads                           43,200             12             0.67
+physical writes                          144,000            40             2.22
+redo size                                5,400,000,000      1,500,000      83,333.33
+session logical reads                    50,400,000         14,000         777.78
+user calls                               504,000            140            7.78
+user commits                             64,800             18             1
+user rollbacks                           792                0.22           0.01
+workarea executions - onepass            0                  0              0
+workarea executions - multipass          0                  0              0
+gc cr blocks received                    0                  0              0
+gc current blocks received               0                  0              0
+
+Advisory Statistics
+
+PGA Aggr Summary
+PGA Cache Hit %  W/A MB Processed  Extra W/A MB Read/Written
+99.60           125,280         180
+
+PGA Memory Advisory
+PGA Target Est (MB)  Size Factr  W/A MB Processed  Estd Extra W/A MB Read/Written to Disk  Estd PGA Cache Hit %  Estd PGA Overalloc Count  Estd Time
+3,584              0.50        125,280            252.00                                 93.60                  0                          1,346
+5,376              0.75        125,280            252.00                                 96.60                  0                          1,346
+7,168              1.00        125,280            180                                    99.60                  0                          1,320
+8,960              1.25        125,280            123.18                                 100.00                 0                          1,313
+10,752             1.50        125,280            90.35                                  100.00                 0                          1,306
+14,336             2.00        125,280            55.40                                  100.00                 0                          1,293
+
+SGA Target Advisory
+SGA Target Size (M)  SGA Size Factor  Est DB Time (s)  Est Physical Reads
+10,240              0.50              1,386             46,656
+15,360              0.75              1,386             46,656
+20,480              1.00              1,320             43,200
+25,600              1.25              1,303             42,552
+30,720              1.50              1,287             41,904
+40,960              2.00              1,254             40,608

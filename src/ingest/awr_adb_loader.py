@@ -237,17 +237,6 @@ TOPOLOGY_SCORING_FALLBACK_WEIGHTS: list[dict[str, Any]] = [
         "polarity": "HIGH_GOOD",
         "notes": "Fallback deterministic weight for beneficial Exadata offload",
     },
-    {
-        "feature_code": "SMART_SCAN_FLAG",
-        "feature_name": "Smart Scan Active",
-        "feature_domain": "EXADATA",
-        "feature_path": "$.SMART_SCAN_FLAG",
-        "weight_value": 0.06,
-        "normalization_method": "MINMAX",
-        "transform_method": "NONE",
-        "polarity": "HIGH_GOOD",
-        "notes": "Fallback deterministic weight for smart scan benefit",
-    },
 ]
 
 

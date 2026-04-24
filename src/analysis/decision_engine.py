@@ -6,15 +6,20 @@ from typing import Any
 from src.models.decision import AwrDecision, DecisionInput
 
 DOMAIN_ORDER = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
-PRIMARY_QUALIFICATION_THRESHOLD = 11.0
-SECONDARY_QUALIFICATION_THRESHOLD = 6.1
+PRIMARY_QUALIFICATION_THRESHOLD = 9.0
+SECONDARY_QUALIFICATION_THRESHOLD = 5.0
 SECONDARY_RELATIVE_THRESHOLD = 0.25
-SECONDARY_RELATIVE_CEILING = 0.50
+SECONDARY_RELATIVE_CEILING = 0.70
 SECONDARY_ONLY_THRESHOLD = 3.5
-PRIMARY_MIN_SEVERITY_THRESHOLD = 21.55
-PRIMARY_DOMINANCE_MARGIN = 4.5
+PRIMARY_MIN_SEVERITY_THRESHOLD = 14.5
+PRIMARY_DOMINANCE_MARGIN = 5.0
 PRIMARY_TIE_TOLERANCE = 0.5
 PRIMARY_TERTIARY_SUPPRESSION_THRESHOLD = 5.0
+PRIMARY_MATERIALITY_FLOOR = 18.0
+PRIMARY_MIN_SHARE = 0.65
+PRIMARY_HIGH_SCORE_SHARE_THRESHOLD = 20.0
+PRIMARY_HIGH_SCORE_MIN_SHARE = 0.54
+SECONDARY_ONLY_DOMINANCE_MARGIN = 2.5
 OK_STATUS_THRESHOLD = 25.0
 WARNING_STATUS_THRESHOLD = 75.0
 ANOMALY_SEVERITY_WEIGHT = {
@@ -280,16 +285,13 @@ def _select_primary_issue(
     gap = top_score - runner_up_score
 
     if gap <= PRIMARY_TIE_TOLERANCE:
-        if tertiary_score > PRIMARY_TERTIARY_SUPPRESSION_THRESHOLD:
-            return None
-        tied_domains = [
-            domain
-            for domain in qualifying_domains
-            if (top_score - domain_evidence[domain].score) <= PRIMARY_TIE_TOLERANCE
-        ]
-        return sorted(tied_domains, key=DOMAIN_ORDER.index)[0]
+        del tertiary_score
+        return None
 
     if gap < PRIMARY_DOMINANCE_MARGIN:
+        return None
+
+    if _top_score_share(domain_evidence, ranked_domains) < _primary_min_share(top_score):
         return None
     return top_domain
 
@@ -345,6 +347,11 @@ def _select_ambiguous_no_primary_secondaries(
             top_score - runner_up_score
         ) < PRIMARY_DOMINANCE_MARGIN:
             return [top_domain]
+        if (
+            top_score >= SECONDARY_QUALIFICATION_THRESHOLD
+            and (top_score - runner_up_score) >= SECONDARY_ONLY_DOMINANCE_MARGIN
+        ):
+            return [top_domain]
         return None
 
     top_domain = qualifying_domains[0]
@@ -364,6 +371,8 @@ def _select_ambiguous_no_primary_secondaries(
             return [sorted(tied_domains, key=DOMAIN_ORDER.index)[0]]
     if gap < PRIMARY_DOMINANCE_MARGIN:
         return [top_domain]
+    if _top_score_share(domain_evidence, ranked_domains) < _primary_min_share(top_score):
+        return None
     return None
 
 
@@ -374,6 +383,8 @@ def _qualified_for_primary(
     if domain_evidence.score < PRIMARY_QUALIFICATION_THRESHOLD:
         return False
     if (decision_input.severity_input or 0.0) < PRIMARY_MIN_SEVERITY_THRESHOLD:
+        return False
+    if _total_supported_score(decision_input) < PRIMARY_MATERIALITY_FLOOR:
         return False
     return _support_count(domain_evidence) >= 1
 
@@ -539,3 +550,30 @@ def _safe_float(value: Any) -> float | None:
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
+
+
+def _total_supported_score(decision_input: DecisionInput) -> float:
+    return sum(
+        max(_safe_float(decision_input.canonical_domain_scores.get(domain)) or 0.0, 0.0)
+        for domain in DOMAIN_ORDER
+    )
+
+
+def _top_score_share(
+    domain_evidence: dict[str, DomainEvidence],
+    ranked_domains: list[str],
+) -> float:
+    if not ranked_domains:
+        return 0.0
+    total_score = sum(
+        max(domain_evidence[domain].score, 0.0) for domain in ranked_domains
+    )
+    if total_score <= 0.0:
+        return 0.0
+    return domain_evidence[ranked_domains[0]].score / total_score
+
+
+def _primary_min_share(top_score: float) -> float:
+    if top_score >= PRIMARY_HIGH_SCORE_SHARE_THRESHOLD:
+        return PRIMARY_HIGH_SCORE_MIN_SHARE
+    return PRIMARY_MIN_SHARE

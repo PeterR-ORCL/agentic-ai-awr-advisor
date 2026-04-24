@@ -293,8 +293,8 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        self.assertEqual(decision.primary_issue, "CPU")
-        self.assertEqual(decision.secondary_issues, [])
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
         diagnostics = _decision_diagnostics(decision)
         self.assertFalse(diagnostics["tie_break_applied"])
         self.assertEqual(diagnostics["final_ranked_domains"][:2], ["CPU", "IO"])
@@ -302,7 +302,7 @@ class DecisionEngineTests(unittest.TestCase):
     def test_multiple_secondary_issues_are_selected_generically(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"CPU": 18.0, "MEMORY": 7.0, "COMMIT": 7.0},
+                {"CPU": 24.0, "MEMORY": 7.0, "COMMIT": 7.0},
                 severity=56.0,
                 confidence=0.79,
                 primary_signal_domain="CPU",
@@ -328,10 +328,10 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsInstance(diagnostics["ordered_candidates_pre_tiebreak"], list)
         self.assertEqual(diagnostics["final_ranked_domains"][0], decision.primary_issue)
 
-    def test_primary_below_11_does_not_qualify(self) -> None:
+    def test_primary_below_9_does_not_qualify(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"COMMIT": 10.9},
+                {"COMMIT": 8.9},
                 severity=40.0,
                 confidence=0.52,
                 coverage_ratio=0.6,
@@ -342,11 +342,11 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["COMMIT"])
 
-    def test_primary_at_or_above_11_requires_severity_gate(self) -> None:
+    def test_primary_at_or_above_9_requires_severity_gate(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"IO": 11.0},
-                severity=16.0,
+                {"IO": 9.0},
+                severity=14.0,
                 confidence=0.50,
                 coverage_ratio=0.5,
                 primary_signal_domain="IO",
@@ -356,6 +356,20 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["IO"])
         self.assertEqual(decision.overall_status, "OK")
+
+    def test_primary_requires_material_total_support(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 15.0, "IO": 2.3},
+                severity=18.0,
+                confidence=0.62,
+                coverage_ratio=0.6,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
 
     def test_secondary_above_floor_qualifies(self) -> None:
         decision = build_decision(

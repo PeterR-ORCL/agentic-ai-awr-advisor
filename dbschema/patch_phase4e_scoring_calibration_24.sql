@@ -19,6 +19,9 @@
 -- deterministic score model. For the 24-case pack it behaves as platform noise
 -- rather than actionable pressure, so remove only that seeded row.
 -- ============================================================================
+
+spool patch_phase4e_scoring_calibration_24.log
+
 DELETE FROM AWR_SCORING_WEIGHT
 WHERE SCORING_MODEL_ID IN (
     SELECT m.SCORING_MODEL_ID
@@ -254,3 +257,5 @@ WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
       'APPLY_LAG_SEC'
   )
 ORDER BY w.FEATURE_CODE;
+
+spool off

@@ -106,7 +106,7 @@ PROMOTED_ENGINEERED_FEATURE_KEYS = (
 SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "CPU_UTIL_P95": {"min": 0.0, "max": 100.0},
     "DB_TIME_PER_TXN": {"median": 0.1, "iqr": 0.5},
-    "READ_LATENCY_MS": {"min": 0.0, "max": 40.0},
+    "READ_LATENCY_MS": {"min": 0.0, "max": 80.0},
     "LOG_FILE_SYNC_MS": {"min": 0.0, "max": 20.0},
     "TOP_SQL_LOAD_CONCENTRATION": {"min": 0.0, "max": 100.0},
     "AAS_PER_CPU": {"min": 0.0, "max": 4.0},
@@ -124,8 +124,8 @@ SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "GC_CR_WAIT_PCT_DB_TIME": {"min": 0.0, "max": 50.0},
     "GC_CURRENT_WAIT_PCT_DB_TIME": {"min": 0.0, "max": 50.0},
     "GC_BUFFER_BUSY_PCT_DB_TIME": {"min": 0.0, "max": 20.0},
-    "TRANSPORT_LAG_SEC": {"min": 0.0, "max": 3600.0},
-    "APPLY_LAG_SEC": {"min": 0.0, "max": 3600.0},
+    "TRANSPORT_LAG_SEC": {"min": 0.0, "max": 600.0},
+    "APPLY_LAG_SEC": {"min": 0.0, "max": 1200.0},
     "FAILOVER_EVENT_FLAG": {"min": 0.0, "max": 1.0},
     "ROLE_TRANSITION_FLAG": {"min": 0.0, "max": 1.0},
     "POST_FAILOVER_RECOVERY_FLAG": {"min": 0.0, "max": 1.0},
@@ -4409,6 +4409,7 @@ def _score_weighted_components(
             value=transformed_value,
             method=weight["normalization_method"],
             polarity=weight["polarity"],
+            transform_method=weight["transform_method"],
         )
         weighted_points = (
             round(normalized_value * 100.0 * weight["weight_value"], 6)
@@ -4596,6 +4597,7 @@ def _normalize_weight_feature(
     value: float | None,
     method: str | None,
     polarity: str | None,
+    transform_method: str | None = None,
 ) -> float | None:
     if value is None:
         return None
@@ -4613,6 +4615,12 @@ def _normalize_weight_feature(
     else:
         min_value = defaults.get("min", 0.0)
         max_value = defaults.get("max", 100.0)
+        transformed_min = _apply_transform(min_value, transform_method)
+        transformed_max = _apply_transform(max_value, transform_method)
+        if transformed_min is not None:
+            min_value = transformed_min
+        if transformed_max is not None:
+            max_value = transformed_max
         if max_value <= min_value:
             return None
         normalized = (value - min_value) / (max_value - min_value)

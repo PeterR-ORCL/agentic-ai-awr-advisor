@@ -268,10 +268,10 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(decision.secondary_issues, ["IO"])
         self.assertEqual(decision.overall_status, "OK")
 
-    def test_secondary_at_or_above_6_qualifies(self) -> None:
+    def test_secondary_above_floor_qualifies(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"CPU": 18.0, "IO": 6.0},
+                {"CPU": 18.0, "IO": 6.2},
                 severity=45.0,
                 confidence=0.68,
                 coverage_ratio=0.7,
@@ -310,6 +310,32 @@ class DecisionEngineTests(unittest.TestCase):
         diagnostics = decision.evidence["decision_diagnostics"]
         self.assertFalse(diagnostics["tie_break_applied"])
         self.assertIsNone(diagnostics["tie_break_reason"])
+
+    def test_ambiguous_primary_yields_top_secondary_only(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 15.0, "IO": 10.8},
+                severity=24.9,
+                confidence=0.73,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_tied_ambiguous_primary_uses_locked_order_for_secondary_orientation(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 15.0, "COMMIT": 15.0, "IO": 6.5},
+                severity=35.0,
+                confidence=0.68,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
 
     def test_adg_can_be_primary(self) -> None:
         decision = build_decision(

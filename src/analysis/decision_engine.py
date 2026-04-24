@@ -7,9 +7,9 @@ from src.models.decision import AwrDecision, DecisionInput
 
 DOMAIN_ORDER = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
 PRIMARY_QUALIFICATION_THRESHOLD = 11.0
-SECONDARY_QUALIFICATION_THRESHOLD = 6.0
+SECONDARY_QUALIFICATION_THRESHOLD = 6.1
 SECONDARY_RELATIVE_THRESHOLD = 0.25
-SECONDARY_RELATIVE_CEILING = 0.65
+SECONDARY_RELATIVE_CEILING = 0.50
 SECONDARY_ONLY_THRESHOLD = 3.5
 PRIMARY_MIN_SEVERITY_THRESHOLD = 21.55
 PRIMARY_DOMINANCE_MARGIN = 4.5
@@ -85,6 +85,7 @@ def build_decision(
         domain_evidence=domain_evidence,
         ranked_domains=ranked_domains,
         primary_issue=primary_issue,
+        decision_input=decision_input,
     )
     tie_break_applied, tie_break_reason = _compute_meaningful_tie_break(
         ordered_candidates=ordered_candidates,
@@ -267,13 +268,13 @@ def _select_primary_issue(
     top_domain = qualifying_domains[0]
     top_score = domain_evidence[top_domain].score
     runner_up_score = (
-        domain_evidence[qualifying_domains[1]].score
-        if len(qualifying_domains) > 1
+        domain_evidence[ranked_domains[1]].score
+        if len(ranked_domains) > 1
         else 0.0
     )
     tertiary_score = (
-        domain_evidence[qualifying_domains[2]].score
-        if len(qualifying_domains) > 2
+        domain_evidence[ranked_domains[2]].score
+        if len(ranked_domains) > 2
         else 0.0
     )
     gap = top_score - runner_up_score
@@ -297,13 +298,19 @@ def _select_secondary_issues(
     domain_evidence: dict[str, DomainEvidence],
     ranked_domains: list[str],
     primary_issue: str | None,
+    decision_input: DecisionInput,
 ) -> list[str]:
     secondary_issues: list[str] = []
     primary_score = domain_evidence[primary_issue].score if primary_issue else None
     if primary_issue is None:
+        ambiguous_secondaries = _select_ambiguous_no_primary_secondaries(
+            decision_input=decision_input,
+            domain_evidence=domain_evidence,
+            ranked_domains=ranked_domains,
+        )
+        if ambiguous_secondaries is not None:
+            return ambiguous_secondaries
         for domain in DOMAIN_ORDER:
-            if domain == primary_issue:
-                continue
             if not _qualified_for_secondary_only(domain_evidence[domain]):
                 continue
             secondary_issues.append(domain)
@@ -316,6 +323,48 @@ def _select_secondary_issues(
             continue
         secondary_issues.append(domain)
     return secondary_issues
+
+
+def _select_ambiguous_no_primary_secondaries(
+    decision_input: DecisionInput,
+    domain_evidence: dict[str, DomainEvidence],
+    ranked_domains: list[str],
+) -> list[str] | None:
+    qualifying_domains = [
+        domain
+        for domain in ranked_domains
+        if _qualified_for_primary(domain_evidence[domain], decision_input)
+    ]
+    if not qualifying_domains:
+        top_domain = ranked_domains[0]
+        top_score = domain_evidence[top_domain].score
+        runner_up_score = (
+            domain_evidence[ranked_domains[1]].score if len(ranked_domains) > 1 else 0.0
+        )
+        if top_score >= PRIMARY_QUALIFICATION_THRESHOLD and (
+            top_score - runner_up_score
+        ) < PRIMARY_DOMINANCE_MARGIN:
+            return [top_domain]
+        return None
+
+    top_domain = qualifying_domains[0]
+    top_score = domain_evidence[top_domain].score
+    runner_up_score = (
+        domain_evidence[ranked_domains[1]].score if len(ranked_domains) > 1 else 0.0
+    )
+    gap = top_score - runner_up_score
+    if gap <= PRIMARY_TIE_TOLERANCE:
+        tied_domains = [
+            domain
+            for domain in ranked_domains
+            if (top_score - domain_evidence[domain].score) <= PRIMARY_TIE_TOLERANCE
+            and _qualified_for_primary(domain_evidence[domain], decision_input)
+        ]
+        if tied_domains:
+            return [sorted(tied_domains, key=DOMAIN_ORDER.index)[0]]
+    if gap < PRIMARY_DOMINANCE_MARGIN:
+        return [top_domain]
+    return None
 
 
 def _qualified_for_primary(

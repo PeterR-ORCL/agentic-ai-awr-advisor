@@ -18,6 +18,8 @@ PRIMARY_DOMINANCE_MARGIN = 5.0
 PRIMARY_TIE_TOLERANCE = 0.5
 PRIMARY_TERTIARY_SUPPRESSION_THRESHOLD = 5.0
 PRIMARY_MATERIALITY_FLOOR = 18.0
+LOW_SEVERITY_PRIMARY_THRESHOLD = 18.0
+LOW_SEVERITY_PRIMARY_MIN_SCORE_SHARE = 0.87
 PRIMARY_MIN_SHARE = 0.65
 PRIMARY_HIGH_SCORE_SHARE_THRESHOLD = 20.0
 PRIMARY_HIGH_SCORE_MIN_SHARE = 0.54
@@ -396,9 +398,16 @@ def _qualified_for_primary(
 ) -> bool:
     if domain_evidence.score < PRIMARY_QUALIFICATION_THRESHOLD:
         return False
-    if (decision_input.severity_input or 0.0) < PRIMARY_MIN_SEVERITY_THRESHOLD:
+    severity_input = decision_input.severity_input or 0.0
+    if severity_input < PRIMARY_MIN_SEVERITY_THRESHOLD:
         return False
     if _total_supported_score(decision_input) < PRIMARY_MATERIALITY_FLOOR:
+        return False
+    if (
+        severity_input < LOW_SEVERITY_PRIMARY_THRESHOLD
+        and severity_input > 0.0
+        and (domain_evidence.score / severity_input) < LOW_SEVERITY_PRIMARY_MIN_SCORE_SHARE
+    ):
         return False
     return _support_count(domain_evidence) >= 1
 

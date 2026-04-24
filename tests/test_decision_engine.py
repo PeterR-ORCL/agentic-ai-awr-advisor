@@ -371,6 +371,34 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["CPU"])
 
+    def test_low_severity_primary_requires_concentrated_score_share(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 15.0, "IO": 5.0},
+                severity=17.4,
+                confidence=0.62,
+                coverage_ratio=0.45,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_low_severity_primary_can_still_qualify_when_highly_concentrated(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 15.0, "IO": 3.6},
+                severity=16.2,
+                confidence=0.62,
+                coverage_ratio=0.45,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "CPU")
+        self.assertEqual(decision.secondary_issues, [])
+
     def test_secondary_above_floor_qualifies(self) -> None:
         decision = build_decision(
             _decision_input(

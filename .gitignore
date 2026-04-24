@@ -19,3 +19,5 @@ validation_*.json
 # Debug backups
 *.old.*
 *.gold.*
+scoring_diagnostics_*.json
+scoring_diagnostics_*.md

@@ -16,6 +16,7 @@ def _decision_input(
     confidence: float = 0.72,
     coverage_ratio: float = 0.8,
     primary_signal_domain: str | None = None,
+    feature_evidence: dict[str, object] | None = None,
 ) -> DecisionInput:
     return DecisionInput(
         awr_id=1,
@@ -24,6 +25,7 @@ def _decision_input(
         confidence_input=confidence,
         completeness=coverage_ratio,
         primary_signal_domain=primary_signal_domain,
+        feature_evidence=feature_evidence or {},
         score_evidence={
             "canonical_domain_scores": canonical_domain_scores,
             "score_result": {
@@ -328,10 +330,10 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsInstance(diagnostics["ordered_candidates_pre_tiebreak"], list)
         self.assertEqual(diagnostics["final_ranked_domains"][0], decision.primary_issue)
 
-    def test_primary_below_9_does_not_qualify(self) -> None:
+    def test_primary_below_7_does_not_qualify(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"COMMIT": 8.9},
+                {"COMMIT": 6.9},
                 severity=40.0,
                 confidence=0.52,
                 coverage_ratio=0.6,
@@ -342,11 +344,11 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["COMMIT"])
 
-    def test_primary_at_or_above_9_requires_severity_gate(self) -> None:
+    def test_primary_at_or_above_7_requires_severity_gate(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"IO": 9.0},
-                severity=14.0,
+                {"IO": 7.0},
+                severity=12.9,
                 confidence=0.50,
                 coverage_ratio=0.5,
                 primary_signal_domain="IO",
@@ -360,7 +362,7 @@ class DecisionEngineTests(unittest.TestCase):
     def test_primary_requires_material_total_support(self) -> None:
         decision = build_decision(
             _decision_input(
-                {"CPU": 15.0, "IO": 2.3},
+                {"CPU": 15.0, "IO": 1.9},
                 severity=18.0,
                 confidence=0.62,
                 coverage_ratio=0.6,
@@ -393,6 +395,10 @@ class DecisionEngineTests(unittest.TestCase):
                 confidence=0.62,
                 coverage_ratio=0.45,
                 primary_signal_domain="CPU",
+                feature_evidence={
+                    "db_time_per_sec": 4.0,
+                    "db_time_per_txn": 0.03,
+                },
             )
         )
 
@@ -492,7 +498,79 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIsNone(decision.primary_issue)
-        self.assertEqual(decision.secondary_issues, ["CPU", "COMMIT"])
+        self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_activity_supported_primary_override_allows_supported_top_signal(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"IO": 7.3, "CPU": 6.7, "COMMIT": 2.9},
+                severity=11.4,
+                confidence=0.58,
+                coverage_ratio=0.75,
+                primary_signal_domain="IO",
+                feature_evidence={
+                    "db_time_per_sec": 8.7,
+                    "db_time_per_txn": 0.06,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "IO")
+        self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_low_activity_ambiguous_no_primary_excludes_top_candidate(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"COMMIT": 9.7, "CPU": 8.6, "IO": 4.4},
+                severity=15.1,
+                confidence=0.55,
+                coverage_ratio=0.6,
+                primary_signal_domain="COMMIT",
+                feature_evidence={
+                    "db_time_per_sec": 0.7,
+                    "db_time_per_txn": 0.01,
+                },
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU", "IO"])
+
+    def test_low_activity_diffuse_no_primary_prefers_single_follow_on_secondary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 8.2, "IO": 5.3, "COMMIT": 3.9},
+                severity=11.8,
+                confidence=0.56,
+                coverage_ratio=0.6,
+                primary_signal_domain="CPU",
+                feature_evidence={
+                    "db_time_per_sec": 2.2,
+                    "db_time_per_txn": 0.02,
+                },
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["IO"])
+
+    def test_close_secondary_gap_is_allowed_under_primary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"MEMORY": 9.3, "IO": 8.9, "CPU": 4.9},
+                severity=16.4,
+                confidence=0.61,
+                coverage_ratio=0.8,
+                primary_signal_domain="MEMORY",
+                feature_evidence={
+                    "db_time_per_sec": 10.2,
+                    "db_time_per_txn": 0.07,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "MEMORY")
+        self.assertEqual(decision.secondary_issues, ["IO"])
 
     def test_adg_can_be_primary(self) -> None:
         decision = build_decision(

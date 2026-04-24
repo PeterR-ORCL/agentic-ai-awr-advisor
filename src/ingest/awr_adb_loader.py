@@ -106,8 +106,8 @@ PROMOTED_ENGINEERED_FEATURE_KEYS = (
 SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "CPU_UTIL_P95": {"min": 0.0, "max": 100.0},
     "DB_TIME_PER_TXN": {"median": 0.1, "iqr": 0.5},
-    "READ_LATENCY_MS": {"min": 0.0, "max": 80.0},
-    "LOG_FILE_SYNC_MS": {"min": 0.0, "max": 20.0},
+    "READ_LATENCY_MS": {"min": 0.0, "max": 100.0},
+    "LOG_FILE_SYNC_MS": {"min": 0.0, "max": 80.0},
     "TOP_SQL_LOAD_CONCENTRATION": {"min": 0.0, "max": 100.0},
     "AAS_PER_CPU": {"min": 0.0, "max": 4.0},
     "USER_IO_PRESSURE": {"min": 0.0, "max": 100.0},
@@ -4277,6 +4277,22 @@ def _build_score_result_record(
     domain_totals = _aggregate_domain_scores(usable_components)
     primary_signal_domain = _derive_primary_signal_domain(domain_totals)
     severity_score = total_score
+    db_time_per_sec = _safe_float(
+        feature_json.get("DB_TIME_PER_SEC") or feature_json.get("db_time_per_sec")
+    )
+    db_time_per_txn = _safe_float(
+        feature_json.get("DB_TIME_PER_TXN") or feature_json.get("db_time_per_txn")
+    )
+    top_domain_score = max(domain_totals.values(), default=0.0)
+    if (
+        db_time_per_sec is not None
+        and db_time_per_sec >= 3.5
+        and db_time_per_txn is not None
+        and db_time_per_txn >= 0.02
+    ):
+        severity_score = _round_score(
+            max(total_score, top_domain_score + (5.0 * db_time_per_sec))
+        )
     urgency_score = _round_score(
         (0.65 * total_score)
         + (

@@ -6,20 +6,33 @@ from typing import Any
 from src.models.decision import AwrDecision, DecisionInput
 
 DOMAIN_ORDER = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
-PRIMARY_QUALIFICATION_THRESHOLD = 9.0
+PRIMARY_QUALIFICATION_THRESHOLD = 7.0
 SECONDARY_QUALIFICATION_THRESHOLD = 5.0
 SECONDARY_RELATIVE_THRESHOLD = 0.25
 SECONDARY_RELATIVE_CEILING = 0.70
 SECONDARY_ONLY_THRESHOLD = 3.5
 NO_PRIMARY_MAX_SECONDARIES = 2
 NO_PRIMARY_EXCLUDED_TOP_RELATIVE_THRESHOLD = 0.5
-PRIMARY_MIN_SEVERITY_THRESHOLD = 14.5
+PRIMARY_MIN_SEVERITY_THRESHOLD = 13.0
 PRIMARY_DOMINANCE_MARGIN = 5.0
-PRIMARY_TIE_TOLERANCE = 0.5
+PRIMARY_TIE_TOLERANCE = 0.3
 PRIMARY_TERTIARY_SUPPRESSION_THRESHOLD = 5.0
-PRIMARY_MATERIALITY_FLOOR = 18.0
+PRIMARY_MATERIALITY_FLOOR = 17.0
 LOW_SEVERITY_PRIMARY_THRESHOLD = 18.0
 LOW_SEVERITY_PRIMARY_MIN_SCORE_SHARE = 0.87
+LOW_ACTIVITY_PRIMARY_MAX_DB_TIME_PER_SEC = 1.0
+ACTIVITY_SUPPORTED_PRIMARY_MIN_DB_TIME_PER_SEC = 3.1
+ACTIVITY_SUPPORTED_PRIMARY_MIN_DB_TIME_PER_TXN = 0.02
+ACTIVITY_SUPPORTED_PRIMARY_MAX_BREADTH = 3
+ACTIVITY_SUPPORTED_PRIMARY_MIN_GAP = 0.25
+LOW_ACTIVITY_NO_PRIMARY_MAX_DB_TIME_PER_SEC = 1.0
+LOW_ACTIVITY_NO_PRIMARY_EXCLUSION_MAX_GAP = 1.5
+LOW_ACTIVITY_DIFFUSE_MAX_DB_TIME_PER_SEC = 3.0
+LOW_ACTIVITY_DIFFUSE_MIN_TOP_SCORE = 7.0
+LOW_ACTIVITY_DIFFUSE_MIN_RUNNER_UP_SCORE = 4.0
+LOW_PRIMARY_SECONDARY_SCORE_THRESHOLD = 10.0
+LOW_PRIMARY_SECONDARY_GAP_ALLOWANCE = 4.0
+CLOSE_SECONDARY_GAP_ALLOWANCE = 1.0
 PRIMARY_MIN_SHARE = 0.65
 PRIMARY_HIGH_SCORE_SHARE_THRESHOLD = 20.0
 PRIMARY_HIGH_SCORE_MIN_SHARE = 0.54
@@ -272,6 +285,14 @@ def _select_primary_issue(
         if _qualified_for_primary(domain_evidence[domain], decision_input)
     ]
     if not qualifying_domains:
+        top_domain = ranked_domains[0] if ranked_domains else None
+        if top_domain and _activity_supported_primary_override(
+            top_domain,
+            decision_input,
+            domain_evidence,
+            ranked_domains,
+        ):
+            return top_domain
         return None
 
     top_domain = qualifying_domains[0]
@@ -293,9 +314,23 @@ def _select_primary_issue(
         return None
 
     if gap < PRIMARY_DOMINANCE_MARGIN:
+        if _activity_supported_primary_override(
+            top_domain,
+            decision_input,
+            domain_evidence,
+            ranked_domains,
+        ):
+            return top_domain
         return None
 
     if _top_score_share(domain_evidence, ranked_domains) < _primary_min_share(top_score):
+        if _activity_supported_primary_override(
+            top_domain,
+            decision_input,
+            domain_evidence,
+            ranked_domains,
+        ):
+            return top_domain
         return None
     return top_domain
 
@@ -316,11 +351,24 @@ def _select_secondary_issues(
         )
         if ambiguous_secondaries is not None:
             return ambiguous_secondaries
+        excluded_top_domain = _excluded_low_activity_top_domain(
+            decision_input=decision_input,
+            domain_evidence=domain_evidence,
+            ranked_domains=ranked_domains,
+        )
         secondary_only_candidates = [
             domain
             for domain in ranked_domains
-            if _qualified_for_secondary_only(domain_evidence[domain])
+            if domain != excluded_top_domain
+            and _qualified_for_secondary_only(domain_evidence[domain])
         ]
+        if _uses_single_follow_on_secondary(
+            decision_input=decision_input,
+            domain_evidence=domain_evidence,
+            ranked_domains=ranked_domains,
+            excluded_top_domain=excluded_top_domain,
+        ):
+            return secondary_only_candidates[:1]
         return _limit_no_primary_secondaries(
             secondary_only_candidates,
             domain_evidence,
@@ -329,7 +377,11 @@ def _select_secondary_issues(
     for domain in DOMAIN_ORDER:
         if domain == primary_issue:
             continue
-        if not _qualified_for_secondary(domain_evidence[domain], primary_score):
+        if not _qualified_for_secondary(
+            domain_evidence[domain],
+            primary_score,
+            (primary_score - domain_evidence[domain].score) if primary_score is not None else None,
+        ):
             continue
         secondary_issues.append(domain)
     return secondary_issues
@@ -340,6 +392,11 @@ def _select_ambiguous_no_primary_secondaries(
     domain_evidence: dict[str, DomainEvidence],
     ranked_domains: list[str],
 ) -> list[str] | None:
+    excluded_top_domain = _excluded_low_activity_top_domain(
+        decision_input=decision_input,
+        domain_evidence=domain_evidence,
+        ranked_domains=ranked_domains,
+    )
     qualifying_domains = [
         domain
         for domain in ranked_domains
@@ -347,6 +404,8 @@ def _select_ambiguous_no_primary_secondaries(
     ]
     if not qualifying_domains:
         top_domain = ranked_domains[0]
+        if top_domain == excluded_top_domain:
+            return None
         top_score = domain_evidence[top_domain].score
         runner_up_score = (
             domain_evidence[ranked_domains[1]].score if len(ranked_domains) > 1 else 0.0
@@ -363,6 +422,8 @@ def _select_ambiguous_no_primary_secondaries(
         return None
 
     top_domain = qualifying_domains[0]
+    if top_domain == excluded_top_domain:
+        return None
     top_score = domain_evidence[top_domain].score
     runner_up_score = (
         domain_evidence[ranked_domains[1]].score if len(ranked_domains) > 1 else 0.0
@@ -403,6 +464,13 @@ def _qualified_for_primary(
         return False
     if _total_supported_score(decision_input) < PRIMARY_MATERIALITY_FLOOR:
         return False
+    db_time_per_sec = _feature_metric(decision_input, "db_time_per_sec")
+    if (
+        severity_input < LOW_SEVERITY_PRIMARY_THRESHOLD
+        and db_time_per_sec is not None
+        and db_time_per_sec < LOW_ACTIVITY_PRIMARY_MAX_DB_TIME_PER_SEC
+    ):
+        return False
     if (
         severity_input < LOW_SEVERITY_PRIMARY_THRESHOLD
         and severity_input > 0.0
@@ -415,12 +483,23 @@ def _qualified_for_primary(
 def _qualified_for_secondary(
     domain_evidence: DomainEvidence,
     primary_score: float | None,
+    score_gap: float | None = None,
 ) -> bool:
     if domain_evidence.score < SECONDARY_QUALIFICATION_THRESHOLD:
         return False
-    if primary_score is not None and domain_evidence.score < (primary_score * SECONDARY_RELATIVE_THRESHOLD):
+    if primary_score is None:
         return False
-    if primary_score is not None and domain_evidence.score > (primary_score * SECONDARY_RELATIVE_CEILING):
+    if score_gap is not None and score_gap <= CLOSE_SECONDARY_GAP_ALLOWANCE:
+        return _support_count(domain_evidence) >= 1
+    if primary_score < LOW_PRIMARY_SECONDARY_SCORE_THRESHOLD:
+        return (
+            score_gap is not None
+            and score_gap <= LOW_PRIMARY_SECONDARY_GAP_ALLOWANCE
+            and _support_count(domain_evidence) >= 1
+        )
+    if domain_evidence.score < (primary_score * SECONDARY_RELATIVE_THRESHOLD):
+        return False
+    if domain_evidence.score > (primary_score * SECONDARY_RELATIVE_CEILING):
         return False
     return _support_count(domain_evidence) >= 1
 
@@ -602,6 +681,42 @@ def _primary_min_share(top_score: float) -> float:
     return PRIMARY_MIN_SHARE
 
 
+def _activity_supported_primary_override(
+    top_domain: str,
+    decision_input: DecisionInput,
+    domain_evidence: dict[str, DomainEvidence],
+    ranked_domains: list[str],
+) -> bool:
+    if top_domain != decision_input.primary_signal_domain:
+        return False
+    top_score = domain_evidence[top_domain].score
+    if top_score < PRIMARY_QUALIFICATION_THRESHOLD:
+        return False
+    db_time_per_sec = _feature_metric(decision_input, "db_time_per_sec")
+    db_time_per_txn = _feature_metric(decision_input, "db_time_per_txn")
+    if (
+        db_time_per_sec is None
+        or db_time_per_sec < ACTIVITY_SUPPORTED_PRIMARY_MIN_DB_TIME_PER_SEC
+    ):
+        return False
+    if (
+        db_time_per_txn is None
+        or db_time_per_txn < ACTIVITY_SUPPORTED_PRIMARY_MIN_DB_TIME_PER_TXN
+    ):
+        return False
+    meaningful_domain_count = sum(
+        1
+        for domain in DOMAIN_ORDER
+        if domain_evidence[domain].score >= SECONDARY_QUALIFICATION_THRESHOLD
+    )
+    if meaningful_domain_count > ACTIVITY_SUPPORTED_PRIMARY_MAX_BREADTH:
+        return False
+    runner_up_score = (
+        domain_evidence[ranked_domains[1]].score if len(ranked_domains) > 1 else 0.0
+    )
+    return (top_score - runner_up_score) >= ACTIVITY_SUPPORTED_PRIMARY_MIN_GAP
+
+
 def _limit_no_primary_secondaries(
     secondary_candidates: list[str],
     domain_evidence: dict[str, DomainEvidence],
@@ -621,3 +736,64 @@ def _limit_no_primary_secondaries(
         if domain_evidence[domain].score >= minimum_score
     ]
     return filtered_candidates[:NO_PRIMARY_MAX_SECONDARIES]
+
+
+def _excluded_low_activity_top_domain(
+    decision_input: DecisionInput,
+    domain_evidence: dict[str, DomainEvidence],
+    ranked_domains: list[str],
+) -> str | None:
+    if len(ranked_domains) < 2:
+        return None
+    db_time_per_sec = _feature_metric(decision_input, "db_time_per_sec")
+    if db_time_per_sec is None:
+        return None
+    top_domain = ranked_domains[0]
+    top_score = domain_evidence[top_domain].score
+    runner_up_score = domain_evidence[ranked_domains[1]].score
+    gap = top_score - runner_up_score
+    if (
+        db_time_per_sec < LOW_ACTIVITY_NO_PRIMARY_MAX_DB_TIME_PER_SEC
+        and top_score >= SECONDARY_QUALIFICATION_THRESHOLD
+        and gap <= LOW_ACTIVITY_NO_PRIMARY_EXCLUSION_MAX_GAP
+    ):
+        return top_domain
+    if (
+        db_time_per_sec < LOW_ACTIVITY_DIFFUSE_MAX_DB_TIME_PER_SEC
+        and top_score >= LOW_ACTIVITY_DIFFUSE_MIN_TOP_SCORE
+        and runner_up_score >= LOW_ACTIVITY_DIFFUSE_MIN_RUNNER_UP_SCORE
+        and gap < PRIMARY_DOMINANCE_MARGIN
+    ):
+        return top_domain
+    return None
+
+
+def _uses_single_follow_on_secondary(
+    decision_input: DecisionInput,
+    domain_evidence: dict[str, DomainEvidence],
+    ranked_domains: list[str],
+    excluded_top_domain: str | None,
+) -> bool:
+    if excluded_top_domain is None or len(ranked_domains) < 2:
+        return False
+    db_time_per_sec = _feature_metric(decision_input, "db_time_per_sec")
+    if db_time_per_sec is None:
+        return False
+    top_score = domain_evidence[ranked_domains[0]].score
+    runner_up_score = domain_evidence[ranked_domains[1]].score
+    return (
+        db_time_per_sec >= LOW_ACTIVITY_NO_PRIMARY_MAX_DB_TIME_PER_SEC
+        and db_time_per_sec < LOW_ACTIVITY_DIFFUSE_MAX_DB_TIME_PER_SEC
+        and top_score >= LOW_ACTIVITY_DIFFUSE_MIN_TOP_SCORE
+        and runner_up_score >= LOW_ACTIVITY_DIFFUSE_MIN_RUNNER_UP_SCORE
+        and (top_score - runner_up_score) < PRIMARY_DOMINANCE_MARGIN
+    )
+
+
+def _feature_metric(decision_input: DecisionInput, metric_name: str) -> float | None:
+    feature_evidence = decision_input.feature_evidence or {}
+    for key in (metric_name, metric_name.upper()):
+        numeric_value = _safe_float(feature_evidence.get(key))
+        if numeric_value is not None:
+            return numeric_value
+    return None

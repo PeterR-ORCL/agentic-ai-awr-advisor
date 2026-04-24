@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from typing import Any, cast
 
 from src.analysis.decision_engine import DOMAIN_ORDER, build_decision
 from src.analysis.scoring_adapter import build_decision_input_from_score_result
@@ -99,6 +100,89 @@ def _realistic_score_result_record(
     risk_level: str = "LOW",
 ) -> dict[str, object]:
     severity_value = total_score if severity_score is None else severity_score
+    explanation_payload = {
+        "summary": (
+            "Deterministic model AWR_WEIGHTED_CORE produced a total score "
+            "of 26.90 with risk level LOW and confidence 63.67."
+        ),
+        "evidence": {
+            "feature_coverage": 5,
+            "feature_codes_used": [
+                "CPU_UTIL_P95",
+                "DB_TIME_PER_TXN",
+                "READ_LATENCY_MS",
+                "LOG_FILE_SYNC_MS",
+                "TOP_SQL_LOAD_CONCENTRATION",
+            ],
+            "top_domains": [
+                {"domain": "CPU", "score": 12.8372},
+                {"domain": "LOAD", "score": 5.471},
+                {"domain": "SQL", "score": 3.75},
+                {"domain": "WAIT", "score": 0.72},
+                {"domain": "IO", "score": 0.0862},
+            ],
+        },
+    }
+    contribution_payload = {
+        "components": [
+            {
+                "feature_code": "CPU_UTIL_P95",
+                "feature_name": "CPU Utilization P95",
+                "feature_domain": "CPU",
+                "raw_value": 64.186,
+                "transformed_value": 64.186,
+                "normalized_value": 0.64186,
+                "weight_value": 0.2,
+                "weighted_points": 12.8372,
+                "feature_path": "$.CPU_UTIL_P95",
+                "normalization_method": "MINMAX",
+                "transform_method": "NONE",
+                "polarity": "HIGH_BAD",
+            },
+            {
+                "feature_code": "DB_TIME_PER_TXN",
+                "feature_name": "DB Time Per Transaction",
+                "feature_domain": "LOAD",
+                "raw_value": 0.91,
+                "transformed_value": 0.647103,
+                "normalized_value": 0.273552,
+                "weight_value": 0.2,
+                "weighted_points": 5.47104,
+                "feature_path": "$.DB_TIME_PER_TXN",
+                "normalization_method": "ROBUST",
+                "transform_method": "LOG1P",
+                "polarity": "HIGH_BAD",
+            },
+            {
+                "feature_code": "READ_LATENCY_MS",
+                "feature_name": "Read Latency (ms)",
+                "feature_domain": "IO",
+                "raw_value": 0.23,
+                "transformed_value": 0.23,
+                "normalized_value": 0.00575,
+                "weight_value": 0.15,
+                "weighted_points": 0.08625,
+                "feature_path": "$.READ_LATENCY_MS",
+                "normalization_method": "MINMAX",
+                "transform_method": "NONE",
+                "polarity": "HIGH_BAD",
+            },
+            {
+                "feature_code": "LOG_FILE_SYNC_MS",
+                "feature_name": "Log File Sync (ms)",
+                "feature_domain": "WAIT",
+                "raw_value": 0.96,
+                "transformed_value": 0.96,
+                "normalized_value": 0.048,
+                "weight_value": 0.15,
+                "weighted_points": 0.72,
+                "feature_path": "$.LOG_FILE_SYNC_MS",
+                "normalization_method": "MINMAX",
+                "transform_method": "NONE",
+                "polarity": "HIGH_BAD",
+            },
+        ]
+    }
     return {
         "awr_id": 42,
         "source_system_id": 42,
@@ -116,21 +200,8 @@ def _realistic_score_result_record(
         "platform_class": None,
         "event_class": None,
         "primary_signal_domain": primary_signal_domain,
-        "explanation_json": (
-            '{"summary":"Deterministic model AWR_WEIGHTED_CORE produced a total score '
-            'of 26.90 with risk level LOW and confidence 63.67.",'
-            '"evidence":{"feature_coverage":5,'
-            '"feature_codes_used":["CPU_UTIL_P95","DB_TIME_PER_TXN","READ_LATENCY_MS","LOG_FILE_SYNC_MS","TOP_SQL_LOAD_CONCENTRATION"],'
-            '"top_domains":[{"domain":"CPU","score":12.8372},{"domain":"LOAD","score":5.471},{"domain":"SQL","score":3.75},{"domain":"WAIT","score":0.72},{"domain":"IO","score":0.0862}]}}'
-        ),
-        "contribution_json": (
-            '{"components":['
-            '{"feature_code":"CPU_UTIL_P95","feature_name":"CPU Utilization P95","feature_domain":"CPU","raw_value":64.186,"transformed_value":64.186,"normalized_value":0.64186,"weight_value":0.2,"weighted_points":12.8372,"feature_path":"$.CPU_UTIL_P95","normalization_method":"MINMAX","transform_method":"NONE","polarity":"HIGH_BAD"},'
-            '{"feature_code":"DB_TIME_PER_TXN","feature_name":"DB Time Per Transaction","feature_domain":"LOAD","raw_value":0.91,"transformed_value":0.647103,"normalized_value":0.273552,"weight_value":0.2,"weighted_points":5.47104,"feature_path":"$.DB_TIME_PER_TXN","normalization_method":"ROBUST","transform_method":"LOG1P","polarity":"HIGH_BAD"},'
-            '{"feature_code":"READ_LATENCY_MS","feature_name":"Read Latency (ms)","feature_domain":"IO","raw_value":0.23,"transformed_value":0.23,"normalized_value":0.00575,"weight_value":0.15,"weighted_points":0.08625,"feature_path":"$.READ_LATENCY_MS","normalization_method":"MINMAX","transform_method":"NONE","polarity":"HIGH_BAD"},'
-            '{"feature_code":"LOG_FILE_SYNC_MS","feature_name":"Log File Sync (ms)","feature_domain":"WAIT","raw_value":0.96,"transformed_value":0.96,"normalized_value":0.048,"weight_value":0.15,"weighted_points":0.72,"feature_path":"$.LOG_FILE_SYNC_MS","normalization_method":"MINMAX","transform_method":"NONE","polarity":"HIGH_BAD"}'
-            ']}'
-        ),
+        "explanation_json": json.dumps(explanation_payload),
+        "contribution_json": json.dumps(contribution_payload),
         "scorecard_json": json.dumps(
             {
                 "model_code": "AWR_WEIGHTED_CORE",
@@ -163,6 +234,24 @@ def _anomaly(
     }
     payload.update(extra)
     return payload
+
+
+def _decision_diagnostics(decision: Any) -> dict[str, Any]:
+    diagnostics = decision.evidence.get("decision_diagnostics")
+    assert diagnostics is not None
+    return cast(dict[str, Any], diagnostics)
+
+
+def _decision_evidence(decision: Any) -> dict[str, Any]:
+    evidence = decision.evidence
+    assert evidence is not None
+    return cast(dict[str, Any], evidence)
+
+
+def _score_evidence(decision_input: DecisionInput) -> dict[str, Any]:
+    score_evidence = decision_input.score_evidence
+    assert score_evidence is not None
+    return cast(dict[str, Any], score_evidence)
 
 
 class DecisionEngineTests(unittest.TestCase):
@@ -206,7 +295,7 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertEqual(decision.primary_issue, "CPU")
         self.assertEqual(decision.secondary_issues, [])
-        diagnostics = decision.evidence["decision_diagnostics"]
+        diagnostics = _decision_diagnostics(decision)
         self.assertFalse(diagnostics["tie_break_applied"])
         self.assertEqual(diagnostics["final_ranked_domains"][:2], ["CPU", "IO"])
 
@@ -233,7 +322,7 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        diagnostics = decision.evidence.get("decision_diagnostics")
+        diagnostics = _decision_diagnostics(decision)
         self.assertEqual(set(diagnostics["domain_diagnostics"].keys()), set(DOMAIN_ORDER))
         self.assertIn("qualified_for_secondary", diagnostics["domain_diagnostics"]["IO"])
         self.assertIsInstance(diagnostics["ordered_candidates_pre_tiebreak"], list)
@@ -307,7 +396,7 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        diagnostics = decision.evidence["decision_diagnostics"]
+        diagnostics = _decision_diagnostics(decision)
         self.assertFalse(diagnostics["tie_break_applied"])
         self.assertIsNone(diagnostics["tie_break_reason"])
 
@@ -349,7 +438,7 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertEqual(decision.primary_issue, "ADG")
         self.assertEqual(decision.secondary_issues, [])
-        self.assertIn("ADG", decision.evidence["domain_scores"])
+        self.assertIn("ADG", _decision_evidence(decision)["domain_scores"])
 
     def test_adg_can_be_secondary(self) -> None:
         decision = build_decision(
@@ -374,7 +463,7 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        diagnostics = decision.evidence["decision_diagnostics"]
+        diagnostics = _decision_diagnostics(decision)
         self.assertIsNone(decision.primary_issue)
         self.assertTrue(diagnostics["tie_break_applied"])
         self.assertIn("ADG", diagnostics["final_ranked_domains"])
@@ -394,11 +483,12 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        self.assertIn("ADG", decision.evidence["domain_scores"])
-        self.assertIn("canonical_domain_scores", decision.evidence["score_evidence"])
+        evidence = _decision_evidence(decision)
+        self.assertIn("ADG", evidence["domain_scores"])
+        self.assertIn("canonical_domain_scores", evidence["score_evidence"])
         self.assertIn(
             "ADG",
-            decision.evidence["decision_diagnostics"]["domain_diagnostics"],
+            _decision_diagnostics(decision)["domain_diagnostics"],
         )
 
     def test_memory_can_be_selected_from_upstream_score_and_anomaly_support(self) -> None:
@@ -425,11 +515,13 @@ class DecisionEngineTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(decision_input.canonical_domain_scores["CPU"], 24.0)
-        self.assertEqual(decision_input.canonical_domain_scores["IO"], 4.0)
-        self.assertEqual(decision_input.canonical_domain_scores["ADG"], 2.0)
+        canonical_scores = decision_input.canonical_domain_scores
+        score_evidence = _score_evidence(decision_input)
+        self.assertEqual(canonical_scores["CPU"], 24.0)
+        self.assertEqual(canonical_scores["IO"], 4.0)
+        self.assertEqual(canonical_scores["ADG"], 2.0)
         self.assertEqual(
-            decision_input.score_evidence["canonical_domain_totals"]["CPU"],
+            score_evidence["canonical_domain_totals"]["CPU"],
             24.0,
         )
 
@@ -444,8 +536,9 @@ class DecisionEngineTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(decision_input.canonical_domain_scores["CPU"], 9.0)
-        self.assertEqual(sum(decision_input.canonical_domain_scores.values()), 14.0)
+        canonical_scores = decision_input.canonical_domain_scores
+        self.assertEqual(canonical_scores["CPU"], 9.0)
+        self.assertEqual(sum(canonical_scores.values()), 14.0)
 
     def test_adapter_characterizes_real_score_result_record_shape(self) -> None:
         decision_input = build_decision_input_from_score_result(
@@ -468,11 +561,13 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertAlmostEqual(decision_input.confidence_input or 0.0, 0.6367, places=4)
         self.assertEqual(decision_input.completeness, 0.8333)
         self.assertEqual(decision_input.primary_signal_domain, "CPU")
-        self.assertEqual(decision_input.canonical_domain_scores["CPU"], 22.0582)
-        self.assertEqual(decision_input.canonical_domain_scores["COMMIT"], 0.72)
-        self.assertEqual(decision_input.canonical_domain_scores["IO"], 0.0862)
+        canonical_scores = decision_input.canonical_domain_scores
+        score_evidence = _score_evidence(decision_input)
+        self.assertEqual(canonical_scores["CPU"], 22.0582)
+        self.assertEqual(canonical_scores["COMMIT"], 0.72)
+        self.assertEqual(canonical_scores["IO"], 0.0862)
         self.assertEqual(
-            decision_input.score_evidence["raw_domain_totals"]["WAIT"],
+            score_evidence["raw_domain_totals"]["WAIT"],
             0.72,
         )
 
@@ -500,7 +595,7 @@ class DecisionEngineTests(unittest.TestCase):
             ),
             include_diagnostics=True,
         )
-        baseline_score = decision.evidence["domain_scores"]["CPU"]
+        baseline_score = _decision_evidence(decision)["domain_scores"]["CPU"]
 
         decision_with_anomaly = build_decision(
             _decision_input_with_anomalies(
@@ -513,8 +608,11 @@ class DecisionEngineTests(unittest.TestCase):
             include_diagnostics=True,
         )
 
-        self.assertEqual(decision_with_anomaly.evidence["domain_scores"]["CPU"], baseline_score)
-        self.assertEqual(len(decision_with_anomaly.evidence["anomaly_signals"]), 1)
+        self.assertEqual(
+            _decision_evidence(decision_with_anomaly)["domain_scores"]["CPU"],
+            baseline_score,
+        )
+        self.assertEqual(len(_decision_evidence(decision_with_anomaly)["anomaly_signals"]), 1)
 
     def test_explicit_anomaly_delta_adjusts_score_generically(self) -> None:
         decision = build_decision(
@@ -527,7 +625,7 @@ class DecisionEngineTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(decision.evidence["domain_scores"]["CPU"], 17.0)
+        self.assertEqual(_decision_evidence(decision)["domain_scores"]["CPU"], 17.0)
 
 
 if __name__ == "__main__":

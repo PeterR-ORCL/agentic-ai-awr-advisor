@@ -11,6 +11,8 @@ SECONDARY_QUALIFICATION_THRESHOLD = 5.0
 SECONDARY_RELATIVE_THRESHOLD = 0.25
 SECONDARY_RELATIVE_CEILING = 0.70
 SECONDARY_ONLY_THRESHOLD = 3.5
+NO_PRIMARY_MAX_SECONDARIES = 2
+NO_PRIMARY_EXCLUDED_TOP_RELATIVE_THRESHOLD = 0.5
 PRIMARY_MIN_SEVERITY_THRESHOLD = 14.5
 PRIMARY_DOMINANCE_MARGIN = 5.0
 PRIMARY_TIE_TOLERANCE = 0.5
@@ -312,11 +314,15 @@ def _select_secondary_issues(
         )
         if ambiguous_secondaries is not None:
             return ambiguous_secondaries
-        for domain in DOMAIN_ORDER:
-            if not _qualified_for_secondary_only(domain_evidence[domain]):
-                continue
-            secondary_issues.append(domain)
-        return secondary_issues
+        secondary_only_candidates = [
+            domain
+            for domain in ranked_domains
+            if _qualified_for_secondary_only(domain_evidence[domain])
+        ]
+        return _limit_no_primary_secondaries(
+            secondary_only_candidates,
+            domain_evidence,
+        )
 
     for domain in DOMAIN_ORDER:
         if domain == primary_issue:
@@ -372,7 +378,15 @@ def _select_ambiguous_no_primary_secondaries(
     if gap < PRIMARY_DOMINANCE_MARGIN:
         return [top_domain]
     if _top_score_share(domain_evidence, ranked_domains) < _primary_min_share(top_score):
-        return None
+        fallback_candidates = [
+            domain
+            for domain in ranked_domains
+            if domain != top_domain and _qualified_for_secondary_only(domain_evidence[domain])
+        ]
+        return _limit_no_primary_secondaries(
+            fallback_candidates,
+            domain_evidence,
+        ) or [top_domain]
     return None
 
 
@@ -577,3 +591,24 @@ def _primary_min_share(top_score: float) -> float:
     if top_score >= PRIMARY_HIGH_SCORE_SHARE_THRESHOLD:
         return PRIMARY_HIGH_SCORE_MIN_SHARE
     return PRIMARY_MIN_SHARE
+
+
+def _limit_no_primary_secondaries(
+    secondary_candidates: list[str],
+    domain_evidence: dict[str, DomainEvidence],
+) -> list[str]:
+    if not secondary_candidates:
+        return []
+    if len(secondary_candidates) <= NO_PRIMARY_MAX_SECONDARIES:
+        return list(secondary_candidates)
+    top_score = domain_evidence[secondary_candidates[0]].score
+    minimum_score = max(
+        SECONDARY_ONLY_THRESHOLD,
+        top_score * NO_PRIMARY_EXCLUDED_TOP_RELATIVE_THRESHOLD,
+    )
+    filtered_candidates = [
+        domain
+        for domain in secondary_candidates
+        if domain_evidence[domain].score >= minimum_score
+    ]
+    return filtered_candidates[:NO_PRIMARY_MAX_SECONDARIES]

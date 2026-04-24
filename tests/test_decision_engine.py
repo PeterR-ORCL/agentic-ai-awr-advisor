@@ -427,6 +427,19 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["CPU"])
 
+    def test_share_suppressed_no_primary_excludes_top_domain_from_secondaries(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"COMMIT": 15.0, "IO": 6.2, "CPU": 3.3},
+                severity=18.0,
+                confidence=0.66,
+                primary_signal_domain="COMMIT",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["IO"])
+
     def test_tied_ambiguous_primary_uses_locked_order_for_secondary_orientation(self) -> None:
         decision = build_decision(
             _decision_input(
@@ -439,6 +452,19 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertIsNone(decision.primary_issue)
         self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_no_primary_secondary_only_candidates_are_capped(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 8.6, "COMMIT": 6.7, "IO": 4.6},
+                severity=15.0,
+                confidence=0.58,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU", "COMMIT"])
 
     def test_adg_can_be_primary(self) -> None:
         decision = build_decision(

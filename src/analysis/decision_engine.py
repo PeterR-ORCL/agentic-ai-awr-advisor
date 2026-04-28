@@ -10,7 +10,9 @@ PRIMARY_QUALIFICATION_THRESHOLD = 7.0
 SECONDARY_QUALIFICATION_THRESHOLD = 5.0
 SECONDARY_RELATIVE_THRESHOLD = 0.25
 SECONDARY_RELATIVE_CEILING = 0.70
+MATERIAL_RUNNER_UP_SECONDARY_RATIO = 0.70
 SECONDARY_ONLY_THRESHOLD = 3.5
+TOPOLOGY_EVIDENCE_SECONDARY_SCORE_FLOOR = 0.5
 NO_PRIMARY_MAX_SECONDARIES = 2
 NO_PRIMARY_EXCLUDED_TOP_RELATIVE_THRESHOLD = 0.5
 PRIMARY_MIN_SEVERITY_THRESHOLD = 13.0
@@ -33,6 +35,8 @@ LOW_ACTIVITY_DIFFUSE_MIN_RUNNER_UP_SCORE = 4.0
 LOW_PRIMARY_SECONDARY_SCORE_THRESHOLD = 10.0
 LOW_PRIMARY_SECONDARY_GAP_ALLOWANCE = 4.0
 CLOSE_SECONDARY_GAP_ALLOWANCE = 1.0
+CPU_BASELINE_SECONDARY_MIN_PCT = 35.0
+CPU_BASELINE_SECONDARY_MIN_AAS_PER_CPU = 1.0
 PRIMARY_MIN_SHARE = 0.65
 PRIMARY_HIGH_SCORE_SHARE_THRESHOLD = 20.0
 PRIMARY_HIGH_SCORE_MIN_SHARE = 0.54
@@ -362,6 +366,13 @@ def _select_secondary_issues(
             if domain != excluded_top_domain
             and _qualified_for_secondary_only(domain_evidence[domain])
         ]
+        secondary_only_candidates = _filter_evidence_backed_secondary_candidates(
+            secondary_only_candidates,
+            domain_evidence=domain_evidence,
+            decision_input=decision_input,
+            top_domain=(ranked_domains[0] if ranked_domains else None),
+            no_primary_context=True,
+        )
         if _uses_single_follow_on_secondary(
             decision_input=decision_input,
             domain_evidence=domain_evidence,
@@ -374,6 +385,12 @@ def _select_secondary_issues(
             domain_evidence,
         )
 
+    material_runner_up_domain = _material_runner_up_secondary_candidate(
+        primary_issue=primary_issue,
+        ranked_domains=ranked_domains,
+        domain_evidence=domain_evidence,
+    )
+
     for domain in DOMAIN_ORDER:
         if domain == primary_issue:
             continue
@@ -381,6 +398,12 @@ def _select_secondary_issues(
             domain_evidence[domain],
             primary_score,
             (primary_score - domain_evidence[domain].score) if primary_score is not None else None,
+            allow_material_runner_up=(domain == material_runner_up_domain),
+        ):
+            continue
+        if not _has_domain_pressure_evidence(
+            domain,
+            decision_input,
         ):
             continue
         secondary_issues.append(domain)
@@ -446,10 +469,22 @@ def _select_ambiguous_no_primary_secondaries(
             for domain in ranked_domains
             if domain != top_domain and _qualified_for_secondary_only(domain_evidence[domain])
         ]
-        return _limit_no_primary_secondaries(
+        fallback_candidates = _filter_evidence_backed_secondary_candidates(
             fallback_candidates,
             domain_evidence,
+            decision_input,
+            top_domain=top_domain,
+            no_primary_context=True,
         ) or [top_domain]
+        anchored_candidates = _topology_anchor_secondaries(
+            top_domain=top_domain,
+            domain_evidence=domain_evidence,
+            decision_input=decision_input,
+        )
+        return _limit_no_primary_secondaries(
+            _merge_secondary_candidates(anchored_candidates, fallback_candidates),
+            domain_evidence,
+        )
     return None
 
 
@@ -484,11 +519,19 @@ def _qualified_for_secondary(
     domain_evidence: DomainEvidence,
     primary_score: float | None,
     score_gap: float | None = None,
+    *,
+    allow_material_runner_up: bool = False,
 ) -> bool:
     if domain_evidence.score < SECONDARY_QUALIFICATION_THRESHOLD:
         return False
     if primary_score is None:
         return False
+    if (
+        allow_material_runner_up
+        and primary_score > 0.0
+        and domain_evidence.score >= (primary_score * MATERIAL_RUNNER_UP_SECONDARY_RATIO)
+    ):
+        return _support_count(domain_evidence) >= 1
     if score_gap is not None and score_gap <= CLOSE_SECONDARY_GAP_ALLOWANCE:
         return _support_count(domain_evidence) >= 1
     if primary_score < LOW_PRIMARY_SECONDARY_SCORE_THRESHOLD:
@@ -514,6 +557,32 @@ def _support_count(domain_evidence: DomainEvidence) -> int:
     return int(bool(domain_evidence.score_components.get("upstream_score"))) + int(
         bool(domain_evidence.anomalies)
     )
+
+
+def _material_runner_up_secondary_candidate(
+    primary_issue: str | None,
+    ranked_domains: list[str],
+    domain_evidence: dict[str, DomainEvidence],
+) -> str | None:
+    if primary_issue is None:
+        return None
+    primary_score = domain_evidence[primary_issue].score
+    if primary_score <= 0.0:
+        return None
+    runner_up_domain = next(
+        (domain for domain in ranked_domains if domain != primary_issue),
+        None,
+    )
+    if runner_up_domain is None:
+        return None
+    runner_up_score = domain_evidence[runner_up_domain].score
+    if runner_up_score < SECONDARY_QUALIFICATION_THRESHOLD:
+        return None
+    if runner_up_score < (primary_score * MATERIAL_RUNNER_UP_SECONDARY_RATIO):
+        return None
+    if _support_count(domain_evidence[runner_up_domain]) < 1:
+        return None
+    return runner_up_domain
 
 
 def _compute_meaningful_tie_break(
@@ -549,6 +618,11 @@ def _build_decision_diagnostics(
         domain: round(domain_evidence[domain].score, 4) for domain in DOMAIN_ORDER
     }
     primary_score = domain_evidence[primary_issue].score if primary_issue else None
+    material_runner_up_domain = _material_runner_up_secondary_candidate(
+        primary_issue=primary_issue,
+        ranked_domains=ranked_domains,
+        domain_evidence=domain_evidence,
+    )
     return {
         "domain_diagnostics": {
             domain: {
@@ -560,6 +634,7 @@ def _build_decision_diagnostics(
                 "qualified_for_secondary": _qualified_for_secondary(
                     domain_evidence[domain],
                     primary_score,
+                    allow_material_runner_up=(domain == material_runner_up_domain),
                 ),
             }
             for domain in DOMAIN_ORDER
@@ -738,6 +813,69 @@ def _limit_no_primary_secondaries(
     return filtered_candidates[:NO_PRIMARY_MAX_SECONDARIES]
 
 
+def _merge_secondary_candidates(
+    leading_candidates: list[str],
+    trailing_candidates: list[str],
+) -> list[str]:
+    merged: list[str] = []
+    for domain in [*leading_candidates, *trailing_candidates]:
+        if domain not in merged:
+            merged.append(domain)
+    return merged
+
+
+def _filter_evidence_backed_secondary_candidates(
+    candidates: list[str],
+    domain_evidence: dict[str, DomainEvidence],
+    decision_input: DecisionInput,
+    *,
+    top_domain: str | None,
+    no_primary_context: bool,
+) -> list[str]:
+    return [
+        domain
+        for domain in candidates
+        if _has_domain_pressure_evidence(
+            domain,
+            decision_input,
+            no_primary_context=no_primary_context,
+            topology_top_domain=top_domain,
+        )
+        and _meets_topology_secondary_floor(
+            domain,
+            domain_evidence[domain].score,
+        )
+    ]
+
+
+def _topology_anchor_secondaries(
+    top_domain: str,
+    domain_evidence: dict[str, DomainEvidence],
+    decision_input: DecisionInput,
+) -> list[str]:
+    if top_domain not in {"RAC", "ADG"}:
+        return []
+    if not _has_domain_pressure_evidence(
+        top_domain,
+        decision_input,
+        no_primary_context=True,
+        topology_top_domain=top_domain,
+    ):
+        return []
+    if not _meets_topology_secondary_floor(
+        top_domain,
+        domain_evidence[top_domain].score,
+    ):
+        return []
+    return [top_domain]
+
+
+def _meets_topology_secondary_floor(domain: str, score: float) -> bool:
+    if domain in {"RAC", "ADG"}:
+        return score >= TOPOLOGY_EVIDENCE_SECONDARY_SCORE_FLOOR
+    return True
+
+
 def _excluded_low_activity_top_domain(
     decision_input: DecisionInput,
     domain_evidence: dict[str, DomainEvidence],
@@ -797,3 +935,85 @@ def _feature_metric(decision_input: DecisionInput, metric_name: str) -> float | 
         if numeric_value is not None:
             return numeric_value
     return None
+
+
+def _has_domain_pressure_evidence(
+    domain: str,
+    decision_input: DecisionInput,
+    *,
+    no_primary_context: bool = False,
+    topology_top_domain: str | None = None,
+) -> bool:
+    feature_evidence = decision_input.feature_evidence or {}
+    if not feature_evidence:
+        return True
+    if domain == "RAC":
+        return _has_any_metric(
+            decision_input,
+            "cluster_wait_pct_db_time",
+            "gc_current_wait_pct_db_time",
+            "gc_cr_wait_pct_db_time",
+            "gc_buffer_busy_pct_db_time",
+            "rac_buffer_busy_pressure",
+            threshold=0.01,
+        ) or _has_any_flag(
+            decision_input,
+            "interconnect_stress_flag",
+            "rac_contention_flag",
+        )
+    if domain == "ADG":
+        return _has_any_metric(
+            decision_input,
+            "apply_lag_sec",
+            "transport_lag_sec",
+            threshold=0.01,
+        ) or _has_any_flag(
+            decision_input,
+            "redo_transport_issue_flag",
+            "failover_event_flag",
+            "role_transition_flag",
+            "post_failover_recovery_flag",
+        )
+    if domain == "IO":
+        return True
+    if domain == "COMMIT":
+        return True
+    if domain == "MEMORY":
+        return True
+    if domain == "CPU":
+        if (
+            no_primary_context
+            and topology_top_domain in {"RAC", "ADG"}
+        ):
+            cpu_pct = max(
+                _feature_metric(decision_input, "cpu_util_p95") or 0.0,
+                _feature_metric(decision_input, "db_cpu_pct_db_time") or 0.0,
+            )
+            aas_per_cpu = _feature_metric(decision_input, "aas_per_cpu") or 0.0
+            return (
+                cpu_pct >= CPU_BASELINE_SECONDARY_MIN_PCT
+                or aas_per_cpu >= CPU_BASELINE_SECONDARY_MIN_AAS_PER_CPU
+            )
+        return True
+    return False
+
+
+def _has_any_metric(
+    decision_input: DecisionInput,
+    *metric_names: str,
+    threshold: float,
+) -> bool:
+    return any(
+        (_feature_metric(decision_input, metric_name) or 0.0) > threshold
+        for metric_name in metric_names
+    )
+
+
+def _has_any_flag(
+    decision_input: DecisionInput,
+    *metric_names: str,
+) -> bool:
+    return any(
+        (_feature_metric(decision_input, metric_name) or 0.0) >= 0.5
+        for metric_name in metric_names
+    )

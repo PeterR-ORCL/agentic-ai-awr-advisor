@@ -1,247 +1,249 @@
 --------------------------------------------------------------------------------
--- AWR SIZING ADVISOR
--- CANONICAL FEATURE SCOPE + ENGINEERED FEATURE METRIC VIEW
--- Applies on top of ddlv4_scope_views.sql
+-- patch_phase4e_feature_contract_global.sql
+--
+-- Purpose:
+--   Apply additive Phase 4E feature-contract coverage for global
+--   MEMORY / SGA / COMMIT / RAC contention signals without changing base
+--   table structure.
+--
+-- Notes:
+--   * Idempotent scoring-row inserts only.
+--   * Replaces VW_AWR_FEATURE_METRIC_SCOPE to surface the new engineered
+--     feature_json metrics for scope/trend/diagnostic consumers.
+--   * Does not rebuild AWR_FEATURE_VECTOR or rescore AWR_SCORE_RESULT rows.
+--------------------------------------------------------------------------------
+SPOOL patch_phase4e_feature_contract_global.log
+SET SQLBLANKLINES ON
+SET DEFINE OFF
+SET ECHO ON
+SET TIMING ON
+SET SERVEROUTPUT ON
+
+--------------------------------------------------------------------------------
+-- 1. ADD GLOBAL SCORING ROWS (IDEMPOTENT)
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE VIEW VW_AWR_SCOPE_CONTEXT AS
-WITH latest_feature_per_awr AS (
-    SELECT
-        fv.AWR_ID,
-        fv.SOURCE_SYSTEM_ID,
-        fv.FEATURE_VECTOR_ID,
-        fv.OBSERVED_AT,
-        fv.TOPOLOGY_CLASS,
-        fv.PLATFORM_CLASS,
-        fv.EVENT_CLASS,
-        ROW_NUMBER() OVER (
-            PARTITION BY fv.AWR_ID, fv.SOURCE_SYSTEM_ID
-            ORDER BY fv.OBSERVED_AT DESC, fv.FEATURE_VECTOR_ID DESC
-        ) AS RN
-    FROM AWR_FEATURE_VECTOR fv
-),
-latest_score_per_awr AS (
-    SELECT
-        sr.AWR_ID,
-        sr.SOURCE_SYSTEM_ID,
-        sr.SCORE_RESULT_ID,
-        sr.SCORED_AT,
-        sr.TOPOLOGY_CLASS,
-        sr.PLATFORM_CLASS,
-        sr.EVENT_CLASS,
-        ROW_NUMBER() OVER (
-            PARTITION BY sr.AWR_ID, sr.SOURCE_SYSTEM_ID
-            ORDER BY sr.SCORED_AT DESC, sr.SCORE_RESULT_ID DESC
-        ) AS RN
-    FROM AWR_SCORE_RESULT sr
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
 )
 SELECT
-    r.AWR_ID,
-    r.SOURCE_SYSTEM_ID,
-    s.SOURCE_SYSTEM_CODE,
-    COALESCE(r.DB_NAME, s.DB_NAME, s.DB_UNIQUE_NAME) AS DB_NAME,
-    COALESCE(r.DBID, s.DBID) AS DBID,
-    COALESCE(
-        r.HOST_NAME,
-        s.PRIMARY_HOST_NAME,
-        JSON_VALUE(
-            r.RAW_METADATA_JSON,
-            '$.host_name' RETURNING VARCHAR2(256) NULL ON ERROR
-        )
-    ) AS HOST_NAME,
-    COALESCE(
-        r.INSTANCE_NAME,
-        JSON_VALUE(
-            r.RAW_METADATA_JSON,
-            '$.instance_name' RETURNING VARCHAR2(128) NULL ON ERROR
-        )
-    ) AS INSTANCE_NAME,
-    COALESCE(
-        r.INSTANCE_NUMBER,
-        JSON_VALUE(
-            r.RAW_METADATA_JSON,
-            '$.instance_number' RETURNING NUMBER NULL ON ERROR
-        )
-    ) AS INSTANCE_NUMBER,
-    r.SNAP_TIME_BEGIN AS SNAP_BEGIN_TIME,
-    r.SNAP_TIME_END AS SNAP_END_TIME,
-    COALESCE(
-        r.DB_VERSION,
-        s.DB_VERSION,
-        JSON_VALUE(
-            r.RAW_METADATA_JSON,
-            '$.db_version' RETURNING VARCHAR2(64) NULL ON ERROR
-        )
-    ) AS DB_VERSION,
-    COALESCE(
-        s.DATABASE_ROLE,
-        JSON_VALUE(
-            r.PARSER_OUTPUT_JSON,
-            '$.topology_signals.database_role' RETURNING VARCHAR2(64)
-            NULL ON ERROR
-        ),
-        JSON_VALUE(
-            s.TAGS_JSON,
-            '$.database_role' RETURNING VARCHAR2(64) NULL ON ERROR
-        )
-    ) AS DATABASE_ROLE,
-    COALESCE(
-        s.INSTANCE_COUNT,
-        JSON_VALUE(
-            r.PARSER_OUTPUT_JSON,
-            '$.topology_signals.instance_count' RETURNING NUMBER NULL ON ERROR
-        ),
-        JSON_VALUE(
-            s.TAGS_JSON,
-            '$.instance_count' RETURNING NUMBER NULL ON ERROR
-        )
-    ) AS INSTANCE_COUNT,
-    COALESCE(
-        r.PLATFORM_NAME,
-        s.PLATFORM_NAME,
-        JSON_VALUE(
-            r.RAW_METADATA_JSON,
-            '$.platform' RETURNING VARCHAR2(256) NULL ON ERROR
-        )
-    ) AS PLATFORM,
-    COALESCE(
-        fv.TOPOLOGY_CLASS,
-        ls.TOPOLOGY_CLASS,
-        JSON_VALUE(
-            r.PARSER_OUTPUT_JSON,
-            '$.topology_signals.topology_class' RETURNING VARCHAR2(64)
-            NULL ON ERROR
-        ),
-        JSON_VALUE(
-            s.TAGS_JSON,
-            '$.topology_class' RETURNING VARCHAR2(64) NULL ON ERROR
-        )
-    ) AS TOPOLOGY_CLASS,
-    COALESCE(
-        fv.PLATFORM_CLASS,
-        ls.PLATFORM_CLASS,
-        JSON_VALUE(
-            r.PARSER_OUTPUT_JSON,
-            '$.topology_signals.platform_class' RETURNING VARCHAR2(64)
-            NULL ON ERROR
-        ),
-        JSON_VALUE(
-            s.TAGS_JSON,
-            '$.platform_class' RETURNING VARCHAR2(64) NULL ON ERROR
-        )
-    ) AS PLATFORM_CLASS
-FROM AWR_REPORT r
-JOIN AWR_SOURCE_SYSTEM s
-  ON s.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
-LEFT JOIN latest_feature_per_awr fv
-  ON fv.AWR_ID = r.AWR_ID
- AND fv.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
- AND fv.RN = 1
-LEFT JOIN latest_score_per_awr ls
-  ON ls.AWR_ID = r.AWR_ID
- AND ls.SOURCE_SYSTEM_ID = r.SOURCE_SYSTEM_ID
- AND ls.RN = 1;
+    m.SCORING_MODEL_ID,
+    'HARD_PARSE_PCT',
+    'Hard Parse Percentage',
+    'MEMORY',
+    '$.HARD_PARSE_PCT',
+    0.03,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Light SGA parse-pressure weight for hard parse percentage'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'HARD_PARSE_PCT'
+  );
 
-
-CREATE OR REPLACE VIEW VW_AWR_FEATURE_SCOPE AS
-WITH latest_feature_per_awr AS (
-    SELECT
-        fv.*,
-        ROW_NUMBER() OVER (
-            PARTITION BY fv.AWR_ID, fv.SOURCE_SYSTEM_ID
-            ORDER BY fv.OBSERVED_AT DESC, fv.FEATURE_VECTOR_ID DESC
-        ) AS RN
-    FROM AWR_FEATURE_VECTOR fv
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
 )
 SELECT
-    sc.AWR_ID,
-    sc.SOURCE_SYSTEM_ID,
-    sc.SOURCE_SYSTEM_CODE,
-    sc.DB_NAME,
-    sc.DBID,
-    sc.HOST_NAME,
-    sc.INSTANCE_NAME,
-    sc.INSTANCE_NUMBER,
-    sc.SNAP_BEGIN_TIME,
-    sc.SNAP_END_TIME,
-    sc.DB_VERSION,
-    sc.DATABASE_ROLE,
-    sc.INSTANCE_COUNT,
-    sc.PLATFORM,
-    sc.TOPOLOGY_CLASS,
-    sc.PLATFORM_CLASS,
-    fv.FEATURE_VECTOR_ID,
-    fv.OBSERVED_AT,
-    fv.VECTOR_VERSION,
-    fv.FEATURE_SET_NAME,
-    fv.FEATURE_SET_VERSION,
-    fv.WORKLOAD_CLASS,
-    fv.TOPOLOGY_CLASS AS FEATURE_TOPOLOGY_CLASS,
-    fv.PLATFORM_CLASS AS FEATURE_PLATFORM_CLASS,
-    fv.EVENT_CLASS AS FEATURE_EVENT_CLASS,
-    fv.VECTOR_STATUS,
-    fv.FEATURE_VECTOR,
-    fv.NARRATIVE_EMBEDDING,
-    fv.FEATURE_JSON,
-    fv.NORMALIZATION_JSON,
-    fv.EXPLANATION_JSON,
-    fv.SOURCE_LINEAGE_JSON,
-    fv.CREATED_AT
-FROM latest_feature_per_awr fv
-JOIN VW_AWR_SCOPE_CONTEXT sc
-  ON sc.AWR_ID = fv.AWR_ID
- AND sc.SOURCE_SYSTEM_ID = fv.SOURCE_SYSTEM_ID
-WHERE fv.RN = 1;
+    m.SCORING_MODEL_ID,
+    'TEMP_IO_PRESSURE',
+    'TEMP I/O Pressure',
+    'MEMORY',
+    '$.TEMP_IO_PRESSURE',
+    0.04,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative memory pressure weight for TEMP spill I/O pressure'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'TEMP_IO_PRESSURE'
+  );
 
-
-CREATE OR REPLACE VIEW VW_AWR_SCORE_SCOPE AS
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
 SELECT
-    sc.AWR_ID,
-    sc.SOURCE_SYSTEM_ID,
-    sc.SOURCE_SYSTEM_CODE,
-    sc.DB_NAME,
-    sc.DBID,
-    sc.HOST_NAME,
-    sc.INSTANCE_NAME,
-    sc.INSTANCE_NUMBER,
-    sc.SNAP_BEGIN_TIME,
-    sc.SNAP_END_TIME,
-    sc.DB_VERSION,
-    sc.DATABASE_ROLE,
-    sc.INSTANCE_COUNT,
-    sc.PLATFORM,
-    sc.TOPOLOGY_CLASS,
-    sc.PLATFORM_CLASS,
-    sr.SCORE_RESULT_ID,
-    sr.FEATURE_VECTOR_ID,
-    sr.SCORING_MODEL_ID,
-    sm.MODEL_CODE,
-    sm.MODEL_NAME,
-    sm.MODEL_VERSION,
-    sr.SCORED_AT,
-    sr.DECISION_DOMAIN,
-    sr.RISK_LEVEL,
-    sr.TOTAL_SCORE,
-    sr.CONFIDENCE_SCORE,
-    sr.SEVERITY_SCORE,
-    sr.URGENCY_SCORE,
-    sr.BUSINESS_IMPACT_SCORE,
-    sr.WORKLOAD_CLASS,
-    sr.TOPOLOGY_CLASS AS SCORE_TOPOLOGY_CLASS,
-    sr.PLATFORM_CLASS AS SCORE_PLATFORM_CLASS,
-    sr.EVENT_CLASS,
-    sr.PRIMARY_SIGNAL_DOMAIN,
-    sr.EXPLANATION_JSON,
-    sr.CONTRIBUTION_JSON,
-    sr.SCORECARD_JSON,
-    sr.CREATED_AT
-FROM AWR_SCORE_RESULT sr
-JOIN VW_AWR_SCOPE_CONTEXT sc
-  ON sc.AWR_ID = sr.AWR_ID
- AND sc.SOURCE_SYSTEM_ID = sr.SOURCE_SYSTEM_ID
-LEFT JOIN AWR_SCORING_MODEL sm
-  ON sm.SCORING_MODEL_ID = sr.SCORING_MODEL_ID;
+    m.SCORING_MODEL_ID,
+    'FREE_BUFFER_WAIT_PRESSURE',
+    'Free Buffer Wait Pressure',
+    'MEMORY',
+    '$.FREE_BUFFER_WAIT_PRESSURE',
+    0.05,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative memory pressure weight for free buffer wait contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'FREE_BUFFER_WAIT_PRESSURE'
+  );
 
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'BUFFER_BUSY_PRESSURE',
+    'Buffer Busy Pressure',
+    'MEMORY',
+    '$.BUFFER_BUSY_PRESSURE',
+    0.05,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative memory pressure weight for buffer busy contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'BUFFER_BUSY_PRESSURE'
+  );
+
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'READ_BY_OTHER_SESSION_PRESSURE',
+    'Read By Other Session Pressure',
+    'IO',
+    '$.READ_BY_OTHER_SESSION_PRESSURE',
+    0.04,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative I/O pressure weight for read by other session contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'READ_BY_OTHER_SESSION_PRESSURE'
+  );
+
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'ENQUEUE_COMMIT_PRESSURE',
+    'Enqueue Commit Pressure',
+    'COMMIT',
+    '$.ENQUEUE_COMMIT_PRESSURE',
+    0.05,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative commit pressure weight for enqueue contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'ENQUEUE_COMMIT_PRESSURE'
+  );
+
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'REDO_CONTENTION_PRESSURE',
+    'Redo Contention Pressure',
+    'COMMIT',
+    '$.REDO_CONTENTION_PRESSURE',
+    0.04,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative commit pressure weight for redo path contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'REDO_CONTENTION_PRESSURE'
+  );
+
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'GC_BUFFER_BUSY_PCT_DB_TIME',
+    'GC Buffer Busy Wait Pressure',
+    'CLUSTER',
+    '$.GC_BUFFER_BUSY_PCT_DB_TIME',
+    0.05,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative RAC pressure weight for GC buffer busy wait percentage'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'GC_BUFFER_BUSY_PCT_DB_TIME'
+  );
+
+INSERT INTO AWR_SCORING_WEIGHT (
+    SCORING_MODEL_ID, FEATURE_CODE, FEATURE_NAME, FEATURE_DOMAIN, FEATURE_PATH,
+    WEIGHT_VALUE, NORMALIZATION_METHOD, TRANSFORM_METHOD, POLARITY, NOTES
+)
+SELECT
+    m.SCORING_MODEL_ID,
+    'RAC_BUFFER_BUSY_PRESSURE',
+    'RAC Buffer Busy Pressure',
+    'CLUSTER',
+    '$.RAC_BUFFER_BUSY_PRESSURE',
+    0.04,
+    'MINMAX',
+    'NONE',
+    'HIGH_BAD',
+    'Conservative RAC pressure weight for RAC buffer busy contention'
+FROM AWR_SCORING_MODEL m
+WHERE m.MODEL_CODE = 'AWR_WEIGHTED_CORE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM AWR_SCORING_WEIGHT w
+      WHERE w.SCORING_MODEL_ID = m.SCORING_MODEL_ID
+        AND w.FEATURE_CODE = 'RAC_BUFFER_BUSY_PRESSURE'
+  );
+
+COMMIT;
+
+--------------------------------------------------------------------------------
+-- 2. REPLACE FEATURE METRIC SCOPE VIEW
+--------------------------------------------------------------------------------
 
 CREATE OR REPLACE VIEW VW_AWR_FEATURE_METRIC_SCOPE AS
 WITH feature_metric_base AS (
@@ -468,3 +470,25 @@ SELECT
     OBSERVED_AT
 FROM feature_metric_unpivot
 WHERE METRIC_VALUE_NUM IS NOT NULL;
+
+PROMPT
+PROMPT ==========================================
+PROMPT PATCH PHASE 4E FEATURE CONTRACT VALIDATION
+PROMPT ==========================================
+
+SELECT FEATURE_CODE, FEATURE_DOMAIN, WEIGHT_VALUE
+FROM AWR_SCORING_WEIGHT
+WHERE FEATURE_CODE IN (
+    'HARD_PARSE_PCT',
+    'TEMP_IO_PRESSURE',
+    'FREE_BUFFER_WAIT_PRESSURE',
+    'BUFFER_BUSY_PRESSURE',
+    'READ_BY_OTHER_SESSION_PRESSURE',
+    'ENQUEUE_COMMIT_PRESSURE',
+    'REDO_CONTENTION_PRESSURE',
+    'GC_BUFFER_BUSY_PCT_DB_TIME',
+    'RAC_BUFFER_BUSY_PRESSURE'
+)
+ORDER BY FEATURE_CODE;
+
+SPOOL OFF

@@ -26,6 +26,69 @@ MANIFEST_JSON_NAME = "manifest.json"
 OUTPUT_VERSION = "phase4g"
 OUTPUT_SOURCE = "phase4g-validation"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CANONICAL_PRESSURE_CONTEXT_ORDER = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
+PRESSURE_CONTEXT_RULES: tuple[
+    tuple[str, tuple[str, ...], tuple[str, ...]],
+    ...,
+] = (
+    ("CPU", ("CPU_UTIL_P95", "DB_CPU_PCT_DB_TIME", "AAS_PER_CPU"), ()),
+    (
+        "IO",
+        (
+            "READ_LATENCY_MS",
+            "WRITE_LATENCY_MS",
+            "USER_IO_PRESSURE",
+            "READ_BY_OTHER_SESSION_PRESSURE",
+            "TEMP_IO_PRESSURE",
+        ),
+        (),
+    ),
+    (
+        "MEMORY",
+        (
+            "PGA_SPILL_PRESSURE",
+            "TEMP_SPILL_PCT",
+            "SORTS_DISK_PCT",
+            "FREE_BUFFER_WAIT_PRESSURE",
+            "BUFFER_BUSY_PRESSURE",
+            "WORKAREA_ONEPASS_PCT",
+            "WORKAREA_MULTIPASS_PCT",
+        ),
+        (),
+    ),
+    (
+        "COMMIT",
+        (
+            "LOG_FILE_SYNC_MS",
+            "LOG_WRITE_LATENCY_MS",
+            "ENQUEUE_COMMIT_PRESSURE",
+            "REDO_CONTENTION_PRESSURE",
+            "COMMIT_PRESSURE",
+        ),
+        (),
+    ),
+    (
+        "RAC",
+        (
+            "CLUSTER_WAIT_PCT_DB_TIME",
+            "GC_CURRENT_WAIT_PCT_DB_TIME",
+            "GC_CR_WAIT_PCT_DB_TIME",
+            "GC_BUFFER_BUSY_PCT_DB_TIME",
+            "RAC_BUFFER_BUSY_PRESSURE",
+        ),
+        ("INTERCONNECT_STRESS_FLAG", "RAC_CONTENTION_FLAG"),
+    ),
+    (
+        "ADG",
+        ("APPLY_LAG_SEC", "TRANSPORT_LAG_SEC"),
+        (
+            "REDO_TRANSPORT_ISSUE_FLAG",
+            "FAILOVER_EVENT_FLAG",
+            "ROLE_TRANSITION_FLAG",
+            "POST_FAILOVER_RECOVERY_FLAG",
+        ),
+    ),
+)
 SCORING_MODEL_SEED_FILES = (
     PROJECT_ROOT / "dbschema" / "ddlv2_final.sql",
     PROJECT_ROOT / "dbschema" / "ddlv3-1_topology_platform.sql",
@@ -67,6 +130,9 @@ class ValidationManifestEntry:
     dbid: int | None
     expected_primary_issue: str
     expected_secondary_issues: list[str]
+    expected_evidence_layers: list[str]
+    expected_topology_context: list[str]
+    expected_pressure_context: list[str]
     expected_status: str
     expected_status_source: str
     file: str
@@ -83,6 +149,12 @@ class ValidationCaseResult:
     actual_primary_issue: str
     expected_secondary_issues: list[str]
     actual_secondary_issues: list[str]
+    expected_evidence_layers: list[str]
+    actual_evidence_layers: list[str]
+    expected_topology_context: list[str]
+    actual_topology_context: list[str]
+    expected_pressure_context: list[str]
+    actual_pressure_context: list[str]
     expected_status: str
     actual_status: str
     passed: bool
@@ -172,10 +244,28 @@ def run_validation_harness(
         actual_primary_issue, actual_secondary_issues = normalize_decision_for_validation(
             decision
         )
+        actual_evidence_layers = _derive_evidence_layers(
+            artifact.parse_result,
+            artifact.feature_json,
+        )
+        actual_topology_context = _derive_topology_context(artifact.feature_json)
+        actual_pressure_context = _derive_pressure_context(artifact.feature_json)
         status_compared = artifact.entry.expected_status != "UNSPECIFIED"
         passed = (
             actual_primary_issue == artifact.entry.expected_primary_issue
             and actual_secondary_issues == artifact.entry.expected_secondary_issues
+            and (
+                not artifact.entry.expected_evidence_layers
+                or actual_evidence_layers == artifact.entry.expected_evidence_layers
+            )
+            and (
+                not artifact.entry.expected_topology_context
+                or actual_topology_context == artifact.entry.expected_topology_context
+            )
+            and (
+                not artifact.entry.expected_pressure_context
+                or actual_pressure_context == artifact.entry.expected_pressure_context
+            )
             and (
                 not status_compared
                 or decision.overall_status == artifact.entry.expected_status
@@ -185,6 +275,12 @@ def run_validation_harness(
             decision=decision,
             actual_primary_issue=actual_primary_issue,
             actual_secondary_issues=actual_secondary_issues,
+            actual_evidence_layers=actual_evidence_layers,
+            actual_topology_context=actual_topology_context,
+            actual_pressure_context=actual_pressure_context,
+            expected_evidence_layers=artifact.entry.expected_evidence_layers,
+            expected_topology_context=artifact.entry.expected_topology_context,
+            expected_pressure_context=artifact.entry.expected_pressure_context,
             expected_status=artifact.entry.expected_status,
             status_compared=status_compared,
             passed=passed,
@@ -204,6 +300,12 @@ def run_validation_harness(
                 actual_primary_issue=actual_primary_issue,
                 expected_secondary_issues=artifact.entry.expected_secondary_issues,
                 actual_secondary_issues=actual_secondary_issues,
+                expected_evidence_layers=artifact.entry.expected_evidence_layers,
+                actual_evidence_layers=actual_evidence_layers,
+                expected_topology_context=artifact.entry.expected_topology_context,
+                actual_topology_context=actual_topology_context,
+                expected_pressure_context=artifact.entry.expected_pressure_context,
+                actual_pressure_context=actual_pressure_context,
                 expected_status=artifact.entry.expected_status,
                 actual_status=decision.overall_status,
                 passed=passed,
@@ -274,6 +376,12 @@ def _build_validation_diagnostics(
     decision: Any,
     actual_primary_issue: str,
     actual_secondary_issues: list[str],
+    actual_evidence_layers: list[str],
+    actual_topology_context: list[str],
+    actual_pressure_context: list[str],
+    expected_evidence_layers: list[str],
+    expected_topology_context: list[str],
+    expected_pressure_context: list[str],
     expected_status: str,
     status_compared: bool,
     passed: bool,
@@ -287,6 +395,12 @@ def _build_validation_diagnostics(
         mismatch_reason = _build_mismatch_reason(
             actual_primary_issue=actual_primary_issue,
             actual_secondary_issues=actual_secondary_issues,
+            actual_evidence_layers=actual_evidence_layers,
+            actual_topology_context=actual_topology_context,
+            actual_pressure_context=actual_pressure_context,
+            expected_evidence_layers=expected_evidence_layers,
+            expected_topology_context=expected_topology_context,
+            expected_pressure_context=expected_pressure_context,
             actual_status=getattr(decision, "overall_status", ""),
             expected_status=expected_status,
             status_compared=status_compared,
@@ -297,6 +411,9 @@ def _build_validation_diagnostics(
         "normalized_to_none": normalized_to_none,
         "normalized_primary_issue": actual_primary_issue,
         "normalized_secondary_issues": list(actual_secondary_issues),
+        "actual_evidence_layers": list(actual_evidence_layers),
+        "actual_topology_context": list(actual_topology_context),
+        "actual_pressure_context": list(actual_pressure_context),
         "status_compared": status_compared,
         "mismatch_reason": mismatch_reason,
     }
@@ -305,6 +422,12 @@ def _build_validation_diagnostics(
 def _build_mismatch_reason(
     actual_primary_issue: str,
     actual_secondary_issues: list[str],
+    actual_evidence_layers: list[str],
+    actual_topology_context: list[str],
+    actual_pressure_context: list[str],
+    expected_evidence_layers: list[str],
+    expected_topology_context: list[str],
+    expected_pressure_context: list[str],
     actual_status: str,
     expected_status: str,
     status_compared: bool,
@@ -313,6 +436,27 @@ def _build_mismatch_reason(
         f"primary={actual_primary_issue}",
         f"secondary={','.join(actual_secondary_issues) or 'NONE'}",
     ]
+    if expected_evidence_layers:
+        fragments.append(
+            "evidence_layers="
+            + (",".join(actual_evidence_layers) or "NONE")
+            + " expected="
+            + ",".join(expected_evidence_layers)
+        )
+    if expected_topology_context:
+        fragments.append(
+            "topology_context="
+            + (",".join(actual_topology_context) or "NONE")
+            + " expected="
+            + ",".join(expected_topology_context)
+        )
+    if expected_pressure_context:
+        fragments.append(
+            "pressure_context="
+            + (",".join(actual_pressure_context) or "NONE")
+            + " expected="
+            + ",".join(expected_pressure_context)
+        )
     if status_compared:
         fragments.append(f"status={actual_status} expected={expected_status}")
     else:
@@ -515,6 +659,15 @@ def _build_manifest_entries(rows: list[dict[str, Any]]) -> list[ValidationManife
                 expected_secondary_issues=_split_expected_secondary_issues(
                     row.get("expected_secondary_issues") or row.get("secondary_domains")
                 ),
+                expected_evidence_layers=_split_expected_secondary_issues(
+                    row.get("expected_evidence_layers")
+                ),
+                expected_topology_context=_split_expected_secondary_issues(
+                    row.get("expected_topology_context")
+                ),
+                expected_pressure_context=_split_expected_secondary_issues(
+                    row.get("expected_pressure_context")
+                ),
                 expected_status=expected_status,
                 expected_status_source=expected_status_source,
                 file=file_name,
@@ -609,6 +762,74 @@ def _split_expected_secondary_issues(value: Any) -> list[str]:
     if not raw_value:
         return []
     return [item.strip().upper() for item in raw_value.split(",") if item.strip()]
+
+
+def _derive_evidence_layers(parse_result: Any, feature_json: dict[str, Any]) -> list[str]:
+    wait_events = getattr(parse_result, "wait_events", None) or []
+    wait_class_names = {
+        str(row.get("wait_class") or "").strip().upper()
+        for row in wait_events
+        if isinstance(row, dict)
+    }
+    event_names = [
+        str(row.get("event_name") or "").strip().lower()
+        for row in wait_events
+        if isinstance(row, dict)
+    ]
+    layers: list[str] = []
+    concurrency_present = (
+        "CONCURRENCY" in wait_class_names
+        or any(
+            token in event_name
+            for event_name in event_names
+            for token in (
+                "latch",
+                "mutex",
+                "cursor pin",
+                "cache buffers chains",
+            )
+        )
+        or (_safe_float(feature_json.get("CONCURRENCY_PRESSURE")) or 0.0) > 0.0
+    )
+    if concurrency_present:
+        layers.append("CONCURRENCY")
+    return layers
+
+
+def _derive_topology_context(feature_json: dict[str, Any]) -> list[str]:
+    context: list[str] = []
+    topology_class = str(feature_json.get("topology_class") or "").upper()
+    if "RAC" in topology_class or (_safe_float(feature_json.get("is_rac")) or 0.0) >= 0.5:
+        context.append("RAC")
+    if (
+        "ADG" in topology_class
+        or (_safe_float(feature_json.get("is_dataguard")) or 0.0) >= 0.5
+        or (_safe_float(feature_json.get("is_standby")) or 0.0) >= 0.5
+    ):
+        context.append("ADG")
+    return context
+
+
+def _derive_pressure_context(feature_json: dict[str, Any]) -> list[str]:
+    context: list[str] = []
+    seen: set[str] = set()
+    for domain, feature_keys, flag_keys in PRESSURE_CONTEXT_RULES:
+        has_pressure_evidence = _has_any_feature(feature_json, *feature_keys) or _has_any_flag(
+            feature_json,
+            *flag_keys,
+        )
+        if has_pressure_evidence and domain not in seen:
+            context.append(domain)
+            seen.add(domain)
+    return context
+
+
+def _has_any_feature(feature_json: dict[str, Any], *keys: str) -> bool:
+    return any((_safe_float(feature_json.get(key)) or 0.0) > 0.0 for key in keys)
+
+
+def _has_any_flag(feature_json: dict[str, Any], *keys: str) -> bool:
+    return any((_safe_float(feature_json.get(key)) or 0.0) >= 0.5 for key in keys)
 
 
 def _normalize_manifest_issue(value: Any) -> str:

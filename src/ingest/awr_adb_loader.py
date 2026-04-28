@@ -90,13 +90,24 @@ PROMOTED_ENGINEERED_FEATURE_KEYS = (
     "TEMP_WRITE_LATENCY_MS",
     "LOG_WRITE_LATENCY_MS",
     "NETWORK_WAIT_PCT_DB_TIME",
+    "HARD_PARSES_PER_SEC",
     "HARD_PARSE_PCT",
     "PGA_CACHE_HIT_PCT",
+    "BUFFER_CACHE_HIT_RATIO_PCT",
+    "LIBRARY_CACHE_HIT_RATIO_PCT",
+    "TEMP_IO_PRESSURE",
     "TEMP_SPILL_PCT",
     "SORTS_DISK_PCT",
     "WORKAREA_ONEPASS_PCT",
     "WORKAREA_MULTIPASS_PCT",
     "CURSOR_MUTEX_WAIT_PCT_DB_TIME",
+    "FREE_BUFFER_WAIT_PRESSURE",
+    "BUFFER_BUSY_PRESSURE",
+    "READ_BY_OTHER_SESSION_PRESSURE",
+    "ENQUEUE_COMMIT_PRESSURE",
+    "REDO_CONTENTION_PRESSURE",
+    "GC_BUFFER_BUSY_PCT_DB_TIME",
+    "RAC_BUFFER_BUSY_PRESSURE",
     "CELL_SINGLE_BLOCK_LATENCY_MS",
     "CELL_MULTIBLOCK_LATENCY_MS",
     "STORAGE_INDEX_SAVINGS_PCT",
@@ -114,8 +125,14 @@ SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "COMMIT_PRESSURE": {"min": 0.0, "max": 100.0},
     "CONCURRENCY_PRESSURE": {"min": 0.0, "max": 100.0},
     "HARD_PARSES_PER_SEC": {"min": 0.0, "max": 100.0},
+    "HARD_PARSE_PCT": {"min": 0.0, "max": 50.0},
     "PGA_SPILL_PRESSURE": {"min": 0.0, "max": 1.0},
     "TEMP_IO_PRESSURE": {"min": 0.0, "max": 500.0},
+    "FREE_BUFFER_WAIT_PRESSURE": {"min": 0.0, "max": 20.0},
+    "BUFFER_BUSY_PRESSURE": {"min": 0.0, "max": 20.0},
+    "READ_BY_OTHER_SESSION_PRESSURE": {"min": 0.0, "max": 20.0},
+    "ENQUEUE_COMMIT_PRESSURE": {"min": 0.0, "max": 20.0},
+    "REDO_CONTENTION_PRESSURE": {"min": 0.0, "max": 15.0},
     "THROUGHPUT_EXECUTIONS_PER_SEC": {"min": 0.0, "max": 20000.0},
     "THROUGHPUT_USER_CALLS_PER_SEC": {"min": 0.0, "max": 20000.0},
     "READ_MB_PER_SEC": {"min": 0.0, "max": 2048.0},
@@ -124,6 +141,7 @@ SCORING_NORMALIZATION_DEFAULTS: dict[str, dict[str, float]] = {
     "GC_CR_WAIT_PCT_DB_TIME": {"min": 0.0, "max": 50.0},
     "GC_CURRENT_WAIT_PCT_DB_TIME": {"min": 0.0, "max": 50.0},
     "GC_BUFFER_BUSY_PCT_DB_TIME": {"min": 0.0, "max": 20.0},
+    "RAC_BUFFER_BUSY_PRESSURE": {"min": 0.0, "max": 20.0},
     "TRANSPORT_LAG_SEC": {"min": 0.0, "max": 600.0},
     "APPLY_LAG_SEC": {"min": 0.0, "max": 1200.0},
     "FAILOVER_EVENT_FLAG": {"min": 0.0, "max": 1.0},
@@ -3939,6 +3957,64 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
     derived = extract_derived_pressure_metrics(parse_result)
     topology = _ensure_native_feature_inputs(parse_result)
     storage_index_savings = _safe_float(topology.get("exa_storage_index_savings"))
+    raw_hard_parses_per_sec = derived.get("hard_parses_per_sec")
+    raw_hard_parse_pct = _compute_hard_parse_pct(parse_result)
+    raw_temp_io_pressure = derived.get("temp_io_pressure")
+    raw_workarea_onepass_pct = _compute_workarea_execution_pct(
+        parse_result,
+        "onepass_executions",
+    )
+    raw_workarea_multipass_pct = _compute_workarea_execution_pct(
+        parse_result,
+        "multipass_executions",
+    )
+    raw_buffer_cache_hit_ratio_pct = _extract_instance_efficiency_metric(
+        parse_result,
+        "Buffer Hit %",
+    )
+    raw_library_cache_hit_ratio_pct = _extract_instance_efficiency_metric(
+        parse_result,
+        "Library Hit %",
+    )
+    raw_free_buffer_wait_pressure = _sum_event_pct(
+        parse_result,
+        ("free buffer waits",),
+    )
+    raw_buffer_busy_pressure = _sum_event_pct(
+        parse_result,
+        ("buffer busy waits",),
+    )
+    raw_read_by_other_session_pressure = _sum_event_pct(
+        parse_result,
+        ("read by other session",),
+    )
+    raw_enqueue_commit_pressure = _sum_event_pct(
+        parse_result,
+        (
+            "enq: tx",
+            "enq: tm",
+            "enq: hw",
+            "enq: sq",
+        ),
+    )
+    raw_redo_contention_pressure = _sum_event_pct(
+        parse_result,
+        (
+            "log buffer space",
+            "redo allocation",
+            "redo copy",
+        ),
+    )
+    raw_gc_buffer_busy_pct_db_time = _safe_float(topology.get("gc_buffer_busy_pct_db_time"))
+    raw_rac_buffer_busy_pressure = _sum_event_pct(
+        parse_result,
+        (
+            "gc buffer busy acquire",
+            "gc buffer busy release",
+            "gc current block busy",
+            "gc cr block busy",
+        ),
+    )
     base_features = {
         "cpu_pct": _compute_cpu_pct(parse_result),
         "db_cpu_pct_db_time": _compute_cpu_pct(parse_result),
@@ -3959,24 +4035,18 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
             parse_result,
             "avg_write_ms",
         ),
-        "hard_parses_per_sec": derived.get("hard_parses_per_sec"),
-        "hard_parse_pct": _compute_hard_parse_pct(parse_result),
+        "hard_parses_per_sec": _default_numeric_zero(raw_hard_parses_per_sec),
+        "hard_parse_pct": _default_numeric_zero(raw_hard_parse_pct),
         "soft_parse_pct": _extract_instance_efficiency_metric(
             parse_result,
             "Soft Parse %",
         ),
-        "temp_io_pressure": derived.get("temp_io_pressure"),
+        "temp_io_pressure": _default_numeric_zero(raw_temp_io_pressure),
         "pga_spill_pressure": derived.get("pga_spill_pressure"),
         "temp_spill_pct": _compute_temp_spill_pct(derived),
         "sorts_disk_pct": _compute_sorts_disk_pct(parse_result),
-        "workarea_onepass_pct": _compute_workarea_execution_pct(
-            parse_result,
-            "onepass_executions",
-        ),
-        "workarea_multipass_pct": _compute_workarea_execution_pct(
-            parse_result,
-            "multipass_executions",
-        ),
+        "workarea_onepass_pct": _default_numeric_zero(raw_workarea_onepass_pct),
+        "workarea_multipass_pct": _default_numeric_zero(raw_workarea_multipass_pct),
         "log_file_sync_ms": _extract_log_file_sync_ms(parse_result),
         "log_write_latency_ms": _extract_exact_wait_event_avg_wait_ms(
             parse_result,
@@ -3988,13 +4058,11 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
             "DB Time(s)",
         ),
         "read_latency_ms": _extract_wait_class_avg_wait_ms(parse_result, "User I/O"),
-        "buffer_cache_hit_ratio_pct": _extract_instance_efficiency_metric(
-            parse_result,
-            "Buffer Hit %",
+        "buffer_cache_hit_ratio_pct": _default_numeric_zero(
+            raw_buffer_cache_hit_ratio_pct
         ),
-        "library_cache_hit_ratio_pct": _extract_instance_efficiency_metric(
-            parse_result,
-            "Library Hit %",
+        "library_cache_hit_ratio_pct": _default_numeric_zero(
+            raw_library_cache_hit_ratio_pct
         ),
         "parse_cpu_to_parse_elapsed_pct": _extract_instance_efficiency_metric(
             parse_result,
@@ -4005,6 +4073,13 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
             parse_result,
             ("cursor: mutex S", "cursor: mutex X"),
         ),
+        "free_buffer_wait_pressure": _default_numeric_zero(raw_free_buffer_wait_pressure),
+        "buffer_busy_pressure": _default_numeric_zero(raw_buffer_busy_pressure),
+        "read_by_other_session_pressure": _default_numeric_zero(
+            raw_read_by_other_session_pressure
+        ),
+        "enqueue_commit_pressure": _default_numeric_zero(raw_enqueue_commit_pressure),
+        "redo_contention_pressure": _default_numeric_zero(raw_redo_contention_pressure),
         "db_time_per_sec": _extract_load_profile_metric(parse_result, "DB Time(s)"),
         "db_cpu_per_sec": _extract_load_profile_metric(parse_result, "DB CPU(s)"),
         "executions_per_sec": _extract_load_profile_metric(parse_result, "Executions"),
@@ -4030,8 +4105,15 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "gc_current_wait_pct_db_time": _safe_float(
             topology.get("gc_current_wait_pct_db_time")
         ),
-        "gc_buffer_busy_pct_db_time": _safe_float(
-            topology.get("gc_buffer_busy_pct_db_time")
+        "gc_buffer_busy_pct_db_time": _default_numeric_zero(
+            raw_gc_buffer_busy_pct_db_time
+        ),
+        "rac_buffer_busy_pressure": round(
+            max(
+                raw_rac_buffer_busy_pressure or 0.0,
+                raw_gc_buffer_busy_pct_db_time or 0.0,
+            ),
+            4,
         ),
         "interconnect_stress_flag": _flag_to_float(
             topology.get("interconnect_stress_flag")
@@ -4114,6 +4196,13 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "LIBRARY_CACHE_HIT_RATIO_PCT": base_features[
             "library_cache_hit_ratio_pct"
         ],
+        "FREE_BUFFER_WAIT_PRESSURE": base_features["free_buffer_wait_pressure"],
+        "BUFFER_BUSY_PRESSURE": base_features["buffer_busy_pressure"],
+        "READ_BY_OTHER_SESSION_PRESSURE": base_features[
+            "read_by_other_session_pressure"
+        ],
+        "ENQUEUE_COMMIT_PRESSURE": base_features["enqueue_commit_pressure"],
+        "REDO_CONTENTION_PRESSURE": base_features["redo_contention_pressure"],
         "PARSE_CPU_TO_PARSE_ELAPSED_PCT": base_features[
             "parse_cpu_to_parse_elapsed_pct"
         ],
@@ -4124,6 +4213,7 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "GC_CR_WAIT_PCT_DB_TIME": base_features["gc_cr_wait_pct_db_time"],
         "GC_CURRENT_WAIT_PCT_DB_TIME": base_features["gc_current_wait_pct_db_time"],
         "GC_BUFFER_BUSY_PCT_DB_TIME": base_features["gc_buffer_busy_pct_db_time"],
+        "RAC_BUFFER_BUSY_PRESSURE": base_features["rac_buffer_busy_pressure"],
         "INTERCONNECT_STRESS_FLAG": base_features["interconnect_stress_flag"],
         "RAC_CONTENTION_FLAG": base_features["rac_contention_flag"],
         "TRANSPORT_LAG_SEC": base_features["transport_lag_sec"],
@@ -4142,6 +4232,25 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "EXA_STORAGE_INDEX_SAVINGS": base_features["exa_storage_index_savings"],
         "SMART_SCAN_FLAG": base_features["smart_scan_flag"],
     }
+    feature_presence = {
+        "HARD_PARSES_PER_SEC": raw_hard_parses_per_sec is not None,
+        "HARD_PARSE_PCT": raw_hard_parse_pct is not None,
+        "TEMP_IO_PRESSURE": raw_temp_io_pressure is not None,
+        "WORKAREA_ONEPASS_PCT": raw_workarea_onepass_pct is not None,
+        "WORKAREA_MULTIPASS_PCT": raw_workarea_multipass_pct is not None,
+        "BUFFER_CACHE_HIT_RATIO_PCT": raw_buffer_cache_hit_ratio_pct is not None,
+        "LIBRARY_CACHE_HIT_RATIO_PCT": raw_library_cache_hit_ratio_pct is not None,
+        "FREE_BUFFER_WAIT_PRESSURE": raw_free_buffer_wait_pressure is not None,
+        "BUFFER_BUSY_PRESSURE": raw_buffer_busy_pressure is not None,
+        "READ_BY_OTHER_SESSION_PRESSURE": raw_read_by_other_session_pressure is not None,
+        "ENQUEUE_COMMIT_PRESSURE": raw_enqueue_commit_pressure is not None,
+        "REDO_CONTENTION_PRESSURE": raw_redo_contention_pressure is not None,
+        "GC_BUFFER_BUSY_PCT_DB_TIME": raw_gc_buffer_busy_pct_db_time is not None,
+        "RAC_BUFFER_BUSY_PRESSURE": (
+            raw_rac_buffer_busy_pressure is not None
+            or raw_gc_buffer_busy_pct_db_time is not None
+        ),
+    }
     feature_json = {
         **base_features,
         **scoring_features,
@@ -4149,6 +4258,7 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "feature_set_name": FEATURE_SET_NAME,
         "feature_set_version": FEATURE_SET_VERSION,
         "scoring_features": scoring_features,
+        "feature_presence": feature_presence,
     }
     normalization_json = {
         "vector_version": SCORING_VECTOR_VERSION,
@@ -4172,12 +4282,26 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
             "TOP_SQL_LOAD_CONCENTRATION": "sum of top SQL pct_total values",
             "AAS_PER_CPU": "derived only when host CPU count evidence exists",
             "HARD_PARSE_PCT": "Hard parses / Parses from load profile",
+            "HARD_PARSES_PER_SEC": "load_profile.Hard parses.per_second",
             "PGA_CACHE_HIT_PCT": "PGA advisory nearest current target cache hit percentage",
+            "TEMP_IO_PRESSURE": "derived TEMP read/write throughput pressure",
+            "WORKAREA_ONEPASS_PCT": "workarea histogram onepass execution ratio",
+            "WORKAREA_MULTIPASS_PCT": "workarea histogram multipass execution ratio",
+            "BUFFER_CACHE_HIT_RATIO_PCT": "instance efficiency Buffer Hit percentage",
+            "LIBRARY_CACHE_HIT_RATIO_PCT": "instance efficiency Library Hit percentage",
+            "FREE_BUFFER_WAIT_PRESSURE": "sum pct_db_time for free buffer waits",
+            "BUFFER_BUSY_PRESSURE": "sum pct_db_time for buffer busy waits",
+            "READ_BY_OTHER_SESSION_PRESSURE": "sum pct_db_time for read by other session",
+            "ENQUEUE_COMMIT_PRESSURE": "sum pct_db_time for TX/TM/HW/SQ enqueue waits",
+            "REDO_CONTENTION_PRESSURE": "sum pct_db_time for redo allocation/copy/log buffer space waits",
             "NETWORK_WAIT_PCT_DB_TIME": "wait-class Network pct_db_time",
             "CLUSTER_WAIT_PCT_DB_TIME": "topology_signals.cluster_wait_pct_db_time",
+            "GC_BUFFER_BUSY_PCT_DB_TIME": "topology_signals.gc_buffer_busy_pct_db_time",
+            "RAC_BUFFER_BUSY_PRESSURE": "max(raw RAC buffer-busy waits, topology gc buffer busy pct)",
             "TRANSPORT_LAG_SEC": "topology_signals.transport_lag_sec",
             "EXA_OFFLOAD_EFFICIENCY": "topology_signals.exa_offload_efficiency",
         },
+        "feature_presence": feature_presence,
         "topology_signals": topology,
     }
     LOGGER.info(
@@ -4191,7 +4315,6 @@ def _build_feature_payload(parse_result: ParseResult) -> dict[str, Any]:
         "normalization_json": normalization_json,
         "explanation_json": explanation_json,
     }
-
 
 def persist_deterministic_score(
     conn: Any,
@@ -4416,6 +4539,12 @@ def _score_weighted_components(
             feature_json,
             weight["feature_path"],
         )
+        if _feature_explicitly_missing(
+            feature_json=feature_json,
+            feature_code=str(weight.get("feature_code") or ""),
+            raw_value=raw_value,
+        ):
+            raw_value = None
         transformed_value = _apply_transform(
             raw_value,
             weight["transform_method"],
@@ -4449,6 +4578,22 @@ def _score_weighted_components(
             }
         )
     return components
+
+
+def _feature_explicitly_missing(
+    feature_json: dict[str, Any],
+    feature_code: str,
+    raw_value: float | None,
+) -> bool:
+    if raw_value is None or raw_value != 0.0:
+        return False
+    feature_presence = feature_json.get("feature_presence")
+    if not isinstance(feature_presence, dict):
+        return False
+    presence_value = feature_presence.get(feature_code)
+    if presence_value is None:
+        return False
+    return not bool(presence_value)
 
 
 def _augment_scoring_weights(
@@ -4882,6 +5027,14 @@ def _apply_low_signal_feature_suppression(base_features: dict[str, Any]) -> None
         base_features["commit_pct"] = None
 
 
+
+def _default_numeric_zero(value: Any) -> float:
+    numeric_value = _safe_float(value)
+    if numeric_value is None:
+        return 0.0
+    return round(numeric_value, 4)
+
+
 def _extract_wait_class_avg_wait_ms(
     parse_result: ParseResult,
     wait_class: str,
@@ -5229,6 +5382,32 @@ def _configure_logging() -> None:
         level=_resolve_log_level(),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+
+def _derive_logical_feature_key_order() -> tuple[str, ...]:
+    """Return the stable top-level feature_json key order for contract planning.
+
+    This does not activate numeric FEATURE_VECTOR population. It records the
+    authoritative feature_json ordering so a future VECTOR(256) population pass
+    can align with the deterministic scoring contract.
+    """
+
+    empty_payload = _build_feature_payload(
+        ParseResult(
+            run_metadata=RunMetadata(
+                source_file_name="contract_probe.out",
+                source_file_path="",
+                parse_timestamp="1970-01-01T00:00:00",
+            )
+        )
+    )
+    feature_json = empty_payload["feature_json"]
+    return tuple(feature_json.keys())
+
+
+FEATURE_VECTOR_LOGICAL_KEY_ORDER = _derive_logical_feature_key_order()
+FEATURE_VECTOR_LOGICAL_DIMENSION_COUNT = len(FEATURE_VECTOR_LOGICAL_KEY_ORDER)
+FEATURE_VECTOR_NUMERIC_CAPACITY = 256
 
 
 def main(argv: list[str] | None = None) -> int:

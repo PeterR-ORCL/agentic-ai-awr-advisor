@@ -572,6 +572,186 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(decision.primary_issue, "MEMORY")
         self.assertEqual(decision.secondary_issues, ["IO"])
 
+    def test_material_runner_up_primary_qualifier_can_surface_as_secondary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"MEMORY": 10.6, "IO": 8.9, "CPU": 4.9},
+                severity=61.6,
+                confidence=0.69,
+                coverage_ratio=0.85,
+                primary_signal_domain="MEMORY",
+                feature_evidence={
+                    "db_time_per_sec": 5.2,
+                    "db_time_per_txn": 0.07,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "MEMORY")
+        self.assertIn("IO", decision.secondary_issues)
+
+    def test_weak_runner_up_does_not_surface_as_secondary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"MEMORY": 12.0, "IO": 3.0, "CPU": 2.5},
+                severity=44.0,
+                confidence=0.69,
+                coverage_ratio=0.8,
+                primary_signal_domain="MEMORY",
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "MEMORY")
+        self.assertNotIn("IO", decision.secondary_issues)
+
+    def test_material_runner_up_rule_is_generic_across_domains(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 11.0, "COMMIT": 8.0},
+                severity=52.0,
+                confidence=0.71,
+                coverage_ratio=0.8,
+                primary_signal_domain="CPU",
+                feature_evidence={
+                    "db_time_per_sec": 4.2,
+                    "db_time_per_txn": 0.03,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "CPU")
+        self.assertIn("COMMIT", decision.secondary_issues)
+
+    def test_material_runner_up_rule_preserves_no_primary_secondary_behavior(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 3.5},
+                severity=18.0,
+                confidence=0.42,
+                coverage_ratio=0.4,
+                primary_signal_domain="CPU",
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertEqual(decision.secondary_issues, ["CPU"])
+
+    def test_topology_presence_without_rac_pressure_does_not_surface_rac(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"ADG": 14.0, "IO": 6.5, "RAC": 0.9, "CPU": 5.0},
+                severity=16.0,
+                confidence=0.7,
+                coverage_ratio=0.75,
+                feature_evidence={
+                    "is_rac": 1.0,
+                    "topology_class": "RAC",
+                    "apply_lag_sec": 80.0,
+                    "transport_lag_sec": 40.0,
+                    "redo_transport_issue_flag": 1.0,
+                    "read_latency_ms": 38.0,
+                    "user_io_pressure": 12.0,
+                    "db_time_per_sec": 2.1,
+                    "db_time_per_txn": 0.02,
+                },
+            )
+        )
+
+        self.assertNotIn("RAC", decision.secondary_issues)
+
+    def test_rac_with_pressure_evidence_can_surface_as_secondary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"CPU": 13.0, "RAC": 5.2},
+                severity=48.0,
+                confidence=0.74,
+                coverage_ratio=0.8,
+                primary_signal_domain="CPU",
+                feature_evidence={
+                    "gc_cr_wait_pct_db_time": 4.5,
+                    "gc_current_wait_pct_db_time": 3.8,
+                    "cluster_wait_pct_db_time": 4.5,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "CPU")
+        self.assertIn("RAC", decision.secondary_issues)
+
+    def test_severe_adg_case_remains_primary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"ADG": 22.0, "COMMIT": 7.0},
+                severity=71.0,
+                confidence=0.82,
+                coverage_ratio=0.84,
+                primary_signal_domain="ADG",
+                feature_evidence={
+                    "apply_lag_sec": 900.0,
+                    "transport_lag_sec": 500.0,
+                    "redo_transport_issue_flag": 1.0,
+                },
+            )
+        )
+
+        self.assertEqual(decision.primary_issue, "ADG")
+        self.assertIn("COMMIT", decision.secondary_issues)
+
+    def test_moderate_mixed_adg_case_does_not_force_adg_primary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"ADG": 14.5, "IO": 6.8, "CPU": 6.1, "COMMIT": 5.1, "MEMORY": 4.0},
+                severity=29.0,
+                confidence=0.79,
+                coverage_ratio=0.85,
+                feature_evidence={
+                    "apply_lag_sec": 80.0,
+                    "transport_lag_sec": 40.0,
+                    "redo_transport_issue_flag": 1.0,
+                    "read_latency_ms": 37.0,
+                    "user_io_pressure": 15.0,
+                    "cpu_util_p95": 31.0,
+                    "db_cpu_pct_db_time": 31.0,
+                    "log_file_sync_ms": 9.0,
+                    "pga_spill_pressure": 0.12,
+                    "temp_spill_pct": 12.0,
+                    "db_time_per_sec": 11.0,
+                    "db_time_per_txn": 0.04,
+                },
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertIn("ADG", decision.secondary_issues)
+
+    def test_sparse_topology_mixed_case_suppresses_cpu_baseline_secondary(self) -> None:
+        decision = build_decision(
+            _decision_input(
+                {"ADG": 14.4, "IO": 6.9, "CPU": 6.0, "RAC": 0.6},
+                severity=15.5,
+                confidence=0.76,
+                coverage_ratio=0.8,
+                feature_evidence={
+                    "apply_lag_sec": 78.0,
+                    "transport_lag_sec": 42.0,
+                    "redo_transport_issue_flag": 1.0,
+                    "read_latency_ms": 39.0,
+                    "user_io_pressure": 13.0,
+                    "cpu_util_p95": 30.0,
+                    "db_cpu_pct_db_time": 30.0,
+                    "cluster_wait_pct_db_time": 2.16,
+                    "gc_cr_wait_pct_db_time": 2.16,
+                    "db_time_per_sec": 2.3,
+                    "db_time_per_txn": 0.02,
+                },
+            )
+        )
+
+        self.assertIsNone(decision.primary_issue)
+        self.assertIn("ADG", decision.secondary_issues)
+        self.assertIn("IO", decision.secondary_issues)
+        self.assertNotIn("CPU", decision.secondary_issues)
+
     def test_adg_can_be_primary(self) -> None:
         decision = build_decision(
             _decision_input(

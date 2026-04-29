@@ -1,30 +1,31 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 import unittest
 
-from src.analysis.output_layer import build_analysis_output, render_analysis_cli, render_analysis_json
+from src.analysis.output_layer import OUTPUT_VERSION, build_analysis_output, render_analysis_json
 from src.models.decision import AwrDecision
 from src.models.recommendation import ActionRecommendation
 
 
 class OutputLayerTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.generated_at = datetime(2026, 4, 13, 15, 30, 0, tzinfo=timezone.utc)
-
-    def _decision(
-        self,
-        secondary_issues: list[str] | None = None,
-    ) -> AwrDecision:
+    def _decision(self) -> AwrDecision:
         return AwrDecision(
             awr_id=501,
-            overall_status="CRITICAL",
+            overall_status="WARNING",
             primary_issue="CPU",
-            secondary_issues=secondary_issues or [],
+            secondary_issues=["IO"],
             severity_score=78.5,
             confidence=0.87,
-            evidence={"domain_scores": {"CPU": 0.91}},
+            evidence={
+                "domain_scores": {"CPU": 9.1, "IO": 4.2},
+                "feature_evidence": {
+                    "WORKLOAD_CLASS": "CPU_BOUND",
+                    "TOPOLOGY_CLASS": "RAC",
+                    "PLATFORM_CLASS": "EXADATA",
+                    "EVENT_CLASS": "STEADY_STATE",
+                },
+            },
         )
 
     def _recommendations(self) -> list[ActionRecommendation]:
@@ -36,81 +37,136 @@ class OutputLayerTests(unittest.TestCase):
                 impact="HIGH",
                 confidence=0.87,
                 evidence={},
-            ),
-            ActionRecommendation(
-                priority=2,
-                issue="IO",
-                action="Analyze storage / read latency",
-                impact="HIGH",
-                confidence=0.82,
-                evidence={},
-            ),
+            )
         ]
 
-    def test_json_structure_correctness(self) -> None:
+    def test_output_structure_keys_exist(self) -> None:
         payload = build_analysis_output(
-            decision=self._decision(["IO"]),
-            recommendations=self._recommendations(),
-            generated_at=self.generated_at,
-        )
-
-        self.assertEqual(payload["awr_id"], 501)
-        self.assertIn("decision", payload)
-        self.assertIn("recommendations", payload)
-        self.assertIn("metadata", payload)
-        self.assertEqual(payload["decision"]["primary_issue"], "CPU")
-        self.assertEqual(payload["recommendations"][0]["priority"], 1)
-
-    def test_cli_rendering_with_primary_issue_only(self) -> None:
-        rendered = render_analysis_cli(
             decision=self._decision(),
-            recommendations=self._recommendations()[:1],
-        )
-
-        self.assertIn("AWR ANALYSIS RESULT", rendered)
-        self.assertIn("PRIMARY ISSUE: CPU", rendered)
-        self.assertNotIn("SECONDARY ISSUES:", rendered)
-        self.assertIn("1. Investigate Top SQL", rendered)
-
-    def test_cli_rendering_with_secondary_issues(self) -> None:
-        rendered = render_analysis_cli(
-            decision=self._decision(["IO", "MEMORY"]),
+            scores={"CPU": 9.1, "IO": 4.2},
+            trends={"findings": ["CPU rising"], "time_series": {"cpu_trend": [1, 2]}},
+            similarity_intelligence={"enabled": True},
             recommendations=self._recommendations(),
+            metadata={"awr_id": 501, "db_name": "VALDB"},
         )
 
-        self.assertIn("SECONDARY ISSUES: IO, MEMORY", rendered)
-
-    def test_empty_secondary_issues_handled_cleanly(self) -> None:
-        rendered = render_analysis_cli(
-            decision=self._decision([]),
-            recommendations=self._recommendations()[:1],
+        self.assertEqual(
+            list(payload.keys()),
+            [
+                "metadata",
+                "decision",
+                "scores",
+                "trends",
+                "similarity_intelligence",
+                "recommendations",
+            ],
         )
 
-        self.assertNotIn("SECONDARY ISSUES:", rendered)
-        self.assertIn("SEVERITY SCORE: 78.50", rendered)
-
-    def test_recommendation_list_rendering_in_deterministic_order(self) -> None:
-        rendered = render_analysis_cli(
-            decision=self._decision(["IO"]),
-            recommendations=self._recommendations(),
+    def test_metadata_fields_exist(self) -> None:
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={},
+            trends={"findings": [], "time_series": {}},
+            similarity_intelligence={"enabled": True},
+            recommendations=[],
+            metadata={
+                "awr_id": 501,
+                "db_name": "VALDB",
+                "snapshot_begin": "2026-04-29T00:00:00Z",
+                "snapshot_end": "2026-04-29T01:00:00Z",
+            },
         )
 
-        self.assertLess(
-            rendered.index("1. Investigate Top SQL"),
-            rendered.index("2. Analyze storage / read latency"),
+        self.assertEqual(payload["metadata"]["awr_id"], 501)
+        self.assertEqual(payload["metadata"]["db_name"], "VALDB")
+        self.assertEqual(payload["metadata"]["snapshot_begin"], "2026-04-29T00:00:00Z")
+        self.assertEqual(payload["metadata"]["snapshot_end"], "2026-04-29T01:00:00Z")
+        self.assertEqual(payload["metadata"]["output_version"], OUTPUT_VERSION)
+        self.assertEqual(payload["metadata"]["source"], "AWR_ANALYSIS")
+        self.assertTrue(payload["metadata"]["generated_at"].endswith("Z"))
+
+    def test_recommendations_default_to_empty_list(self) -> None:
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={},
+            trends={"findings": [], "time_series": {}},
+            similarity_intelligence={"enabled": True},
+            recommendations=None,
+            metadata={},
         )
 
-    def test_metadata_presence_in_json_output(self) -> None:
+        self.assertEqual(payload["recommendations"], [])
+
+    def test_similarity_defaults_correctly(self) -> None:
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={},
+            trends={"findings": [], "time_series": {}},
+            similarity_intelligence={},
+            recommendations=[],
+            metadata={},
+        )
+
+        self.assertEqual(payload["similarity_intelligence"], {"enabled": False})
+
+    def test_decision_mapping_correct(self) -> None:
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={},
+            trends={"findings": [], "time_series": {}},
+            similarity_intelligence={"enabled": True},
+            recommendations=[],
+            metadata={},
+        )
+
+        self.assertEqual(payload["decision"]["primary_domain"], "CPU")
+        self.assertEqual(payload["decision"]["secondary_domains"], ["IO"])
+        self.assertEqual(payload["decision"]["risk_level"], "WARNING")
+        self.assertEqual(payload["decision"]["confidence"], 0.87)
+        self.assertEqual(
+            payload["decision"]["classification"],
+            {
+                "workload_class": "CPU_BOUND",
+                "topology_class": "RAC",
+                "platform_class": "EXADATA",
+                "event_class": "STEADY_STATE",
+            },
+        )
+
+    def test_scores_nested_correctly(self) -> None:
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={"CPU": 9.1, "IO": 4.2},
+            trends={"findings": [], "time_series": {}},
+            similarity_intelligence={"enabled": True},
+            recommendations=[],
+            metadata={},
+        )
+
+        self.assertEqual(payload["scores"], {"domain_scores": {"CPU": 9.1, "IO": 4.2}})
+
+    def test_trends_pass_through_unchanged(self) -> None:
+        trends = {"findings": ["CPU rising"], "time_series": {"cpu_trend": [1, 2]}}
+        payload = build_analysis_output(
+            decision=self._decision(),
+            scores={},
+            trends=trends,
+            similarity_intelligence={"enabled": True},
+            recommendations=[],
+            metadata={},
+        )
+
+        self.assertEqual(payload["trends"], trends)
+
+    def test_render_analysis_json_uses_new_contract(self) -> None:
         rendered = render_analysis_json(
-            decision=self._decision(["IO"]),
+            decision=self._decision(),
             recommendations=self._recommendations(),
-            generated_at=self.generated_at,
         )
         payload = json.loads(rendered)
 
-        self.assertEqual(payload["metadata"]["generated_at"], "2026-04-13T15:30:00Z")
-        self.assertEqual(payload["metadata"]["output_version"], "phase4.1")
-        self.assertEqual(payload["metadata"]["source"], "phase4")
+        self.assertEqual(payload["metadata"]["output_version"], OUTPUT_VERSION)
+        self.assertEqual(payload["decision"]["primary_domain"], "CPU")
 
 
 if __name__ == "__main__":

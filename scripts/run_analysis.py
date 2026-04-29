@@ -4602,56 +4602,59 @@ if __name__ == "__main__":
     feature_visual_series = _build_feature_visual_series(snapshot_contexts)
     generated_at_display = _format_generated_at_local()
     decision_posture = multi_snapshot_analysis["decision_posture"]
-    analysis_output = build_analysis_output(
-        decision=decision,
-        recommendations=decision_recommendations,
-    )
     if runtime_config.get("disable_similarity_intelligence"):
-        analysis_output["similarity_intelligence"] = (
-            build_disabled_similarity_intelligence(
-                "Disabled by DISABLE_SIMILARITY_INTELLIGENCE"
-            )
+        similarity_intelligence = build_disabled_similarity_intelligence(
+            "Disabled by DISABLE_SIMILARITY_INTELLIGENCE"
         )
     else:
         connection = None
         try:
             connection = get_db_connection()
-            analysis_output["similarity_intelligence"] = (
-                build_similarity_intelligence(
-                    connection=connection,
-                    awr_id=_runtime_awr_id(latest_context),
-                    feature_vector=runtime_feature_vector["feature_vector_record"][
-                        "feature_vector"
-                    ],
-                    top_k=5,
-                )
+            similarity_intelligence = build_similarity_intelligence(
+                connection=connection,
+                awr_id=_runtime_awr_id(latest_context),
+                feature_vector=runtime_feature_vector["feature_vector_record"][
+                    "feature_vector"
+                ],
+                top_k=5,
             )
         except Exception as exc:
-            analysis_output["similarity_intelligence"] = (
-                build_failed_similarity_intelligence(str(exc))
-            )
+            similarity_intelligence = build_failed_similarity_intelligence(str(exc))
         finally:
             if connection is not None:
                 connection.close()
-    analysis_output["metadata"].update(
-        {
-            "file_name": latest_context["file_name"],
-            "snapshot_label": latest_context["snapshot_label"],
-            "db_name": result.run_metadata.database_name,
-            "dbid": result.run_metadata.db_id,
-            "instance_name": result.run_metadata.instance_name,
-            "host_name": result.run_metadata.host_name,
-            "snapshot_begin": result.run_metadata.begin_snapshot_time,
-            "snapshot_end": result.run_metadata.end_snapshot_time,
-        }
-    )
     decision_evidence = decision.evidence or {}
-    analysis_output["scores"] = decision_evidence.get("domain_scores", {})
-    analysis_output["trends"] = {
+    domain_scores = decision_evidence.get("domain_scores", {})
+    trends = {
         "findings": multi_snapshot_analysis["trend_findings"],
         "time_series": multi_snapshot_analysis["time_series"],
     }
-    analysis_output["anomalies"] = multi_snapshot_analysis["anomaly_windows"]
+    analysis_output = build_analysis_output(
+        decision=decision,
+        scores=domain_scores,
+        trends=trends,
+        similarity_intelligence=similarity_intelligence,
+        recommendations=decision_recommendations,
+        metadata={
+            "awr_id": _runtime_awr_id(latest_context),
+            "db_name": getattr(result.run_metadata, "db_name", None)
+            or getattr(result.run_metadata, "database_name", None),
+            "snapshot_begin": result.run_metadata.begin_snapshot_time,
+            "snapshot_end": result.run_metadata.end_snapshot_time,
+        },
+    )
+    dashboard_metadata = {
+        **analysis_output["metadata"],
+        "file_name": latest_context["file_name"],
+        "snapshot_label": latest_context["snapshot_label"],
+        "db_name": result.run_metadata.database_name,
+        "dbid": result.run_metadata.db_id,
+        "instance_name": result.run_metadata.instance_name,
+        "host_name": result.run_metadata.host_name,
+        "snapshot_begin": result.run_metadata.begin_snapshot_time,
+        "snapshot_end": result.run_metadata.end_snapshot_time,
+    }
+    anomaly_windows = multi_snapshot_analysis["anomaly_windows"]
     grouped_findings = _grouped_deterministic_findings(
         decision=decision,
         canonical_recommendations=decision_recommendations,
@@ -4725,16 +4728,15 @@ if __name__ == "__main__":
         "product": {
             "title": "AWR Performance Intelligence Dashboard",
         },
-        "metadata": analysis_output["metadata"],
-        "scores": {
-            "domain_scores": analysis_output["scores"],
-        },
+        "metadata": dashboard_metadata,
+        "scores": analysis_output["scores"],
         "trends": analysis_output["trends"],
         "anomalies": {
-            "count": len(analysis_output["anomalies"]),
-            "windows": analysis_output["anomalies"],
+            "count": len(anomaly_windows),
+            "windows": anomaly_windows,
         },
         "decision": analysis_output["decision"],
+        "similarity_intelligence": analysis_output["similarity_intelligence"],
         "recommendations": analysis_output["recommendations"],
         "grouped_deterministic_findings": grouped_findings,
         "llm_explanation": llm_explanation,

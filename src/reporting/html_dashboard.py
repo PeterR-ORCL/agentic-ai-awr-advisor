@@ -747,27 +747,32 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
 def _render_runtime_status_badge(report_data: dict[str, Any]) -> str:
     status = _runtime_status_from_report(report_data)
     mode_class = (
-        "success"
-        if status["runtime_mode"] == "FULL DB MODE"
-        else "error"
+        "error"
         if status["db_connectivity"].upper() == "FAILED"
-        else "warning"
+        else _status_pill_class(status["runtime_mode"])
     )
     return f"""
       <div class="runtime-badge">
         <span class="status-pill {escape(mode_class)}">{escape(status["runtime_mode"])}</span>
         <div class="runtime-meta">
-          <span>DB: {escape(status["db_connectivity"])} · Similarity: {escape(status["similarity_status"])}</span>{_render_memory_runtime_meta(report_data)}
+          {_render_runtime_state_line(report_data, status)}
         </div>
       </div>
     """
 
 
-def _render_memory_runtime_meta(report_data: dict[str, Any]) -> str:
-    state, css_class = _memory_runtime_state(report_data)
+def _render_runtime_state_line(
+    report_data: dict[str, Any],
+    status: dict[str, str],
+) -> str:
+    memory_state, memory_class = _memory_runtime_state(report_data)
+    db_state = status["db_connectivity"]
+    similarity_state = status["similarity_status"]
     return (
-        '<span class="memory-runtime-meta">'
-        f' · <span class="meta-dot {escape(css_class)}">●</span> Memory: {escape(state)}'
+        '<span class="runtime-state-line">'
+        f'DB: <span class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</span>'
+        f' · Similarity: <span class="{escape(_similarity_runtime_state_class(similarity_state))}">{escape(similarity_state)}</span>'
+        f' · Memory: <span class="{escape(memory_class)}">{escape(memory_state)}</span>'
         "</span>"
     )
 
@@ -776,16 +781,37 @@ def _memory_runtime_state(report_data: dict[str, Any]) -> tuple[str, str]:
     memory_runtime = _to_dict(report_data.get("memory_runtime"))
     state = str(memory_runtime.get("state") or "").strip()
     if state.lower() == "off":
-        return "Off", "off"
+        return "Off", _runtime_state_class("Off", "memory")
     if state.lower() == "error":
-        return "Error", "error"
+        return "Error", _runtime_state_class("Error", "memory")
     enabled = memory_runtime.get("enabled")
     success = memory_runtime.get("success")
     if enabled is False:
-        return "Off", "off"
+        return "Off", _runtime_state_class("Off", "memory")
     if success is False:
-        return "Error", "error"
-    return "Active", "active"
+        return "Error", _runtime_state_class("Error", "memory")
+    return "Active", _runtime_state_class("Active", "memory")
+
+
+def _db_runtime_state_class(state: str) -> str:
+    return _runtime_state_class(state, "db")
+
+
+def _similarity_runtime_state_class(state: str) -> str:
+    return _runtime_state_class(state, "similarity")
+
+
+def _runtime_state_class(value: Any, context: str | None = None) -> str:
+    semantic = _status_semantic_class(value, context)
+    if semantic == "pass":
+        return "state-pass"
+    if semantic == "warning":
+        return "state-warning"
+    if semantic == "error":
+        return "state-error"
+    if semantic == "low":
+        return "state-low"
+    return "state-muted"
 
 
 def _runtime_status_from_report(report_data: dict[str, Any]) -> dict[str, str]:
@@ -3982,22 +4008,27 @@ def _shared_page_styles() -> str:
       color: var(--muted);
       margin-top: 4px;
     }
-    .meta-dot {
-      font-size: 10px;
-      margin: 0 4px 1px 6px;
-      vertical-align: middle;
+    .runtime-state-line {
+      white-space: normal;
     }
-    .meta-dot.active {
+    .state-pass {
+      color: var(--pass);
+    }
+    .state-warning {
+      color: var(--medium);
+    }
+    .state-low {
+      color: var(--low);
+    }
+    .state-accent {
       color: var(--accent);
     }
-    .meta-dot.off {
-      color: var(--na);
+    .state-muted {
+      color: var(--muted);
+      opacity: 0.85;
     }
-    .meta-dot.error {
+    .state-error {
       color: var(--high);
-    }
-    .memory-runtime-meta {
-      white-space: nowrap;
     }
     .grid, .subgrid, .chart-grid, .flow-grid, .nav-card-grid, .health-check-grid {
       display: grid;
@@ -4334,6 +4365,11 @@ def _shared_page_styles() -> str:
       background: rgba(159, 176, 199, 0.14);
       border: 1px solid rgba(159, 176, 199, 0.34);
     }
+    .health-pill.pass {
+      color: #effbef;
+      background: rgba(102, 187, 106, 0.16);
+      border: 1px solid rgba(102, 187, 106, 0.34);
+    }
     .status-pill.success {
       background: rgba(102, 187, 106, 0.16);
       border: 1px solid rgba(102, 187, 106, 0.34);
@@ -4438,6 +4474,11 @@ def _shared_page_styles() -> str:
       color: #fff4f4;
       background: rgba(255, 107, 107, 0.16);
       border: 1px solid rgba(255, 107, 107, 0.34);
+    }
+    .mini-pill.low {
+      color: #eef7ff;
+      background: rgba(127, 179, 213, 0.18);
+      border: 1px solid rgba(127, 179, 213, 0.34);
     }
     .mini-pill.neutral {
       color: #eef3f8;
@@ -7549,6 +7590,19 @@ def _screen5_status_insight_tone(tone: Any) -> str:
     return normalized if normalized in allowed else "neutral"
 
 
+def _status_insight_tone_for_value(value: Any, context: str | None = None) -> str:
+    semantic = _status_semantic_class(value, context)
+    if semantic == "pass":
+        return "success"
+    if semantic == "warning":
+        return "warning"
+    if semantic == "error":
+        return "error"
+    if semantic == "low":
+        return "low"
+    return "neutral"
+
+
 def _screen5_posture_status_note(posture_key: str) -> str:
     if posture_key == "TUNE FIRST":
         return "Validate and tune before scaling."
@@ -7560,13 +7614,7 @@ def _screen5_posture_status_note(posture_key: str) -> str:
 
 
 def _screen5_posture_status_tone(posture_key: str) -> str:
-    if posture_key == "TUNE FIRST":
-        return "accent"
-    if posture_key == "SCALE NOW":
-        return "error"
-    if posture_key == "DO NOT SCALE":
-        return "success"
-    return "neutral"
+    return _status_insight_tone_for_value(posture_key, "posture")
 
 
 def _screen5_action_risk_status_note(action_risk: Any) -> str:
@@ -7583,14 +7631,7 @@ def _screen5_action_risk_status_note(action_risk: Any) -> str:
 
 
 def _screen5_action_risk_status_tone(action_risk: Any) -> str:
-    normalized = str(action_risk or "").strip().upper()
-    if normalized == "LOW":
-        return "low"
-    if normalized == "MEDIUM":
-        return "warning"
-    if normalized in {"HIGH", "CRITICAL"}:
-        return "error"
-    return "neutral"
+    return _status_insight_tone_for_value(action_risk, "action_risk")
 
 
 def _screen5_confidence_status_note(confidence_level: Any) -> str:
@@ -10519,14 +10560,14 @@ def _priority_badge_class(priority: str) -> str:
 
 
 def _health_status_class(status: str) -> str:
-    normalized = status.strip().upper()
-    return {
-        "PASS": "pass",
-        "MARGINAL": "marginal",
-        "FAIL": "fail",
-        "N/A": "na",
-        "NOT SCORED": "na",
-    }.get(normalized, "na")
+    semantic = _status_semantic_class(status, "health")
+    if semantic == "pass":
+        return "pass"
+    if semantic == "warning":
+        return "marginal"
+    if semantic == "error":
+        return "fail"
+    return "na"
 
 
 def _display_supporting_health_status(status: str) -> str:
@@ -10536,43 +10577,123 @@ def _display_supporting_health_status(status: str) -> str:
     return normalized or "N/A"
 
 
-def _status_pill_class(status: str) -> str:
-    normalized = status.strip().upper()
+def _status_pill_class(status: str, context: str | None = None) -> str:
+    semantic = _status_semantic_class(status, context)
+    if semantic == "pass":
+        return "success"
+    if semantic == "error":
+        return "error"
+    if semantic == "warning":
+        return "warning"
+    if semantic == "low":
+        return "low"
+    return "neutral"
+
+
+def _confidence_state_class(value: Any) -> str:
+    level = _confidence_level_from_value(value)
+    if level == "HIGH":
+        return "state-pass"
+    if level == "MEDIUM":
+        return "state-warning"
+    return "state-low"
+
+
+def _status_semantic_class(value: Any, context: str | None = None) -> str:
+    normalized = _normalized_status_token(value)
+    context_key = str(context or "").strip().lower()
+    if context_key == "confidence":
+        level = _confidence_level_from_value(value)
+        if level == "HIGH":
+            return "pass"
+        if level == "MEDIUM":
+            return "warning"
+        return "low"
+    if context_key == "action_risk" and normalized == "LOW":
+        return "low"
+    if context_key == "posture":
+        if normalized == "SCALE NOW":
+            return "error"
+        if normalized in {"TUNE FIRST", "DEFER", "DEFERRED"}:
+            return "warning"
+        if normalized == "DO NOT SCALE":
+            return "pass"
     if normalized in {
-        "SUCCEEDED",
-        "SUCCESS",
-        "PASS",
         "OK",
+        "PASS",
+        "SUCCESS",
+        "SUCCEEDED",
         "CONNECTED",
+        "AVAILABLE",
+        "ACTIVE",
+        "ENABLED",
+        "READY",
+        "COMPLETE",
+        "COMPLETED",
         "ALREADY LOADED",
         "NEWLY LOADED",
         "REUSED",
         "EXISTING",
         "CREATED",
         "UPDATED",
+        "YES",
+        "FULL DB MODE",
+        "DO NOT SCALE",
     }:
-        return "success"
-    if normalized in {"FAILED", "ERROR", "FAIL", "HIGH", "CRITICAL", "SCALE NOW"}:
-        return "error"
+        return "pass"
     if normalized in {
-        "WARNINGS",
         "WARNING",
+        "WARNINGS",
         "MEDIUM",
+        "MARGINAL",
         "DEFER",
         "DEFERRED",
+        "IN PROGRESS",
+        "IN_PROGRESS",
+        "PLANNED",
         "SKIPPED",
         "NOT CHECKED",
         "LOCAL ONLY",
+        "LOCAL ONLY MODE",
         "MISSING",
+        "TUNE FIRST",
     }:
         return "warning"
-    if normalized == "TUNE FIRST":
-        return "accent"
+    if normalized in {
+        "ERROR",
+        "FAIL",
+        "FAILED",
+        "CRITICAL",
+        "HIGH",
+        "DISCONNECTED",
+        "UNAVAILABLE DUE TO ERROR",
+        "REJECTED",
+        "SCALE NOW",
+    }:
+        return "error"
     if normalized == "LOW":
         return "low"
-    if normalized in {"UNKNOWN", "UNAVAILABLE", "N/A", "NA", "NONE"}:
-        return "neutral"
-    return "neutral"
+    if normalized in {
+        "UNKNOWN",
+        "UNAVAILABLE",
+        "OFF",
+        "NONE",
+        "N/A",
+        "NA",
+        "NOT AVAILABLE",
+        "NOT APPLICABLE",
+        "NO",
+        "NOT SCORED",
+    }:
+        return "muted"
+    return "muted"
+
+
+def _normalized_status_token(value: Any) -> str:
+    text = str(value or "").strip().upper()
+    text = re.sub(r"[\s\-]+", " ", text)
+    text = text.replace("_", " ")
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _render_decision_boxes(agentic_decision: dict[str, Any]) -> str:

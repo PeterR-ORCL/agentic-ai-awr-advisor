@@ -115,22 +115,27 @@
       color: var(--muted);
       margin-top: 4px;
     }
-    .meta-dot {
-      font-size: 10px;
-      margin: 0 4px 1px 6px;
-      vertical-align: middle;
+    .runtime-state-line {
+      white-space: normal;
     }
-    .meta-dot.active {
+    .state-pass {
+      color: var(--pass);
+    }
+    .state-warning {
+      color: var(--medium);
+    }
+    .state-low {
+      color: var(--low);
+    }
+    .state-accent {
       color: var(--accent);
     }
-    .meta-dot.off {
-      color: var(--na);
+    .state-muted {
+      color: var(--muted);
+      opacity: 0.85;
     }
-    .meta-dot.error {
+    .state-error {
       color: var(--high);
-    }
-    .memory-runtime-meta {
-      white-space: nowrap;
     }
     .grid, .subgrid, .chart-grid, .flow-grid, .nav-card-grid, .health-check-grid {
       display: grid;
@@ -467,6 +472,11 @@
       background: rgba(159, 176, 199, 0.14);
       border: 1px solid rgba(159, 176, 199, 0.34);
     }
+    .health-pill.pass {
+      color: #effbef;
+      background: rgba(102, 187, 106, 0.16);
+      border: 1px solid rgba(102, 187, 106, 0.34);
+    }
     .status-pill.success {
       background: rgba(102, 187, 106, 0.16);
       border: 1px solid rgba(102, 187, 106, 0.34);
@@ -571,6 +581,11 @@
       color: #fff4f4;
       background: rgba(255, 107, 107, 0.16);
       border: 1px solid rgba(255, 107, 107, 0.34);
+    }
+    .mini-pill.low {
+      color: #eef7ff;
+      background: rgba(127, 179, 213, 0.18);
+      border: 1px solid rgba(127, 179, 213, 0.34);
     }
     .mini-pill.neutral {
       color: #eef3f8;
@@ -1345,7 +1360,7 @@
       <div class="runtime-badge">
         <span class="status-pill success">FULL DB MODE</span>
         <div class="runtime-meta">
-          <span>DB: Connected · Similarity: Available</span><span class="memory-runtime-meta"> · <span class="meta-dot active">●</span> Memory: Active</span>
+          <span class="runtime-state-line">DB: <span class="state-pass">Connected</span> · Similarity: <span class="state-pass">Available</span> · Memory: <span class="state-pass">Active</span></span>
         </div>
       </div>
     
@@ -1353,7 +1368,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 4, 2026, 1:00 PM</div>
+        <div class="hero-meta">Generated: May 4, 2026, 7:18 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link active" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1974,7 +1989,7 @@
     </div>
     
 
-    <div class="footer">Generated at May 4, 2026, 1:00 PM</div>
+    <div class="footer">Generated at May 4, 2026, 7:18 PM</div>
   </div>
 
   <script id="chart-payload" type="application/json">

@@ -14,6 +14,9 @@
   <img src="https://img.shields.io/badge/Trend%20Engine-Enabled-purple"/>
   <img src="https://img.shields.io/badge/Architecture-Cloud%20Native-blueviolet"/>
   <img src="https://img.shields.io/badge/Intelligence-Deterministic-purple"/>
+  <img src="https://img.shields.io/badge/Memory-Persistence%20Enabled-blue"/>
+  <img src="https://img.shields.io/badge/Action%20Tracking-Enabled-teal"/>
+  <img src="https://img.shields.io/badge/Oracle%20Agent%20Memory-6N.1%20Planned-lightgrey"/>
 </p>
 
 ---
@@ -22,7 +25,7 @@
 
 The Agentic AI AWR Advisor is an Autonomous Database Performance Intelligence Platform that transforms Oracle AWR data into deterministic insights, autonomous decisions, actionable outcomes, and persistent memory.
 
-It combines a deterministic analysis engine with an agentic AI layer to deliver:
+It combines a deterministic analysis engine with an agentic AI layer and a Phase 6 memory layer to deliver:
 
 - Root-cause diagnostics with full explainability  
 - Prioritized and evidence-based recommendations  
@@ -31,7 +34,7 @@ It combines a deterministic analysis engine with an agentic AI layer to deliver:
 - Scalable, cloud-native performance intelligence  
 - Built to operate reliably across heterogeneous AWR formats without requiring schema normalization or manual adjustment
 
-> **This system replaces manual AWR interpretation with a repeatable, auditable, and automation-ready decision framework.**
+> **This system replaces manual AWR interpretation with a repeatable, auditable, memory-backed, and automation-ready decision framework.**
 
 ---
 
@@ -47,7 +50,7 @@ The Agentic AI  AWR Sizing Advisor is a **deterministic + agentic AI + memory sy
 
 This system eliminates subjective interpretation and replaces it with:
 
-> **Repeatable, explainable, and automation-ready intelligence**
+> **Repeatable, explainable, auditable, and automation-ready intelligence**
 
 ---
 
@@ -59,6 +62,7 @@ Traditional AWR analysis suffers from:
 - Inconsistent conclusions  
 - Time-intensive workflows  
 - Heavy reliance on expert intuition  
+- No structured memory of prior runs, recommendations, or actions  
 
 This platform introduces:
 
@@ -79,7 +83,7 @@ This platform introduces:
 - Stateless reasoning + stateful context (ADB)  
 - No fabricated data or synthetic distributions  
 - Observability-first architecture  
-- Full auditability of decisions  
+- Full auditability of decisions and actions  
 
 ---
 
@@ -142,6 +146,8 @@ AWR (.out files)
 → Trend & Anomaly Engine  
 → Agentic Decision Engine  
 → Dashboard + OCI Sizing  
+→ Memory Persistence  
+→ Action Tracking  
 
 ---
 
@@ -153,9 +159,13 @@ flowchart LR
     B --> C[Structured Metrics and Metadata]
     C --> D[Feature Vector Layer]
     D --> E[Autonomous Database ADB]
-    E --> F[Intelligence Layer - Scoring + Trends]
+    E --> F[Intelligence Layer - Scoring + Trends + Anomalies]
     F --> G[Agentic Decision Engine]
     G --> H[Dashboard / OCI Sizing Output]
+    H --> I[Memory Orchestrator]
+    I --> J[Run Memory]
+    I --> K[Recommendation Memory]
+    I --> L[Action Tracking]
 ```
 
 ---
@@ -171,6 +181,22 @@ flowchart LR
     E --> F[ADB State Layer]
     F --> G[Decision Engine]
     G --> H[Insights + Recommendations]
+    H --> I[Memory Persistence]
+```
+
+---
+
+## AWR Intelligence Cycle
+
+```mermaid
+flowchart LR
+    A[AWR Input] --> B[Deterministic Analysis]
+    B --> C[Decision Engine]
+    C --> D[Dashboard Output]
+    D --> E[Memory Capture]
+    E --> F[Action Tracking]
+    F --> G[Future AWR Input]
+    G --> B
 ```
 
 ---
@@ -183,6 +209,7 @@ The platform is designed as a cloud-native pipeline:
 - Autonomous Database (ADB) for state and analytics
 - Deterministic parsing and feature extraction
 - Scalable ingestion for multi-AWR workloads
+- Persistent memory for run history, recommendations, actions, and unknown signals
 
 **This enables enterprise-scale performance intelligence across environments.**
 
@@ -190,12 +217,13 @@ The platform is designed as a cloud-native pipeline:
 
 ## Machine Learning Readiness
 
-The feature vector layer provides a foundation for:
+The feature vector layer and memory layer provide a foundation for:
 
 - Similarity-based workload analysis  
 - Pattern recognition across environments  
 - Future supervised learning models  
 - Outcome-based optimization  
+- Memory-backed evaluation of actions and recommendations  
 
 This **enables a transition from deterministic intelligence to adaptive learning systems.**
 
@@ -227,6 +255,7 @@ Feature vectors enable:
 
 - Scoring  
 - Trend analysis  
+- Similarity intelligence  
 - ML readiness  
 
 ---
@@ -311,6 +340,10 @@ Detects:
 - AWR_WAIT_EVENT_FACT  
 - AWR_FEATURE_VECTOR  
 - AWR_DB_METRIC_TREND  
+- AWR_RUN_HISTORY  
+- AWR_RECOMMENDATION_HISTORY  
+- AWR_ACTION_HISTORY  
+- AWR_UNKNOWN_SIGNAL_HISTORY  
 
 ---
 
@@ -320,6 +353,8 @@ Detects:
 - Transaction-safe ingestion  
 - Time-series persistence  
 - Analytical query layer  
+- Memory persistence for run history and actions  
+- Unknown signal capture for future parser and knowledge workflows  
 
 ---
 
@@ -330,6 +365,7 @@ Detects:
 - CPU pressure  
 - SQL concentration  
 - I/O bottlenecks  
+- Memory pressure  
 - Commit latency  
 - Concurrency contention  
 - RAC interconnect stress  
@@ -343,11 +379,13 @@ Detects:
 - Weighted deterministic scoring  
 - Risk classification  
 - Confidence scoring  
+- Domain scoring across CPU, IO, MEMORY, COMMIT, RAC, and ADG  
 
 Used for:
 
 - prioritization  
 - decision ranking  
+- deterministic posture selection  
 
 ---
 
@@ -378,6 +416,7 @@ Produces:
 - No hallucinated metrics  
 - No contradiction of facts  
 - Fully grounded in deterministic outputs  
+- LLM may vocalize phrasing, but cannot change deterministic meaning  
 
 ---
 
@@ -385,16 +424,20 @@ Produces:
 
 ### Sections
 
-- Executive Summary  
-- Decision Layer  
-- Evidence Panel  
-- Trend & anomaly visualization  
+- Screen 0 — System Overview and Navigation  
+- Screen 1 — Ingestion / Parse Confidence / Adaptation  
+- Screen 2 — Diagnostic Snapshot  
+- Screen 3 — History Selector / Filter / Scope Definition  
+- Screen 4 — Historical Review  
+- Screen 5 — Recommendation / Action  
+- Screen 6 — Fleet Overview  
 
 ### Rules
 
 - No synthetic data  
 - No interpolation  
 - Only real AWR-derived signals  
+- Memory is shown as system state only; it does not alter decisions  
 
 ---
 
@@ -405,6 +448,8 @@ Enables:
 - Historical trend analysis  
 - Cross-snapshot anomaly detection  
 - Capacity planning  
+- Similarity intelligence  
+- Fleet-level pattern review  
 - ML pipeline readiness  
 
 ---
@@ -416,9 +461,10 @@ flowchart LR
     A[AWR Data] --> B[Analysis Engine]
     B --> C[Recommendations]
     C --> D[Actions Taken]
-    D --> E[New AWR Data]
-    E --> F[Outcome Tracking]
-    F --> G[Model Improvement]
+    D --> E[Action Memory]
+    E --> F[New AWR Data]
+    F --> G[Outcome Tracking]
+    G --> H[Model Improvement]
 ```
 
 ---
@@ -431,91 +477,11 @@ This is:
 
 - Deterministic reasoning engine  
 - AI interpretation layer  
-- Stateful decision system  
+- Stateful memory system  
 
 ### Decision Flow
 
-AWR → Metrics → Issues → Recommendations → AI → Decision  
-
----
-
-## Roadmap
-
-### Phase 4
-- Dashboard wiring  
-- Domain-based insights  
-
-### Phase 5
-- Recommendation persistence  
-- Action tracking  
-
-### Phase 6
-- Outcome tracking  
-- ML feedback loop  
-
----
-
-## Value Proposition
-
-From AWR → Decision → Action
-
-This is NOT:
-
-- A report  
-- A chatbot  
-
-This IS:
-
-- Autonomous performance advisor  
-- OCI sizing decision engine  
-
----
-
-## Status
-
-- Parsing: Complete  
-- Feature Vectors: Complete  
-- Scoring Engine: Complete  
-- Trend Engine: Complete  
-- Anomaly Detection: Refined  
-- ADB Integration: Complete  
-- Object Storage Integration: Complete  
-
-Next:
-
-- Dashboard wiring  
-- Decision layer  
-- Learning system  
-
----
-
-## Quick Start
-
-pip install -r requirements.txt  
-python scripts/run_analysis.py  
-
----
-
-## Project Structure
-
-src/
-  parser/
-  analysis/
-  reporting/
-scripts/
-data/
-dbschema/
-
----
-
-## Final Statement
-
-This project has evolved beyond reporting.
-
-It is now:
-
-**A deterministic intelligence platform evolving into a fully autonomous decision system.**
-
+AWR → Metrics → Issues → Recommendations → AI → Decision → Memory → Action  
 
 ---
 
@@ -526,6 +492,7 @@ The system now includes a structured memory layer:
 - Run Memory (6G)  
 - Action Tracking (6H)  
 - Unknown Signal Capture  
+- Recommendation memory persistence  
 
 Memory is:
 
@@ -549,3 +516,91 @@ Adaptive Learning → Phase 7
 
 ---
 
+## Roadmap
+
+### Phase 4
+- Backend intelligence complete  
+- Phase 4I output contract complete  
+- Scoring, trend, anomaly, and decision layers complete  
+
+### Phase 5
+- Dashboard/product UI complete  
+- Six-screen workflow complete  
+- Historical review, action page, and fleet overview complete  
+
+### Phase 6
+- Run memory complete  
+- Memory orchestrator complete  
+- Action tracking complete  
+- Outcome tracking next  
+- Feedback capture planned  
+- Oracle Agent Memory adapter planned as Phase 6N.1  
+
+---
+
+## Value Proposition
+
+From AWR → Decision → Memory → Action → Outcome
+
+This is NOT:
+
+- A report  
+- A chatbot  
+
+This IS:
+
+- Autonomous performance advisor  
+- OCI sizing decision engine  
+- Stateful memory-backed performance intelligence platform  
+
+---
+
+## Status
+
+- Parsing: Complete  
+- Feature Vectors: Complete  
+- Scoring Engine: Complete  
+- Trend Engine: Complete  
+- Anomaly Detection: Refined  
+- ADB Integration: Complete  
+- Object Storage Integration: Complete  
+- Dashboard Layer: Complete  
+- Memory Persistence: Complete  
+- Action Tracking: Complete  
+
+Next:
+
+- Outcome tracking  
+- Feedback capture  
+- Oracle Agent Memory adapter (6N.1)  
+- Learning system  
+
+---
+
+## Quick Start
+
+pip install -r requirements.txt  
+python scripts/run_analysis.py  
+
+---
+
+## Project Structure
+
+src/
+  parser/
+  analysis/
+  reporting/
+  memory/
+scripts/
+data/
+dbschema/
+
+---
+
+## Final Statement
+
+This project has evolved beyond reporting.
+
+It is now:
+
+**A deterministic intelligence platform with memory and action tracking, evolving into a fully autonomous decision and learning system.**

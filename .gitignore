@@ -16,10 +16,13 @@ adb_wallet
 # Validation outputs
 validation_*.json
 
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+
 # Debug backups
 *.old.*
 *.gold.*
 scoring_diagnostics_*.json
 scoring_diagnostics_*.md
-.vscode/launch.json
 __pycache__/

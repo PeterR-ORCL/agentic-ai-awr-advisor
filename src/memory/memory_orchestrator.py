@@ -80,6 +80,18 @@ UNKNOWN_SIGNAL_REVIEW_CLASSIFICATION_VALUES = {
     "OTHER",
 }
 UNKNOWN_SIGNAL_REVIEW_NOTES_MAX_LENGTH = 4000
+KNOWLEDGE_SOURCE_TYPE_VALUES = {
+    "UNKNOWN_SIGNAL",
+    "FEEDBACK",
+    "OUTCOME",
+}
+KNOWLEDGE_APPROVAL_STATUS_VALUES = {
+    "PENDING",
+    "APPROVED",
+    "REJECTED",
+    "NEEDS_REVIEW",
+}
+KNOWLEDGE_REQUEST_SUMMARY_MAX_LENGTH = 4000
 
 
 def persist_run_memory(
@@ -404,6 +416,120 @@ def review_unknown_signal(
         return result
 
 
+def create_knowledge_update_request(
+    source_type: str,
+    source_id: int,
+    candidate_classification: str | None,
+    candidate_summary: str,
+    candidate_details: str | None = None,
+    run_history_id: int | None = None,
+    created_by: str | None = None,
+    metadata: dict | None = None,
+) -> dict[str, Any]:
+    """Create a pending governance request for future knowledge update eligibility."""
+
+    result = _base_knowledge_request_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+
+    normalized, warnings, errors = _validate_knowledge_request_inputs(
+        source_type=source_type,
+        source_id=source_id,
+        candidate_classification=candidate_classification,
+        candidate_summary=candidate_summary,
+        candidate_details=candidate_details,
+        run_history_id=run_history_id,
+        created_by=created_by,
+        metadata=metadata,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        return result
+
+    try:
+        request_id = memory_agent.insert_knowledge_update_request(
+            source_type=normalized["source_type"],
+            source_id=normalized["source_id"],
+            run_history_id=normalized["run_history_id"],
+            candidate_classification=normalized["candidate_classification"],
+            candidate_summary=normalized["candidate_summary"],
+            candidate_details=normalized["candidate_details"],
+            created_by=normalized["created_by"],
+            metadata=normalized["metadata"],
+        )
+        result.update(
+            {
+                "success": True,
+                "request_id": request_id,
+                "source_type": normalized["source_type"],
+                "source_id": normalized["source_id"],
+                "approval_status": "PENDING",
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
+def approve_knowledge_update_request(
+    request_id: int,
+    approval_status: str,
+    approved_by: str | None = None,
+    approval_notes: str | None = None,
+) -> dict[str, Any]:
+    """Update governance approval metadata without applying knowledge changes."""
+
+    result = _base_knowledge_approval_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+
+    normalized, warnings, errors = _validate_knowledge_approval_inputs(
+        request_id=request_id,
+        approval_status=approval_status,
+        approved_by=approved_by,
+        approval_notes=approval_notes,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        return result
+
+    try:
+        updated_request_id = memory_agent.update_knowledge_update_request_status(
+            request_id=normalized["request_id"],
+            approval_status=normalized["approval_status"],
+            approved_by=normalized["approved_by"],
+            approval_notes=normalized["approval_notes"],
+        )
+        result.update(
+            {
+                "success": True,
+                "request_id": updated_request_id,
+                "approval_status": normalized["approval_status"],
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
 def _base_result(enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled,
@@ -468,6 +594,32 @@ def _base_unknown_signal_review_result(enabled: bool) -> dict[str, Any]:
         "unknown_signal_id": None,
         "review_status": None,
         "review_classification": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_knowledge_request_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "request_id": None,
+        "source_type": None,
+        "source_id": None,
+        "approval_status": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_knowledge_approval_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "request_id": None,
+        "approval_status": None,
         "skipped": [],
         "warnings": [],
         "errors": [],
@@ -732,6 +884,85 @@ def _validate_unknown_signal_review_inputs(
     return normalized, warnings, errors
 
 
+def _validate_knowledge_request_inputs(
+    *,
+    source_type: Any,
+    source_id: Any,
+    candidate_classification: Any,
+    candidate_summary: Any,
+    candidate_details: Any,
+    run_history_id: Any,
+    created_by: Any,
+    metadata: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["source_type"] = _normalize_token(source_type)
+    if normalized["source_type"] not in KNOWLEDGE_SOURCE_TYPE_VALUES:
+        errors.append(
+            "source_type must be one of: "
+            + ", ".join(sorted(KNOWLEDGE_SOURCE_TYPE_VALUES))
+        )
+
+    normalized["source_id"] = _positive_int(source_id)
+    if normalized["source_id"] is None:
+        errors.append("source_id is required and must be an integer greater than 0")
+
+    normalized["run_history_id"] = None
+    if run_history_id is not None:
+        normalized["run_history_id"] = _positive_int(run_history_id)
+        if normalized["run_history_id"] is None:
+            errors.append("run_history_id must be an integer greater than 0")
+
+    classification = _normalize_token(candidate_classification)
+    normalized["candidate_classification"] = classification or None
+
+    summary = str(candidate_summary or "").strip()
+    if not summary:
+        errors.append("candidate_summary is required")
+    elif len(summary) > KNOWLEDGE_REQUEST_SUMMARY_MAX_LENGTH:
+        errors.append(
+            f"candidate_summary must be {KNOWLEDGE_REQUEST_SUMMARY_MAX_LENGTH} characters or fewer"
+        )
+    normalized["candidate_summary"] = summary
+
+    details = str(candidate_details or "").strip()
+    normalized["candidate_details"] = details or None
+    normalized["created_by"] = _default_actor(created_by)
+    normalized["metadata"] = _optional_dict(metadata, "metadata", warnings, errors)
+    return normalized, warnings, errors
+
+
+def _validate_knowledge_approval_inputs(
+    *,
+    request_id: Any,
+    approval_status: Any,
+    approved_by: Any,
+    approval_notes: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["request_id"] = _positive_int(request_id)
+    if normalized["request_id"] is None:
+        errors.append("request_id is required and must be an integer greater than 0")
+
+    normalized["approval_status"] = _normalize_token(approval_status)
+    if normalized["approval_status"] not in KNOWLEDGE_APPROVAL_STATUS_VALUES:
+        errors.append(
+            "approval_status must be one of: "
+            + ", ".join(sorted(KNOWLEDGE_APPROVAL_STATUS_VALUES))
+        )
+
+    normalized["approved_by"] = _default_actor(approved_by)
+    notes = str(approval_notes or "").strip()
+    normalized["approval_notes"] = notes or None
+    return normalized, warnings, errors
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         integer = int(value)
@@ -824,7 +1055,9 @@ def _compose_outcome_notes(
 # posture, or deterministic recommendation generation.
 # Phase 6K — Unknown Signal Review captures human classifications for parser
 # improvement candidates. It must not modify parser behavior or runtime analysis.
-# Phase 6L — Approval Workflow extension point.
+# Phase 6L — Approval Workflow is the only governance gateway for future
+# knowledge update eligibility. Approval must not apply changes or influence
+# runtime analysis.
 # Phase 6M — Knowledge Update Workflow extension point.
 # Phase 6N — Memory Recall APIs extension point.
 # Phase 6N.1 — Oracle Agent Memory Adapter extension point.

@@ -248,14 +248,23 @@ MEMORY_TABLE_DDL: tuple[tuple[str, str], ...] = (
         "AWR_KNOWLEDGE_UPDATE_REQUEST",
         """
         CREATE TABLE AWR_KNOWLEDGE_UPDATE_REQUEST (
-            KNOWLEDGE_UPDATE_ID       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            SOURCE_REFERENCE_ID       VARCHAR2(256),
-            UPDATE_TYPE               VARCHAR2(128),
-            PROPOSED_CHANGE_SUMMARY   CLOB,
-            PROPOSED_CHANGE_JSON      JSON,
-            APPROVAL_STATUS           VARCHAR2(64),
-            IMPLEMENTATION_STATUS     VARCHAR2(64),
-            CREATED_AT                TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL
+            REQUEST_ID                 NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            SOURCE_TYPE                VARCHAR2(64) NOT NULL,
+            SOURCE_ID                  NUMBER NOT NULL,
+            RUN_HISTORY_ID             NUMBER,
+            CANDIDATE_CLASSIFICATION   VARCHAR2(64),
+            CANDIDATE_SUMMARY          CLOB NOT NULL,
+            CANDIDATE_DETAILS          CLOB,
+            APPROVAL_STATUS            VARCHAR2(64),
+            APPROVED_BY                VARCHAR2(256),
+            APPROVED_AT                TIMESTAMP(6),
+            APPROVAL_NOTES             CLOB,
+            CREATED_BY                 VARCHAR2(256),
+            CREATED_AT                 TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            METADATA_JSON              JSON,
+            CONSTRAINT FK_P6_KUR_RUN
+                FOREIGN KEY (RUN_HISTORY_ID)
+                REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
         )
         """,
     ),
@@ -515,6 +524,93 @@ def update_unknown_signal_review(
             connection.close()
 
 
+def insert_knowledge_update_request(
+    *,
+    source_type: str,
+    source_id: int,
+    candidate_classification: str | None,
+    candidate_summary: str,
+    candidate_details: str | None = None,
+    run_history_id: int | None = None,
+    created_by: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    created_at: datetime | None = None,
+    connection: Any | None = None,
+) -> int:
+    """Insert a pending knowledge update request and return public request id."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        resolved_run_history_id = _validate_knowledge_source_link(
+            connection,
+            source_type=source_type,
+            source_id=source_id,
+            run_history_id=run_history_id,
+        )
+        request_id = _insert_knowledge_update_request_row(
+            connection,
+            {
+                "source_type": source_type,
+                "source_id": source_id,
+                "run_history_id": resolved_run_history_id,
+                "candidate_classification": candidate_classification,
+                "candidate_summary": candidate_summary,
+                "candidate_details": candidate_details,
+                "approval_status": "PENDING",
+                "created_by": created_by,
+                "created_at": created_at or datetime.now(timezone.utc),
+                "metadata_json": _json_dumps(metadata) if metadata is not None else None,
+            },
+        )
+        connection.commit()
+        return request_id
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
+def update_knowledge_update_request_status(
+    *,
+    request_id: int,
+    approval_status: str,
+    approved_by: str | None = None,
+    approval_notes: str | None = None,
+    approved_at: datetime | None = None,
+    connection: Any | None = None,
+) -> int:
+    """Update only approval metadata for a knowledge update request."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        updated_request_id = _update_knowledge_update_request_status_row(
+            connection,
+            {
+                "request_id": request_id,
+                "approval_status": approval_status,
+                "approved_by": approved_by,
+                "approved_at": approved_at or datetime.now(timezone.utc),
+                "approval_notes": approval_notes,
+            },
+        )
+        connection.commit()
+        return updated_request_id
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
 def _ensure_schema(connection: Any) -> None:
     with connection.cursor() as cursor:
         for table_name, ddl in MEMORY_TABLE_DDL:
@@ -528,6 +624,7 @@ def _ensure_schema(connection: Any) -> None:
             cursor.execute(ddl)
     _ensure_feedback_history_extensions(connection)
     _ensure_unknown_signal_review_extensions(connection)
+    _ensure_knowledge_update_request_extensions(connection)
 
 
 def _ensure_feedback_history_extensions(connection: Any) -> None:
@@ -568,6 +665,31 @@ def _ensure_unknown_signal_review_extensions(connection: Any) -> None:
             if column_name not in columns:
                 cursor.execute(
                     f"alter table AWR_UNKNOWN_SIGNAL_HISTORY add ({column_name} {ddl_type})"
+                )
+
+
+def _ensure_knowledge_update_request_extensions(connection: Any) -> None:
+    columns = _table_columns(connection, "AWR_KNOWLEDGE_UPDATE_REQUEST")
+    if not columns:
+        return
+    extension_columns = {
+        "SOURCE_TYPE": "VARCHAR2(64)",
+        "SOURCE_ID": "NUMBER",
+        "RUN_HISTORY_ID": "NUMBER",
+        "CANDIDATE_CLASSIFICATION": "VARCHAR2(64)",
+        "CANDIDATE_SUMMARY": "CLOB",
+        "CANDIDATE_DETAILS": "CLOB",
+        "APPROVED_BY": "VARCHAR2(256)",
+        "APPROVED_AT": "TIMESTAMP(6)",
+        "APPROVAL_NOTES": "CLOB",
+        "CREATED_BY": "VARCHAR2(256)",
+        "METADATA_JSON": "JSON",
+    }
+    with connection.cursor() as cursor:
+        for column_name, ddl_type in extension_columns.items():
+            if column_name not in columns:
+                cursor.execute(
+                    f"alter table AWR_KNOWLEDGE_UPDATE_REQUEST add ({column_name} {ddl_type})"
                 )
 
 
@@ -960,6 +1082,146 @@ def _update_unknown_signal_review_row(connection: Any, row: dict[str, Any]) -> N
         )
         if cursor.rowcount != 1:
             raise ValueError("unknown_signal_id must reference an existing unknown signal")
+
+
+def _insert_knowledge_update_request_row(connection: Any, row: dict[str, Any]) -> int:
+    table_columns = _table_columns(connection, "AWR_KNOWLEDGE_UPDATE_REQUEST")
+    id_column = _knowledge_request_id_column(table_columns)
+    insert_values: dict[str, Any] = {}
+    insert_columns: list[tuple[str, str]] = []
+
+    def add(column_name: str, bind_name: str, value: Any) -> None:
+        if column_name in table_columns:
+            insert_values[bind_name] = value
+            insert_columns.append((column_name, bind_name))
+
+    add("SOURCE_TYPE", "source_type", row["source_type"])
+    add("SOURCE_ID", "source_id", row["source_id"])
+    add("RUN_HISTORY_ID", "run_history_id", row["run_history_id"])
+    add("CANDIDATE_CLASSIFICATION", "candidate_classification", row["candidate_classification"])
+    add("CANDIDATE_SUMMARY", "candidate_summary", row["candidate_summary"])
+    add("CANDIDATE_DETAILS", "candidate_details", row["candidate_details"])
+    add("APPROVAL_STATUS", "approval_status", row["approval_status"])
+    add("CREATED_BY", "created_by", row["created_by"])
+    add("CREATED_AT", "created_at", row["created_at"])
+    add("METADATA_JSON", "metadata_json", row["metadata_json"])
+
+    add("SOURCE_REFERENCE_ID", "source_reference_id", f"{row['source_type']}:{row['source_id']}")
+    add("UPDATE_TYPE", "update_type", row["source_type"])
+    add("PROPOSED_CHANGE_SUMMARY", "proposed_change_summary", row["candidate_summary"])
+    add(
+        "PROPOSED_CHANGE_JSON",
+        "proposed_change_json",
+        _json_dumps(
+            {
+                "source_type": row["source_type"],
+                "source_id": row["source_id"],
+                "run_history_id": row["run_history_id"],
+                "candidate_classification": row["candidate_classification"],
+                "candidate_details": row["candidate_details"],
+                "metadata": json.loads(row["metadata_json"]) if row["metadata_json"] else None,
+            }
+        ),
+    )
+    add("IMPLEMENTATION_STATUS", "implementation_status", "NOT_STARTED")
+
+    if not insert_values:
+        raise RuntimeError("AWR_KNOWLEDGE_UPDATE_REQUEST has no writable request columns.")
+
+    columns = [column_name for column_name, _ in insert_columns]
+    bind_names = [f":{bind_name}" for _, bind_name in insert_columns]
+    sql = f"""
+        insert into AWR_KNOWLEDGE_UPDATE_REQUEST (
+            {", ".join(columns)}
+        ) values (
+            {", ".join(bind_names)}
+        )
+        returning {id_column} into :request_id
+    """
+    with connection.cursor() as cursor:
+        request_id = cursor.var(int)
+        cursor.execute(sql, {**insert_values, "request_id": request_id})
+        value = request_id.getvalue()
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if value is None:
+            raise RuntimeError("AWR_KNOWLEDGE_UPDATE_REQUEST insert did not return request id.")
+        return int(value)
+
+
+def _update_knowledge_update_request_status_row(
+    connection: Any,
+    row: dict[str, Any],
+) -> int:
+    table_columns = _table_columns(connection, "AWR_KNOWLEDGE_UPDATE_REQUEST")
+    id_column = _knowledge_request_id_column(table_columns)
+    set_clauses = ["APPROVAL_STATUS = :approval_status"]
+    binds = {
+        "request_id": row["request_id"],
+        "approval_status": row["approval_status"],
+    }
+
+    if "APPROVED_BY" in table_columns:
+        set_clauses.append("APPROVED_BY = :approved_by")
+        binds["approved_by"] = row["approved_by"]
+    if "APPROVED_AT" in table_columns:
+        set_clauses.append("APPROVED_AT = :approved_at")
+        binds["approved_at"] = row["approved_at"]
+    if "APPROVAL_NOTES" in table_columns:
+        set_clauses.append("APPROVAL_NOTES = :approval_notes")
+        binds["approval_notes"] = row["approval_notes"]
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            update AWR_KNOWLEDGE_UPDATE_REQUEST
+               set {", ".join(set_clauses)}
+             where {id_column} = :request_id
+            """,
+            binds,
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("request_id must reference an existing knowledge update request")
+    return int(row["request_id"])
+
+
+def _knowledge_request_id_column(table_columns: dict[str, str]) -> str:
+    if "REQUEST_ID" in table_columns:
+        return "REQUEST_ID"
+    if "KNOWLEDGE_UPDATE_ID" in table_columns:
+        return "KNOWLEDGE_UPDATE_ID"
+    raise RuntimeError("AWR_KNOWLEDGE_UPDATE_REQUEST has no request id column.")
+
+
+def _validate_knowledge_source_link(
+    connection: Any,
+    *,
+    source_type: str,
+    source_id: int,
+    run_history_id: int | None,
+) -> int | None:
+    source_map = {
+        "UNKNOWN_SIGNAL": ("AWR_UNKNOWN_SIGNAL_HISTORY", "UNKNOWN_SIGNAL_ID"),
+        "FEEDBACK": ("AWR_FEEDBACK_HISTORY", "FEEDBACK_ID"),
+        "OUTCOME": ("AWR_ACTION_OUTCOME_HISTORY", "ACTION_OUTCOME_ID"),
+    }
+    table_name, id_column = source_map[source_type]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select RUN_HISTORY_ID
+              from {table_name}
+             where {id_column} = :source_id
+            """,
+            {"source_id": source_id},
+        )
+        row = cursor.fetchone()
+    if not row:
+        raise ValueError("source_id must reference an existing source row")
+    source_run_history_id = _safe_int(row[0])
+    if run_history_id is not None and source_run_history_id != run_history_id:
+        raise ValueError("run_history_id must match the source row")
+    return run_history_id if run_history_id is not None else source_run_history_id
 
 
 def _validate_action_run_link(

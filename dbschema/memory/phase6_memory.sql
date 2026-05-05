@@ -341,16 +341,55 @@ BEGIN
     IF v_exists = 0 THEN
         EXECUTE IMMEDIATE q'[
             CREATE TABLE AWR_KNOWLEDGE_UPDATE_REQUEST (
-                KNOWLEDGE_UPDATE_ID       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                SOURCE_REFERENCE_ID       VARCHAR2(256),
-                UPDATE_TYPE               VARCHAR2(128),
-                PROPOSED_CHANGE_SUMMARY   CLOB,
-                PROPOSED_CHANGE_JSON      JSON,
-                APPROVAL_STATUS           VARCHAR2(64),
-                IMPLEMENTATION_STATUS     VARCHAR2(64),
-                CREATED_AT                TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL
+                REQUEST_ID                 NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                SOURCE_TYPE                VARCHAR2(64) NOT NULL,
+                SOURCE_ID                  NUMBER NOT NULL,
+                RUN_HISTORY_ID             NUMBER,
+                CANDIDATE_CLASSIFICATION   VARCHAR2(64),
+                CANDIDATE_SUMMARY          CLOB NOT NULL,
+                CANDIDATE_DETAILS          CLOB,
+                APPROVAL_STATUS            VARCHAR2(64),
+                APPROVED_BY                VARCHAR2(256),
+                APPROVED_AT                TIMESTAMP(6),
+                APPROVAL_NOTES             CLOB,
+                CREATED_BY                 VARCHAR2(256),
+                CREATED_AT                 TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+                METADATA_JSON              JSON,
+                CONSTRAINT FK_P6_KUR_RUN
+                    FOREIGN KEY (RUN_HISTORY_ID)
+                    REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
             )
         ]';
     END IF;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
+    FOR col IN (
+        SELECT 'SOURCE_TYPE' AS column_name, 'VARCHAR2(64)' AS ddl_type FROM dual
+        UNION ALL SELECT 'SOURCE_ID', 'NUMBER' FROM dual
+        UNION ALL SELECT 'RUN_HISTORY_ID', 'NUMBER' FROM dual
+        UNION ALL SELECT 'CANDIDATE_CLASSIFICATION', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'CANDIDATE_SUMMARY', 'CLOB' FROM dual
+        UNION ALL SELECT 'CANDIDATE_DETAILS', 'CLOB' FROM dual
+        UNION ALL SELECT 'APPROVED_BY', 'VARCHAR2(256)' FROM dual
+        UNION ALL SELECT 'APPROVED_AT', 'TIMESTAMP(6)' FROM dual
+        UNION ALL SELECT 'APPROVAL_NOTES', 'CLOB' FROM dual
+        UNION ALL SELECT 'CREATED_BY', 'VARCHAR2(256)' FROM dual
+        UNION ALL SELECT 'METADATA_JSON', 'JSON' FROM dual
+    ) LOOP
+        SELECT COUNT(*)
+          INTO v_exists
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'AWR_KNOWLEDGE_UPDATE_REQUEST'
+           AND COLUMN_NAME = col.column_name;
+
+        IF v_exists = 0 THEN
+            EXECUTE IMMEDIATE
+                'ALTER TABLE AWR_KNOWLEDGE_UPDATE_REQUEST ADD (' || col.column_name || ' ' || col.ddl_type || ')';
+        END IF;
+    END LOOP;
 END;
 /

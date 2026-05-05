@@ -592,6 +592,134 @@
       background: rgba(159, 176, 199, 0.14);
       border: 1px solid rgba(159, 176, 199, 0.34);
     }
+    .parser-review-grid,
+    .governance-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0 14px;
+    }
+    .governance-summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .governance-artifact-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .memory-count-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(16, 28, 45, 0.56);
+    }
+    .memory-count-card span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+    .parser-review-list,
+    .unknown-pattern-list,
+    .governance-linkage-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .validation-note-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .validation-note-row {
+      display: grid;
+      gap: 4px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(16, 28, 45, 0.48);
+    }
+    .validation-note-row strong {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .validation-note-row span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .parser-review-row,
+    .unknown-pattern-row,
+    .governance-linkage-row {
+      display: grid;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(16, 28, 45, 0.56);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .parser-review-row {
+      grid-template-columns: 0.95fr 0.65fr 1.7fr 0.75fr 0.65fr 0.8fr 0.9fr 1.35fr;
+    }
+    .unknown-pattern-row {
+      grid-template-columns: 1fr 1.7fr 0.65fr 1.25fr 1fr 0.8fr;
+    }
+    .governance-linkage-row {
+      grid-template-columns: 0.65fr 1fr 0.75fr 0.75fr 1fr 0.75fr 1.1fr 1fr;
+    }
+    .parser-review-row strong,
+    .unknown-pattern-row strong,
+    .governance-linkage-row strong {
+      color: var(--text);
+    }
+    .parser-review-row span:not(.mini-pill),
+    .unknown-pattern-row span:not(.mini-pill) {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+    .parser-pattern-summary {
+      margin-top: 14px;
+    }
+    .parser-pattern-summary h3,
+    .parser-review-list h3 {
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .mini-pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .parser-review-header,
+    .unknown-pattern-header,
+    .governance-linkage-header {
+      background: transparent;
+      border-color: transparent;
+      padding-top: 0;
+      padding-bottom: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .governance-section-block {
+      margin-top: 14px;
+    }
+    .governance-section-block h3 {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
     .nav-card-note {
       margin-top: 8px;
       font-size: 12px;
@@ -1302,7 +1430,20 @@
       .memory-capability-grid,
       .action-summary-grid,
       .status-insight-row,
+      .parser-review-grid,
+      .governance-summary-grid,
+      .governance-artifact-grid,
       .fleet-detail-list {
+        grid-template-columns: 1fr;
+      }
+      .parser-review-header,
+      .unknown-pattern-header,
+      .governance-linkage-header {
+        display: none;
+      }
+      .parser-review-row,
+      .unknown-pattern-row,
+      .governance-linkage-row {
         grid-template-columns: 1fr;
       }
     }
@@ -1368,7 +1509,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 4, 2026, 8:17 PM</div>
+        <div class="hero-meta">Generated: May 5, 2026, 1:32 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link active" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1631,10 +1772,104 @@
             </div>
         <div class="item"><div class="meta">No outlier case aggregation is established yet.</div></div>
       </section>
+      
+      <section class="card secondary governance-visibility-card">
+        <div class="section-kicker">Phase 6 Governance</div>
+        <h2>Governance & Knowledge Readiness</h2>
+        <p class="meta">
+          Governance records are read-only system memory. Approved requests and materialized artifacts do not change parser, scoring, recommendations, or runtime decisions until a future controlled activation phase.
+          Interactive approval and governance workflows will be introduced in a future control-plane interface.
+        </p>
+        
+        <div class="governance-section-block">
+          <h3>Approval State Summary</h3>
+          <div class="governance-summary-grid">
+            
+      <div class="memory-count-card">
+        <span>Pending</span>
+        <strong class="mini-pill warning">0</strong>
+      </div>
+    
+            
+      <div class="memory-count-card">
+        <span>Approved</span>
+        <strong class="mini-pill success">1</strong>
+      </div>
+    
+            
+      <div class="memory-count-card">
+        <span>Rejected</span>
+        <strong class="mini-pill error">0</strong>
+      </div>
+    
+            
+      <div class="memory-count-card">
+        <span>Needs Review</span>
+        <strong class="mini-pill warning">0</strong>
+      </div>
+    
+          </div>
+        </div>
+        <div class="governance-section-block">
+          <h3>Knowledge Artifacts Summary</h3>
+          <p class="meta">Knowledge artifacts are materialized but not active in runtime analysis.</p>
+          <div class="governance-summary-grid governance-artifact-grid">
+            
+      <div class="memory-count-card">
+        <span>Inactive</span>
+        <strong class="mini-pill neutral">1</strong>
+      </div>
+    
+            
+      <div class="memory-count-card">
+        <span>Ready</span>
+        <strong class="mini-pill warning">0</strong>
+      </div>
+    
+            
+      <div class="memory-count-card">
+        <span>Active</span>
+        <strong class="mini-pill success">0</strong>
+      </div>
+    
+          </div>
+        </div>
+        <div class="governance-section-block">
+          <h3>Run Linkage / Provenance</h3>
+          
+        <div class="governance-linkage-list">
+          <div class="governance-linkage-row governance-linkage-header">
+            <div>Request</div>
+            <div>Source</div>
+            <div>Source ID</div>
+            <div>Run</div>
+            <div>Approval</div>
+            <div>Artifact</div>
+            <div>Classification</div>
+            <div>Activation</div>
+          </div>
+          
+            <article class="governance-linkage-row">
+              <div><strong>#1</strong></div>
+              <div>UNKNOWN_SIGNAL</div>
+              <div>1</div>
+              <div>1</div>
+              <div><span class="mini-pill success">APPROVED</span></div>
+              <div>1</div>
+              <div>IO</div>
+              <div><span class="mini-pill neutral">INACTIVE</span></div>
+            </article>
+            
+        </div>
+    
+        </div>
+        
+      </section>
+    
     </div>
     
 
-    <div class="footer">Generated at May 4, 2026, 8:17 PM</div>
+    <div class="footer">Generated at May 5, 2026, 1:32 PM</div>
   </div>
 
 

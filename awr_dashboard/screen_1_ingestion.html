@@ -592,6 +592,134 @@
       background: rgba(159, 176, 199, 0.14);
       border: 1px solid rgba(159, 176, 199, 0.34);
     }
+    .parser-review-grid,
+    .governance-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0 14px;
+    }
+    .governance-summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .governance-artifact-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .memory-count-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(16, 28, 45, 0.56);
+    }
+    .memory-count-card span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+    .parser-review-list,
+    .unknown-pattern-list,
+    .governance-linkage-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .validation-note-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .validation-note-row {
+      display: grid;
+      gap: 4px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(16, 28, 45, 0.48);
+    }
+    .validation-note-row strong {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .validation-note-row span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .parser-review-row,
+    .unknown-pattern-row,
+    .governance-linkage-row {
+      display: grid;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(16, 28, 45, 0.56);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .parser-review-row {
+      grid-template-columns: 0.95fr 0.65fr 1.7fr 0.75fr 0.65fr 0.8fr 0.9fr 1.35fr;
+    }
+    .unknown-pattern-row {
+      grid-template-columns: 1fr 1.7fr 0.65fr 1.25fr 1fr 0.8fr;
+    }
+    .governance-linkage-row {
+      grid-template-columns: 0.65fr 1fr 0.75fr 0.75fr 1fr 0.75fr 1.1fr 1fr;
+    }
+    .parser-review-row strong,
+    .unknown-pattern-row strong,
+    .governance-linkage-row strong {
+      color: var(--text);
+    }
+    .parser-review-row span:not(.mini-pill),
+    .unknown-pattern-row span:not(.mini-pill) {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+    .parser-pattern-summary {
+      margin-top: 14px;
+    }
+    .parser-pattern-summary h3,
+    .parser-review-list h3 {
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .mini-pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .parser-review-header,
+    .unknown-pattern-header,
+    .governance-linkage-header {
+      background: transparent;
+      border-color: transparent;
+      padding-top: 0;
+      padding-bottom: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .governance-section-block {
+      margin-top: 14px;
+    }
+    .governance-section-block h3 {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
     .nav-card-note {
       margin-top: 8px;
       font-size: 12px;
@@ -1302,7 +1430,20 @@
       .memory-capability-grid,
       .action-summary-grid,
       .status-insight-row,
+      .parser-review-grid,
+      .governance-summary-grid,
+      .governance-artifact-grid,
       .fleet-detail-list {
+        grid-template-columns: 1fr;
+      }
+      .parser-review-header,
+      .unknown-pattern-header,
+      .governance-linkage-header {
+        display: none;
+      }
+      .parser-review-row,
+      .unknown-pattern-row,
+      .governance-linkage-row {
         grid-template-columns: 1fr;
       }
     }
@@ -1368,7 +1509,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 4, 2026, 8:17 PM</div>
+        <div class="hero-meta">Generated: May 5, 2026, 1:32 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link active" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1380,12 +1521,12 @@
       
       
       <section class="card primary">
-        <div class="section-kicker">Ingestion</div>
-        <h2>Ingestion / Parse Confidence / Adaptation</h2>
+        <div class="section-kicker">Loader & Parser Overview</div>
+        <h2>Intake Summary</h2>
         <div class="info-grid">
             <div class="info-box">
               <strong>Run Label</strong>
-              <div>May 4, 2026, 8:17 PM</div>
+              <div>May 5, 2026, 1:32 PM</div>
             </div>
             
             <div class="info-box">
@@ -1401,8 +1542,8 @@
       </section>
     
       <section class="card secondary">
-      <div class="section-kicker">Screen 1</div>
-      <h2>Ingestion / Parse Confidence / Adaptation</h2>
+      <div class="section-kicker">Files, Scope & Parse Completeness</div>
+      <h2>Intake Details</h2>
       <div class="subgrid">
         <section class="evidence-pane">
           <h3>Analysis Information</h3>
@@ -1449,18 +1590,23 @@
             </div>
             
             <div class="info-box">
+              <strong>Current Selected Scope</strong>
+              <div>Single Instance</div>
+            </div>
+            
+            <div class="info-box">
               <strong>Platform Detected</strong>
               <div>Not Established</div>
             </div>
             
             <div class="info-box">
-              <strong>Selected Scope Topology</strong>
-              <div>Single Instance</div>
+              <strong>Historical Topology Signals</strong>
+              <div>RAC, Data Guard</div>
             </div>
             
             <div class="info-box">
-              <strong>Historical / Contextual Topology</strong>
-              <div>RAC, Data Guard</div>
+              <strong>Total Reports / Snapshot Window</strong>
+              <div>24 / 106h</div>
             </div>
             
             <div class="info-box">
@@ -1474,15 +1620,13 @@
             </div>
             
             <div class="info-box">
-              <strong>Total Reports / Snapshot Window</strong>
-              <div>24 / 106h</div>
-            </div>
-            
-            <div class="info-box">
               <strong>Last Snapshot</strong>
               <div>Apr 5, 2026, 6:00 PM to 7:00 PM</div>
             </div>
             </div>
+          <div class="meta context-note">
+            Current selected scope reflects the active diagnostic target. Historical and file-level topology hints may include broader signals observed across the full AWR set.
+          </div>
         </section>
         <section class="evidence-pane">
           <h3>Intake Summary</h3>
@@ -1990,42 +2134,481 @@
             </div>
             
             <div class="info-box">
-              <strong>Unknowns Captured</strong>
+              <strong>Runtime Parser Unknowns</strong>
               <div>0</div>
             </div>
             
             <div class="info-box">
-              <strong>File-Level Version / Platform / Topology Hints</strong>
+              <strong>File-Level Topology Hints</strong>
               <div>RAC, Single Instance</div>
             </div>
+            </div>
+            <div class="meta context-note">
+              No runtime parser unknowns were detected in the current ingestion run. Phase 6 memory currently tracks 24 persisted unknown-signal records for review, including 23 NEW and 1 CLASSIFIED record.
             </div>
           </div>
         </section>
         <section class="half evidence-pane">
           <h3>Validation Notes</h3>
           
-      <article class="item">
-        <p>24 intake or validation notes captured.</p>
-        <ul><li>AWR_CONTRADICT_HOSTCPU_EXTERNAL_01.out: INFO: Optional IO section not present.</li><li>AWR_CONTRADICT_DBCPU_IOWAIT_02.out: INFO: Optional IO section not present.</li><li>AWR_CONTRADICT_SPIKE_STABLEAVG_03.out: INFO: Optional IO section not present.</li><li>AWR_CONTRADICT_SQLHOT_LOWLOAD_04.out: INFO: Optional IO section not present.</li><li>AWR_CONTRADICT_COMMIT_LOWVOL_05.out: INFO: Optional IO section not present.</li><li>AWR_CONTRADICT_ENDSPIKE_CPU_06.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_CPU_IO_07.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_CPU_COMMIT_CONCUR_08.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_RAC_CPU_09.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_ADG_COMMIT_10.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_MEMORY_IO_11.out: INFO: Optional IO section not present.</li><li>AWR_MULTI_BALANCED_ALL_12.out: INFO: Optional IO section not present.</li><li>AWR_FALSEPOS_HIGHCPU_LOWDBTIME_13.out: INFO: Optional IO section not present.</li><li>AWR_FALSEPOS_HIGHWAIT_SHORTELAP_14.out: INFO: Optional IO section not present.</li><li>AWR_FALSEPOS_BRIEF_SPIKE_15.out: INFO: Optional IO section not present.</li><li>AWR_FALSEPOS_HIGHLOAD_EFFICIENTSQL_16.out: INFO: Optional IO section not present.</li><li>AWR_RECOVERY_CPU_PRETUNE_17.out: INFO: Optional IO section not present.</li><li>AWR_RECOVERY_CPU_POSTTUNE_18.out: INFO: Optional IO section not present.</li><li>AWR_RECOVERY_IO_PREINDEX_19.out: INFO: Optional IO section not present.</li><li>AWR_RECOVERY_IO_POSTINDEX_20.out: INFO: Optional IO section not present.</li><li>AWR_SPARSE_NOTOPSQL_21.out: INFO: Optional IO section not present.</li><li>AWR_SPARSE_NOWAITDETAIL_22.out: INFO: Optional IO section not present.</li><li>AWR_SPARSE_PARTIALSNAP_23.out: INFO: Optional IO section not present.</li><li>AWR_SPARSE_TRUNCATED_MIXED_24.out: INFO: Optional IO section not present.</li></ul>
+      <article class="item validation-note-summary">
+        <p>24 validation notes, representing repeated intake conditions, were detected across 24 files and are summarized above.</p>
+        <h4>Validation Notes Summary</h4>
+        <div class="validation-note-list">
+          
+            <article class="validation-note-row">
+              <strong>Optional IO section not present. — 24 files</strong>
+              <span>Examples: AWR_CONTRADICT_HOSTCPU_EXTERNAL_01.out, AWR_CONTRADICT_DBCPU_IOWAIT_02.out, AWR_CONTRADICT_SPIKE_STABLEAVG_03.out</span>
+            </article>
+            
+        </div>
+        <p class="meta">File-level details are shown in the intake table above.</p>
+        
       </article>
     
         </section>
         <section class="evidence-pane">
-          <h3>Supportive Explanation</h3>
+          <h3>Intake Notes</h3>
           <div class="supportive-panel">
             <div class="meta">
-              Supportive, non-authoritative explanation derived from canonical intake findings.
+              Summary of processed files, parsing completeness, validation notes, and selected scope.
             </div>
-            <div class="narrative">This page is intake-oriented and confirms how the platform understood 24 parsed report(s). Selected decision scope: SPRTRN / 8101005004 on sprtrn-db01. 24 validation note(s) remain in scope for operator review.</div>
+            <div class="narrative">24 validation notes, representing repeated intake conditions, were detected across 24 files and are summarized above.</div>
           </div>
         </section>
       </div>
       </section>
     
+      
+      <section class="card secondary parser-review-card">
+        <div class="section-kicker">Phase 6 Parser Review</div>
+        <h2>Parser Review & Unknown Signals</h2>
+        <p class="meta">
+          Parser review records are read-only in this phase. Classification and approval workflows are not interactive in this phase. All parser review actions are recorded and tracked, with interactive controls planned for a future release.
+        </p>
+        
+        <div class="parser-review-grid">
+          
+      <div class="memory-count-card">
+        <span>Total unknown signals</span>
+        <strong class="mini-pill neutral">24</strong>
+      </div>
+    
+          
+      <div class="memory-count-card">
+        <span>NEW</span>
+        <strong class="mini-pill warning">23</strong>
+      </div>
+    
+          
+      <div class="memory-count-card">
+        <span>REVIEWED</span>
+        <strong class="mini-pill neutral">0</strong>
+      </div>
+    
+          
+      <div class="memory-count-card">
+        <span>CLASSIFIED</span>
+        <strong class="mini-pill success">1</strong>
+      </div>
+    
+          
+      <div class="memory-count-card">
+        <span>IGNORED</span>
+        <strong class="mini-pill neutral">0</strong>
+      </div>
+    
+        </div>
+        
+        <div class="parser-pattern-summary">
+          <h3>Grouped Parser Pattern Summary</h3>
+          <p class="meta">Summary groups repeated parser patterns for readability. Individual records remain separately tracked and reviewable.</p>
+          <div class="unknown-pattern-list">
+            <div class="unknown-pattern-row unknown-pattern-header">
+              <div>Pattern / Section</div>
+              <div>Reason</div>
+              <div>Count</div>
+              <div>Status Breakdown</div>
+              <div>Class Breakdown</div>
+              <div>Example IDs</div>
+            </div>
+            
+            <article class="unknown-pattern-row">
+              <div>
+                <strong>io</strong>
+                <span>MISSING_EXPECTED_SECTION</span>
+              </div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill neutral">24 records</span></div>
+              <div class="mini-pill-group"><span class="mini-pill warning">NEW 23</span><span class="mini-pill success">CLASSIFIED 1</span></div>
+              <div>IO 1</div>
+              <div>#1, #2, #3</div>
+            </article>
+            
+          </div>
+          
+        </div>
+    
+        
+        <div class="parser-review-list">
+          <h3>Individual Unknown Signal Records</h3>
+          <p class="meta">Grouped patterns summarize repeated parser findings. Individual records are shown because each record remains separately reviewable.</p>
+          <div class="parser-review-row parser-review-header">
+            <div>ID / Section</div>
+            <div>Type</div>
+            <div>Detection Reason</div>
+            <div>Status</div>
+            <div>Class</div>
+            <div>Reviewed By</div>
+            <div>Reviewed At</div>
+            <div>Review Action</div>
+          </div>
+          
+            <article class="parser-review-row">
+              <div>
+                <strong>#1</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill success">CLASSIFIED</span></div>
+              <div>IO</div>
+              <div>probev</div>
+              <div>2026-05-05 14:04:21</div>
+              <div>No action required / Already classified</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#2</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#3</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#4</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#5</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#6</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#7</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#8</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#9</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#10</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#11</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#12</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#13</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#14</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#15</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#16</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#17</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#18</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#19</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#20</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#21</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#22</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#23</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+            <article class="parser-review-row">
+              <div>
+                <strong>#24</strong>
+                <span>io</span>
+              </div>
+              <div>MISSING_EXPECTED_SECTION</div>
+              <div>Optional core parser section was missing.</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div>—</div>
+              <div>—</div>
+              <div>—</div>
+              <div>Review and classify outside dashboard</div>
+            </article>
+            
+        </div>
+    
+        
+      </section>
+    
     </div>
     
 
-    <div class="footer">Generated at May 4, 2026, 8:17 PM</div>
+    <div class="footer">Generated at May 5, 2026, 1:32 PM</div>
   </div>
 
 

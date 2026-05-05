@@ -270,12 +270,41 @@ BEGIN
                 FIRST_SEEN_TIMESTAMP   TIMESTAMP(6),
                 LAST_SEEN_TIMESTAMP    TIMESTAMP(6),
                 REVIEW_STATUS          VARCHAR2(64),
+                REVIEW_CLASSIFICATION  VARCHAR2(64),
+                REVIEW_NOTES           CLOB,
+                REVIEWED_BY            VARCHAR2(256),
+                REVIEWED_AT            TIMESTAMP(6),
+                REVIEW_METADATA_JSON    JSON,
                 CONSTRAINT FK_P6_UNK_RUN
                     FOREIGN KEY (RUN_HISTORY_ID)
                     REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
             )
         ]';
     END IF;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
+    FOR col IN (
+        SELECT 'REVIEW_CLASSIFICATION' AS column_name, 'VARCHAR2(64)' AS ddl_type FROM dual
+        UNION ALL SELECT 'REVIEW_NOTES', 'CLOB' FROM dual
+        UNION ALL SELECT 'REVIEWED_BY', 'VARCHAR2(256)' FROM dual
+        UNION ALL SELECT 'REVIEWED_AT', 'TIMESTAMP(6)' FROM dual
+        UNION ALL SELECT 'REVIEW_METADATA_JSON', 'JSON' FROM dual
+    ) LOOP
+        SELECT COUNT(*)
+          INTO v_exists
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'AWR_UNKNOWN_SIGNAL_HISTORY'
+           AND COLUMN_NAME = col.column_name;
+
+        IF v_exists = 0 THEN
+            EXECUTE IMMEDIATE
+                'ALTER TABLE AWR_UNKNOWN_SIGNAL_HISTORY ADD (' || col.column_name || ' ' || col.ddl_type || ')';
+        END IF;
+    END LOOP;
 END;
 /
 

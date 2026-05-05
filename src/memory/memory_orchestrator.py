@@ -64,6 +64,22 @@ FEEDBACK_SOURCE_VALUES = {
     "OTHER",
 }
 FEEDBACK_SUMMARY_MAX_LENGTH = 4000
+UNKNOWN_SIGNAL_REVIEW_STATUS_VALUES = {
+    "NEW",
+    "REVIEWED",
+    "CLASSIFIED",
+    "IGNORED",
+}
+UNKNOWN_SIGNAL_REVIEW_CLASSIFICATION_VALUES = {
+    "CPU",
+    "IO",
+    "MEMORY",
+    "COMMIT",
+    "RAC",
+    "ADG",
+    "OTHER",
+}
+UNKNOWN_SIGNAL_REVIEW_NOTES_MAX_LENGTH = 4000
 
 
 def persist_run_memory(
@@ -328,6 +344,66 @@ def record_feedback(
         return result
 
 
+def review_unknown_signal(
+    unknown_signal_id: int,
+    review_status: str,
+    review_classification: str | None = None,
+    review_notes: str | None = None,
+    reviewed_by: str | None = None,
+    metadata: dict | None = None,
+) -> dict[str, Any]:
+    """Record manual review metadata for a captured unknown parser signal."""
+
+    result = _base_unknown_signal_review_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+
+    normalized, warnings, errors = _validate_unknown_signal_review_inputs(
+        unknown_signal_id=unknown_signal_id,
+        review_status=review_status,
+        review_classification=review_classification,
+        review_notes=review_notes,
+        reviewed_by=reviewed_by,
+        metadata=metadata,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        return result
+
+    try:
+        update_result = memory_agent.update_unknown_signal_review(
+            unknown_signal_id=normalized["unknown_signal_id"],
+            review_status=normalized["review_status"],
+            review_classification=normalized["review_classification"],
+            review_notes=normalized["review_notes"],
+            reviewed_by=normalized["reviewed_by"],
+            metadata=normalized["metadata"],
+        )
+        previous_status = _normalize_token(update_result.get("previous_review_status"))
+        if previous_status in {"CLASSIFIED", "IGNORED"}:
+            result["warnings"].append("overwriting existing review classification")
+        result.update(
+            {
+                "success": True,
+                "unknown_signal_id": normalized["unknown_signal_id"],
+                "review_status": normalized["review_status"],
+                "review_classification": normalized["review_classification"],
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
 def _base_result(enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled,
@@ -379,6 +455,19 @@ def _base_feedback_result(enabled: bool) -> dict[str, Any]:
         "run_history_id": None,
         "feedback_type": None,
         "feedback_rating": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_unknown_signal_review_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "unknown_signal_id": None,
+        "review_status": None,
+        "review_classification": None,
         "skipped": [],
         "warnings": [],
         "errors": [],
@@ -599,6 +688,50 @@ def _validate_feedback_inputs(
     return normalized, warnings, errors
 
 
+def _validate_unknown_signal_review_inputs(
+    *,
+    unknown_signal_id: Any,
+    review_status: Any,
+    review_classification: Any,
+    review_notes: Any,
+    reviewed_by: Any,
+    metadata: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["unknown_signal_id"] = _positive_int(unknown_signal_id)
+    if normalized["unknown_signal_id"] is None:
+        errors.append("unknown_signal_id is required and must be an integer greater than 0")
+
+    normalized["review_status"] = _normalize_token(review_status)
+    if normalized["review_status"] not in UNKNOWN_SIGNAL_REVIEW_STATUS_VALUES:
+        errors.append(
+            "review_status must be one of: "
+            + ", ".join(sorted(UNKNOWN_SIGNAL_REVIEW_STATUS_VALUES))
+        )
+
+    normalized["review_classification"] = None
+    if review_classification is not None and str(review_classification).strip():
+        normalized["review_classification"] = _normalize_token(review_classification)
+        if normalized["review_classification"] not in UNKNOWN_SIGNAL_REVIEW_CLASSIFICATION_VALUES:
+            errors.append(
+                "review_classification must be one of: "
+                + ", ".join(sorted(UNKNOWN_SIGNAL_REVIEW_CLASSIFICATION_VALUES))
+            )
+
+    notes = str(review_notes or "").strip()
+    if len(notes) > UNKNOWN_SIGNAL_REVIEW_NOTES_MAX_LENGTH:
+        errors.append(
+            f"review_notes must be {UNKNOWN_SIGNAL_REVIEW_NOTES_MAX_LENGTH} characters or fewer"
+        )
+    normalized["review_notes"] = notes or None
+    normalized["reviewed_by"] = _default_actor(reviewed_by)
+    normalized["metadata"] = _optional_dict(metadata, "metadata", warnings, errors)
+    return normalized, warnings, errors
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         integer = int(value)
@@ -689,6 +822,8 @@ def _compose_outcome_notes(
 # Phase 6J — Feedback Capture records append-only human/operator review and is
 # downstream-only; it must not influence scoring, parser behavior, decision
 # posture, or deterministic recommendation generation.
+# Phase 6K — Unknown Signal Review captures human classifications for parser
+# improvement candidates. It must not modify parser behavior or runtime analysis.
 # Phase 6L — Approval Workflow extension point.
 # Phase 6M — Knowledge Update Workflow extension point.
 # Phase 6N — Memory Recall APIs extension point.

@@ -213,6 +213,11 @@ MEMORY_TABLE_DDL: tuple[tuple[str, str], ...] = (
             FIRST_SEEN_TIMESTAMP   TIMESTAMP(6),
             LAST_SEEN_TIMESTAMP    TIMESTAMP(6),
             REVIEW_STATUS          VARCHAR2(64),
+            REVIEW_CLASSIFICATION  VARCHAR2(64),
+            REVIEW_NOTES           CLOB,
+            REVIEWED_BY            VARCHAR2(256),
+            REVIEWED_AT            TIMESTAMP(6),
+            REVIEW_METADATA_JSON    JSON,
             CONSTRAINT FK_P6_UNK_RUN
                 FOREIGN KEY (RUN_HISTORY_ID)
                 REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
@@ -461,6 +466,55 @@ def insert_feedback_history(
             connection.close()
 
 
+def update_unknown_signal_review(
+    *,
+    unknown_signal_id: int,
+    review_status: str,
+    review_classification: str | None = None,
+    review_notes: str | None = None,
+    reviewed_by: str,
+    metadata: dict[str, Any] | None = None,
+    reviewed_at: datetime | None = None,
+    connection: Any | None = None,
+) -> dict[str, Any]:
+    """Update only review-related fields for a captured unknown signal."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        existing_review = _unknown_signal_review_row(connection, unknown_signal_id)
+        if existing_review is None:
+            raise ValueError("unknown_signal_id must reference an existing unknown signal")
+        _update_unknown_signal_review_row(
+            connection,
+            {
+                "unknown_signal_id": unknown_signal_id,
+                "review_status": review_status,
+                "review_classification": review_classification,
+                "review_notes": review_notes,
+                "reviewed_by": reviewed_by,
+                "reviewed_at": reviewed_at or datetime.now(timezone.utc),
+                "review_metadata_json": (
+                    _json_dumps(metadata) if metadata is not None else None
+                ),
+            },
+        )
+        connection.commit()
+        return {
+            "unknown_signal_id": unknown_signal_id,
+            "previous_review_status": existing_review.get("review_status"),
+            "previous_review_classification": existing_review.get("review_classification"),
+        }
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
 def _ensure_schema(connection: Any) -> None:
     with connection.cursor() as cursor:
         for table_name, ddl in MEMORY_TABLE_DDL:
@@ -473,6 +527,7 @@ def _ensure_schema(connection: Any) -> None:
                 continue
             cursor.execute(ddl)
     _ensure_feedback_history_extensions(connection)
+    _ensure_unknown_signal_review_extensions(connection)
 
 
 def _ensure_feedback_history_extensions(connection: Any) -> None:
@@ -494,6 +549,25 @@ def _ensure_feedback_history_extensions(connection: Any) -> None:
             if column_name not in columns:
                 cursor.execute(
                     f"alter table AWR_FEEDBACK_HISTORY add ({column_name} {ddl_type})"
+                )
+
+
+def _ensure_unknown_signal_review_extensions(connection: Any) -> None:
+    columns = _table_columns(connection, "AWR_UNKNOWN_SIGNAL_HISTORY")
+    if not columns:
+        return
+    extension_columns = {
+        "REVIEW_CLASSIFICATION": "VARCHAR2(64)",
+        "REVIEW_NOTES": "CLOB",
+        "REVIEWED_BY": "VARCHAR2(256)",
+        "REVIEWED_AT": "TIMESTAMP(6)",
+        "REVIEW_METADATA_JSON": "JSON",
+    }
+    with connection.cursor() as cursor:
+        for column_name, ddl_type in extension_columns.items():
+            if column_name not in columns:
+                cursor.execute(
+                    f"alter table AWR_UNKNOWN_SIGNAL_HISTORY add ({column_name} {ddl_type})"
                 )
 
 
@@ -829,6 +903,63 @@ def _insert_feedback_history_row(connection: Any, row: dict[str, Any]) -> int:
 def _join_text_parts(*parts: Any) -> str | None:
     text_parts = [str(part).strip() for part in parts if str(part or "").strip()]
     return "\n\n".join(text_parts) if text_parts else None
+
+
+def _unknown_signal_review_row(
+    connection: Any,
+    unknown_signal_id: int,
+) -> dict[str, Any] | None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select REVIEW_STATUS, REVIEW_CLASSIFICATION
+              from AWR_UNKNOWN_SIGNAL_HISTORY
+             where UNKNOWN_SIGNAL_ID = :unknown_signal_id
+            """,
+            {"unknown_signal_id": unknown_signal_id},
+        )
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return {
+        "review_status": _safe_str(row[0]),
+        "review_classification": _safe_str(row[1]),
+    }
+
+
+def _update_unknown_signal_review_row(connection: Any, row: dict[str, Any]) -> None:
+    set_clauses = [
+        "REVIEW_STATUS = :review_status",
+        "REVIEWED_BY = :reviewed_by",
+        "REVIEWED_AT = :reviewed_at",
+    ]
+    binds = {
+        "unknown_signal_id": row["unknown_signal_id"],
+        "review_status": row["review_status"],
+        "reviewed_by": row["reviewed_by"],
+        "reviewed_at": row["reviewed_at"],
+    }
+    if row.get("review_classification") is not None:
+        set_clauses.append("REVIEW_CLASSIFICATION = :review_classification")
+        binds["review_classification"] = row["review_classification"]
+    if row.get("review_notes") is not None:
+        set_clauses.append("REVIEW_NOTES = :review_notes")
+        binds["review_notes"] = row["review_notes"]
+    if row.get("review_metadata_json") is not None:
+        set_clauses.append("REVIEW_METADATA_JSON = :review_metadata_json")
+        binds["review_metadata_json"] = row["review_metadata_json"]
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            update AWR_UNKNOWN_SIGNAL_HISTORY
+               set {", ".join(set_clauses)}
+             where UNKNOWN_SIGNAL_ID = :unknown_signal_id
+            """,
+            binds,
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("unknown_signal_id must reference an existing unknown signal")
 
 
 def _validate_action_run_link(

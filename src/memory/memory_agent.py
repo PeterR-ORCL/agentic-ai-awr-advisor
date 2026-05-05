@@ -164,9 +164,17 @@ MEMORY_TABLE_DDL: tuple[tuple[str, str], ...] = (
             RECOMMENDATION_HISTORY_ID  NUMBER,
             ACTION_HISTORY_ID          NUMBER,
             OUTCOME_HISTORY_ID         NUMBER,
+            ACTION_OUTCOME_ID          NUMBER,
             FEEDBACK_TYPE              VARCHAR2(64),
+            FEEDBACK_RATING_LABEL      VARCHAR2(64),
+            FEEDBACK_SUMMARY           CLOB,
+            FEEDBACK_DETAIL            CLOB,
+            FEEDBACK_SOURCE            VARCHAR2(128),
             FEEDBACK_TEXT              CLOB,
-            FEEDBACK_RATING            NUMBER,
+            FEEDBACK_RATING            VARCHAR2(64),
+            FEEDBACK_METADATA_JSON     JSON,
+            RECORDED_BY                VARCHAR2(256),
+            RECORDED_AT                TIMESTAMP(6),
             SUBMITTED_BY               VARCHAR2(256),
             SUBMITTED_TIMESTAMP        TIMESTAMP(6),
             REVIEW_STATUS              VARCHAR2(64),
@@ -396,6 +404,63 @@ def insert_action_outcome_history(
             connection.close()
 
 
+def insert_feedback_history(
+    *,
+    run_history_id: int,
+    feedback_type: str,
+    feedback_rating: str,
+    feedback_summary: str,
+    recommendation_history_id: int | None = None,
+    action_history_id: int | None = None,
+    action_outcome_id: int | None = None,
+    feedback_detail: str | None = None,
+    feedback_source: str | None = None,
+    recorded_by: str | None = None,
+    feedback_metadata: dict[str, Any] | None = None,
+    recorded_at: datetime | None = None,
+    connection: Any | None = None,
+) -> int:
+    """Insert an append-only feedback history row and return FEEDBACK_ID."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    row = {
+        "run_history_id": run_history_id,
+        "recommendation_history_id": recommendation_history_id,
+        "action_history_id": action_history_id,
+        "action_outcome_id": action_outcome_id,
+        "feedback_type": feedback_type,
+        "feedback_rating": feedback_rating,
+        "feedback_summary": feedback_summary,
+        "feedback_detail": feedback_detail,
+        "feedback_source": feedback_source,
+        "recorded_by": recorded_by,
+        "recorded_at": recorded_at or datetime.now(timezone.utc),
+        "feedback_metadata_json": (
+            _json_dumps(feedback_metadata) if feedback_metadata is not None else None
+        ),
+    }
+    try:
+        _ensure_schema(connection)
+        _validate_feedback_links(
+            connection,
+            run_history_id=run_history_id,
+            recommendation_history_id=recommendation_history_id,
+            action_history_id=action_history_id,
+            action_outcome_id=action_outcome_id,
+        )
+        feedback_id = _insert_feedback_history_row(connection, row)
+        connection.commit()
+        return feedback_id
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
 def _ensure_schema(connection: Any) -> None:
     with connection.cursor() as cursor:
         for table_name, ddl in MEMORY_TABLE_DDL:
@@ -407,6 +472,43 @@ def _ensure_schema(connection: Any) -> None:
             if row and int(row[0]) > 0:
                 continue
             cursor.execute(ddl)
+    _ensure_feedback_history_extensions(connection)
+
+
+def _ensure_feedback_history_extensions(connection: Any) -> None:
+    columns = _table_columns(connection, "AWR_FEEDBACK_HISTORY")
+    if not columns:
+        return
+    extension_columns = {
+        "ACTION_OUTCOME_ID": "NUMBER",
+        "FEEDBACK_RATING_LABEL": "VARCHAR2(64)",
+        "FEEDBACK_SUMMARY": "CLOB",
+        "FEEDBACK_DETAIL": "CLOB",
+        "FEEDBACK_SOURCE": "VARCHAR2(128)",
+        "FEEDBACK_METADATA_JSON": "JSON",
+        "RECORDED_BY": "VARCHAR2(256)",
+        "RECORDED_AT": "TIMESTAMP(6)",
+    }
+    with connection.cursor() as cursor:
+        for column_name, ddl_type in extension_columns.items():
+            if column_name not in columns:
+                cursor.execute(
+                    f"alter table AWR_FEEDBACK_HISTORY add ({column_name} {ddl_type})"
+                )
+
+
+def _table_columns(connection: Any, table_name: str) -> dict[str, str]:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select COLUMN_NAME, DATA_TYPE
+              from USER_TAB_COLUMNS
+             where TABLE_NAME = :table_name
+            """,
+            {"table_name": table_name.upper()},
+        )
+        rows = cursor.fetchall()
+    return {str(row[0]).upper(): str(row[1]).upper() for row in rows}
 
 
 def _find_run_history_id(connection: Any, source_file_hash: str) -> int | None:
@@ -654,6 +756,81 @@ def _insert_action_outcome_history_row(connection: Any, row: dict[str, Any]) -> 
         return int(value)
 
 
+def _insert_feedback_history_row(connection: Any, row: dict[str, Any]) -> int:
+    table_columns = _table_columns(connection, "AWR_FEEDBACK_HISTORY")
+    insert_values: dict[str, Any] = {}
+    insert_columns: list[tuple[str, str]] = []
+
+    def add(column_name: str, bind_name: str, value: Any) -> None:
+        if column_name in table_columns:
+            insert_values[bind_name] = value
+            insert_columns.append((column_name, bind_name))
+
+    add("RUN_HISTORY_ID", "run_history_id", row["run_history_id"])
+    add("RECOMMENDATION_HISTORY_ID", "recommendation_history_id", row["recommendation_history_id"])
+    add("ACTION_HISTORY_ID", "action_history_id", row["action_history_id"])
+    add("ACTION_OUTCOME_ID", "action_outcome_id", row["action_outcome_id"])
+    add("FEEDBACK_TYPE", "feedback_type", row["feedback_type"])
+    add("FEEDBACK_RATING_LABEL", "feedback_rating_label", row["feedback_rating"])
+    add("FEEDBACK_SUMMARY", "feedback_summary", row["feedback_summary"])
+    add("FEEDBACK_DETAIL", "feedback_detail", row["feedback_detail"])
+    add("FEEDBACK_SOURCE", "feedback_source", row["feedback_source"])
+    add("FEEDBACK_METADATA_JSON", "feedback_metadata_json", row["feedback_metadata_json"])
+    add("RECORDED_BY", "recorded_by", row["recorded_by"])
+    add("RECORDED_AT", "recorded_at", row["recorded_at"])
+
+    if "FEEDBACK_TEXT" in table_columns:
+        insert_values["feedback_text"] = _join_text_parts(
+            row["feedback_summary"],
+            row["feedback_detail"],
+        )
+        insert_columns.append(("FEEDBACK_TEXT", "feedback_text"))
+    if "FEEDBACK_RATING" in table_columns:
+        if table_columns["FEEDBACK_RATING"] in {"VARCHAR2", "CHAR", "NVARCHAR2", "NCHAR"}:
+            insert_values["feedback_rating"] = row["feedback_rating"]
+            insert_columns.append(("FEEDBACK_RATING", "feedback_rating"))
+    if "SUBMITTED_BY" in table_columns:
+        insert_values["submitted_by"] = row["recorded_by"]
+        insert_columns.append(("SUBMITTED_BY", "submitted_by"))
+    if "SUBMITTED_TIMESTAMP" in table_columns:
+        insert_values["submitted_timestamp"] = row["recorded_at"]
+        insert_columns.append(("SUBMITTED_TIMESTAMP", "submitted_timestamp"))
+    if "REVIEW_STATUS" in table_columns:
+        insert_values["review_status"] = "NEW"
+        insert_columns.append(("REVIEW_STATUS", "review_status"))
+    if "REVIEW_NOTES" in table_columns:
+        insert_values["review_notes"] = row["feedback_metadata_json"]
+        insert_columns.append(("REVIEW_NOTES", "review_notes"))
+
+    if not insert_values:
+        raise RuntimeError("AWR_FEEDBACK_HISTORY has no writable feedback columns.")
+
+    columns = [column_name for column_name, _ in insert_columns]
+    bind_names = [f":{bind_name}" for _, bind_name in insert_columns]
+    sql = f"""
+        insert into AWR_FEEDBACK_HISTORY (
+            {", ".join(columns)}
+        ) values (
+            {", ".join(bind_names)}
+        )
+        returning FEEDBACK_ID into :feedback_id
+    """
+    with connection.cursor() as cursor:
+        feedback_id = cursor.var(int)
+        cursor.execute(sql, {**insert_values, "feedback_id": feedback_id})
+        value = feedback_id.getvalue()
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if value is None:
+            raise RuntimeError("AWR_FEEDBACK_HISTORY insert did not return FEEDBACK_ID.")
+        return int(value)
+
+
+def _join_text_parts(*parts: Any) -> str | None:
+    text_parts = [str(part).strip() for part in parts if str(part or "").strip()]
+    return "\n\n".join(text_parts) if text_parts else None
+
+
 def _validate_action_run_link(
     connection: Any,
     *,
@@ -678,6 +855,78 @@ def _validate_action_run_link(
         raise ValueError(
             "action_history_id must reference an action recorded for run_history_id"
         )
+
+
+def _validate_feedback_links(
+    connection: Any,
+    *,
+    run_history_id: int,
+    recommendation_history_id: int | None,
+    action_history_id: int | None,
+    action_outcome_id: int | None,
+) -> None:
+    if not _row_exists(
+        connection,
+        "AWR_RUN_HISTORY",
+        "RUN_HISTORY_ID = :run_history_id",
+        {"run_history_id": run_history_id},
+    ):
+        raise ValueError("run_history_id must reference an existing run history row")
+
+    if recommendation_history_id is not None and not _row_exists(
+        connection,
+        "AWR_RECOMMENDATION_HISTORY",
+        "RECOMMENDATION_HISTORY_ID = :recommendation_history_id "
+        "and RUN_HISTORY_ID = :run_history_id",
+        {
+            "recommendation_history_id": recommendation_history_id,
+            "run_history_id": run_history_id,
+        },
+    ):
+        raise ValueError(
+            "recommendation_history_id must reference a recommendation recorded for run_history_id"
+        )
+
+    if action_history_id is not None and not _row_exists(
+        connection,
+        "AWR_ACTION_HISTORY",
+        "ACTION_HISTORY_ID = :action_history_id and RUN_HISTORY_ID = :run_history_id",
+        {
+            "action_history_id": action_history_id,
+            "run_history_id": run_history_id,
+        },
+    ):
+        raise ValueError("action_history_id must reference an action recorded for run_history_id")
+
+    if action_outcome_id is None:
+        return
+    where_clause = "ACTION_OUTCOME_ID = :action_outcome_id and RUN_HISTORY_ID = :run_history_id"
+    params = {
+        "action_outcome_id": action_outcome_id,
+        "run_history_id": run_history_id,
+    }
+    if action_history_id is not None:
+        where_clause += " and ACTION_HISTORY_ID = :action_history_id"
+        params["action_history_id"] = action_history_id
+    if not _row_exists(connection, "AWR_ACTION_OUTCOME_HISTORY", where_clause, params):
+        raise ValueError(
+            "action_outcome_id must reference an outcome recorded for the supplied run/action"
+        )
+
+
+def _row_exists(
+    connection: Any,
+    table_name: str,
+    where_clause: str,
+    params: dict[str, Any],
+) -> bool:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"select count(*) from {table_name} where {where_clause}",
+            params,
+        )
+        row = cursor.fetchone()
+    return bool(row and int(row[0]) > 0)
 
 
 def _build_run_history_row(

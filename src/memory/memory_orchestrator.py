@@ -37,6 +37,33 @@ OUTCOME_STATUS_VALUES = {
     "NO_CHANGE",
 }
 OUTCOME_SUMMARY_MAX_LENGTH = 4000
+FEEDBACK_TYPE_VALUES = {
+    "DIAGNOSIS_CORRECTNESS",
+    "RECOMMENDATION_USEFULNESS",
+    "ACTION_GUIDANCE_CLARITY",
+    "OUTCOME_ASSESSMENT",
+    "MISSED_SIGNAL",
+    "FALSE_POSITIVE",
+    "GENERAL",
+}
+FEEDBACK_RATING_VALUES = {
+    "POSITIVE",
+    "NEUTRAL",
+    "NEGATIVE",
+    "MIXED",
+    "UNKNOWN",
+}
+FEEDBACK_SOURCE_VALUES = {
+    "DBA",
+    "ENGINEER",
+    "ARCHITECT",
+    "CUSTOMER",
+    "SALES_ENGINEER",
+    "CLOUD_ARCHITECT",
+    "SYSTEM_REVIEW",
+    "OTHER",
+}
+FEEDBACK_SUMMARY_MAX_LENGTH = 4000
 
 
 def persist_run_memory(
@@ -228,6 +255,79 @@ def record_outcome(
         return result
 
 
+def record_feedback(
+    run_history_id: int,
+    feedback_type: str,
+    feedback_rating: str,
+    feedback_summary: str,
+    recommendation_history_id: int | None = None,
+    action_history_id: int | None = None,
+    action_outcome_id: int | None = None,
+    feedback_detail: str | None = None,
+    feedback_source: str | None = None,
+    recorded_by: str | None = None,
+    metadata: dict | None = None,
+) -> dict[str, Any]:
+    """Record append-only human/operator feedback for an advisory run."""
+
+    result = _base_feedback_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+
+    normalized, warnings, errors = _validate_feedback_inputs(
+        run_history_id=run_history_id,
+        recommendation_history_id=recommendation_history_id,
+        action_history_id=action_history_id,
+        action_outcome_id=action_outcome_id,
+        feedback_type=feedback_type,
+        feedback_rating=feedback_rating,
+        feedback_summary=feedback_summary,
+        feedback_detail=feedback_detail,
+        feedback_source=feedback_source,
+        recorded_by=recorded_by,
+        metadata=metadata,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        return result
+
+    try:
+        feedback_id = memory_agent.insert_feedback_history(
+            run_history_id=normalized["run_history_id"],
+            recommendation_history_id=normalized["recommendation_history_id"],
+            action_history_id=normalized["action_history_id"],
+            action_outcome_id=normalized["action_outcome_id"],
+            feedback_type=normalized["feedback_type"],
+            feedback_rating=normalized["feedback_rating"],
+            feedback_summary=normalized["feedback_summary"],
+            feedback_detail=normalized["feedback_detail"],
+            feedback_source=normalized["feedback_source"],
+            recorded_by=normalized["recorded_by"],
+            feedback_metadata=normalized["metadata"],
+        )
+        result.update(
+            {
+                "success": True,
+                "feedback_id": feedback_id,
+                "run_history_id": normalized["run_history_id"],
+                "feedback_type": normalized["feedback_type"],
+                "feedback_rating": normalized["feedback_rating"],
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
 def _base_result(enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled,
@@ -265,6 +365,20 @@ def _base_outcome_result(enabled: bool) -> dict[str, Any]:
         "action_history_id": None,
         "outcome_status": None,
         "message": "",
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_feedback_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "feedback_id": None,
+        "run_history_id": None,
+        "feedback_type": None,
+        "feedback_rating": None,
         "skipped": [],
         "warnings": [],
         "errors": [],
@@ -414,6 +528,77 @@ def _validate_outcome_inputs(
     return normalized, warnings, errors
 
 
+def _validate_feedback_inputs(
+    *,
+    run_history_id: Any,
+    recommendation_history_id: Any,
+    action_history_id: Any,
+    action_outcome_id: Any,
+    feedback_type: Any,
+    feedback_rating: Any,
+    feedback_summary: Any,
+    feedback_detail: Any,
+    feedback_source: Any,
+    recorded_by: Any,
+    metadata: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["run_history_id"] = _positive_int(run_history_id)
+    if normalized["run_history_id"] is None:
+        errors.append("run_history_id is required and must be an integer greater than 0")
+
+    for field_name, raw_value in (
+        ("recommendation_history_id", recommendation_history_id),
+        ("action_history_id", action_history_id),
+        ("action_outcome_id", action_outcome_id),
+    ):
+        normalized[field_name] = None
+        if raw_value is not None:
+            normalized[field_name] = _positive_int(raw_value)
+            if normalized[field_name] is None:
+                errors.append(f"{field_name} must be an integer greater than 0")
+
+    normalized["feedback_type"] = _normalize_token(feedback_type)
+    if not normalized["feedback_type"]:
+        errors.append("feedback_type is required")
+    elif normalized["feedback_type"] not in FEEDBACK_TYPE_VALUES:
+        warnings.append(
+            f"unsupported feedback_type {normalized['feedback_type']}; using GENERAL"
+        )
+        normalized["feedback_type"] = "GENERAL"
+
+    normalized["feedback_rating"] = _normalize_token(feedback_rating)
+    if normalized["feedback_rating"] not in FEEDBACK_RATING_VALUES:
+        errors.append(
+            "feedback_rating must be one of: "
+            + ", ".join(sorted(FEEDBACK_RATING_VALUES))
+        )
+
+    summary = str(feedback_summary or "").strip()
+    if not summary:
+        errors.append("feedback_summary is required")
+    elif len(summary) > FEEDBACK_SUMMARY_MAX_LENGTH:
+        errors.append(f"feedback_summary must be {FEEDBACK_SUMMARY_MAX_LENGTH} characters or fewer")
+    normalized["feedback_summary"] = summary
+
+    detail = str(feedback_detail or "").strip()
+    normalized["feedback_detail"] = detail or None
+
+    normalized["feedback_source"] = _normalize_token(feedback_source or "OTHER")
+    if normalized["feedback_source"] not in FEEDBACK_SOURCE_VALUES:
+        warnings.append(
+            f"unsupported feedback_source {normalized['feedback_source']}; using OTHER"
+        )
+        normalized["feedback_source"] = "OTHER"
+
+    normalized["recorded_by"] = _default_actor(recorded_by)
+    normalized["metadata"] = _optional_dict(metadata, "metadata", warnings, errors)
+    return normalized, warnings, errors
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         integer = int(value)
@@ -501,7 +686,9 @@ def _compose_outcome_notes(
 # Phase 6H — Action Tracking extension point.
 # Phase 6I — Outcome Tracking records append-only observed outcomes; it is
 # downstream-only and must not influence deterministic advisory behavior.
-# Phase 6J — Feedback Capture extension point.
+# Phase 6J — Feedback Capture records append-only human/operator review and is
+# downstream-only; it must not influence scoring, parser behavior, decision
+# posture, or deterministic recommendation generation.
 # Phase 6L — Approval Workflow extension point.
 # Phase 6M — Knowledge Update Workflow extension point.
 # Phase 6N — Memory Recall APIs extension point.

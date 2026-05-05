@@ -188,9 +188,17 @@ BEGIN
                 RECOMMENDATION_HISTORY_ID  NUMBER,
                 ACTION_HISTORY_ID          NUMBER,
                 OUTCOME_HISTORY_ID         NUMBER,
+                ACTION_OUTCOME_ID          NUMBER,
                 FEEDBACK_TYPE              VARCHAR2(64),
+                FEEDBACK_RATING_LABEL      VARCHAR2(64),
+                FEEDBACK_SUMMARY           CLOB,
+                FEEDBACK_DETAIL            CLOB,
+                FEEDBACK_SOURCE            VARCHAR2(128),
                 FEEDBACK_TEXT              CLOB,
-                FEEDBACK_RATING            NUMBER,
+                FEEDBACK_RATING            VARCHAR2(64),
+                FEEDBACK_METADATA_JSON     JSON,
+                RECORDED_BY                VARCHAR2(256),
+                RECORDED_AT                TIMESTAMP(6),
                 SUBMITTED_BY               VARCHAR2(256),
                 SUBMITTED_TIMESTAMP        TIMESTAMP(6),
                 REVIEW_STATUS              VARCHAR2(64),
@@ -210,6 +218,33 @@ BEGIN
             )
         ]';
     END IF;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
+    FOR col IN (
+        SELECT 'ACTION_OUTCOME_ID' AS column_name, 'NUMBER' AS ddl_type FROM dual
+        UNION ALL SELECT 'FEEDBACK_RATING_LABEL', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'FEEDBACK_SUMMARY', 'CLOB' FROM dual
+        UNION ALL SELECT 'FEEDBACK_DETAIL', 'CLOB' FROM dual
+        UNION ALL SELECT 'FEEDBACK_SOURCE', 'VARCHAR2(128)' FROM dual
+        UNION ALL SELECT 'FEEDBACK_METADATA_JSON', 'JSON' FROM dual
+        UNION ALL SELECT 'RECORDED_BY', 'VARCHAR2(256)' FROM dual
+        UNION ALL SELECT 'RECORDED_AT', 'TIMESTAMP(6)' FROM dual
+    ) LOOP
+        SELECT COUNT(*)
+          INTO v_exists
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'AWR_FEEDBACK_HISTORY'
+           AND COLUMN_NAME = col.column_name;
+
+        IF v_exists = 0 THEN
+            EXECUTE IMMEDIATE
+                'ALTER TABLE AWR_FEEDBACK_HISTORY ADD (' || col.column_name || ' ' || col.ddl_type || ')';
+        END IF;
+    END LOOP;
 END;
 /
 

@@ -51,6 +51,68 @@ END;
 DECLARE
     v_exists NUMBER := 0;
 BEGIN
+    SELECT COUNT(*) INTO v_exists FROM USER_TABLES WHERE TABLE_NAME = 'AWR_KNOWLEDGE_ARTIFACT';
+    IF v_exists = 0 THEN
+        EXECUTE IMMEDIATE q'[
+            CREATE TABLE AWR_KNOWLEDGE_ARTIFACT (
+                ARTIFACT_ID               NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                REQUEST_ID                NUMBER NOT NULL,
+                SOURCE_TYPE               VARCHAR2(64),
+                SOURCE_ID                 NUMBER,
+                RUN_HISTORY_ID            NUMBER,
+                ARTIFACT_TYPE             VARCHAR2(64),
+                ARTIFACT_CLASSIFICATION   VARCHAR2(64),
+                ARTIFACT_SUMMARY          CLOB,
+                ARTIFACT_DETAILS          CLOB,
+                ACTIVATION_STATUS         VARCHAR2(64),
+                CREATED_BY                VARCHAR2(256),
+                CREATED_AT                TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+                VERSION_NUMBER            NUMBER DEFAULT 1 NOT NULL,
+                METADATA_JSON             JSON,
+                CONSTRAINT FK_P6_ART_RUN
+                    FOREIGN KEY (RUN_HISTORY_ID)
+                    REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
+            )
+        ]';
+    END IF;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
+    FOR col IN (
+        SELECT 'REQUEST_ID' AS column_name, 'NUMBER' AS ddl_type FROM dual
+        UNION ALL SELECT 'SOURCE_TYPE', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'SOURCE_ID', 'NUMBER' FROM dual
+        UNION ALL SELECT 'RUN_HISTORY_ID', 'NUMBER' FROM dual
+        UNION ALL SELECT 'ARTIFACT_TYPE', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'ARTIFACT_CLASSIFICATION', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'ARTIFACT_SUMMARY', 'CLOB' FROM dual
+        UNION ALL SELECT 'ARTIFACT_DETAILS', 'CLOB' FROM dual
+        UNION ALL SELECT 'ACTIVATION_STATUS', 'VARCHAR2(64)' FROM dual
+        UNION ALL SELECT 'CREATED_BY', 'VARCHAR2(256)' FROM dual
+        UNION ALL SELECT 'CREATED_AT', 'TIMESTAMP(6)' FROM dual
+        UNION ALL SELECT 'VERSION_NUMBER', 'NUMBER DEFAULT 1' FROM dual
+        UNION ALL SELECT 'METADATA_JSON', 'JSON' FROM dual
+    ) LOOP
+        SELECT COUNT(*)
+          INTO v_exists
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'AWR_KNOWLEDGE_ARTIFACT'
+           AND COLUMN_NAME = col.column_name;
+
+        IF v_exists = 0 THEN
+            EXECUTE IMMEDIATE
+                'ALTER TABLE AWR_KNOWLEDGE_ARTIFACT ADD (' || col.column_name || ' ' || col.ddl_type || ')';
+        END IF;
+    END LOOP;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
     SELECT COUNT(*) INTO v_exists FROM USER_TABLES WHERE TABLE_NAME = 'AWR_RECOMMENDATION_HISTORY';
     IF v_exists = 0 THEN
         EXECUTE IMMEDIATE q'[

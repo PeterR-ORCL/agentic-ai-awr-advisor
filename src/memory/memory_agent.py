@@ -268,6 +268,30 @@ MEMORY_TABLE_DDL: tuple[tuple[str, str], ...] = (
         )
         """,
     ),
+    (
+        "AWR_KNOWLEDGE_ARTIFACT",
+        """
+        CREATE TABLE AWR_KNOWLEDGE_ARTIFACT (
+            ARTIFACT_ID               NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            REQUEST_ID                NUMBER NOT NULL,
+            SOURCE_TYPE               VARCHAR2(64),
+            SOURCE_ID                 NUMBER,
+            RUN_HISTORY_ID            NUMBER,
+            ARTIFACT_TYPE             VARCHAR2(64),
+            ARTIFACT_CLASSIFICATION   VARCHAR2(64),
+            ARTIFACT_SUMMARY          CLOB,
+            ARTIFACT_DETAILS          CLOB,
+            ACTIVATION_STATUS         VARCHAR2(64),
+            CREATED_BY                VARCHAR2(256),
+            CREATED_AT                TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            VERSION_NUMBER            NUMBER DEFAULT 1 NOT NULL,
+            METADATA_JSON             JSON,
+            CONSTRAINT FK_P6_ART_RUN
+                FOREIGN KEY (RUN_HISTORY_ID)
+                REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID)
+        )
+        """,
+    ),
 )
 
 
@@ -611,6 +635,96 @@ def update_knowledge_update_request_status(
             connection.close()
 
 
+def insert_knowledge_artifact(
+    *,
+    request_id: int,
+    artifact_type: str,
+    artifact_classification: str | None = None,
+    artifact_summary: str | None = None,
+    artifact_details: str | None = None,
+    created_by: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    connection: Any | None = None,
+) -> int:
+    """Materialize an approved knowledge request into an inactive artifact."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        request_row = _knowledge_update_request_row(connection, request_id)
+        if request_row is None:
+            raise ValueError("request_id must reference an existing knowledge update request")
+        if request_row.get("approval_status") != "APPROVED":
+            raise ValueError("request_id must be APPROVED before materialization")
+        artifact_id = _insert_knowledge_artifact_row(
+            connection,
+            {
+                "request_id": request_id,
+                "source_type": request_row.get("source_type"),
+                "source_id": request_row.get("source_id"),
+                "run_history_id": request_row.get("run_history_id"),
+                "artifact_type": artifact_type,
+                "artifact_classification": (
+                    artifact_classification
+                    or request_row.get("candidate_classification")
+                ),
+                "artifact_summary": artifact_summary or request_row.get("candidate_summary"),
+                "artifact_details": artifact_details or request_row.get("candidate_details"),
+                "activation_status": "INACTIVE",
+                "created_by": created_by,
+                "created_at": datetime.now(timezone.utc),
+                "version_number": 1,
+                "metadata_json": _json_dumps(metadata) if metadata is not None else None,
+            },
+        )
+        connection.commit()
+        return artifact_id
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
+def list_knowledge_artifacts(
+    *,
+    limit: int = 50,
+    connection: Any | None = None,
+) -> list[dict[str, Any]]:
+    """Return knowledge artifacts for inspection only."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        return _list_knowledge_artifact_rows(connection, limit=limit)
+    finally:
+        if managed_connection:
+            connection.close()
+
+
+def get_knowledge_artifact(
+    *,
+    artifact_id: int,
+    connection: Any | None = None,
+) -> dict[str, Any] | None:
+    """Return one knowledge artifact for inspection only."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    try:
+        _ensure_schema(connection)
+        return _knowledge_artifact_row(connection, artifact_id)
+    finally:
+        if managed_connection:
+            connection.close()
+
+
 def _ensure_schema(connection: Any) -> None:
     with connection.cursor() as cursor:
         for table_name, ddl in MEMORY_TABLE_DDL:
@@ -625,6 +739,7 @@ def _ensure_schema(connection: Any) -> None:
     _ensure_feedback_history_extensions(connection)
     _ensure_unknown_signal_review_extensions(connection)
     _ensure_knowledge_update_request_extensions(connection)
+    _ensure_knowledge_artifact_extensions(connection)
 
 
 def _ensure_feedback_history_extensions(connection: Any) -> None:
@@ -690,6 +805,33 @@ def _ensure_knowledge_update_request_extensions(connection: Any) -> None:
             if column_name not in columns:
                 cursor.execute(
                     f"alter table AWR_KNOWLEDGE_UPDATE_REQUEST add ({column_name} {ddl_type})"
+                )
+
+
+def _ensure_knowledge_artifact_extensions(connection: Any) -> None:
+    columns = _table_columns(connection, "AWR_KNOWLEDGE_ARTIFACT")
+    if not columns:
+        return
+    extension_columns = {
+        "REQUEST_ID": "NUMBER",
+        "SOURCE_TYPE": "VARCHAR2(64)",
+        "SOURCE_ID": "NUMBER",
+        "RUN_HISTORY_ID": "NUMBER",
+        "ARTIFACT_TYPE": "VARCHAR2(64)",
+        "ARTIFACT_CLASSIFICATION": "VARCHAR2(64)",
+        "ARTIFACT_SUMMARY": "CLOB",
+        "ARTIFACT_DETAILS": "CLOB",
+        "ACTIVATION_STATUS": "VARCHAR2(64)",
+        "CREATED_BY": "VARCHAR2(256)",
+        "CREATED_AT": "TIMESTAMP(6)",
+        "VERSION_NUMBER": "NUMBER DEFAULT 1",
+        "METADATA_JSON": "JSON",
+    }
+    with connection.cursor() as cursor:
+        for column_name, ddl_type in extension_columns.items():
+            if column_name not in columns:
+                cursor.execute(
+                    f"alter table AWR_KNOWLEDGE_ARTIFACT add ({column_name} {ddl_type})"
                 )
 
 
@@ -1183,6 +1325,205 @@ def _update_knowledge_update_request_status_row(
         if cursor.rowcount != 1:
             raise ValueError("request_id must reference an existing knowledge update request")
     return int(row["request_id"])
+
+
+def _knowledge_update_request_row(
+    connection: Any,
+    request_id: int,
+) -> dict[str, Any] | None:
+    table_columns = _table_columns(connection, "AWR_KNOWLEDGE_UPDATE_REQUEST")
+    id_column = _knowledge_request_id_column(table_columns)
+    select_columns = [
+        id_column,
+        "APPROVAL_STATUS",
+    ]
+    optional_columns = [
+        "SOURCE_TYPE",
+        "SOURCE_ID",
+        "RUN_HISTORY_ID",
+        "CANDIDATE_CLASSIFICATION",
+        "CANDIDATE_SUMMARY",
+        "CANDIDATE_DETAILS",
+        "UPDATE_TYPE",
+        "SOURCE_REFERENCE_ID",
+        "PROPOSED_CHANGE_SUMMARY",
+        "PROPOSED_CHANGE_JSON",
+    ]
+    select_columns.extend([column for column in optional_columns if column in table_columns])
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select {", ".join(select_columns)}
+              from AWR_KNOWLEDGE_UPDATE_REQUEST
+             where {id_column} = :request_id
+            """,
+            {"request_id": request_id},
+        )
+        row = cursor.fetchone()
+    if not row:
+        return None
+    values = dict(zip(select_columns, row))
+    proposed_json = _json_loads(values.get("PROPOSED_CHANGE_JSON"))
+    source_type, source_id = _request_source(values, proposed_json)
+    return {
+        "request_id": _safe_int(values.get(id_column)),
+        "approval_status": _safe_str(values.get("APPROVAL_STATUS")),
+        "source_type": source_type,
+        "source_id": source_id,
+        "run_history_id": _safe_int(
+            values.get("RUN_HISTORY_ID") or (proposed_json or {}).get("run_history_id")
+        ),
+        "candidate_classification": _safe_str(
+            values.get("CANDIDATE_CLASSIFICATION")
+            or (proposed_json or {}).get("candidate_classification")
+        ),
+        "candidate_summary": _safe_str(
+            values.get("CANDIDATE_SUMMARY") or values.get("PROPOSED_CHANGE_SUMMARY")
+        ),
+        "candidate_details": _safe_str(
+            values.get("CANDIDATE_DETAILS") or (proposed_json or {}).get("candidate_details")
+        ),
+    }
+
+
+def _request_source(
+    values: dict[str, Any],
+    proposed_json: dict[str, Any] | None,
+) -> tuple[str | None, int | None]:
+    source_type = _safe_str(values.get("SOURCE_TYPE") or values.get("UPDATE_TYPE"))
+    source_id = _safe_int(values.get("SOURCE_ID"))
+    if source_type and source_id is not None:
+        return source_type, source_id
+    source_reference = _safe_str(values.get("SOURCE_REFERENCE_ID"))
+    if source_reference and ":" in source_reference:
+        left, right = source_reference.split(":", 1)
+        source_type = source_type or _safe_str(left)
+        source_id = source_id or _safe_int(right)
+    if proposed_json:
+        source_type = source_type or _safe_str(proposed_json.get("source_type"))
+        source_id = source_id or _safe_int(proposed_json.get("source_id"))
+    return source_type, source_id
+
+
+def _insert_knowledge_artifact_row(connection: Any, row: dict[str, Any]) -> int:
+    with connection.cursor() as cursor:
+        artifact_id = cursor.var(int)
+        cursor.execute(
+            """
+            insert into AWR_KNOWLEDGE_ARTIFACT (
+                REQUEST_ID,
+                SOURCE_TYPE,
+                SOURCE_ID,
+                RUN_HISTORY_ID,
+                ARTIFACT_TYPE,
+                ARTIFACT_CLASSIFICATION,
+                ARTIFACT_SUMMARY,
+                ARTIFACT_DETAILS,
+                ACTIVATION_STATUS,
+                CREATED_BY,
+                CREATED_AT,
+                VERSION_NUMBER,
+                METADATA_JSON
+            ) values (
+                :request_id,
+                :source_type,
+                :source_id,
+                :run_history_id,
+                :artifact_type,
+                :artifact_classification,
+                :artifact_summary,
+                :artifact_details,
+                :activation_status,
+                :created_by,
+                :created_at,
+                :version_number,
+                :metadata_json
+            )
+            returning ARTIFACT_ID into :artifact_id
+            """,
+            {**row, "artifact_id": artifact_id},
+        )
+        value = artifact_id.getvalue()
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if value is None:
+            raise RuntimeError("AWR_KNOWLEDGE_ARTIFACT insert did not return ARTIFACT_ID.")
+        return int(value)
+
+
+def _list_knowledge_artifact_rows(
+    connection: Any,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    safe_limit = max(1, min(int(limit or 50), 200))
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select ARTIFACT_ID,
+                   REQUEST_ID,
+                   SOURCE_TYPE,
+                   SOURCE_ID,
+                   RUN_HISTORY_ID,
+                   ARTIFACT_TYPE,
+                   ARTIFACT_CLASSIFICATION,
+                   ARTIFACT_SUMMARY,
+                   ACTIVATION_STATUS,
+                   VERSION_NUMBER,
+                   CREATED_BY,
+                   CREATED_AT
+              from AWR_KNOWLEDGE_ARTIFACT
+             order by ARTIFACT_ID desc
+             fetch first {safe_limit} rows only
+            """
+        )
+        rows = cursor.fetchall()
+    return [_knowledge_artifact_dict(row) for row in rows]
+
+
+def _knowledge_artifact_row(
+    connection: Any,
+    artifact_id: int,
+) -> dict[str, Any] | None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select ARTIFACT_ID,
+                   REQUEST_ID,
+                   SOURCE_TYPE,
+                   SOURCE_ID,
+                   RUN_HISTORY_ID,
+                   ARTIFACT_TYPE,
+                   ARTIFACT_CLASSIFICATION,
+                   ARTIFACT_SUMMARY,
+                   ACTIVATION_STATUS,
+                   VERSION_NUMBER,
+                   CREATED_BY,
+                   CREATED_AT
+              from AWR_KNOWLEDGE_ARTIFACT
+             where ARTIFACT_ID = :artifact_id
+            """,
+            {"artifact_id": artifact_id},
+        )
+        row = cursor.fetchone()
+    return _knowledge_artifact_dict(row) if row else None
+
+
+def _knowledge_artifact_dict(row: Any) -> dict[str, Any]:
+    return {
+        "artifact_id": _safe_int(row[0]),
+        "request_id": _safe_int(row[1]),
+        "source_type": _safe_str(row[2]),
+        "source_id": _safe_int(row[3]),
+        "run_history_id": _safe_int(row[4]),
+        "artifact_type": _safe_str(row[5]),
+        "artifact_classification": _safe_str(row[6]),
+        "artifact_summary": _safe_str(row[7]),
+        "activation_status": _safe_str(row[8]),
+        "version_number": _safe_int(row[9]),
+        "created_by": _safe_str(row[10]),
+        "created_at": _safe_str(row[11]),
+    }
 
 
 def _knowledge_request_id_column(table_columns: dict[str, str]) -> str:
@@ -1710,6 +2051,18 @@ def _to_dict(value: Any) -> dict[str, Any]:
 
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, default=str, sort_keys=True)
+
+
+def _json_loads(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _parse_timestamp(value: Any) -> datetime | None:

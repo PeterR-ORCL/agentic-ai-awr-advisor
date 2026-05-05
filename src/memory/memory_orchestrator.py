@@ -92,6 +92,13 @@ KNOWLEDGE_APPROVAL_STATUS_VALUES = {
     "NEEDS_REVIEW",
 }
 KNOWLEDGE_REQUEST_SUMMARY_MAX_LENGTH = 4000
+KNOWLEDGE_ARTIFACT_TYPE_VALUES = {
+    "SIGNAL_CLASSIFICATION",
+    "RULE_HINT",
+    "PATTERN",
+    "OTHER",
+}
+KNOWLEDGE_ARTIFACT_SUMMARY_MAX_LENGTH = 4000
 
 
 def persist_run_memory(
@@ -530,6 +537,131 @@ def approve_knowledge_update_request(
         return result
 
 
+def materialize_knowledge_artifact(
+    request_id: int,
+    artifact_type: str,
+    artifact_classification: str | None = None,
+    artifact_summary: str | None = None,
+    artifact_details: str | None = None,
+    created_by: str | None = None,
+    metadata: dict | None = None,
+) -> dict[str, Any]:
+    """Materialize an approved request into an inactive knowledge artifact."""
+
+    result = _base_knowledge_artifact_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+
+    normalized, warnings, errors = _validate_knowledge_artifact_inputs(
+        request_id=request_id,
+        artifact_type=artifact_type,
+        artifact_classification=artifact_classification,
+        artifact_summary=artifact_summary,
+        artifact_details=artifact_details,
+        created_by=created_by,
+        metadata=metadata,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        return result
+
+    try:
+        artifact_id = memory_agent.insert_knowledge_artifact(
+            request_id=normalized["request_id"],
+            artifact_type=normalized["artifact_type"],
+            artifact_classification=normalized["artifact_classification"],
+            artifact_summary=normalized["artifact_summary"],
+            artifact_details=normalized["artifact_details"],
+            created_by=normalized["created_by"],
+            metadata=normalized["metadata"],
+        )
+        result.update(
+            {
+                "success": True,
+                "artifact_id": artifact_id,
+                "request_id": normalized["request_id"],
+                "artifact_type": normalized["artifact_type"],
+                "activation_status": "INACTIVE",
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
+def list_knowledge_artifacts(limit: int = 50) -> dict[str, Any]:
+    """List materialized knowledge artifacts for inspection only."""
+
+    result = {
+        "enabled": _memory_enabled(),
+        "success": True,
+        "artifacts": [],
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+    try:
+        result["artifacts"] = memory_agent.list_knowledge_artifacts(limit=limit)
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
+def get_knowledge_artifact(artifact_id: int) -> dict[str, Any]:
+    """Return one materialized knowledge artifact for inspection only."""
+
+    result = {
+        "enabled": _memory_enabled(),
+        "success": True,
+        "artifact": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        return result
+    normalized_artifact_id = _positive_int(artifact_id)
+    if normalized_artifact_id is None:
+        result["success"] = False
+        result["errors"].append("artifact_id is required and must be an integer greater than 0")
+        return result
+    try:
+        artifact = memory_agent.get_knowledge_artifact(artifact_id=normalized_artifact_id)
+        if artifact is None:
+            result["success"] = False
+            result["errors"].append("artifact_id must reference an existing knowledge artifact")
+            return result
+        result["artifact"] = artifact
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
 def _base_result(enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled,
@@ -620,6 +752,20 @@ def _base_knowledge_approval_result(enabled: bool) -> dict[str, Any]:
         "success": True,
         "request_id": None,
         "approval_status": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_knowledge_artifact_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "artifact_id": None,
+        "request_id": None,
+        "artifact_type": None,
+        "activation_status": None,
         "skipped": [],
         "warnings": [],
         "errors": [],
@@ -963,6 +1109,48 @@ def _validate_knowledge_approval_inputs(
     return normalized, warnings, errors
 
 
+def _validate_knowledge_artifact_inputs(
+    *,
+    request_id: Any,
+    artifact_type: Any,
+    artifact_classification: Any,
+    artifact_summary: Any,
+    artifact_details: Any,
+    created_by: Any,
+    metadata: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["request_id"] = _positive_int(request_id)
+    if normalized["request_id"] is None:
+        errors.append("request_id is required and must be an integer greater than 0")
+
+    normalized["artifact_type"] = _normalize_token(artifact_type)
+    if normalized["artifact_type"] not in KNOWLEDGE_ARTIFACT_TYPE_VALUES:
+        errors.append(
+            "artifact_type must be one of: "
+            + ", ".join(sorted(KNOWLEDGE_ARTIFACT_TYPE_VALUES))
+        )
+
+    classification = _normalize_token(artifact_classification)
+    normalized["artifact_classification"] = classification or None
+
+    summary = str(artifact_summary or "").strip()
+    if len(summary) > KNOWLEDGE_ARTIFACT_SUMMARY_MAX_LENGTH:
+        errors.append(
+            f"artifact_summary must be {KNOWLEDGE_ARTIFACT_SUMMARY_MAX_LENGTH} characters or fewer"
+        )
+    normalized["artifact_summary"] = summary or None
+
+    details = str(artifact_details or "").strip()
+    normalized["artifact_details"] = details or None
+    normalized["created_by"] = _default_actor(created_by)
+    normalized["metadata"] = _optional_dict(metadata, "metadata", warnings, errors)
+    return normalized, warnings, errors
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         integer = int(value)
@@ -1058,7 +1246,9 @@ def _compose_outcome_notes(
 # Phase 6L — Approval Workflow is the only governance gateway for future
 # knowledge update eligibility. Approval must not apply changes or influence
 # runtime analysis.
-# Phase 6M — Knowledge Update Workflow extension point.
+# Phase 6M — Controlled Knowledge Update materializes approved requests as
+# inactive artifacts only. Activation is a future phase and must not affect
+# runtime analysis here.
 # Phase 6N — Memory Recall APIs extension point.
 # Phase 6N.1 — Oracle Agent Memory Adapter extension point.
 # Oracle Agent Memory, if added in Phase 6N.1, is a non-authoritative recall and phrasing context layer. It must never influence scoring, parser behavior, decision posture, or deterministic recommendation generation.

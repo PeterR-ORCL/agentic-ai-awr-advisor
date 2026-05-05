@@ -147,6 +147,38 @@ END;
 DECLARE
     v_exists NUMBER := 0;
 BEGIN
+    SELECT COUNT(*) INTO v_exists FROM USER_TABLES WHERE TABLE_NAME = 'AWR_ACTION_OUTCOME_HISTORY';
+    IF v_exists = 0 THEN
+        EXECUTE IMMEDIATE q'[
+            CREATE TABLE AWR_ACTION_OUTCOME_HISTORY (
+                ACTION_OUTCOME_ID       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                RUN_HISTORY_ID          NUMBER NOT NULL,
+                ACTION_HISTORY_ID       NUMBER NOT NULL,
+                OUTCOME_STATUS          VARCHAR2(64) NOT NULL,
+                OUTCOME_SUMMARY         CLOB NOT NULL,
+                BEFORE_SNAPSHOT_REF     VARCHAR2(512),
+                AFTER_SNAPSHOT_REF      VARCHAR2(512),
+                BEFORE_METRICS_JSON     JSON,
+                AFTER_METRICS_JSON      JSON,
+                IMPACT_SCORE            NUMBER(8,4),
+                RECORDED_AT             TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+                RECORDED_BY             VARCHAR2(256),
+                OUTCOME_NOTES           CLOB,
+                CONSTRAINT FK_P6_ACT_OUT_RUN
+                    FOREIGN KEY (RUN_HISTORY_ID)
+                    REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID),
+                CONSTRAINT FK_P6_ACT_OUT_ACTION
+                    FOREIGN KEY (ACTION_HISTORY_ID)
+                    REFERENCES AWR_ACTION_HISTORY (ACTION_HISTORY_ID)
+            )
+        ]';
+    END IF;
+END;
+/
+
+DECLARE
+    v_exists NUMBER := 0;
+BEGIN
     SELECT COUNT(*) INTO v_exists FROM USER_TABLES WHERE TABLE_NAME = 'AWR_FEEDBACK_HISTORY';
     IF v_exists = 0 THEN
         EXECUTE IMMEDIATE q'[

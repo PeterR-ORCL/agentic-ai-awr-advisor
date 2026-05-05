@@ -30,6 +30,13 @@ ACTION_STATUS_VALUES = {
     "REJECTED",
 }
 ACTION_SUMMARY_MAX_LENGTH = 4000
+OUTCOME_STATUS_VALUES = {
+    "SUCCESS",
+    "PARTIAL",
+    "FAILED",
+    "NO_CHANGE",
+}
+OUTCOME_SUMMARY_MAX_LENGTH = 4000
 
 
 def persist_run_memory(
@@ -149,6 +156,78 @@ def record_action(
         return result
 
 
+def record_outcome(
+    run_history_id: int,
+    action_history_id: int,
+    outcome_status: str,
+    outcome_summary: str,
+    before_metrics: dict | None = None,
+    after_metrics: dict | None = None,
+    impact_score: float | None = None,
+    recorded_by: str | None = None,
+    notes: dict | str | None = None,
+) -> dict[str, Any]:
+    """Record an append-only downstream outcome for a human/operator action."""
+
+    result = _base_outcome_result(enabled=_memory_enabled())
+    if not result["enabled"]:
+        result["skipped"].append("memory_disabled")
+        result["message"] = "memory_disabled"
+        return result
+
+    normalized, warnings, errors = _validate_outcome_inputs(
+        run_history_id=run_history_id,
+        action_history_id=action_history_id,
+        outcome_status=outcome_status,
+        outcome_summary=outcome_summary,
+        before_metrics=before_metrics,
+        after_metrics=after_metrics,
+        impact_score=impact_score,
+        recorded_by=recorded_by,
+        notes=notes,
+    )
+    result["warnings"].extend(warnings)
+    if errors:
+        result["success"] = False
+        result["errors"].extend(errors)
+        result["message"] = errors[0]
+        return result
+
+    try:
+        outcome_id = memory_agent.insert_action_outcome_history(
+            run_history_id=normalized["run_history_id"],
+            action_history_id=normalized["action_history_id"],
+            outcome_status=normalized["outcome_status"],
+            outcome_summary=normalized["outcome_summary"],
+            before_metrics=normalized["before_metrics"],
+            after_metrics=normalized["after_metrics"],
+            impact_score=normalized["impact_score"],
+            recorded_by=normalized["recorded_by"],
+            outcome_notes=normalized["notes"],
+        )
+        result.update(
+            {
+                "success": True,
+                "outcome_id": outcome_id,
+                "action_outcome_id": outcome_id,
+                "run_history_id": normalized["run_history_id"],
+                "action_history_id": normalized["action_history_id"],
+                "outcome_status": normalized["outcome_status"],
+                "message": "outcome_recorded",
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["success"] = False
+        result["errors"].append(f"{type(exc).__name__}: {exc}")
+        result["message"] = result["errors"][0]
+        if _memory_debug_enabled():
+            result["diagnostics"] = {
+                "traceback": traceback.format_exc(),
+            }
+        return result
+
+
 def _base_result(enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled,
@@ -170,6 +249,22 @@ def _base_action_result(enabled: bool) -> dict[str, Any]:
         "recommendation_history_id": None,
         "action_type": None,
         "action_status": None,
+        "skipped": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _base_outcome_result(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "success": True,
+        "outcome_id": None,
+        "action_outcome_id": None,
+        "run_history_id": None,
+        "action_history_id": None,
+        "outcome_status": None,
+        "message": "",
         "skipped": [],
         "warnings": [],
         "errors": [],
@@ -263,6 +358,62 @@ def _validate_action_inputs(
     return normalized, warnings, errors
 
 
+def _validate_outcome_inputs(
+    *,
+    run_history_id: Any,
+    action_history_id: Any,
+    outcome_status: Any,
+    outcome_summary: Any,
+    before_metrics: Any,
+    after_metrics: Any,
+    impact_score: Any,
+    recorded_by: Any,
+    notes: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    warnings: list[str] = []
+    errors: list[str] = []
+    normalized: dict[str, Any] = {}
+
+    normalized["run_history_id"] = _positive_int(run_history_id)
+    if normalized["run_history_id"] is None:
+        errors.append("run_history_id is required and must be an integer greater than 0")
+
+    normalized["action_history_id"] = _positive_int(action_history_id)
+    if normalized["action_history_id"] is None:
+        errors.append("action_history_id is required and must be an integer greater than 0")
+
+    normalized["outcome_status"] = _normalize_token(outcome_status)
+    if normalized["outcome_status"] not in OUTCOME_STATUS_VALUES:
+        errors.append(
+            "outcome_status must be one of: "
+            + ", ".join(sorted(OUTCOME_STATUS_VALUES))
+        )
+
+    summary = str(outcome_summary or "").strip()
+    if not summary:
+        errors.append("outcome_summary is required")
+    elif len(summary) > OUTCOME_SUMMARY_MAX_LENGTH:
+        errors.append(f"outcome_summary must be {OUTCOME_SUMMARY_MAX_LENGTH} characters or fewer")
+    normalized["outcome_summary"] = summary
+
+    normalized["before_metrics"] = _optional_dict(
+        before_metrics,
+        "before_metrics",
+        warnings,
+        errors,
+    )
+    normalized["after_metrics"] = _optional_dict(
+        after_metrics,
+        "after_metrics",
+        warnings,
+        errors,
+    )
+    normalized["impact_score"] = _optional_float(impact_score, errors)
+    normalized["recorded_by"] = _default_actor(recorded_by)
+    normalized["notes"] = _compose_outcome_notes(notes, warnings, errors)
+    return normalized, warnings, errors
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         integer = int(value)
@@ -310,8 +461,46 @@ def _compose_action_notes(
     return "\n\n".join(parts) if parts else None
 
 
+def _optional_dict(
+    value: Any,
+    field_name: str,
+    warnings: list[str],
+    errors: list[str],
+) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    errors.append(f"{field_name} must be a dict when provided")
+    return None
+
+
+def _optional_float(value: Any, errors: list[str]) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        errors.append("impact_score must be numeric when provided")
+        return None
+
+
+def _compose_outcome_notes(
+    notes: Any,
+    warnings: list[str],
+    errors: list[str],
+) -> str | None:
+    if notes is None:
+        return None
+    if isinstance(notes, dict):
+        return json.dumps(notes, sort_keys=True)
+    text = str(notes).strip()
+    return text or None
+
+
 # Phase 6H — Action Tracking extension point.
-# Phase 6I — Outcome Tracking extension point.
+# Phase 6I — Outcome Tracking records append-only observed outcomes; it is
+# downstream-only and must not influence deterministic advisory behavior.
 # Phase 6J — Feedback Capture extension point.
 # Phase 6L — Approval Workflow extension point.
 # Phase 6M — Knowledge Update Workflow extension point.

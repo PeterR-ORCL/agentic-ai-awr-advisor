@@ -130,6 +130,32 @@ MEMORY_TABLE_DDL: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
+        "AWR_ACTION_OUTCOME_HISTORY",
+        """
+        CREATE TABLE AWR_ACTION_OUTCOME_HISTORY (
+            ACTION_OUTCOME_ID       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            RUN_HISTORY_ID          NUMBER NOT NULL,
+            ACTION_HISTORY_ID       NUMBER NOT NULL,
+            OUTCOME_STATUS          VARCHAR2(64) NOT NULL,
+            OUTCOME_SUMMARY         CLOB NOT NULL,
+            BEFORE_SNAPSHOT_REF     VARCHAR2(512),
+            AFTER_SNAPSHOT_REF      VARCHAR2(512),
+            BEFORE_METRICS_JSON     JSON,
+            AFTER_METRICS_JSON      JSON,
+            IMPACT_SCORE            NUMBER(8,4),
+            RECORDED_AT             TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            RECORDED_BY             VARCHAR2(256),
+            OUTCOME_NOTES           CLOB,
+            CONSTRAINT FK_P6_ACT_OUT_RUN
+                FOREIGN KEY (RUN_HISTORY_ID)
+                REFERENCES AWR_RUN_HISTORY (RUN_HISTORY_ID),
+            CONSTRAINT FK_P6_ACT_OUT_ACTION
+                FOREIGN KEY (ACTION_HISTORY_ID)
+                REFERENCES AWR_ACTION_HISTORY (ACTION_HISTORY_ID)
+        )
+        """,
+    ),
+    (
         "AWR_FEEDBACK_HISTORY",
         """
         CREATE TABLE AWR_FEEDBACK_HISTORY (
@@ -305,6 +331,63 @@ def insert_action_history(
         action_history_id = _insert_action_history_row(connection, row)
         connection.commit()
         return action_history_id
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        if managed_connection:
+            connection.close()
+
+
+def insert_action_outcome_history(
+    *,
+    run_history_id: int,
+    action_history_id: int,
+    outcome_status: str,
+    outcome_summary: str,
+    before_metrics: dict[str, Any] | None = None,
+    after_metrics: dict[str, Any] | None = None,
+    impact_score: float | None = None,
+    recorded_by: str | None = None,
+    outcome_notes: str | None = None,
+    before_snapshot_ref: str | None = None,
+    after_snapshot_ref: str | None = None,
+    recorded_at: datetime | None = None,
+    connection: Any | None = None,
+) -> int:
+    """Insert an append-only action outcome row and return ACTION_OUTCOME_ID."""
+
+    managed_connection = connection is None
+    if connection is None:
+        connection = get_db_connection()
+    row = {
+        "run_history_id": run_history_id,
+        "action_history_id": action_history_id,
+        "outcome_status": outcome_status,
+        "outcome_summary": outcome_summary,
+        "before_snapshot_ref": before_snapshot_ref,
+        "after_snapshot_ref": after_snapshot_ref,
+        "before_metrics_json": (
+            _json_dumps(before_metrics) if before_metrics is not None else None
+        ),
+        "after_metrics_json": (
+            _json_dumps(after_metrics) if after_metrics is not None else None
+        ),
+        "impact_score": impact_score,
+        "recorded_at": recorded_at or datetime.now(timezone.utc),
+        "recorded_by": recorded_by,
+        "outcome_notes": outcome_notes,
+    }
+    try:
+        _ensure_schema(connection)
+        _validate_action_run_link(
+            connection,
+            run_history_id=run_history_id,
+            action_history_id=action_history_id,
+        )
+        action_outcome_id = _insert_action_outcome_history_row(connection, row)
+        connection.commit()
+        return action_outcome_id
     except Exception:
         connection.rollback()
         raise
@@ -523,6 +606,78 @@ def _insert_action_history_row(connection: Any, row: dict[str, Any]) -> int:
         if value is None:
             raise RuntimeError("AWR_ACTION_HISTORY insert did not return ACTION_HISTORY_ID.")
         return int(value)
+
+
+def _insert_action_outcome_history_row(connection: Any, row: dict[str, Any]) -> int:
+    with connection.cursor() as cursor:
+        action_outcome_id = cursor.var(int)
+        cursor.execute(
+            """
+            insert into AWR_ACTION_OUTCOME_HISTORY (
+                RUN_HISTORY_ID,
+                ACTION_HISTORY_ID,
+                OUTCOME_STATUS,
+                OUTCOME_SUMMARY,
+                BEFORE_SNAPSHOT_REF,
+                AFTER_SNAPSHOT_REF,
+                BEFORE_METRICS_JSON,
+                AFTER_METRICS_JSON,
+                IMPACT_SCORE,
+                RECORDED_AT,
+                RECORDED_BY,
+                OUTCOME_NOTES
+            ) values (
+                :run_history_id,
+                :action_history_id,
+                :outcome_status,
+                :outcome_summary,
+                :before_snapshot_ref,
+                :after_snapshot_ref,
+                :before_metrics_json,
+                :after_metrics_json,
+                :impact_score,
+                :recorded_at,
+                :recorded_by,
+                :outcome_notes
+            )
+            returning ACTION_OUTCOME_ID into :action_outcome_id
+            """,
+            {**row, "action_outcome_id": action_outcome_id},
+        )
+        value = action_outcome_id.getvalue()
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if value is None:
+            raise RuntimeError(
+                "AWR_ACTION_OUTCOME_HISTORY insert did not return ACTION_OUTCOME_ID."
+            )
+        return int(value)
+
+
+def _validate_action_run_link(
+    connection: Any,
+    *,
+    run_history_id: int,
+    action_history_id: int,
+) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select count(*)
+              from AWR_ACTION_HISTORY
+             where ACTION_HISTORY_ID = :action_history_id
+               and RUN_HISTORY_ID = :run_history_id
+            """,
+            {
+                "run_history_id": run_history_id,
+                "action_history_id": action_history_id,
+            },
+        )
+        row = cursor.fetchone()
+    if not row or int(row[0]) == 0:
+        raise ValueError(
+            "action_history_id must reference an action recorded for run_history_id"
+        )
 
 
 def _build_run_history_row(

@@ -8378,7 +8378,7 @@ def _vocalize_text(deterministic_text: str, context: dict) -> str:
         return _VOCALIZATION_CACHE[cache_key]
     prompt = _vocalization_prompt(base_text)
     try:
-        from ai_providers.ai_router import generate_ai_response as route_ai_response
+        from ai_providers.ai_provider_router import generate_ai_response as route_ai_response
 
         candidate = route_ai_response(provider, prompt)
     except Exception:
@@ -12200,6 +12200,12 @@ def _runtime_provider_display_name(provider: Any) -> str:
     return str(provider or "LLM provider not available").strip()
 
 
+def format_ai_provider_display_name(provider: Any) -> str:
+    """Return the deterministic human-facing AI provider display name."""
+
+    return _runtime_provider_display_name(provider)
+
+
 def _runtime_model_config_value(provider: Any, raw_model: Any) -> str:
     normalized_provider = str(provider or os.getenv("AI_PROVIDER") or "").strip().lower()
     if normalized_provider == "oci":
@@ -12215,6 +12221,17 @@ def _runtime_model_config_value(provider: Any, raw_model: Any) -> str:
             or "gpt-5.4-mini"
         )
     return str(raw_model or "").strip()
+
+
+def format_ai_model_display_name(
+    provider: Any,
+    raw_model: Any,
+    alias: str | None = None,
+) -> str:
+    """Return the deterministic human-facing AI model display name."""
+
+    configured_model = _runtime_model_config_value(provider, raw_model)
+    return format_model_display_name(configured_model, alias=alias)
 
 
 def _render_runtime_model_display_name(

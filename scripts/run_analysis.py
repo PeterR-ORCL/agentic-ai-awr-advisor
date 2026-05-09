@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 
 from src.analysis.ai_narrative_generator import generate_ai_narrative
 from src.analysis.decision_engine import build_decision
-from src.analysis.ai_provider import generate_ai_response
+from src.analysis import (
+    ai_provider_adapter as provider_adapter,
+)
 from src.analysis.derived_metric_extractor import (
     extract_derived_pressure_metrics,
 )
@@ -40,7 +42,13 @@ from src.ingest.awr_adb_loader import (
 from src.loader.awr_loader import load_awr_sources, loader_file_paths
 from src.memory import memory_orchestrator
 from src.parser.awr_parser import parse_awr_file
-from src.reporting.html_dashboard import generate_html_dashboard
+from src.reporting.ai_display_metadata import (
+    format_ai_model_display_name,
+    format_ai_provider_display_name,
+)
+from src.reporting.html_dashboard import (
+    generate_html_dashboard,
+)
 
 SNAPSHOT_TIME_FORMATS = (
     "%d-%b-%y %H:%M:%S",
@@ -5019,7 +5027,7 @@ if __name__ == "__main__":
         _narrative_findings_from_grouped(grouped_findings),
         _narrative_recommendations_from_grouped(grouped_findings),
     )
-    ai_response = generate_ai_response(
+    ai_response = provider_adapter.generate_ai_response(
         provider=provider,
         system_role=ai_narrative["system_role"],
         prompt=ai_narrative["prompt"],
@@ -5276,9 +5284,11 @@ if __name__ == "__main__":
     print(ai_narrative["prompt"])
     print("\nAI Generated Narrative:\n")
     print("Provider:")
-    print(f"  {ai_response['provider']}\n")
+    print(f"  {format_ai_provider_display_name(ai_response['provider'])}\n")
     print("Model:")
-    print(f"  {ai_response['model']}\n")
+    print(
+        f"  {format_ai_model_display_name(ai_response['provider'], ai_response['model'])}\n"
+    )
     print("Content:")
     print(llm_explanation_text)
     print("\nHTML Dashboard:")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from ai_providers.ai_router import generate_ai_response as route_ai_response
+from ai_providers.ai_provider_router import generate_ai_response as route_ai_response
 from dotenv import load_dotenv
 
 load_dotenv()

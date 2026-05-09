@@ -605,6 +605,9 @@
     .governance-artifact-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    .workflow-summary-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
     .memory-count-card {
       display: flex;
       align-items: center;
@@ -624,6 +627,7 @@
       text-transform: uppercase;
     }
     .parser-review-list,
+    .parser-governance-list,
     .unknown-pattern-list,
     .governance-linkage-list {
       display: grid;
@@ -654,6 +658,7 @@
       line-height: 1.35;
     }
     .parser-review-row,
+    .parser-governance-row,
     .unknown-pattern-row,
     .governance-linkage-row {
       display: grid;
@@ -670,6 +675,9 @@
     .parser-review-row {
       grid-template-columns: 0.95fr 0.65fr 1.7fr 0.75fr 0.65fr 0.8fr 0.9fr 1.35fr;
     }
+    .parser-governance-row {
+      grid-template-columns: 0.9fr 1fr 0.8fr 0.9fr 1.2fr 1fr 1fr;
+    }
     .unknown-pattern-row {
       grid-template-columns: 1fr 1.7fr 0.65fr 1.25fr 1fr 0.8fr;
     }
@@ -677,11 +685,13 @@
       grid-template-columns: 0.65fr 1fr 0.75fr 0.75fr 1fr 0.75fr 1.1fr 1fr;
     }
     .parser-review-row strong,
+    .parser-governance-row strong,
     .unknown-pattern-row strong,
     .governance-linkage-row strong {
       color: var(--text);
     }
     .parser-review-row span:not(.mini-pill),
+    .parser-governance-row span:not(.mini-pill),
     .unknown-pattern-row span:not(.mini-pill) {
       display: block;
       margin-top: 2px;
@@ -701,6 +711,7 @@
       gap: 5px;
     }
     .parser-review-header,
+    .parser-governance-header,
     .unknown-pattern-header,
     .governance-linkage-header {
       background: transparent;
@@ -1433,15 +1444,18 @@
       .parser-review-grid,
       .governance-summary-grid,
       .governance-artifact-grid,
+      .workflow-summary-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }
       .parser-review-header,
+      .parser-governance-header,
       .unknown-pattern-header,
       .governance-linkage-header {
         display: none;
       }
       .parser-review-row,
+      .parser-governance-row,
       .unknown-pattern-row,
       .governance-linkage-row {
         grid-template-columns: 1fr;
@@ -1509,7 +1523,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 9, 2026, 12:35 PM</div>
+        <div class="hero-meta">Generated: May 9, 2026, 1:56 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link active" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1526,7 +1540,7 @@
         <div class="info-grid">
             <div class="info-box">
               <strong>Run Label</strong>
-              <div>May 9, 2026, 12:35 PM</div>
+              <div>May 9, 2026, 1:56 PM</div>
             </div>
             
             <div class="info-box">
@@ -2152,7 +2166,7 @@
           <h3>Validation Notes</h3>
           
       <article class="item validation-note-summary">
-        <p>24 validation notes were detected across 24 files, representing repeated intake conditions (summarized above).</p>
+        <p>24 validation notes were detected across 24 files, representing repeated intake conditions summarized above.</p>
         <h4>Validation Notes Summary</h4>
         <div class="validation-note-list">
           
@@ -2173,7 +2187,7 @@
             <div class="meta">
               Summary of processed files, parsing completeness, validation notes, and selected scope.
             </div>
-            <div class="narrative">24 validation notes were detected across 24 files, representing repeated intake conditions (summarized above).</div>
+            <div class="narrative">24 validation notes were detected across 24 files, representing repeated intake conditions summarized above.</div>
           </div>
         </section>
       </div>
@@ -2605,10 +2619,273 @@
         
       </section>
     
+      
+      <section class="card secondary parser-governance-card">
+        <div class="section-kicker">READ-ONLY Governance Visibility</div>
+        <h2>Parser Governance Review</h2>
+        <p class="meta">
+          Governance review visibility is read-only in this phase. Approval workflows, parser governance actions, and controlled knowledge updates remain outside runtime analysis.
+        </p>
+        
+        <div class="parser-governance-list">
+          <div class="parser-governance-row parser-governance-header">
+            <div>parser_stage</div>
+            <div>classification_hint</div>
+            <div>review_status</div>
+            <div>approval_status</div>
+            <div>source_file</div>
+            <div>first_seen_timestamp</div>
+            <div>last_seen_timestamp</div>
+          </div>
+          
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill success">CLASSIFIED</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_HOSTCPU_EXTERNAL_01.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_DBCPU_IOWAIT_02.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_SPIKE_STABLEAVG_03.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_SQLHOT_LOWLOAD_04.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_COMMIT_LOWVOL_05.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_CONTRADICT_ENDSPIKE_CPU_06.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_CPU_IO_07.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_CPU_COMMIT_CONCUR_08.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_RAC_CPU_09.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_ADG_COMMIT_10.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_MEMORY_IO_11.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_MULTI_BALANCED_ALL_12.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_FALSEPOS_HIGHCPU_LOWDBTIME_13.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_FALSEPOS_HIGHWAIT_SHORTELAP_14.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_FALSEPOS_BRIEF_SPIKE_15.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_FALSEPOS_HIGHLOAD_EFFICIENTSQL_16.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_RECOVERY_CPU_PRETUNE_17.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_RECOVERY_CPU_POSTTUNE_18.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_RECOVERY_IO_PREINDEX_19.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_RECOVERY_IO_POSTINDEX_20.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_SPARSE_NOTOPSQL_21.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_SPARSE_NOWAITDETAIL_22.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_SPARSE_PARTIALSNAP_23.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+            <article class="parser-governance-row">
+              <div>Unknown</div>
+              <div>Unknown</div>
+              <div><span class="mini-pill warning">NEW</span></div>
+              <div><span class="mini-pill neutral">Not Available</span></div>
+              <div>AWR_SPARSE_TRUNCATED_MIXED_24.out</div>
+              <div>2026-05-01 15:21:30</div>
+              <div>2026-05-01 15:21:30</div>
+            </article>
+            
+        </div>
+    
+      </section>
+    
     </div>
     
 
-    <div class="footer">Generated at May 9, 2026, 12:35 PM</div>
+    <div class="footer">Generated at May 9, 2026, 1:56 PM</div>
   </div>
 
 

@@ -506,6 +506,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
         screen_4_model,
     )
     parser_review_payload = _build_parser_review_payload()
+    parser_governance_payload = _build_parser_governance_payload()
     governance_visibility_payload = _build_governance_visibility_payload()
 
     pages = {
@@ -526,6 +527,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
             content_html=_render_screen_1_page(
                 screen_models.get("screen_1_ingestion") or {},
                 parser_review_payload=parser_review_payload,
+                parser_governance_payload=parser_governance_payload,
                 report_data=report_data,
             ),
             generated_at=generated_at,
@@ -639,6 +641,34 @@ def _final_dashboard_html_polish(html: str) -> str:
     polished = html
     for before, after in replacements:
         polished = polished.replace(before, after)
+    regex_replacements = (
+        (
+            r"\bthe workload remained primarily CPU-led\b",
+            "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        ),
+        (
+            r"\bthe workload remained predominantly CPU-led\b",
+            "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        ),
+        (
+            r"\bCPU remained the primary workload driver\b",
+            "CPU dominance could not be confirmed from unavailable CPU evidence",
+        ),
+        (
+            r"\bCPU remained the primary driver\b",
+            "CPU dominance could not be confirmed from unavailable CPU evidence",
+        ),
+        (
+            r"\baverage CPU at Unavailable\b",
+            "CPU evidence was unavailable",
+        ),
+        (
+            r"\bTop SQL concentration([^.<]*)Unavailable\b",
+            "Top SQL concentration could not be evaluated from available data",
+        ),
+    )
+    for pattern, replacement in regex_replacements:
+        polished = re.sub(pattern, replacement, polished, flags=re.IGNORECASE)
     return polished
 
 
@@ -942,19 +972,88 @@ def _build_parser_review_payload() -> dict[str, Any]:
         return payload
 
 
+def _build_parser_governance_payload() -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "available": False,
+        "items": [],
+        "error": None,
+    }
+    try:
+        connection = _dashboard_memory_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                      u.UNKNOWN_SIGNAL_ID,
+                      u.PARSER_CONTEXT,
+                      u.REVIEW_STATUS,
+                      u.SOURCE_FILE_NAME,
+                      u.FIRST_SEEN_TIMESTAMP,
+                      u.LAST_SEEN_TIMESTAMP,
+                      (
+                        SELECT MAX(m.APPROVAL_STATUS)
+                          FROM AWR_PARSER_MAPPING_CANDIDATE m
+                         WHERE m.UNKNOWN_SIGNAL_ID = u.UNKNOWN_SIGNAL_ID
+                      ) AS APPROVAL_STATUS
+                    FROM AWR_UNKNOWN_SIGNAL_HISTORY u
+                    ORDER BY u.UNKNOWN_SIGNAL_ID ASC
+                    """
+                )
+                items = []
+                for row in cursor.fetchall():
+                    parser_context = _memory_json_context(row[1])
+                    items.append(
+                        {
+                            "unknown_signal_id": row[0],
+                            "parser_stage": parser_context.get("parser_stage"),
+                            "classification_hint": parser_context.get("classification_hint"),
+                            "review_status": row[2],
+                            "approval_status": row[6],
+                            "source_file": row[3] or parser_context.get("source_file_path"),
+                            "first_seen_timestamp": row[4],
+                            "last_seen_timestamp": row[5],
+                        }
+                    )
+                payload["items"] = items
+        finally:
+            connection.close()
+        payload["available"] = True
+        return payload
+    except Exception as exc:  # noqa: BLE001
+        payload["error"] = f"{type(exc).__name__}: {exc}"
+        return payload
+
+
 def _build_governance_visibility_payload(limit: int = 5) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "available": False,
+        "unknown_signal_summary": {
+            "TOTAL": 0,
+            "PENDING_REVIEW": 0,
+            "APPROVED": 0,
+            "REJECTED": 0,
+        },
         "approval_summary": {
             "PENDING": 0,
             "APPROVED": 0,
             "REJECTED": 0,
             "NEEDS_REVIEW": 0,
+            "NEEDS_REVISION": 0,
         },
         "artifact_summary": {
             "INACTIVE": 0,
             "READY": 0,
             "ACTIVE": 0,
+            "TOTAL": 0,
+            "MATERIALIZED": 0,
+        },
+        "workflow_summary": {
+            "NEW": 0,
+            "PENDING": 0,
+            "APPROVED": 0,
+            "REJECTED": 0,
+            "NEEDS_REVISION": 0,
         },
         "linkage": [],
         "error": None,
@@ -970,6 +1069,36 @@ def _build_governance_visibility_payload(limit: int = 5) -> dict[str, Any]:
                 )
                 cursor.execute(
                     """
+                    SELECT REVIEW_STATUS, COUNT(*)
+                      FROM AWR_UNKNOWN_SIGNAL_HISTORY
+                     GROUP BY REVIEW_STATUS
+                    """
+                )
+                for status, count in cursor.fetchall():
+                    status_key = _memory_status_key(status) or "NEW"
+                    row_count = int(count or 0)
+                    payload["unknown_signal_summary"]["TOTAL"] += row_count
+                    if status_key == "NEW":
+                        payload["unknown_signal_summary"]["PENDING_REVIEW"] += row_count
+                        payload["workflow_summary"]["NEW"] += row_count
+
+                cursor.execute(
+                    """
+                    SELECT APPROVAL_STATUS, COUNT(*)
+                      FROM AWR_PARSER_MAPPING_CANDIDATE
+                     GROUP BY APPROVAL_STATUS
+                    """
+                )
+                for status, count in cursor.fetchall():
+                    status_key = _memory_status_key(status)
+                    row_count = int(count or 0)
+                    if status_key == "APPROVED":
+                        payload["unknown_signal_summary"]["APPROVED"] += row_count
+                    elif status_key == "REJECTED":
+                        payload["unknown_signal_summary"]["REJECTED"] += row_count
+
+                cursor.execute(
+                    """
                     SELECT APPROVAL_STATUS, COUNT(*)
                       FROM AWR_KNOWLEDGE_UPDATE_REQUEST
                      GROUP BY APPROVAL_STATUS
@@ -977,8 +1106,13 @@ def _build_governance_visibility_payload(limit: int = 5) -> dict[str, Any]:
                 )
                 for status, count in cursor.fetchall():
                     status_key = _memory_status_key(status) or "PENDING"
+                    if status_key == "NEEDS_REVIEW":
+                        status_key = "NEEDS_REVISION"
+                    row_count = int(count or 0)
                     if status_key in payload["approval_summary"]:
-                        payload["approval_summary"][status_key] += int(count or 0)
+                        payload["approval_summary"][status_key] += row_count
+                    if status_key in payload["workflow_summary"]:
+                        payload["workflow_summary"][status_key] += row_count
 
                 cursor.execute(
                     """
@@ -989,8 +1123,21 @@ def _build_governance_visibility_payload(limit: int = 5) -> dict[str, Any]:
                 )
                 for status, count in cursor.fetchall():
                     status_key = _memory_status_key(status) or "INACTIVE"
+                    row_count = int(count or 0)
+                    payload["artifact_summary"]["TOTAL"] += row_count
+                    payload["artifact_summary"]["MATERIALIZED"] += row_count
                     if status_key in payload["artifact_summary"]:
-                        payload["artifact_summary"][status_key] += int(count or 0)
+                        payload["artifact_summary"][status_key] += row_count
+
+                payload["workflow_summary"]["PENDING"] = int(
+                    payload["approval_summary"].get("PENDING") or 0
+                )
+                payload["workflow_summary"]["APPROVED"] = int(
+                    payload["approval_summary"].get("APPROVED") or 0
+                ) + int(payload["unknown_signal_summary"].get("APPROVED") or 0)
+                payload["workflow_summary"]["REJECTED"] = int(
+                    payload["approval_summary"].get("REJECTED") or 0
+                ) + int(payload["unknown_signal_summary"].get("REJECTED") or 0)
 
                 cursor.execute(
                     f"""
@@ -1473,6 +1620,7 @@ def _render_home_system_ux_sections() -> str:
 def _render_screen_1_page(
     screen_model: dict[str, Any],
     parser_review_payload: dict[str, Any] | None = None,
+    parser_governance_payload: dict[str, Any] | None = None,
     report_data: dict[str, Any] | None = None,
 ) -> str:
     return f"""
@@ -1480,6 +1628,7 @@ def _render_screen_1_page(
       <!-- Screen 1 = intake / parse confidence / adaptation. -->
       {_render_ingestion_screen(screen_model, parser_review_payload, report_data)}
       {_render_parser_review_section(parser_review_payload or {})}
+      {_render_parser_governance_review_section(parser_governance_payload or {})}
     </div>
     """
 
@@ -2092,7 +2241,17 @@ def _screen2_compact_multi_snapshot_summary(summary: str) -> str:
     ]
     if not filtered:
         filtered = sentences
-    return " ".join(filtered[:3])
+    compact = " ".join(filtered[:3])
+    if (
+        re.search(r"\bTop SQL\b", summary, flags=re.IGNORECASE)
+        and re.search(r"\b(unavailable|not available|could not be evaluated|insufficient)\b", summary, flags=re.IGNORECASE)
+        and not re.search(r"\bTop SQL\b", compact, flags=re.IGNORECASE)
+    ):
+        compact = (
+            compact.rstrip()
+            + " Top SQL concentration could not be evaluated from available data."
+        )
+    return compact
 
 
 def _screen2_trend_items(summary: str, items: list[str]) -> list[str]:
@@ -2457,6 +2616,78 @@ def _screen2_clean_text(value: Any) -> str:
     text = text.replace(
         "CPU Insufficient data for a reliable conclusion",
         "CPU percentage is unavailable for this interval",
+    )
+    text = re.sub(
+        r"\bAcross the full window,\s*the workload remained primarily CPU-led,\s*with average CPU data was not sufficient[^.]*\.",
+        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance.",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bAcross the full window,\s*the workload remained primarily CPU-led,\s*with CPU evidence was not sufficiently populated to confirm CPU dominance[^.]*\.",
+        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance.",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bthe workload remained primarily CPU-led\b",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU evidence was Insufficient data for a reliable conclusion\b",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU evidence was unavailable across the populated window\b",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance across the populated window",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU evidence was not sufficiently populated\s+across the populated window\b",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance across the populated window",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU remained the primary workload driver\b",
+        "CPU dominance could not be confirmed from unavailable CPU evidence",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU remained the primary driver\b",
+        "CPU dominance could not be confirmed from unavailable CPU evidence",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bprimarily CPU-led\b",
+        "not sufficiently populated to confirm CPU dominance",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bpredominantly CPU-led\b",
+        "not sufficiently populated to confirm CPU dominance",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bTop SQL concentration[^.]*Insufficient data for a reliable conclusion[^.]*\.",
+        "Top SQL concentration could not be evaluated from available data.",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bCPU percentage is unavailable for this interval for this interval\b",
+        "CPU percentage is unavailable for this interval",
+        text,
+        flags=re.IGNORECASE,
     )
     return re.sub(r"\s+", " ", text).strip()
 
@@ -2927,29 +3158,100 @@ def _render_parser_review_list(rows: list[dict[str, Any]]) -> str:
     """
 
 
+def _render_parser_governance_review_section(payload: dict[str, Any]) -> str:
+    if not payload.get("available"):
+        body = _render_empty_item("No governance review records available.")
+    else:
+        items = list(payload.get("items") or [])
+        if not items:
+            body = _render_empty_item("No governance review records available.")
+        else:
+            body = _render_parser_governance_items(items)
+    return f"""
+      <section class="card secondary parser-governance-card">
+        <div class="section-kicker">READ-ONLY Governance Visibility</div>
+        <h2>Parser Governance Review</h2>
+        <p class="meta">
+          Governance review visibility is read-only in this phase. Approval workflows, parser governance actions, and controlled knowledge updates remain outside runtime analysis.
+        </p>
+        {body}
+      </section>
+    """
+
+
+def _render_parser_governance_items(items: list[dict[str, Any]]) -> str:
+    rendered_items = []
+    for item in items:
+        review_status = _governance_display_value(item.get("review_status"), "Unknown")
+        approval_status = _governance_display_value(item.get("approval_status"), "Not Available")
+        rendered_items.append(
+            f"""
+            <article class="parser-governance-row">
+              <div>{escape(_governance_display_value(item.get("parser_stage"), "Unknown"))}</div>
+              <div>{escape(_governance_display_value(item.get("classification_hint"), "Unknown"))}</div>
+              <div><span class="mini-pill {escape(_parser_review_status_class(review_status))}">{escape(review_status)}</span></div>
+              <div><span class="mini-pill {escape(_governance_approval_status_class(approval_status))}">{escape(approval_status)}</span></div>
+              <div>{escape(_governance_display_value(item.get("source_file"), "Not Available"))}</div>
+              <div>{escape(_governance_display_value(item.get("first_seen_timestamp"), "Not Available"))}</div>
+              <div>{escape(_governance_display_value(item.get("last_seen_timestamp"), "Not Available"))}</div>
+            </article>
+            """
+        )
+    return f"""
+        <div class="parser-governance-list">
+          <div class="parser-governance-row parser-governance-header">
+            <div>parser_stage</div>
+            <div>classification_hint</div>
+            <div>review_status</div>
+            <div>approval_status</div>
+            <div>source_file</div>
+            <div>first_seen_timestamp</div>
+            <div>last_seen_timestamp</div>
+          </div>
+          {"".join(rendered_items)}
+        </div>
+    """
+
+
 def _render_governance_visibility_section(payload: dict[str, Any]) -> str:
     if not payload.get("available"):
-        body = _render_empty_item("Data unavailable for this run.")
+        body = f"""
+        {_render_empty_item("No governance review records available.")}
+        {_render_empty_item("No knowledge artifacts available.")}
+        """
     else:
+        unknown_signal_summary = _to_dict(payload.get("unknown_signal_summary"))
         approval_summary = _to_dict(payload.get("approval_summary"))
         artifact_summary = _to_dict(payload.get("artifact_summary"))
+        workflow_summary = _to_dict(payload.get("workflow_summary"))
         body = f"""
         <div class="governance-section-block">
-          <h3>Approval State Summary</h3>
+          <h3>Unknown Signal Summary</h3>
           <div class="governance-summary-grid">
-            {_render_memory_count_card("Pending", approval_summary.get("PENDING"), _governance_approval_status_class("PENDING"))}
-            {_render_memory_count_card("Approved", approval_summary.get("APPROVED"), _governance_approval_status_class("APPROVED"))}
-            {_render_memory_count_card("Rejected", approval_summary.get("REJECTED"), _governance_approval_status_class("REJECTED"))}
-            {_render_memory_count_card("Needs Review", approval_summary.get("NEEDS_REVIEW"), _governance_approval_status_class("NEEDS_REVIEW"))}
+            {_render_memory_count_card("Total unknown signals observed", unknown_signal_summary.get("TOTAL"), "neutral")}
+            {_render_memory_count_card("Total pending review", unknown_signal_summary.get("PENDING_REVIEW"), _parser_review_status_class("NEW"))}
+            {_render_memory_count_card("Total approved", unknown_signal_summary.get("APPROVED"), _governance_approval_status_class("APPROVED"))}
+            {_render_memory_count_card("Total rejected", unknown_signal_summary.get("REJECTED"), _governance_approval_status_class("REJECTED"))}
           </div>
         </div>
         <div class="governance-section-block">
-          <h3>Knowledge Artifacts Summary</h3>
-          <p class="meta">Knowledge artifacts are materialized but not active in runtime analysis.</p>
-          <div class="governance-summary-grid governance-artifact-grid">
-            {_render_memory_count_card("Inactive", artifact_summary.get("INACTIVE"), _artifact_activation_status_class("INACTIVE"))}
-            {_render_memory_count_card("Ready", artifact_summary.get("READY"), _artifact_activation_status_class("READY"))}
-            {_render_memory_count_card("Active", artifact_summary.get("ACTIVE"), _artifact_activation_status_class("ACTIVE"))}
+          <h3>Knowledge Artifact Summary</h3>
+          <p class="meta">Knowledge artifacts are visible for governance transparency only and are not active in runtime analysis.</p>
+          <div class="governance-summary-grid">
+            {_render_memory_count_card("Total governance artifacts", _governance_artifact_total(payload), "neutral")}
+            {_render_memory_count_card("Total materialized artifacts", artifact_summary.get("MATERIALIZED"), "neutral")}
+            {_render_memory_count_card("Total inactive artifacts", artifact_summary.get("INACTIVE"), _artifact_activation_status_class("INACTIVE"))}
+            {_render_memory_count_card("Total pending requests", approval_summary.get("PENDING"), _governance_approval_status_class("PENDING"))}
+          </div>
+        </div>
+        <div class="governance-section-block">
+          <h3>Governance Workflow Status</h3>
+          <div class="governance-summary-grid workflow-summary-grid">
+            {_render_memory_count_card("NEW", workflow_summary.get("NEW"), _parser_review_status_class("NEW"))}
+            {_render_memory_count_card("PENDING", workflow_summary.get("PENDING"), _governance_approval_status_class("PENDING"))}
+            {_render_memory_count_card("APPROVED", workflow_summary.get("APPROVED"), _governance_approval_status_class("APPROVED"))}
+            {_render_memory_count_card("REJECTED", workflow_summary.get("REJECTED"), _governance_approval_status_class("REJECTED"))}
+            {_render_memory_count_card("NEEDS_REVISION", workflow_summary.get("NEEDS_REVISION"), _governance_approval_status_class("NEEDS_REVISION"))}
           </div>
         </div>
         <div class="governance-section-block">
@@ -2960,12 +3262,15 @@ def _render_governance_visibility_section(payload: dict[str, Any]) -> str:
     return f"""
       <section class="card secondary governance-visibility-card">
         <div class="section-kicker">Phase 6 Governance</div>
-        <h2>Governance & Knowledge Readiness</h2>
+        <h2>Governance & Knowledge Visibility</h2>
         <p class="meta">
           Governance records are read-only system memory. Approved requests and materialized artifacts do not change parser, scoring, recommendations, or runtime decisions until a future controlled activation phase.
           Interactive approval and governance workflows will be introduced in a future control-plane interface.
         </p>
         {body}
+        <p class="meta">
+          Governance memory, approvals, and knowledge artifacts are informational only and do not alter parser extraction, scoring, recommendations, or runtime decision behavior.
+        </p>
       </section>
     """
 
@@ -3048,7 +3353,7 @@ def _governance_approval_status_class(status: Any) -> str:
     normalized = _memory_status_key(status)
     if normalized == "APPROVED":
         return "success"
-    if normalized in {"PENDING", "NEEDS_REVIEW"}:
+    if normalized in {"PENDING", "NEEDS_REVIEW", "NEEDS_REVISION"}:
         return "warning"
     if normalized == "REJECTED":
         return "error"
@@ -3146,6 +3451,39 @@ def _memory_cell_text(value: Any) -> str:
             return "—"
     text = str(value).strip()
     return text if text else "—"
+
+
+def _governance_display_value(value: Any, fallback: str) -> str:
+    text = _memory_cell_text(value)
+    return fallback if text == "—" else text
+
+
+def _memory_json_context(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "read"):
+        try:
+            value = value.read()
+        except Exception:  # noqa: BLE001
+            return {}
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _governance_artifact_total(payload: dict[str, Any]) -> int:
+    approval_summary = _to_dict(payload.get("approval_summary"))
+    artifact_summary = _to_dict(payload.get("artifact_summary"))
+    request_total = sum(
+        int(approval_summary.get(status) or 0)
+        for status in ("PENDING", "APPROVED", "REJECTED", "NEEDS_REVIEW", "NEEDS_REVISION")
+    )
+    artifact_total = int(artifact_summary.get("TOTAL") or 0)
+    return request_total + artifact_total
 
 
 def _truncate_memory_text(value: Any, max_chars: int = 120) -> str:
@@ -5098,6 +5436,9 @@ def _shared_page_styles() -> str:
     .governance-artifact-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    .workflow-summary-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
     .memory-count-card {
       display: flex;
       align-items: center;
@@ -5117,6 +5458,7 @@ def _shared_page_styles() -> str:
       text-transform: uppercase;
     }
     .parser-review-list,
+    .parser-governance-list,
     .unknown-pattern-list,
     .governance-linkage-list {
       display: grid;
@@ -5147,6 +5489,7 @@ def _shared_page_styles() -> str:
       line-height: 1.35;
     }
     .parser-review-row,
+    .parser-governance-row,
     .unknown-pattern-row,
     .governance-linkage-row {
       display: grid;
@@ -5163,6 +5506,9 @@ def _shared_page_styles() -> str:
     .parser-review-row {
       grid-template-columns: 0.95fr 0.65fr 1.7fr 0.75fr 0.65fr 0.8fr 0.9fr 1.35fr;
     }
+    .parser-governance-row {
+      grid-template-columns: 0.9fr 1fr 0.8fr 0.9fr 1.2fr 1fr 1fr;
+    }
     .unknown-pattern-row {
       grid-template-columns: 1fr 1.7fr 0.65fr 1.25fr 1fr 0.8fr;
     }
@@ -5170,11 +5516,13 @@ def _shared_page_styles() -> str:
       grid-template-columns: 0.65fr 1fr 0.75fr 0.75fr 1fr 0.75fr 1.1fr 1fr;
     }
     .parser-review-row strong,
+    .parser-governance-row strong,
     .unknown-pattern-row strong,
     .governance-linkage-row strong {
       color: var(--text);
     }
     .parser-review-row span:not(.mini-pill),
+    .parser-governance-row span:not(.mini-pill),
     .unknown-pattern-row span:not(.mini-pill) {
       display: block;
       margin-top: 2px;
@@ -5194,6 +5542,7 @@ def _shared_page_styles() -> str:
       gap: 5px;
     }
     .parser-review-header,
+    .parser-governance-header,
     .unknown-pattern-header,
     .governance-linkage-header {
       background: transparent;
@@ -5926,15 +6275,18 @@ def _shared_page_styles() -> str:
       .parser-review-grid,
       .governance-summary-grid,
       .governance-artifact-grid,
+      .workflow-summary-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }
       .parser-review-header,
+      .parser-governance-header,
       .unknown-pattern-header,
       .governance-linkage-header {
         display: none;
       }
       .parser-review-row,
+      .parser-governance-row,
       .unknown-pattern-row,
       .governance-linkage-row {
         grid-template-columns: 1fr;
@@ -11051,23 +11403,23 @@ def _normalize_narrative_for_display(
         replacements = (
             (
                 r"with average CPU at (?:Limited signal available|Insufficient data for a reliable conclusion), average User I/O at ([0-9.]+)%, and Top SQL activity was not consistently present in this window",
-                r"with User I/O averaging \1% during the same period, while CPU history remained visible but uneven and Top SQL history was not available for this window",
+                r"with User I/O averaging \1% during the same period, while CPU evidence was not sufficiently populated to confirm CPU dominance and Top SQL concentration could not be evaluated from available data",
             ),
             (
                 r"with average CPU at (?:Limited signal available|Insufficient data for a reliable conclusion), average User I/O at ([0-9.]+)%, and Top SQL concentration(?: \(top 3 share\))? at (?:Limited signal available|Insufficient data for a reliable conclusion)",
-                r"with User I/O averaging \1% during the same period, while CPU history remained visible but uneven and Top SQL history was not available for this window",
+                r"with User I/O averaging \1% during the same period, while CPU evidence was not sufficiently populated to confirm CPU dominance and Top SQL concentration could not be evaluated from available data",
             ),
             (
                 r"with average CPU at Unavailable, average User I/O at ([0-9.]+)%, and average Top SQL concentration(?: \(top 3 share\))? at Unavailable",
-                r"with User I/O averaging \1% while CPU history remained visible but uneven and Top SQL history was not available for this window",
+                r"with User I/O averaging \1% while CPU evidence was not sufficiently populated to confirm CPU dominance and Top SQL concentration could not be evaluated from available data",
             ),
             (
                 r"with multi-snapshot summary values of average CPU Unavailable, average User I/O ([0-9.]+)%, and average Top SQL concentration(?: \(top 3 share\))? Unavailable",
-                r"with User I/O averaging \1% while CPU history remained visible but uneven and Top SQL history was not available for this window",
+                r"with User I/O averaging \1% while CPU evidence was not sufficiently populated to confirm CPU dominance and Top SQL concentration could not be evaluated from available data",
             ),
             (
                 r"with standalone CPU history was not reliably observed, average User I/O at ([0-9.]+)%, and average Top SQL concentration(?: \(top 3 share\))? at (?:Limited signal available|Insufficient data for a reliable conclusion)",
-                r"with User I/O averaging \1% while CPU history remained visible but uneven and Top SQL history was not available for this window",
+                r"with User I/O averaging \1% while CPU evidence was not sufficiently populated to confirm CPU dominance and Top SQL concentration could not be evaluated from available data",
             ),
             (
                 r"with standalone CPU history was not reliably observed, average User I/O at ([0-9.]+)%, and Top SQL history was not reliably observed in this window",
@@ -11103,7 +11455,7 @@ def _normalize_narrative_for_display(
             ),
             (
                 r"CPU: (?:insufficient signal|Limited signal available) DB time",
-                "CPU: primary workload driver",
+                "CPU evidence was not sufficiently populated to confirm CPU dominance",
             ),
             (
                 r"CPU: Insufficient data for a reliable conclusion DB time",
@@ -11111,7 +11463,7 @@ def _normalize_narrative_for_display(
             ),
             (
                 r"average CPU (?:at )?(?:insufficient signal|Limited signal available)",
-                "CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim",
+                "CPU evidence was not sufficiently populated to confirm CPU dominance across the full window",
             ),
             (
                 r"average CPU display score [0-9.]+",
@@ -11147,15 +11499,15 @@ def _normalize_narrative_for_display(
             ),
             (
                 r"CPU at Unavailable",
-                "CPU remained the primary workload driver",
+                "CPU evidence was unavailable",
             ),
             (
                 r"DB CPU at Unavailable of DB time",
-                "DB CPU was directionally consistent with the CPU-led posture",
+                "DB CPU evidence was unavailable for this interval",
             ),
             (
                 r"CPU remained the primary driver in this interval at Unavailable of DB time",
-                "CPU remained the primary driver in this interval",
+                "CPU percentage was unavailable in this interval, so CPU dominance could not be confirmed from that metric",
             ),
         )
         for pattern, replacement in replacements:
@@ -11312,7 +11664,7 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"\bCPU: Insufficient data for a reliable conclusion DB time\b",
-        "CPU remained historically visible, though continuity across the full window was too mixed for a simple stability claim.",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance across the full window.",
         text,
         flags=re.IGNORECASE,
     )
@@ -11330,19 +11682,19 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"CPU remains the dominant constraint in the selected scope\. Observed evidence remains directionally consistent with the selected diagnostic posture\.",
-        "CPU remains the dominant constraint in the selected scope. The observed pattern is most consistent with a compute-bound workload.",
+        "CPU is the selected diagnostic domain, but CPU dominance is only asserted when populated CPU metrics support it.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"21 snapshots were analyzed in chronological order\. Across the full window, the workload remained primarily CPU-led, with CPU as the primary workload driver and User I/O averaging ([0-9.]+)%\. Top SQL history was not available for this window\. The same broad workload shape persisted throughout the series rather than rotating between unrelated bottlenecks\. The worst pressure interval was ([0-9:\-\s>]+), while the latest interval was ([0-9:\-\s>]+)\. 11 anomaly/event window\(s\) were detected, led by User I/O in ([0-9:\-\s>]+)\. User I/O spiked intermittently and then moderated\. Commit latency remained broadly stable where data is available\. Concurrency signals are insufficient to establish a meaningful trend\. Top SQL history is not available for this window\. The broader picture remains more important than any single interval: the latest snapshot should be read as confirmation, moderation, or departure from that pattern rather than as the full story by itself\. Detailed latest-interval metrics are shown separately in the Latest Snapshot Assessment\.",
-        r"21 snapshots were analyzed in chronological order. The workload remained primarily CPU-led across the window, with User I/O averaging \1%. The same workload shape persisted rather than rotating between unrelated bottlenecks. The worst interval occurred at \2, while the latest interval reflects moderation rather than deviation from that pattern. 11 anomaly windows were detected, primarily driven by User I/O spikes that later moderated. Commit latency remained broadly steady, while concurrency data was insufficient to establish a material trend. The broader pattern is more representative than any single interval. The latest snapshot should be interpreted as confirmation or moderation of that pattern.",
+        r"21 snapshots were analyzed in chronological order. CPU evidence was not sufficiently populated to confirm CPU dominance across the window, while User I/O averaged \1%. The same workload shape persisted rather than rotating between unrelated bottlenecks. The worst interval occurred at \2, while the latest interval reflects moderation rather than deviation from that pattern. 11 anomaly windows were detected, primarily driven by User I/O spikes that later moderated. Commit latency remained broadly steady, while concurrency data was insufficient to establish a material trend. The broader pattern is more representative than any single interval. The latest snapshot should be interpreted as confirmation or moderation of that pattern.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"Latest snapshot \(([^)]+)\) metrics: CPU remained the primary workload driver, User I/O ([0-9.]+)%, commit ([0-9.]+)%, concurrency data was insufficient for a reliable conclusion, and Top SQL history is not available for this window\. CPU remained the primary driver in this interval\. User I/O remained visible at \2%, keeping access-path efficiency in scope for this interval\. Commit pressure remained visible at \3%, which keeps transaction behavior in scope for the current interval\.",
-        r"Latest snapshot (\1): CPU remained the primary workload driver. User I/O registered at \2%, and commit at \3%. Concurrency data was insufficient for a reliable conclusion. User I/O and commit signals remain present but secondary, keeping access-path efficiency and transaction behavior in scope without displacing CPU as the primary driver.",
+        r"Latest snapshot (\1): CPU percentage was unavailable, so CPU dominance could not be confirmed from that metric. User I/O registered at \2%, and commit at \3%. Concurrency data was insufficient for a reliable conclusion. User I/O and commit signals remain present, keeping access-path efficiency and transaction behavior in scope.",
         text,
         flags=re.IGNORECASE,
     )
@@ -11354,31 +11706,31 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with Average CPU could not be established reliably across the full historical window, average User I/O at ([0-9.]+)%, and Top SQL activity was not consistently present in this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. CPU remained visible across the full window, though the pattern was too mixed for a simple continuity claim. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with Average CPU could not be established reliably across the full historical window, average User I/O at ([0-9.]+)%, and Top SQL history was not available for this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. CPU remained visible across the full window, though the pattern was too mixed for a simple continuity claim. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim, average User I/O at ([0-9.]+)%, and Top SQL activity was not consistently present in this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. CPU remained visible across the full window, though the pattern was too mixed for a simple continuity claim. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"21 snapshots were analyzed in chronological order\. Across the full window, the workload remained primarily CPU-led, with CPU as the primary workload driver and User I/O averaging ([0-9.]+)%\. Top SQL history was not available for this window\. The same broad workload shape persisted throughout the series rather than rotating between unrelated bottlenecks\. The worst pressure interval was ([0-9:\-\s>]+), while the latest interval was ([0-9:\-\s>]+)\. 11 anomaly/event window\(s\) were detected, led by User I/O in ([0-9:\-\s>]+)\. User I/O spiked intermittently and then moderated\. Commit latency remained broadly stable where data is available\. Concurrency signals are insufficient to establish a meaningful trend\. Top SQL history is not available for this window\. The broader picture remains more important than any single interval: the latest snapshot should be read as confirmation, moderation, or departure from that pattern rather than as the full story by itself\.(?: Detailed latest-interval metrics are shown separately in the Latest Snapshot Assessment\.)?",
-        r"21 snapshots were analyzed in chronological order. The workload remained primarily CPU-led across the window, with User I/O averaging \1%. The same workload shape persisted rather than rotating between unrelated bottlenecks. The worst interval occurred at \2, while the latest interval reflects moderation rather than deviation from that pattern. 11 anomaly windows were detected, primarily driven by User I/O spikes that later moderated. Commit latency remained broadly steady, while concurrency data was insufficient to establish a material trend. The broader pattern is more representative than any single interval. The latest snapshot should be interpreted as confirmation or moderation of that pattern.",
+        r"21 snapshots were analyzed in chronological order. CPU evidence was not sufficiently populated to confirm CPU dominance across the window, while User I/O averaged \1%. The same workload shape persisted rather than rotating between unrelated bottlenecks. The worst interval occurred at \2, while the latest interval reflects moderation rather than deviation from that pattern. 11 anomaly windows were detected, primarily driven by User I/O spikes that later moderated. Commit latency remained broadly steady, while concurrency data was insufficient to establish a material trend. The broader pattern is more representative than any single interval. The latest snapshot should be interpreted as confirmation or moderation of that pattern.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"Latest snapshot \(([^)]+)\) metrics: CPU remained the primary workload driver, User I/O ([0-9.]+)%, commit ([0-9.]+)%, concurrency data was insufficient for a reliable conclusion, and Top SQL history is not available for this window\. CPU remained the primary driver in this interval\. User I/O remained visible at \2%, keeping access-path efficiency in scope for this interval\. Commit pressure remained visible at \3%, which keeps transaction behavior in scope for the current interval\.",
-        r"Latest snapshot (\1): CPU remained the primary workload driver. User I/O registered at \2%, and commit at \3%. Concurrency data was insufficient for a reliable conclusion. User I/O and commit signals remain present but secondary, keeping access-path efficiency and transaction behavior in scope without displacing CPU as the primary driver.",
+        r"Latest snapshot (\1): CPU percentage was unavailable, so CPU dominance could not be confirmed from that metric. User I/O registered at \2%, and commit at \3%. Concurrency data was insufficient for a reliable conclusion. User I/O and commit signals remain present, keeping access-path efficiency and transaction behavior in scope.",
         text,
         flags=re.IGNORECASE,
     )
@@ -11390,7 +11742,7 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim, average User I/O at ([0-9.]+)%, and Top SQL history was not available for this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. CPU remained visible across the full window, though the pattern was too mixed for a simple continuity claim. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
@@ -11402,25 +11754,25 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"\baverage CPU at Insufficient data for a reliable conclusion\b",
-        "CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim",
+        "CPU evidence was not sufficiently populated to confirm CPU dominance across the full window",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"with CPU remaining the primary workload driver, User I/O averaged ([0-9.]+)%, and Top SQL history is not available for this window",
-        r"with CPU as the primary workload driver and User I/O averaging \1%",
+        r"with CPU evidence not sufficiently populated to confirm CPU dominance and User I/O averaging \1%",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"with CPU remaining the primary workload driver, average User I/O ([0-9.]+)%, and Top SQL history is not available for this window",
-        r"with CPU as the primary workload driver and User I/O averaging \1%",
+        r"with CPU evidence not sufficiently populated to confirm CPU dominance and User I/O averaging \1%",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"metrics: CPU remained the primary workload driver, User I/O ([0-9.]+)%, commit ([0-9.]+)%, concurrency Insufficient data for a reliable conclusion, and Top SQL history is not available for this window",
-        r"metrics: CPU remained the primary workload driver, User I/O \1%, commit \2%, concurrency data was insufficient for a reliable conclusion",
+        r"metrics: CPU percentage was unavailable, User I/O \1%, commit \2%, concurrency data was insufficient for a reliable conclusion",
         text,
         flags=re.IGNORECASE,
     )
@@ -11783,25 +12135,25 @@ def _render_executive_summary(
     )
     rationale = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with Average CPU could not be established reliably across the full historical window, average User I/O at ([0-9.]+)%, and Top SQL activity was not consistently present in this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         rationale,
         flags=re.IGNORECASE,
     )
     rationale = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with Average CPU could not be established reliably across the full historical window, average User I/O at ([0-9.]+)%, and Top SQL history was not available for this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         rationale,
         flags=re.IGNORECASE,
     )
     rationale = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim, average User I/O at ([0-9.]+)%, and Top SQL activity was not consistently present in this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         rationale,
         flags=re.IGNORECASE,
     )
     rationale = re.sub(
         r"Across the full 21-snapshot window, the workload remained predominantly CPU-led, with CPU remained historically visible across the full window, but the pattern was too mixed for a simple continuity claim, average User I/O at ([0-9.]+)%, and Top SQL history was not available for this window\.",
-        r"Across the full 21-snapshot window, the workload remained predominantly CPU-led. User I/O averaged \1% during the same period.",
+        r"Across the full 21-snapshot window, CPU evidence was not sufficiently populated to confirm CPU dominance. User I/O averaged \1% during the same period, while Top SQL concentration could not be evaluated from available data.",
         rationale,
         flags=re.IGNORECASE,
     )

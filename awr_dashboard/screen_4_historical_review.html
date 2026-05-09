@@ -605,6 +605,9 @@
     .governance-artifact-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    .workflow-summary-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
     .memory-count-card {
       display: flex;
       align-items: center;
@@ -624,6 +627,7 @@
       text-transform: uppercase;
     }
     .parser-review-list,
+    .parser-governance-list,
     .unknown-pattern-list,
     .governance-linkage-list {
       display: grid;
@@ -654,6 +658,7 @@
       line-height: 1.35;
     }
     .parser-review-row,
+    .parser-governance-row,
     .unknown-pattern-row,
     .governance-linkage-row {
       display: grid;
@@ -670,6 +675,9 @@
     .parser-review-row {
       grid-template-columns: 0.95fr 0.65fr 1.7fr 0.75fr 0.65fr 0.8fr 0.9fr 1.35fr;
     }
+    .parser-governance-row {
+      grid-template-columns: 0.9fr 1fr 0.8fr 0.9fr 1.2fr 1fr 1fr;
+    }
     .unknown-pattern-row {
       grid-template-columns: 1fr 1.7fr 0.65fr 1.25fr 1fr 0.8fr;
     }
@@ -677,11 +685,13 @@
       grid-template-columns: 0.65fr 1fr 0.75fr 0.75fr 1fr 0.75fr 1.1fr 1fr;
     }
     .parser-review-row strong,
+    .parser-governance-row strong,
     .unknown-pattern-row strong,
     .governance-linkage-row strong {
       color: var(--text);
     }
     .parser-review-row span:not(.mini-pill),
+    .parser-governance-row span:not(.mini-pill),
     .unknown-pattern-row span:not(.mini-pill) {
       display: block;
       margin-top: 2px;
@@ -701,6 +711,7 @@
       gap: 5px;
     }
     .parser-review-header,
+    .parser-governance-header,
     .unknown-pattern-header,
     .governance-linkage-header {
       background: transparent;
@@ -1433,15 +1444,18 @@
       .parser-review-grid,
       .governance-summary-grid,
       .governance-artifact-grid,
+      .workflow-summary-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }
       .parser-review-header,
+      .parser-governance-header,
       .unknown-pattern-header,
       .governance-linkage-header {
         display: none;
       }
       .parser-review-row,
+      .parser-governance-row,
       .unknown-pattern-row,
       .governance-linkage-row {
         grid-template-columns: 1fr;
@@ -1509,7 +1523,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 9, 2026, 12:35 PM</div>
+        <div class="hero-meta">Generated: May 9, 2026, 1:56 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link active" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1581,7 +1595,7 @@
             
             <div class="info-box">
               <strong>Historical Stability</strong>
-              <div>CPU remained historically visible, though continuity across the full window was too mixed for a simple stability claim.</div>
+              <div>CPU evidence was not sufficiently populated to confirm CPU dominance across the window.</div>
             </div>
             
             <div class="info-box">
@@ -2033,7 +2047,7 @@
           <div class="meta">Observed trends across the window include:</div>
           
       <article class="item">
-        
+        <p>CPU evidence was not sufficiently populated to confirm CPU dominance across the window.</p>
         <ul><li>User I/O spiked intermittently and then moderated.</li><li>Available populated intervals suggest commit latency spiked and then moderated.</li><li>Concurrency signals are insufficient to establish a meaningful trend.</li><li>Top SQL history is not available for this window.</li><li>Sparse populated intervals suggest cluster waits eased.</li><li>Sparse populated intervals suggest combined GC wait pressure, defined as GC Current + GC CR, eased.</li></ul>
       </article>
     
@@ -2068,7 +2082,7 @@
             
             <div class="info-box">
               <strong>Worst Interval</strong>
-              <div>Worst interval (2026-04-03 00:00 -&gt; 01:00) metrics: CPU data was not sufficient in this interval to establish a reliable conclusion</div>
+              <div>Worst interval (2026-04-03 00:00 -&gt; 01:00) populated metrics: User I/O.</div>
             </div>
             
             <div class="info-box">
@@ -2110,7 +2124,7 @@
         
         <section class="evidence-pane screen4-interpretation-pane">
           <h3>Historical Interpretation</h3>
-          <div class="supportive-panel screen4-interpretation-block"><div class="meta">Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.</div><div class="narrative">CPU and workload distribution evidence remain among the strongest historical signals, supporting a compute-bound interpretation over I/O-, memory-, or topology-led alternatives. The pattern is directionally consistent, but intermittent rather than continuous.</div></div>
+          <div class="supportive-panel screen4-interpretation-block"><div class="meta">Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.</div><div class="narrative">CPU evidence was reviewed for the historical story, but compute-bound interpretation is not asserted unless populated CPU evidence supports it. The pattern is directionally consistent, but intermittent rather than continuous.</div></div>
         </section>
         
       </div>
@@ -2130,7 +2144,7 @@
     </div>
     
 
-    <div class="footer">Generated at May 9, 2026, 12:35 PM</div>
+    <div class="footer">Generated at May 9, 2026, 1:56 PM</div>
   </div>
 
   <script id="chart-payload" type="application/json">

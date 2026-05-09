@@ -3,6 +3,7 @@ import json
 import re
 import html
 import hashlib
+import math
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -163,6 +164,26 @@ def _format_metric(value: float | None, suffix: str = "") -> str:
     else:
         formatted = f"{value:.2f}".rstrip("0").rstrip(".")
     return f"{formatted}{suffix}"
+
+
+def _is_populated_metric(value: object) -> bool:
+    numeric_value = _safe_float(value)
+    return numeric_value is not None and math.isfinite(numeric_value)
+
+
+def _metric_available_for_claim(value: object) -> bool:
+    return _is_populated_metric(value)
+
+
+def _format_metric_evidence(value: object, suffix: str = "") -> str | None:
+    numeric_value = _safe_float(value)
+    if numeric_value is None or not math.isfinite(numeric_value):
+        return None
+    return _format_metric(numeric_value, suffix)
+
+
+def _metric_unavailable_sentence(metric_label: str, context: str) -> str:
+    return f"{metric_label} could not be evaluated from available data {context}."
 
 
 def _format_generated_at_local() -> str:
@@ -918,39 +939,48 @@ def _build_summary_key_signals(
     elif topology.get("interconnect_stress_flag"):
         signals.append("Operational state: Interconnect Stress")
 
-    signals.append(f"CPU: {_format_metric(metrics.get('cpu_pct'), '%')} DB time")
+    cpu_text = _format_metric_evidence(metrics.get("cpu_pct"), "%")
     signals.append(
-        "Top SQL concentration (top 3 share): "
-        + _format_metric(metrics.get("top_sql_concentration"), "%")
+        f"CPU: {cpu_text} DB time"
+        if cpu_text
+        else "CPU evidence: unavailable for this interval"
     )
-    signals.append(f"User I/O: {_format_metric(metrics.get('user_io_pct'), '%')}")
+    top_sql_text = _format_metric_evidence(metrics.get("top_sql_concentration"), "%")
+    signals.append(
+        "Top SQL concentration (top 3 share): " + top_sql_text
+        if top_sql_text
+        else "Top SQL concentration: could not be evaluated from available data"
+    )
+    io_text = _format_metric_evidence(metrics.get("user_io_pct"), "%")
+    if io_text:
+        signals.append(f"User I/O: {io_text}")
 
-    if metrics.get("cluster_wait_pct_db_time") is not None:
+    if _is_populated_metric(metrics.get("cluster_wait_pct_db_time")):
         signals.append(
             "Cluster waits: "
-            + _format_metric(metrics.get("cluster_wait_pct_db_time"), "%")
+            + str(_format_metric_evidence(metrics.get("cluster_wait_pct_db_time"), "%"))
             + " DB time"
         )
-    elif metrics.get("gc_total_wait_pct_db_time") is not None:
+    elif _is_populated_metric(metrics.get("gc_total_wait_pct_db_time")):
         signals.append(
             "Combined GC current + GC CR: "
-            + _format_metric(metrics.get("gc_total_wait_pct_db_time"), "%")
+            + str(_format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%"))
             + " DB time"
         )
 
-    if metrics.get("transport_lag_sec") is not None:
+    if _is_populated_metric(metrics.get("transport_lag_sec")):
         signals.append(
             "Transport lag: " + _format_metric(metrics.get("transport_lag_sec"), "s")
         )
-    elif metrics.get("apply_lag_sec") is not None:
+    elif _is_populated_metric(metrics.get("apply_lag_sec")):
         signals.append(
             "Apply lag: " + _format_metric(metrics.get("apply_lag_sec"), "s")
         )
 
-    if metrics.get("exa_cell_io_pct_db_time") is not None:
+    if _is_populated_metric(metrics.get("exa_cell_io_pct_db_time")):
         signals.append(
             "Exadata cell waits: "
-            + _format_metric(metrics.get("exa_cell_io_pct_db_time"), "%")
+            + str(_format_metric_evidence(metrics.get("exa_cell_io_pct_db_time"), "%"))
             + " DB time"
         )
     return signals[:6]
@@ -1907,51 +1937,81 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
         str(issue.get("issue_type") or "")
         for issue in _get_compatibility_issues(context)
     }
-    statements = [
-        (
-            f"CPU remained the primary driver in this interval at "
-            f"{_format_metric(metrics.get('cpu_pct'), '%')} of DB time."
+    statements: list[str] = []
+    cpu_text = _format_metric_evidence(metrics.get("cpu_pct"), "%")
+    if "cpu_pressure" in issue_types and cpu_text:
+        statements.append(
+            f"CPU remained a populated driver in this interval at {cpu_text} of DB time."
         )
-    ]
+    elif not cpu_text:
+        statements.append(
+            "CPU percentage was unavailable in the latest interval, so CPU dominance cannot be confirmed from that metric alone."
+        )
     if "sql_concentration" in issue_types:
-        statements.append(
-            (
-                "SQL concentration remained material, indicating that a small "
-                "set of statements still accounted for a disproportionate share "
-                "of work in the current interval."
+        sql_text = _format_metric_evidence(metrics.get("top_sql_concentration"), "%")
+        if sql_text:
+            statements.append(
+                (
+                    f"SQL concentration remained material at {sql_text}, indicating that a small "
+                    "set of statements still accounted for a disproportionate share "
+                    "of work in the current interval."
+                )
             )
-        )
+        else:
+            statements.append(
+                "Top SQL concentration could not be evaluated from available data in the latest interval."
+            )
     if "io_pressure" in issue_types:
-        statements.append(
-            (
-                f"User I/O remained visible at {_format_metric(metrics.get('user_io_pct'), '%')}, "
-                "keeping access-path efficiency in scope for this interval."
+        io_text = _format_metric_evidence(metrics.get("user_io_pct"), "%")
+        if io_text:
+            statements.append(
+                (
+                    f"User I/O remained visible at {io_text}, "
+                    "keeping access-path efficiency in scope for this interval."
+                )
             )
-        )
+        else:
+            statements.append("User I/O evidence was unavailable for this interval.")
     if "commit_pressure" in issue_types:
-        statements.append(
-            (
-                f"Commit pressure remained visible at {_format_metric(metrics.get('commit_pct'), '%')}, "
-                "which keeps transaction behavior in scope for the current interval."
+        commit_text = _format_metric_evidence(metrics.get("commit_pct"), "%")
+        if commit_text:
+            statements.append(
+                (
+                    f"Commit pressure remained visible at {commit_text}, "
+                    "which keeps transaction behavior in scope for the current interval."
+                )
             )
-        )
+        else:
+            statements.append("Commit percentage was unavailable for this interval.")
     if "concurrency_pressure" in issue_types:
-        statements.append(
-            (
-                f"Concurrency contributed {_format_metric(metrics.get('concurrency_pct'), '%')} "
-                "of DB time in this interval, but it was not the leading driver."
+        concurrency_text = _format_metric_evidence(metrics.get("concurrency_pct"), "%")
+        if concurrency_text:
+            statements.append(
+                (
+                    f"Concurrency contributed {concurrency_text} "
+                    "of DB time in this interval, but it was not the leading driver."
+                )
             )
-        )
+        else:
+            statements.append("Concurrency percentage was unavailable for this interval.")
     if topology.get("is_rac"):
-        statements.append(
-            (
-                "RAC coordination is also part of the current-interval "
-                "picture, with cluster waits at "
-                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} "
-                "and combined GC current + GC CR wait pressure at "
-                f"{_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')}."
+        rac_parts = []
+        cluster_text = _format_metric_evidence(metrics.get("cluster_wait_pct_db_time"), "%")
+        gc_text = _format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%")
+        if cluster_text:
+            rac_parts.append(f"cluster waits at {cluster_text}")
+        if gc_text:
+            rac_parts.append(f"combined GC current + GC CR wait pressure at {gc_text}")
+        if rac_parts:
+            statements.append(
+                "RAC coordination is also part of the current-interval picture, with "
+                + " and ".join(rac_parts)
+                + "."
             )
-        )
+        else:
+            statements.append(
+                "RAC coordination evidence is present, but populated RAC wait percentages were unavailable in this interval."
+            )
     if (
         topology.get("is_dataguard")
         or metrics.get("transport_lag_sec") is not None
@@ -1965,13 +2025,28 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
             )
         )
     if topology.get("is_exadata"):
-        statements.append(
-            (
-                "Exadata-specific execution paths are present in the current interval, with cell-related waits at "
-                f"{_format_metric(metrics.get('exa_cell_io_pct_db_time'), '%')} and "
-                f"offload efficiency at {_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}."
-            )
+        exadata_parts = []
+        cell_text = _format_metric_evidence(metrics.get("exa_cell_io_pct_db_time"), "%")
+        offload_value = metrics.get("exa_offload_efficiency")
+        offload_text = (
+            _format_metric_evidence(float(offload_value) * 100.0, "%")
+            if _is_populated_metric(offload_value)
+            else None
         )
+        if cell_text:
+            exadata_parts.append(f"cell-related waits at {cell_text}")
+        if offload_text:
+            exadata_parts.append(f"offload efficiency at {offload_text}")
+        if exadata_parts:
+            statements.append(
+                "Exadata-specific execution paths are present in the current interval, with "
+                + " and ".join(exadata_parts)
+                + "."
+            )
+        else:
+            statements.append(
+                "Exadata-specific execution paths are present, but populated cell-wait and offload metrics were unavailable in this interval."
+            )
     if topology.get("operational_event_class") not in {None, "NONE"}:
         statements.append(
             "This interval also sits inside "
@@ -2265,15 +2340,43 @@ def _snapshot_score(context: dict[str, Any]) -> float:
 
 def _build_latest_snapshot_summary(context: dict[str, Any]) -> str:
     metrics = context["metrics"]
-    latest_metrics_sentence = (
-        f"Latest snapshot ({context['snapshot_label']}) metrics: "
-        f"CPU {_format_metric(metrics.get('cpu_pct'), '%')}, "
-        f"User I/O {_format_metric(metrics.get('user_io_pct'), '%')}, "
-        f"commit {_format_metric(metrics.get('commit_pct'), '%')}, "
-        f"concurrency {_format_metric(metrics.get('concurrency_pct'), '%')}, and "
-        "Top SQL concentration (top 3 share) "
-        f"{_format_metric(metrics.get('top_sql_concentration'), '%')}."
+    populated_metrics = []
+    unavailable_notes = []
+    metric_definitions = (
+        ("CPU", "cpu_pct", "%", "CPU evidence was unavailable for this interval."),
+        ("User I/O", "user_io_pct", "%", "User I/O evidence was unavailable for this interval."),
+        ("commit", "commit_pct", "%", "Commit percentage was unavailable for this interval."),
+        (
+            "concurrency",
+            "concurrency_pct",
+            "%",
+            "Concurrency percentage was unavailable for this interval.",
+        ),
+        (
+            "Top SQL concentration (top 3 share)",
+            "top_sql_concentration",
+            "%",
+            "Top SQL concentration could not be evaluated from available data.",
+        ),
     )
+    for label, key, suffix, unavailable_text in metric_definitions:
+        metric_text = _format_metric_evidence(metrics.get(key), suffix)
+        if metric_text:
+            populated_metrics.append(f"{label} {metric_text}")
+        else:
+            unavailable_notes.append(unavailable_text)
+    if populated_metrics:
+        latest_metrics_sentence = (
+            f"Latest snapshot ({context['snapshot_label']}) populated metrics: "
+            + ", ".join(populated_metrics)
+            + "."
+        )
+    else:
+        latest_metrics_sentence = (
+            f"Latest snapshot ({context['snapshot_label']}) did not include populated CPU, wait, concurrency, or Top SQL concentration percentages."
+        )
+    if unavailable_notes:
+        latest_metrics_sentence += " " + " ".join(unavailable_notes)
     interpretation = _build_latest_interval_interpretation(context)
     return f"{latest_metrics_sentence} {interpretation}"
 
@@ -2304,20 +2407,44 @@ def _build_multi_snapshot_summary(
         )
     )
 
+    avg_cpu_text = _format_metric_evidence(_average_metric(time_series["cpu_trend"]), "%")
+    avg_io_text = _format_metric_evidence(_average_metric(time_series["io_trend"]), "%")
+    avg_sql_text = _format_metric_evidence(
+        _average_metric(time_series["sql_concentration_trend"]),
+        "%",
+    )
+    populated_summary = []
+    unavailable_summary = []
+    if avg_cpu_text:
+        populated_summary.append(f"average CPU {avg_cpu_text}")
+    else:
+        unavailable_summary.append("CPU evidence was unavailable across the populated window")
+    if avg_io_text:
+        populated_summary.append(f"average User I/O {avg_io_text}")
+    else:
+        unavailable_summary.append("User I/O evidence was unavailable across the populated window")
+    if avg_sql_text:
+        populated_summary.append(f"average Top SQL concentration (top 3 share) {avg_sql_text}")
+    else:
+        unavailable_summary.append(
+            "Top SQL concentration could not be evaluated from available data"
+        )
+    if populated_summary:
+        window_summary = (
+            "Across the full window, populated summary values included "
+            + _join_readable_labels(populated_summary)
+            + ". "
+        )
+    else:
+        window_summary = (
+            "Across the full window, CPU, User I/O, and Top SQL concentration metrics were not populated. "
+        )
+    window_summary += " ".join(sentence + "." for sentence in unavailable_summary)
+    window_summary += " The conclusion relies on other populated signals where available."
     paragraph_one = " ".join(
         [
             f"{len(snapshot_contexts)} snapshots were analyzed in chronological order.",
-            (
-                f"Across the full window, the workload remained primarily CPU-led, "
-                "with multi-snapshot summary values of average CPU "
-                f"{_format_metric(_average_metric(time_series['cpu_trend']), '%')}, "
-                "average User I/O "
-                f"{_format_metric(_average_metric(time_series['io_trend']), '%')}, "
-                "and average Top SQL concentration (top 3 share) "
-                f"{_format_metric(_average_metric(time_series['sql_concentration_trend']), '%')}. "
-                "The same broad workload "
-                "shape persisted throughout the series rather than rotating between unrelated bottlenecks."
-            ),
+            window_summary,
         ]
     )
     paragraph_two = " ".join(
@@ -2360,19 +2487,41 @@ def _build_multi_snapshot_executive_summary(
     snapshot_count = len(multi_snapshot_analysis["ordered_snapshots"])
     posture = multi_snapshot_analysis["decision_posture"]
     time_series = multi_snapshot_analysis["time_series"]
-    latest_cpu = _latest_non_null(time_series["cpu_trend"])
-    latest_io = _latest_non_null(time_series["io_trend"])
-    latest_sql = _latest_non_null(time_series["sql_concentration_trend"])
+    latest_snapshot = multi_snapshot_analysis["latest_snapshot"]
+    latest_metrics = latest_snapshot.get("metrics") or {}
+    latest_cpu = latest_metrics.get("cpu_pct")
+    latest_io = latest_metrics.get("user_io_pct")
+    latest_sql = latest_metrics.get("top_sql_concentration")
     if snapshot_count < 2:
+        populated = []
+        unavailable = []
+        cpu_text = _format_metric_evidence(latest_cpu, "%")
+        io_text = _format_metric_evidence(latest_io, "%")
+        sql_text = _format_metric_evidence(latest_sql, "%")
+        if cpu_text:
+            populated.append(f"CPU {cpu_text}")
+        else:
+            unavailable.append("CPU evidence was unavailable")
+        if io_text:
+            populated.append(f"User I/O {io_text}")
+        else:
+            unavailable.append("User I/O evidence was unavailable")
+        if sql_text:
+            populated.append(f"Top SQL concentration (top 3 share) {sql_text}")
+        else:
+            unavailable.append("Top SQL concentration could not be evaluated")
+        interval_sentence = (
+            "The single available interval has populated evidence for "
+            + _join_readable_labels(populated)
+            + "."
+            if populated
+            else "The single available interval does not have populated CPU, User I/O, or Top SQL concentration evidence."
+        )
         return " ".join(
             [
                 f"{posture['posture']}: {posture['rationale']}",
-                (
-                    f"The single available interval shows latest-snapshot CPU at "
-                    f"{_format_metric(latest_cpu, '%')}, User I/O at "
-                    f"{_format_metric(latest_io, '%')}, and Top SQL concentration (top 3 share) "
-                    f"at {_format_metric(latest_sql, '%')}."
-                ),
+                interval_sentence,
+                " ".join(sentence + "." for sentence in unavailable),
                 (
                     "With no broader history available, the posture is anchored to "
                     "that interval alone rather than to trend confirmation."
@@ -2404,10 +2553,16 @@ def _build_confidence(
     latest_cpu = _latest_non_null(time_series["cpu_trend"])
     latest_sql = _latest_non_null(time_series["sql_concentration_trend"])
     latest_topology = snapshot_contexts[-1].get("topology") or {}
+    cpu_available = _average_metric(time_series["cpu_trend"]) is not None
+    sql_available = _average_metric(time_series["sql_concentration_trend"]) is not None
     pattern_phrase = (
         f"Across {snapshot_count} snapshots, CPU remained the dominant repeated signal"
-        if snapshot_count > 1
-        else "Only one snapshot is available"
+        if snapshot_count > 1 and cpu_available
+        else (
+            f"Across {snapshot_count} snapshots, CPU evidence was unavailable or too sparse for dominance claims"
+            if snapshot_count > 1
+            else "Only one snapshot is available"
+        )
     )
     if io_direction == commit_direction:
         trend_phrase = f"User I/O and commit pressure both followed a {io_direction} pattern over the same window"
@@ -2422,13 +2577,24 @@ def _build_confidence(
         if len(anomaly_windows) <= 1
         else "Multiple anomaly windows recur across the history"
     )
+    latest_parts = []
+    latest_cpu_text = _format_metric_evidence(latest_cpu, "%")
+    latest_sql_text = _format_metric_evidence(latest_sql, "%")
+    if latest_cpu_text:
+        latest_parts.append(f"CPU {latest_cpu_text}")
+    if latest_sql_text:
+        latest_parts.append(f"Top SQL concentration (top 3 share) {latest_sql_text}")
     latest_phrase = (
-        "The latest interval stays aligned with that broader picture, with "
-        f"CPU at {_format_metric(latest_cpu, '%')} and Top SQL concentration "
-        f"(top 3 share) at {_format_metric(latest_sql, '%')}."
-        if latest_cpu is not None or latest_sql is not None
+        "The latest populated interval stays aligned with that broader picture, with "
+        + _join_readable_labels(latest_parts)
+        + "."
+        if latest_parts
         else "The latest interval does not contradict the broader pattern."
     )
+    if not cpu_available or not sql_available:
+        latest_phrase += (
+            " CPU and Top SQL concentration values that were unavailable were not used as measured evidence."
+        )
     topology_phrase = ""
     if latest_topology.get("is_rac"):
         topology_phrase = (
@@ -2509,23 +2675,38 @@ def _build_root_cause_interpretation(
         else "Concurrency is not currently a material driver."
     )
     posture = multi_snapshot_analysis["decision_posture"]["posture"]
-    root_cause_sentences = [
-        (
-            "CPU pressure is the primary constraint, with the latest interval "
-            f"still showing DB CPU at {_format_metric(metrics.get('cpu_pct'), '%')} "
-            "of DB time."
-        ),
-        (
-            f"SQL concentration remains material in {module_text}, with the leading "
-            f"three statements accounting for {_format_metric(metrics.get('top_sql_concentration'), '%')} "
-            "of elapsed SQL time in the latest snapshot."
-        ),
+    root_cause_sentences = []
+    cpu_text = _format_metric_evidence(metrics.get("cpu_pct"), "%")
+    sql_text = _format_metric_evidence(metrics.get("top_sql_concentration"), "%")
+    if cpu_text:
+        root_cause_sentences.append(
+            (
+                "CPU pressure is populated in the latest interval, with DB CPU at "
+                f"{cpu_text} of DB time."
+            )
+        )
+    else:
+        root_cause_sentences.append(
+            "CPU evidence was unavailable in the latest interval, so CPU dominance is not asserted from that metric."
+        )
+    if sql_text:
+        root_cause_sentences.append(
+            (
+                f"SQL concentration remains material in {module_text}, with the leading "
+                f"three statements accounting for {sql_text} of elapsed SQL time in the latest snapshot."
+            )
+        )
+    else:
+        root_cause_sentences.append(
+            "Top SQL concentration evidence was unavailable, so SQL concentration is not asserted as a measured driver."
+        )
+    root_cause_sentences.append(
         (
             f"User I/O is still present and is led by {dominant_user_io}, which is "
             "more consistent with access-path and single-block read pressure than "
             "with a broad platform-wide capacity ceiling."
-        ),
-    ]
+        )
+    )
     if "commit_pressure" in issue_types or (metrics.get("commit_pct") or 0) >= 5.0:
         root_cause_sentences.append(
             (
@@ -2534,16 +2715,23 @@ def _build_root_cause_interpretation(
             )
         )
     if topology.get("is_rac"):
-        root_cause_sentences.append(
-            (
-                "RAC topology is part of the story, with cluster waits at "
-                f"{_format_metric(metrics.get('cluster_wait_pct_db_time'), '%')} "
-                "and combined GC current + GC CR wait pressure at "
-                f"{_format_metric(metrics.get('gc_total_wait_pct_db_time'), '%')} "
-                "of DB time, so cross-instance coordination should be interpreted "
-                "separately from generic single-instance CPU pressure."
+        rac_parts = []
+        cluster_text = _format_metric_evidence(metrics.get("cluster_wait_pct_db_time"), "%")
+        gc_text = _format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%")
+        if cluster_text:
+            rac_parts.append(f"cluster waits at {cluster_text}")
+        if gc_text:
+            rac_parts.append(f"combined GC current + GC CR wait pressure at {gc_text}")
+        if rac_parts:
+            root_cause_sentences.append(
+                "RAC topology is part of the story, with "
+                + " and ".join(rac_parts)
+                + " of DB time, so cross-instance coordination should be interpreted separately from generic single-instance CPU pressure."
             )
-        )
+        else:
+            root_cause_sentences.append(
+                "RAC topology is part of the story, but populated cluster wait percentages were unavailable."
+            )
     if topology.get("is_dataguard"):
         root_cause_sentences.append(
             (
@@ -2557,21 +2745,33 @@ def _build_root_cause_interpretation(
             )
         )
     if topology.get("is_exadata"):
-        root_cause_sentences.append(
-            (
-                "Exadata behavior is also present, with cell-related waits at "
-                f"{_format_metric(metrics.get('exa_cell_io_pct_db_time'), '%')} and "
-                f"offload efficiency at "
-                f"{_format_metric((metrics.get('exa_offload_efficiency') or 0.0) * 100.0, '%')}. "
-                "Those signals should be interpreted as engineered-system "
-                "behavior rather than generic storage pressure."
-            )
+        exadata_parts = []
+        cell_text = _format_metric_evidence(metrics.get("exa_cell_io_pct_db_time"), "%")
+        offload_value = metrics.get("exa_offload_efficiency")
+        offload_text = (
+            _format_metric_evidence(float(offload_value) * 100.0, "%")
+            if _is_populated_metric(offload_value)
+            else None
         )
+        if cell_text:
+            exadata_parts.append(f"cell-related waits at {cell_text}")
+        if offload_text:
+            exadata_parts.append(f"offload efficiency at {offload_text}")
+        if exadata_parts:
+            root_cause_sentences.append(
+                "Exadata behavior is also present, with "
+                + " and ".join(exadata_parts)
+                + ". Those signals should be interpreted as engineered-system behavior rather than generic storage pressure."
+            )
+        else:
+            root_cause_sentences.append(
+                "Exadata behavior is also present, but populated cell-wait and offload metrics were unavailable."
+            )
     root_cause_sentences.append(concurrency_text)
     root_cause_sentences.append(
         (
             f"Together these drivers support {posture} because they point first to "
-            "tunable workload behavior, topology state, and platform-specific "
+            "the populated User I/O, commit, topology, and platform-specific "
             "execution paths rather "
             "than to an immediate need for capacity expansion."
         )
@@ -2590,9 +2790,10 @@ def _build_executive_summary_rationale(
     avg_cpu = _average_metric(time_series["cpu_trend"])
     avg_io = _average_metric(time_series["io_trend"])
     avg_sql = _average_metric(time_series["sql_concentration_trend"])
-    latest_cpu = _latest_non_null(time_series["cpu_trend"])
-    latest_io = _latest_non_null(time_series["io_trend"])
-    latest_sql = _latest_non_null(time_series["sql_concentration_trend"])
+    latest_metrics = latest_snapshot.get("metrics") or {}
+    latest_cpu = latest_metrics.get("cpu_pct")
+    latest_io = latest_metrics.get("user_io_pct")
+    latest_sql = latest_metrics.get("top_sql_concentration")
     snapshot_contexts = multi_snapshot_analysis["ordered_snapshots"]
     latest_topology = latest_snapshot.get("topology") or {}
     unique_event_classes = _collect_event_classes(snapshot_contexts)
@@ -2600,23 +2801,70 @@ def _build_executive_summary_rationale(
     platform_labels = _collect_platform_labels(snapshot_contexts)
 
     if snapshot_count < 2:
+        latest_parts = []
+        unavailable_parts = []
+        latest_cpu_text = _format_metric_evidence(latest_cpu, "%")
+        latest_io_text = _format_metric_evidence(latest_io, "%")
+        latest_sql_text = _format_metric_evidence(latest_sql, "%")
+        if latest_cpu_text:
+            latest_parts.append(f"CPU {latest_cpu_text}")
+        else:
+            unavailable_parts.append("CPU evidence was unavailable")
+        if latest_io_text:
+            latest_parts.append(f"User I/O {latest_io_text}")
+        else:
+            unavailable_parts.append("User I/O evidence was unavailable")
+        if latest_sql_text:
+            latest_parts.append(f"Top SQL concentration (top 3 share) {latest_sql_text}")
+        else:
+            unavailable_parts.append("Top SQL concentration could not be evaluated")
+        populated_text = (
+            "the current snapshot has populated evidence for "
+            + _join_readable_labels(latest_parts)
+            if latest_parts
+            else "the current snapshot has no populated CPU, User I/O, or Top SQL concentration evidence"
+        )
         return (
-            f"{posture['posture']}: the current snapshot shows CPU at "
-            f"{_format_metric(latest_cpu, '%')}, User I/O at "
-            f"{_format_metric(latest_io, '%')}, and Top SQL concentration "
-            f"(top 3 share) at {_format_metric(latest_sql, '%')}. "
-            "No historical trend is available, so this posture is anchored to "
+            f"{posture['posture']}: {populated_text}. "
+            + (" ".join(part + "." for part in unavailable_parts) + " " if unavailable_parts else "")
+            + "No historical trend is available, so this posture is anchored to "
             "the current interval alone. "
             "The latest-interval evidence below explains why that single-snapshot conclusion was chosen."
         )
 
-    first_sentence = (
-        f"Across the full {snapshot_count}-snapshot window, the workload "
-        "remained predominantly CPU-led, "
-        f"with average CPU at {_format_metric(avg_cpu, '%')}, average User "
-        f"I/O at {_format_metric(avg_io, '%')}, and average Top SQL "
-        f"concentration (top 3 share) at {_format_metric(avg_sql, '%')}."
-    )
+    avg_parts = []
+    unavailable_avg_parts = []
+    avg_cpu_text = _format_metric_evidence(avg_cpu, "%")
+    avg_io_text = _format_metric_evidence(avg_io, "%")
+    avg_sql_text = _format_metric_evidence(avg_sql, "%")
+    if avg_cpu_text:
+        avg_parts.append(f"average CPU {avg_cpu_text}")
+    else:
+        unavailable_avg_parts.append("CPU")
+    if avg_io_text:
+        avg_parts.append(f"average User I/O {avg_io_text}")
+    else:
+        unavailable_avg_parts.append("User I/O")
+    if avg_sql_text:
+        avg_parts.append(f"average Top SQL concentration (top 3 share) {avg_sql_text}")
+    else:
+        unavailable_avg_parts.append("Top SQL concentration")
+    if avg_parts:
+        first_sentence = (
+            f"Across the full {snapshot_count}-snapshot window, populated evidence included "
+            + _join_readable_labels(avg_parts)
+            + "."
+        )
+    else:
+        first_sentence = (
+            f"Across the full {snapshot_count}-snapshot window, CPU, User I/O, and Top SQL concentration were not populated in the available evidence."
+        )
+    if unavailable_avg_parts:
+        first_sentence += (
+            " "
+            + _join_readable_labels(unavailable_avg_parts)
+            + " could not be evaluated as measured window-average evidence."
+        )
 
     topology_text = _join_readable_labels(topology_labels)
     platform_text = _join_readable_labels(
@@ -2706,20 +2954,41 @@ def _build_executive_summary_rationale(
         else ""
     )
 
-    return " ".join(
-        [
-            first_sentence,
-            second_sentence,
-            (
-                "The latest interval remains aligned with that broader "
-                f"picture, showing CPU at {_format_metric(latest_cpu, '%')}, "
-                f"User I/O at {_format_metric(latest_io, '%')}, and Top SQL "
-                f"concentration (top 3 share) at "
-                f"{_format_metric(latest_sql, '%')}{latest_state_text}, "
-                f"so the posture remains {posture['posture']} before immediate scaling."
-            ),
-        ]
+    latest_parts = []
+    unavailable_latest_parts = []
+    latest_cpu_text = _format_metric_evidence(latest_cpu, "%")
+    latest_io_text = _format_metric_evidence(latest_io, "%")
+    latest_sql_text = _format_metric_evidence(latest_sql, "%")
+    if latest_cpu_text:
+        latest_parts.append(f"CPU {latest_cpu_text}")
+    else:
+        unavailable_latest_parts.append("CPU")
+    if latest_io_text:
+        latest_parts.append(f"User I/O {latest_io_text}")
+    else:
+        unavailable_latest_parts.append("User I/O")
+    if latest_sql_text:
+        latest_parts.append(f"Top SQL concentration (top 3 share) {latest_sql_text}")
+    else:
+        unavailable_latest_parts.append("Top SQL concentration")
+    latest_sentence = (
+        "The latest interval remains aligned with that broader picture, showing "
+        + _join_readable_labels(latest_parts)
+        + f"{latest_state_text}, so the posture remains {posture['posture']} before immediate scaling."
+        if latest_parts
+        else (
+            "The latest interval remains aligned with that broader picture through topology and event context"
+            f"{latest_state_text}, so the posture remains {posture['posture']} before immediate scaling."
+        )
     )
+    if unavailable_latest_parts:
+        latest_sentence += (
+            " "
+            + _join_readable_labels(unavailable_latest_parts)
+            + " were unavailable and were not used as measured latest-interval evidence."
+        )
+
+    return " ".join([first_sentence, second_sentence, latest_sentence])
 
 
 def _build_technical_narrative_text(
@@ -3558,32 +3827,32 @@ def _build_agentic_decision(
 ) -> dict:
     issue_by_type = {str(issue.get("issue_type") or ""): issue for issue in issues}
 
-    execution_plan = [
-        "Tune the highest CPU-consuming SQL and execution paths first.",
-        ("Prioritize the top elapsed-time OrderService SQL statements " "immediately."),
-        (
-            "Reduce physical reads by correcting SQL and access paths "
-            "behind the dominant User I/O waits."
-        ),
-        (
-            "Tighten commit frequency and commit-processing behavior in the "
-            "application flow."
-        ),
-        (
-            "Address concurrency after the primary CPU, SQL, I/O, and "
-            "commit fixes are underway."
-        ),
-    ]
+    execution_plan = []
+    if "cpu_pressure" in issue_by_type:
+        execution_plan.append("Tune the highest populated CPU-consuming execution paths first.")
+    if "sql_concentration" in issue_by_type:
+        execution_plan.append("Prioritize populated high-impact SQL statements for review.")
+    if "io_pressure" in issue_by_type:
+        execution_plan.append(
+            "Reduce physical reads by correcting SQL and access paths behind the dominant User I/O waits."
+        )
+    if "commit_pressure" in issue_by_type:
+        execution_plan.append(
+            "Tighten commit frequency and commit-processing behavior in the application flow."
+        )
+    execution_plan.append(
+        "Treat unavailable CPU or SQL concentration metrics as missing evidence, not as driver proof."
+    )
 
     if "topology_event" in issue_by_type or "dg_replication_state" in issue_by_type:
         primary_decision = (
             "Stabilize topology, failover, and Data Guard transition state "
-            "first, then tune the highest-impact CPU-heavy SQL paths."
+            "first, then tune the highest-impact populated workload paths."
         )
     elif "cpu_pressure" in issue_by_type:
         primary_decision = (
-            "Start with CPU-heavy SQL in OrderService. Tune the top "
-            "CPU-consuming and top elapsed-time SQL paths first."
+            "Start with populated CPU and SQL evidence in OrderService. Tune the top "
+            "measured CPU-consuming and elapsed-time SQL paths first."
         )
     else:
         primary_decision = (
@@ -3607,8 +3876,8 @@ def _build_agentic_decision(
             "Do not scale now.",
             "Do not treat storage as the first remedy.",
             (
-                "Do not prioritize concurrency ahead of CPU, SQL "
-                "concentration, User I/O, or commit latency."
+                "Do not prioritize concurrency ahead of populated CPU, SQL, "
+                "User I/O, or commit evidence."
             ),
         ],
         "scaling_decision": scaling_decision,
@@ -3621,18 +3890,22 @@ def _build_oci_guidance(
     decision_posture: dict[str, str] | None = None,
 ) -> dict:
     issue_by_type = {str(issue.get("issue_type") or ""): issue for issue in issues}
+    has_cpu = "cpu_pressure" in issue_by_type
+    has_sql = "sql_concentration" in issue_by_type
+    has_io = "io_pressure" in issue_by_type
+    has_commit = "commit_pressure" in issue_by_type
 
-    current_state = (
-        "The workload is CPU-bound and driven by a small number of "
-        "high-impact SQL paths in OrderService. User I/O and commit latency "
-        "are secondary contributors. The current state supports tuning "
-        "first, not immediate scaling."
-    )
-    if "cpu_pressure" not in issue_by_type:
+    if has_cpu and has_sql:
         current_state = (
-            "The workload shows concentrated SQL and secondary performance "
-            "contributors, but the current state still supports tuning "
-            "before scaling."
+            "The workload has populated CPU and SQL concentration evidence, with User I/O and commit latency as secondary contributors. The current state supports tuning first, not immediate scaling."
+        )
+    elif has_io or has_commit:
+        current_state = (
+            "The available populated evidence is strongest for User I/O, commit latency, topology, and operational state signals. CPU and Top SQL concentration should not be treated as measured drivers when unavailable."
+        )
+    else:
+        current_state = (
+            "The available evidence is limited. Unavailable metrics are excluded from driver claims, and the current state supports validation before scaling."
         )
     if decision_posture is not None:
         current_state += (
@@ -3643,23 +3916,13 @@ def _build_oci_guidance(
     return {
         "current_state_assessment": current_state,
         "scaling_trigger_conditions": (
-            "Scaling becomes appropriate only after the CPU-heavy SQL paths, "
-            "concentrated statements, physical read demand, and commit "
-            "behavior have been tuned and the same dominant constraints "
-            "still remain."
+            "Scaling becomes appropriate only after populated workload constraints, physical read demand, commit behavior, and topology-state signals have been validated or tuned and the same measured constraints still remain."
         ),
         "oci_architecture_guidance": (
-            "Keep the architecture aligned to a compute-first tuning path. "
-            "Use an OCI database deployment pattern that can scale CPU "
-            "cleanly if residual pressure remains after SQL and transaction "
-            "tuning. Treat storage and broader architectural changes as "
-            "secondary unless the post-tuning workload still shows "
-            "persistent I/O pressure."
+            "Keep the architecture aligned to a tune-and-validate path. Use an OCI database deployment pattern that can scale capacity cleanly only if residual measured pressure remains after SQL, transaction, and topology validation. Treat storage and broader architectural changes as secondary unless post-tuning evidence still shows persistent I/O pressure."
         ),
         "resource_direction": (
-            "Increase CPU capacity before expanding for other dimensions if "
-            "tuning does not remove the dominant pressure. Prioritize "
-            "compute scaling ahead of storage scaling."
+            "Do not select a capacity dimension from unavailable metrics. If populated post-tuning evidence still shows residual pressure, size the specific resource dimension supported by that measured evidence."
         ),
         "risk_considerations": (
             "Scaling too early will mask the real problem and carry "

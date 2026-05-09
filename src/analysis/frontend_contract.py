@@ -542,7 +542,7 @@ def build_review_comparison_screen_model(
     if _normalize_issue_key(normalized_decision.get("primary_issue")) == "CPU":
         trend_summary["summary"] = re.sub(
             r"CPU remained historically visible, though continuity across the full window was too mixed for a simple stability claim\.?",
-            "CPU remained dominant across the window, but the pattern was intermittent rather than continuous.",
+            "CPU evidence was not sufficiently populated to confirm CPU dominance across the window.",
             str(trend_summary.get("summary") or ""),
             flags=re.IGNORECASE,
         )
@@ -1329,7 +1329,7 @@ def _build_analysis_root_cause_summary(
 ) -> str:
     primary_issue = _clean_context_value(normalized_decision.get("primary_issue")) or "The primary domain"
     if _normalize_issue_key(primary_issue) == "CPU":
-        return "CPU is the governing workload driver in the selected scope."
+        return "CPU is the selected diagnostic domain, but CPU dominance is only asserted when populated CPU metrics support it."
     summary = _clean_context_value(primary_evidence.get("summary"))
     if summary and not _summary_conflicts_with_primary_issue(summary, normalized_decision):
         return summary
@@ -1342,7 +1342,7 @@ def _build_analysis_orientation_summary(
 ) -> str:
     primary_issue = _clean_context_value(normalized_decision.get("primary_issue")) or "The primary domain"
     if _normalize_issue_key(primary_issue) == "CPU":
-        return "The observed pattern is most consistent with a CPU-led workload, not an I/O-, memory-, or topology-led one."
+        return "CPU evidence is reviewed first, while compute-bound interpretation requires populated CPU evidence."
     issue_label = _issue_product_label(primary_issue)
     display_label = "CPU" if _normalize_issue_key(primary_issue) == "CPU" else issue_label.capitalize()
     return (
@@ -1404,7 +1404,7 @@ def _build_historical_memory_review(
         }
 
     return {
-        "summary": "Memory was reviewed and no sustained memory pressure is established relative to the dominant CPU-led evidence in this window.",
+        "summary": "Memory was reviewed and no sustained memory pressure is established relative to the selected diagnostic evidence in this window.",
         "items": [
             "Available memory signals remain below the threshold needed to change the historical interpretation."
         ],
@@ -1798,7 +1798,7 @@ def _compact_narrative_caveat(text: Any, primary_issue: Any = None) -> str | Non
     replacements = (
         (
             r"CPU pressure had insufficient history for a trend call over the period reviewed\.?",
-            "CPU remained historically visible, though continuity across the full window was too mixed for a simple stability claim.",
+            "CPU evidence was not sufficiently populated to confirm CPU dominance across the window.",
         ),
         (
             r"Concurrency had insufficient history for a trend call across the interval series\.?",
@@ -2845,7 +2845,7 @@ def _build_historical_summary_text(
     anomaly_count = int(_safe_float(anomaly_summary.get("count")) or 0.0)
     if _normalize_issue_key(primary_issue) == "CPU":
         summary_parts = [
-            "CPU remains dominant across the selected window, indicating sustained compute pressure rather than a transient external bottleneck."
+            "CPU evidence is reviewed in the selected window, but dominance is only asserted when populated CPU metrics support it."
         ]
     else:
         summary_parts = [_governing_issue_statement(primary_issue, "across the selected window")]
@@ -2890,7 +2890,13 @@ def _build_historical_executive_explanation(
         for item in ((visual_story or {}).get("supporting_visual_proof") or [])
         if _clean_context_value(_as_dict(item).get("label"))
     ]
-    explanation = _governing_issue_statement(primary_issue, "across the selected window")
+    if _normalize_issue_key(primary_issue) == "CPU" and not visual_support.get("cpu_supported"):
+        explanation = (
+            "CPU evidence is reviewed across the selected window, but populated CPU trend coverage "
+            "is limited and does not by itself confirm CPU dominance."
+        )
+    else:
+        explanation = _governing_issue_statement(primary_issue, "across the selected window")
     if primary_proof:
         explanation += (
             f" The page leads with {', '.join(primary_proof[:3])} as the strongest "
@@ -2933,7 +2939,9 @@ def _build_historical_technical_explanation(
         if _clean_context_value(_as_dict(item).get("label"))
     ]
     primary_label = _issue_product_label(primary_issue)
-    if primary_label in {"the governing pattern", "the dominant workload pattern"}:
+    if _normalize_issue_key(primary_issue) == "CPU" and not visual_support.get("cpu_supported"):
+        lines = ["The historical review is organized around populated evidence first, with CPU dominance treated as unconfirmed when CPU metrics are sparse."]
+    elif primary_label in {"the governing pattern", "the dominant workload pattern"}:
         lines = ["The historical review is organized around the strongest available evidence first."]
     else:
         lines = [
@@ -2997,7 +3005,7 @@ def _build_historical_interpretation(
     if trend_text:
         if re.search(r"\bCPU\b", trend_text, flags=re.IGNORECASE):
             parts.append(
-                "Primary evidence keeps the historical story CPU-led, supporting a compute-bound interpretation over I/O-, memory-, or topology-led alternatives."
+                "CPU evidence was reviewed for the historical story, but compute-bound interpretation is not asserted unless populated CPU evidence supports it."
             )
             parts.append("The pattern is directionally consistent, but intermittent rather than continuous.")
         else:

@@ -83,6 +83,8 @@ def _build_role_constraints() -> str:
             "- Do not mention Oracle features, OCI services, or architectural components unless they are explicitly present in the deterministic inputs or required by the requested output section.",
             "- Do not use specific numeric sizing values unless those values are explicitly present in the deterministic inputs.",
             "- If evidence is limited, say so directly and remain within the provided facts.",
+            "- Unavailable, missing, None, N/A, or non-populated values must never be treated as evidence. Do not describe unavailable values as measured percentages, primary drivers, dominant patterns, or concentration values.",
+            "- If a value is unavailable, either omit that metric from causal claims or explicitly state that the metric could not be evaluated.",
             "- Do not expose internal scoring or selection mechanics such as display scores, deterministic selection wording, or references to a selected dominant signal.",
         ]
     )
@@ -97,7 +99,8 @@ def _build_response_objectives() -> str:
             "- Sound like a senior Oracle performance architect, not a generic chatbot.",
             "- Keep the response concise enough for demo presentation while remaining useful to DBAs.",
             "- Prioritize the most material bottlenecks first.",
-            "- Treat issues in descending order of impact and severity. Focus first on CPU and dominant SQL drivers, then secondary contributors such as User I/O and commit latency, and finally concurrency effects.",
+            "- Treat issues in descending order of impact and severity. Focus first on CPU and dominant SQL drivers only when those metrics are populated; otherwise state that those metrics could not be evaluated and use other populated signals.",
+            "- Do not describe a workload as CPU-led, SQL-led, I/O-led, commit-led, or dominated by any domain unless the corresponding populated evidence is present in the deterministic input.",
             "- Preserve the prioritization implied by the deterministic recommendations and next steps.",
             "- Distinguish primary constraints from secondary contributing factors.",
             "- Explain why the deterministic recommendations matter to workload performance.",
@@ -145,6 +148,7 @@ def _format_required_output_sections() -> str:
             "- Avoid excessive bullets.",
             "- Avoid unsupported root-cause claims.",
             "- Avoid specific numeric sizing values unless those values are explicitly present in the deterministic inputs.",
+            "- Do not attach unavailable markers to measured-value phrasing, average metric claims, concentration claims, or primary-driver claims.",
             "- Keep the response concise and suitable for both executives and DBAs.",
             "- Do not omit any required section; if evidence is limited, state that limitation explicitly.",
         ]
@@ -261,6 +265,10 @@ def _format_key_metrics_summary(parse_result: ParseResult) -> str:
         and metric.get("metric_name") in cpu_priority_names
     ]
     for metric in cpu_signals[:2]:
+        if not _has_populated_numeric(metric.get("per_second")) and not _has_populated_numeric(
+            metric.get("per_transaction")
+        ):
+            continue
         summary_lines.append(
             "- CPU signal: "
             f"{_display_value(metric.get('metric_name'))}, "
@@ -269,6 +277,8 @@ def _format_key_metrics_summary(parse_result: ParseResult) -> str:
         )
 
     for wait_event in parse_result.wait_events[:3]:
+        if not _has_populated_numeric(wait_event.get("pct_db_time")):
+            continue
         summary_lines.append(
             "- Wait signal: "
             f"{_display_value(wait_event.get('event_name'))}, "
@@ -299,6 +309,19 @@ def _format_top_sql_summary(parse_result: ParseResult) -> str:
         )
 
     return "\n".join(lines)
+
+
+def _has_populated_numeric(value: Any) -> bool:
+    if value is None:
+        return False
+    text = str(value).strip()
+    if text.lower() in {"", "none", "null", "n/a", "na", "unavailable"}:
+        return False
+    try:
+        float(text.replace(",", ""))
+    except ValueError:
+        return False
+    return True
 
 
 def _recommendation_to_dict(recommendation: Any) -> dict[str, Any]:

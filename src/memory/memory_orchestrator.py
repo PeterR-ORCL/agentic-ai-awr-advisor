@@ -8,7 +8,7 @@ import re
 import traceback
 from typing import Any
 
-from src.memory import memory_agent
+from src.memory import memory_agent, memory_recall
 
 EXPECTED_PHASE4I_KEYS = (
     "metadata",
@@ -152,6 +152,64 @@ def persist_run_memory(
                 "traceback": traceback.format_exc(),
             }
         return result
+
+
+def recall_run_history(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of run memory records.
+
+    Recall is observational and read-only. It does not influence parser,
+    scoring, recommendation, or runtime decision behavior.
+    """
+
+    return memory_recall.recall_run_history(**filters)
+
+
+def recall_recommendation_history(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of recommendation memory records."""
+
+    return memory_recall.recall_recommendation_history(**filters)
+
+
+def recall_action_history(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of action history records."""
+
+    return memory_recall.recall_action_history(**filters)
+
+
+def recall_outcome_history(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of action outcome records."""
+
+    return memory_recall.recall_outcome_history(**filters)
+
+
+def recall_feedback_history(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of feedback records."""
+
+    return memory_recall.recall_feedback_history(**filters)
+
+
+def recall_unknown_signals(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of parser unknown and review records."""
+
+    return memory_recall.recall_unknown_signals(**filters)
+
+
+def recall_knowledge_requests(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of governance request records."""
+
+    return memory_recall.recall_knowledge_requests(**filters)
+
+
+def recall_knowledge_artifacts(**filters: Any) -> dict[str, Any]:
+    """Read-only recall of materialized knowledge artifact records."""
+
+    return memory_recall.recall_knowledge_artifacts(**filters)
+
+
+def recall_memory_summary(**filters: Any) -> dict[str, Any]:
+    """Read-only aggregate recall summary for Phase 6 memory."""
+
+    return memory_recall.recall_memory_summary(**filters)
 
 
 def record_action(

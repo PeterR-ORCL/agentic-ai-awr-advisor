@@ -9,6 +9,7 @@ openai>=1.0
 
 # OCI
 oci>=2.126.0
+oracleagentmemory>=26.4.0
 
 # Optional (config / parsing)
 PyYAML>=6.0

@@ -148,11 +148,10 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             with self.subTest(screen="screen_5", phrase=phrase):
                 self.assertNotIn(phrase, screen_5_source)
 
-    def test_no_7h5_or_later_behavior_yet(self) -> None:
+    def test_no_7h6_or_later_behavior_yet(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH).lower()
 
         forbidden_phrases = (
-            "screen 5 recommendation selector",
             "screen 1 governance selector",
             "screen 6 learning selector",
             "cross-screen propagation engine",

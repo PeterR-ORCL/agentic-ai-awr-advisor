@@ -35,6 +35,8 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedDomain",
     "selectedSeverity",
     "selectedRecommendation",
+    "selectedRecommendationCategory",
+    "selectedRecommendationEvidence",
     "selectedEvidenceGroup",
     "selectedMetricGroup",
     "selectedWaitEventGroup",
@@ -45,6 +47,9 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedAnomalyGroup",
     "selectedDistribution",
     "selectedSimilarCase",
+    "selectedActionContext",
+    "selectedOutcomeContext",
+    "selectedFeedbackContext",
     "selectedGovernanceItem",
     "selectedSemanticItem",
     "selectedLearningCandidate",
@@ -67,6 +72,7 @@ DASHBOARD_INTERACTIVITY_STORAGE_KEY = (
 SCREEN3_CONTROL_CENTER_DOMAINS = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
 SCREEN2_DIAGNOSTIC_EXPLORATION_DOMAINS = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
 SCREEN4_HISTORICAL_EXPLORATION_DOMAINS = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
+SCREEN5_RECOMMENDATION_ACTION_DOMAINS = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
 
 
 class _TrustedHtml(str):
@@ -860,6 +866,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         domain: 'selectedDomain',
         severity: 'selectedSeverity',
         recommendation: 'selectedRecommendation',
+        recommendationCategory: 'selectedRecommendationCategory',
+        recommendationEvidence: 'selectedRecommendationEvidence',
         evidenceGroup: 'selectedEvidenceGroup',
         evidence: 'selectedEvidenceGroup',
         metricGroup: 'selectedMetricGroup',
@@ -880,6 +888,12 @@ def _build_dashboard_interactivity_javascript() -> str:
         distributionDomain: 'selectedDistribution',
         similarCase: 'selectedSimilarCase',
         similar: 'selectedSimilarCase',
+        actionContext: 'selectedActionContext',
+        action: 'selectedActionContext',
+        outcomeContext: 'selectedOutcomeContext',
+        outcome: 'selectedOutcomeContext',
+        feedbackContext: 'selectedFeedbackContext',
+        feedback: 'selectedFeedbackContext',
         governanceItem: 'selectedGovernanceItem',
         governance: 'selectedGovernanceItem',
         semanticItem: 'selectedSemanticItem',
@@ -4872,6 +4886,608 @@ def _dedupe_screen4_selector_items(items: list[dict[str, Any]]) -> list[dict[str
     return deduped
 
 
+def _render_screen5_recommendation_action_exploration(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    exploration = _build_screen5_recommendation_action_exploration_model(
+        screen_model,
+        report_data,
+    )
+    return f"""
+      <section class="card secondary screen5-recommendation-action-exploration">
+        <div class="section-kicker">Screen 5 Recommendation/Action Exploration</div>
+        <h2>Screen 5 Recommendation/Action Exploration</h2>
+        <p class="meta">
+          Read-only recommendation/action exploration. Exploratory only. No backend writes.
+          Does not change recommendation truth. Does not change recommendation priority.
+          Does not change recommendation rationale. Does not change supporting evidence.
+          Does not change diagnostic truth. Learning candidates are not recommendation evidence.
+          Semantic context is not recommendation evidence.
+          Selection only highlights existing recommendation/action context.
+          Cross-screen propagation remains future Phase 7H.8.
+          No approval controls. No runtime activation.
+        </p>
+        <div class="subgrid">
+          <section class="evidence-pane selector-pane screen5-selected-recommendation-panel">
+            <h3>Selected Recommendation / Action Summary</h3>
+            <p class="screen5-selected-recommendation-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
+              Read-only recommendation/action exploration: no local selection. Selection is local and read-only. Recommendation output remains unchanged.
+            </p>
+            <div class="meta">
+              Selection does not change recommendation truth, recommendation priority, recommendation rationale, supporting evidence, action status, outcome status, feedback status, diagnostic truth, or historical truth.
+            </div>
+          </section>
+          {_render_screen5_selector_group(
+              "Recommendation Selector",
+              "Recommendation selection highlights existing deterministic recommendation objects only. It does not change recommendation truth, priority, rationale, or evidence.",
+              exploration["recommendations"],
+              "No deterministic recommendation controls available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Recommendation Domain Selector",
+              "Domain selection is local and does not filter or change recommendation truth.",
+              exploration["domains"],
+              "Recommendation domain controls are limited to fixed authoritative domains. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Recommendation Category Selector",
+              "Category selection uses recommendation category metadata when present. No recommendation ranking or rationale changes.",
+              exploration["categories"],
+              "No additional recommendation categories available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Supporting Evidence Link Selector",
+              "Evidence selection highlights deterministic evidence context already shown. It does not alter evidence.",
+              exploration["evidence"],
+              "No supporting evidence links available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Action Context Selector",
+              "Action context selection is read-only and performs no action tracking writes or status mutation.",
+              exploration["actions"],
+              "No action context available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Outcome Context Selector",
+              "Outcome context selection is read-only and performs no outcome tracking writes or status mutation.",
+              exploration["outcomes"],
+              "No outcome context available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Feedback Context Selector",
+              "Feedback context selection is read-only and performs no feedback writes or status mutation.",
+              exploration["feedback"],
+              "No feedback context available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+          {_render_screen5_selector_group(
+              "Related Learning Context Selector",
+              "Related learning context is review/proposal context only, not recommendation evidence, not automatically applied, runtime_influence=false.",
+              exploration["learning"],
+              "No related learning candidate review context available in this static export. Selection is local and read-only. Recommendation output remains unchanged.",
+          )}
+        </div>
+      </section>
+    """
+
+
+def _build_screen5_recommendation_action_exploration_model(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    header = _to_dict(screen_model.get("header"))
+    normalized_decision = _to_dict(screen_model.get("normalized_decision"))
+    recommendation_list = list(screen_model.get("recommendation_list") or [])
+    recommendation_groups = list(screen_model.get("recommendation_groups") or [])
+    evidence_tie_back = _to_dict(screen_model.get("recommendation_evidence_tie_back"))
+    validation_focus_areas = list(screen_model.get("validation_focus_areas") or [])
+    posture_guidance = list(screen_model.get("posture_guidance") or [])
+    primary_domain = _screen5_selector_domain(
+        header.get("primary_issue")
+        or normalized_decision.get("primary_issue")
+        or header.get("domain")
+    )
+    domain_scores = _to_dict(normalized_decision.get("domain_scores"))
+
+    recommendations = _screen5_recommendation_selector_items(
+        recommendation_groups or recommendation_list
+    )
+    domains: list[dict[str, Any]] = []
+    for domain in SCREEN5_RECOMMENDATION_ACTION_DOMAINS:
+        score = _screen2_domain_score(domain_scores, domain)
+        _append_screen5_selector_item(
+            domains,
+            label=domain,
+            value=domain,
+            select_type="recommendation-domain",
+            state_key="selectedDomain",
+            domain=domain,
+            active=domain == primary_domain,
+            display_value=f"{score:.1f}" if score is not None else "Exploration domain",
+            note="Recommendation domain selection only. No recommendation truth change.",
+        )
+
+    categories = _screen5_recommendation_category_items(
+        recommendation_groups,
+        recommendation_list,
+    )
+    evidence = _screen5_recommendation_evidence_items(
+        evidence_tie_back,
+        validation_focus_areas,
+    )
+    actions = _screen5_action_context_items(screen_model, report_data, posture_guidance)
+    outcomes = _screen5_context_items(
+        _screen5_first_context_collection(
+            screen_model,
+            report_data,
+            (
+                "outcome_context",
+                "outcome_contexts",
+                "outcomes",
+                "outcome_history",
+                "action_outcomes",
+            ),
+        ),
+        select_type="outcome-context",
+        state_key="selectedOutcomeContext",
+        default_label="Outcome Context",
+        note="Outcome context only. No outcome tracking writes or status mutation.",
+    )
+    feedback = _screen5_context_items(
+        _screen5_first_context_collection(
+            screen_model,
+            report_data,
+            (
+                "feedback_context",
+                "feedback_contexts",
+                "feedback",
+                "feedback_history",
+                "operator_feedback",
+            ),
+        ),
+        select_type="feedback-context",
+        state_key="selectedFeedbackContext",
+        default_label="Feedback Context",
+        note="Feedback context only. No feedback writes or status mutation.",
+    )
+    learning = _screen5_learning_context_items(
+        _screen5_first_context_collection(
+            screen_model,
+            {},
+            (
+                "related_learning_candidates",
+                "learning_candidate_context",
+                "learning_candidates",
+            ),
+        )
+    )
+
+    return {
+        "recommendations": _dedupe_screen5_selector_items(recommendations),
+        "domains": _dedupe_screen5_selector_items(domains),
+        "categories": _dedupe_screen5_selector_items(categories),
+        "evidence": _dedupe_screen5_selector_items(evidence),
+        "actions": _dedupe_screen5_selector_items(actions),
+        "outcomes": _dedupe_screen5_selector_items(outcomes),
+        "feedback": _dedupe_screen5_selector_items(feedback),
+        "learning": _dedupe_screen5_selector_items(learning),
+    }
+
+
+def _screen5_recommendation_selector_items(recommendations: list[Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, recommendation in enumerate(_screen5_flatten_recommendations(recommendations)):
+        rec = _to_dict(recommendation)
+        label = (
+            rec.get("issue")
+            or rec.get("recommendation")
+            or rec.get("action")
+            or rec.get("title")
+            or f"Recommendation {index + 1}"
+        )
+        category = rec.get("category_label") or rec.get("category") or rec.get("type")
+        priority = rec.get("priority") or rec.get("severity")
+        _append_screen5_selector_item(
+            items,
+            label=label,
+            value=f"recommendation-{index + 1}-{_screen5_state_id(label)}",
+            select_type="recommendation",
+            state_key="selectedRecommendation",
+            domain=_screen5_selector_domain(rec.get("domain") or rec.get("issue") or rec.get("issue_type") or label),
+            display_value=priority or category or "Deterministic recommendation",
+            note="Existing recommendation object only. No priority, rank, rationale, or evidence change.",
+        )
+    return items
+
+
+def _screen5_recommendation_category_items(
+    recommendation_groups: list[Any],
+    recommendation_list: list[Any],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, group in enumerate(recommendation_groups):
+        group_dict = _to_dict(group)
+        title = group_dict.get("title") or group_dict.get("category")
+        group_items = list(group_dict.get("items") or [])
+        if not _has_display_value(title):
+            continue
+        _append_screen5_selector_item(
+            items,
+            label=title,
+            value=f"category-{index + 1}-{_screen5_state_id(title)}",
+            select_type="recommendation-category",
+            state_key="selectedRecommendationCategory",
+            domain=_screen5_selector_domain(title),
+            display_value=f"{len(group_items)} recommendation item(s)",
+            note="Existing recommendation category only. No ranking or rationale change.",
+        )
+    seen_categories = {
+        _screen5_state_id(item.get("label"))
+        for item in items
+    }
+    for index, recommendation in enumerate(recommendation_list):
+        rec = _to_dict(recommendation)
+        category = rec.get("category_label") or rec.get("category") or rec.get("type")
+        if not _has_display_value(category):
+            continue
+        category_key = _screen5_state_id(category)
+        if category_key in seen_categories:
+            continue
+        seen_categories.add(category_key)
+        _append_screen5_selector_item(
+            items,
+            label=category,
+            value=f"category-{index + 1}-{category_key}",
+            select_type="recommendation-category",
+            state_key="selectedRecommendationCategory",
+            domain=_screen5_selector_domain(category),
+            display_value="Recommendation category",
+            note="Existing recommendation category only. No ranking or rationale change.",
+        )
+    return items
+
+
+def _screen5_recommendation_evidence_items(
+    evidence_tie_back: dict[str, Any],
+    validation_focus_areas: list[Any],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    primary = _to_dict(evidence_tie_back.get("primary_evidence"))
+    if _has_meaningful_evidence(primary):
+        label = primary.get("domain") or primary.get("issue_type") or "Primary Evidence"
+        _append_screen5_selector_item(
+            items,
+            label=label,
+            value=f"primary-{_screen5_state_id(label)}",
+            select_type="recommendation-evidence",
+            state_key="selectedRecommendationEvidence",
+            domain=_screen5_selector_domain(label),
+            display_value=primary.get("summary") or "Primary supporting evidence",
+            note="Deterministic supporting evidence only. No evidence value change.",
+        )
+    for index, evidence in enumerate(evidence_tie_back.get("secondary_evidence") or []):
+        evidence_dict = _to_dict(evidence)
+        if not _has_meaningful_evidence(evidence_dict):
+            continue
+        label = evidence_dict.get("domain") or evidence_dict.get("issue_type") or f"Secondary Evidence {index + 1}"
+        _append_screen5_selector_item(
+            items,
+            label=label,
+            value=f"secondary-{index + 1}-{_screen5_state_id(label)}",
+            select_type="recommendation-evidence",
+            state_key="selectedRecommendationEvidence",
+            domain=_screen5_selector_domain(label),
+            display_value=evidence_dict.get("summary") or "Secondary supporting evidence",
+            note="Deterministic supporting evidence only. No evidence value change.",
+        )
+    for index, focus_area in enumerate(validation_focus_areas):
+        focus = _to_dict(focus_area)
+        title = focus.get("title") or f"Evidence Checklist {index + 1}"
+        if not _has_display_value(title):
+            continue
+        item_count = len(focus.get("items") or [])
+        _append_screen5_selector_item(
+            items,
+            label=title,
+            value=f"focus-{index + 1}-{_screen5_state_id(title)}",
+            select_type="recommendation-evidence",
+            state_key="selectedRecommendationEvidence",
+            domain=_screen5_selector_domain(title),
+            display_value=f"{item_count} checklist item(s)" if item_count else "Evidence checklist",
+            note="Existing evidence checklist group only. No evidence value change.",
+        )
+    return items
+
+
+def _screen5_action_context_items(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    posture_guidance: list[Any],
+) -> list[dict[str, Any]]:
+    items = _screen5_context_items(
+        _screen5_first_context_collection(
+            screen_model,
+            report_data,
+            (
+                "action_context",
+                "action_contexts",
+                "action_history",
+                "actions",
+                "action_records",
+            ),
+        ),
+        select_type="action-context",
+        state_key="selectedActionContext",
+        default_label="Action Context",
+        note="Action context only. No action tracking writes or status mutation.",
+    )
+    for index, guidance in enumerate(posture_guidance):
+        if not _has_display_value(guidance):
+            continue
+        _append_screen5_selector_item(
+            items,
+            label=f"Validation Action {index + 1}",
+            value=f"guidance-{index + 1}",
+            select_type="action-context",
+            state_key="selectedActionContext",
+            display_value=guidance,
+            note="Posture guidance already rendered in the validation plan. No action status mutation.",
+        )
+    return items
+
+
+def _screen5_context_items(
+    raw_items: Any,
+    *,
+    select_type: str,
+    state_key: str,
+    default_label: str,
+    note: str,
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, raw_item in enumerate(_screen5_list(raw_items)):
+        item = _to_dict(raw_item) if isinstance(raw_item, dict) else {}
+        label = (
+            item.get("title")
+            or item.get("label")
+            or item.get("name")
+            or item.get("status")
+            or item.get("id")
+            or item.get("action_id")
+            or item.get("outcome_id")
+            or item.get("feedback_id")
+            or raw_item
+            or f"{default_label} {index + 1}"
+        )
+        if not _has_display_value(label):
+            continue
+        display_value = (
+            item.get("summary")
+            or item.get("description")
+            or item.get("value")
+            or item.get("status")
+            or item.get("result")
+            or item.get("feedback_text")
+            or raw_item
+        )
+        _append_screen5_selector_item(
+            items,
+            label=label,
+            value=f"{_screen5_state_id(select_type)}-{index + 1}-{_screen5_state_id(label)}",
+            select_type=select_type,
+            state_key=state_key,
+            domain=_screen5_selector_domain(label),
+            display_value=display_value,
+            note=note,
+        )
+    return items
+
+
+def _screen5_learning_context_items(raw_items: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, raw_item in enumerate(_screen5_list(raw_items)):
+        item = _to_dict(raw_item) if isinstance(raw_item, dict) else {}
+        label = (
+            item.get("candidate_id")
+            or item.get("id")
+            or item.get("title")
+            or item.get("candidate_type")
+            or raw_item
+            or f"Learning Candidate {index + 1}"
+        )
+        if not _has_display_value(label):
+            continue
+        _append_screen5_selector_item(
+            items,
+            label=label,
+            value=f"learning-{index + 1}-{_screen5_state_id(label)}",
+            select_type="learning-candidate",
+            state_key="selectedLearningCandidate",
+            domain=_screen5_selector_domain(item.get("domain") or item.get("candidate_type") or label),
+            display_value=item.get("summary") or item.get("description") or "Review/proposal context only; runtime_influence=false.",
+            note="Review/proposal context only. Not recommendation evidence. Not automatically applied. runtime_influence=false.",
+        )
+    return items
+
+
+def _screen5_first_context_collection(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    keys: tuple[str, ...],
+) -> Any:
+    for source in (screen_model, report_data):
+        for key in keys:
+            value = source.get(key)
+            if value:
+                return value
+    return []
+
+
+def _screen5_flatten_recommendations(recommendations: list[Any]) -> list[Any]:
+    flattened: list[Any] = []
+    for item in recommendations:
+        item_dict = _to_dict(item) if isinstance(item, dict) else {}
+        if item_dict.get("items"):
+            flattened.extend(item_dict.get("items") or [])
+        else:
+            flattened.append(item)
+    return flattened
+
+
+def _screen5_list(value: Any) -> list[Any]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, dict):
+        if isinstance(value.get("items"), list):
+            return list(value.get("items") or [])
+        if isinstance(value.get("records"), list):
+            return list(value.get("records") or [])
+        if isinstance(value.get("contexts"), list):
+            return list(value.get("contexts") or [])
+        return [value]
+    return [value]
+
+
+def _append_screen5_selector_item(
+    items: list[dict[str, Any]],
+    *,
+    label: Any,
+    value: Any,
+    select_type: str,
+    state_key: str,
+    display_value: Any = None,
+    note: Any = None,
+    domain: Any = None,
+    active: bool = False,
+) -> None:
+    if not _has_display_value(label) or not _has_display_value(value):
+        return
+    domain_text = _screen5_selector_domain(domain)
+    items.append(
+        {
+            "label": _display_value(label),
+            "value": _display_value(value),
+            "select_type": select_type,
+            "state_key": state_key,
+            "display_value": _display_value(display_value) if _has_display_value(display_value) else "",
+            "note": _display_value(note) if _has_display_value(note) else "",
+            "domain": domain_text,
+            "active": active,
+        }
+    )
+
+
+def _render_screen5_selector_group(
+    title: str,
+    description: str,
+    items: list[dict[str, Any]],
+    empty_message: str,
+) -> str:
+    if not items:
+        return f"""
+          <section class="evidence-pane selector-pane">
+            <h3>{escape(title)}</h3>
+            <p class="meta">{escape(description)}</p>
+            <div class="item">
+              <p>{escape(empty_message)}</p>
+            </div>
+          </section>
+        """
+    cards = "".join(_render_screen5_selector_card(item) for item in items)
+    return f"""
+          <section class="evidence-pane selector-pane">
+            <h3>{escape(title)}</h3>
+            <p class="meta">{escape(description)}</p>
+            <div class="screen5-selector-grid">{cards}</div>
+          </section>
+    """
+
+
+def _render_screen5_selector_card(item: dict[str, Any]) -> str:
+    select_type = _display_value(item.get("select_type"))
+    state_key = _display_value(item.get("state_key"))
+    value = _display_value(item.get("value"))
+    domain = _display_value(item.get("domain")) if _has_display_value(item.get("domain")) else ""
+    active_class = " active" if item.get("active") else ""
+    domain_attribute = (
+        f' data-dashboard-select-domain="{escape(domain, quote=True)}"'
+        if domain
+        else ""
+    )
+    return f"""
+              <article
+                class="screen5-selector-card{active_class}"
+                data-dashboard-selectable="true"
+                data-dashboard-select-type="{escape(select_type, quote=True)}"
+                data-dashboard-select-key="{escape(state_key, quote=True)}"
+                data-dashboard-select-id="{escape(value, quote=True)}"
+                data-dashboard-filter-key="{escape(state_key, quote=True)}"
+                data-dashboard-filter-value="{escape(value, quote=True)}"{domain_attribute}
+                data-selected="false"
+                aria-selected="false"
+                tabindex="0"
+              >
+                <strong>{escape(select_type.replace("-", " ").title())}</strong>
+                <span>{escape(_display_value(item.get("label")))}</span>
+                {
+                    f'<p>{escape(_display_value(item.get("display_value")))}</p>'
+                    if _has_display_value(item.get("display_value"))
+                    else ""
+                }
+                {
+                    f'<p>{escape(_display_value(item.get("note")))}</p>'
+                    if _has_display_value(item.get("note"))
+                    else ""
+                }
+              </article>
+    """
+
+
+def _screen5_selector_domain(value: Any) -> str | None:
+    text = str(value or "").strip().upper()
+    if not text:
+        return None
+    if "USER I/O" in text or "USER IO" in text:
+        return "IO"
+    if "LOG FILE" in text or "COMMIT" in text or "TRANSACTION" in text:
+        return "COMMIT"
+    if "CLUSTER" in text or "GC " in text or "RAC" in text:
+        return "RAC"
+    if "DATA GUARD" in text or "TRANSPORT" in text or "APPLY LAG" in text or "ADG" in text:
+        return "ADG"
+    if "PGA" in text or "MEMORY" in text or "TEMP" in text:
+        return "MEMORY"
+    if "CPU" in text or "SQL" in text:
+        return "CPU"
+    if "IO" in text or "I/O" in text:
+        return "IO"
+    for domain in SCREEN5_RECOMMENDATION_ACTION_DOMAINS:
+        if domain in text:
+            return domain
+    return None
+
+
+def _screen5_state_id(value: Any) -> str:
+    text = re.sub(r"[^a-zA-Z0-9]+", "-", _display_value(value).strip().lower())
+    return text.strip("-")[:80] or "selection"
+
+
+def _dedupe_screen5_selector_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str]] = set()
+    deduped: list[dict[str, Any]] = []
+    for item in items:
+        key = (_display_value(item.get("state_key")), _display_value(item.get("value")))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
 def _render_screen_5_page(
     screen_model: dict[str, Any],
     ai_sections: dict[str, str],
@@ -4896,6 +5512,7 @@ def _render_screen_5_page(
       <section class="card prominent action-page-card">
         {_render_recommendation_action_screen(screen_model, report_data or {})}
       </section>
+      {_render_screen5_recommendation_action_exploration(screen_model, report_data or {})}
       {
           f'''
       <section class="card secondary">
@@ -7553,6 +8170,55 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen5-recommendation-action-exploration {
+      border-color: rgba(90, 209, 255, 0.32);
+    }
+    .screen5-selected-recommendation-panel {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen5-selected-recommendation-summary {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .screen5-selector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen5-selector-card {
+      display: grid;
+      gap: 6px;
+      min-height: 104px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+    .screen5-selector-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen5-selector-card span {
+      color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen5-selector-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen5-selector-card.active {
+      border-color: rgba(90, 209, 255, 0.62);
+      background: rgba(90, 209, 255, 0.12);
+    }
     .screen4-compact-pane {
       padding: 14px;
     }
@@ -8758,6 +9424,7 @@ def _shared_page_styles() -> str:
       .screen2-selector-grid,
       .screen3-selector-grid,
       .screen4-selector-grid,
+      .screen5-selector-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }

@@ -172,12 +172,10 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, screen_5_source)
 
-    def test_no_7h5_or_later_behavior_yet(self) -> None:
+    def test_no_7h6_or_later_behavior_yet(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH).lower()
 
         forbidden_phrases = (
-            "screen 5 recommendation selector",
-            "screen 5 recommendation/action exploration",
             "screen 1 governance selector",
             "screen 6 learning selector",
             "cross-screen propagation engine",

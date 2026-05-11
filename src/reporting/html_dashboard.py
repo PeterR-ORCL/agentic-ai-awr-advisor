@@ -26,6 +26,34 @@ AI_SECTION_ORDER = [
 CHART_NULL_SENTINEL = "__AWR_CHART_MISSING__"
 _VOCALIZATION_CACHE: dict[tuple[str, str], str] = {}
 
+DASHBOARD_INTERACTIVITY_STATE_KEYS = (
+    "selectedAwr",
+    "selectedRun",
+    "selectedDb",
+    "selectedSystem",
+    "selectedSnapshot",
+    "selectedDomain",
+    "selectedSeverity",
+    "selectedRecommendation",
+    "selectedGovernanceItem",
+    "selectedSemanticItem",
+    "selectedLearningCandidate",
+    "selectedFleetGroup",
+    "selectedComparisonBaseline",
+)
+DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
+    "data-dashboard-selectable",
+    "data-dashboard-select-type",
+    "data-dashboard-select-id",
+    "data-dashboard-select-domain",
+    "data-dashboard-target",
+    "data-dashboard-filter-key",
+    "data-dashboard-filter-value",
+)
+DASHBOARD_INTERACTIVITY_STORAGE_KEY = (
+    "agenticAiAwrAdvisor.dashboardInteractivityState.v1"
+)
+
 
 class _TrustedHtml(str):
     """Small marker for dashboard HTML assembled from escaped values."""
@@ -726,6 +754,8 @@ def _build_page_html(
         if include_chart_scripts
         else ""
     )
+    interactivity_script = _build_dashboard_interactivity_javascript()
+    interactivity_boundary = _render_dashboard_interactivity_boundary_comment()
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -738,6 +768,7 @@ def _build_page_html(
   </style>
 </head>
 <body>
+{interactivity_boundary}
   <div class="container">
     <div class="{shell_class}">
       <section class="hero">
@@ -758,11 +789,336 @@ def _build_page_html(
 
     <div class="footer">Generated at {escape(generated_at)}</div>
   </div>
+{interactivity_script}
 {chart_dependencies}
 {chart_scripts}
 </body>
 </html>
 """
+
+
+def _render_dashboard_interactivity_boundary_comment() -> str:
+    """Return the Phase 7H.1 read-only interactivity boundary marker."""
+
+    state_keys = ", ".join(DASHBOARD_INTERACTIVITY_STATE_KEYS)
+    hooks = ", ".join(DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES)
+    return f"""  <!--
+    Dashboard Interactivity Foundation (Phase 7H.1).
+    Read-only selection state. Exploratory only. No backend writes.
+    Does not change diagnostic truth. Does not change recommendation truth.
+    Does not approve or activate learning candidates.
+    Full screen-specific interactivity remains future Phase 7H subtasks.
+    Supported state keys: {state_keys}.
+    Future selectable metadata hooks: {hooks}.
+  -->"""
+
+
+def _build_dashboard_interactivity_javascript() -> str:
+    """Build the dependency-free, browser-side Phase 7H.1 selection foundation."""
+
+    state_keys_json = json.dumps(list(DASHBOARD_INTERACTIVITY_STATE_KEYS))
+    storage_key_json = json.dumps(DASHBOARD_INTERACTIVITY_STORAGE_KEY)
+    return """
+  <script>
+    (function () {
+      'use strict';
+
+      // Dashboard Interactivity Foundation (Phase 7H.1).
+      // Read-only selection state. Exploratory only. No backend writes.
+      // Does not change diagnostic truth. Does not change recommendation truth.
+      // Does not approve or activate learning candidates.
+      // Full screen-specific interactivity remains future Phase 7H subtasks.
+      const DASHBOARD_FOUNDATION_LABEL = 'Dashboard Interactivity Foundation';
+      const DASHBOARD_STATE_KEYS = Object.freeze(__DASHBOARD_STATE_KEYS__);
+      const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
+      const DASHBOARD_STORAGE_KEY = __DASHBOARD_STORAGE_KEY__;
+      const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
+      const SELECTED_SUMMARY_SELECTOR = '[data-dashboard-selected-summary]';
+      const FILTER_PLACEHOLDER_SELECTOR = '[data-dashboard-filter-key][data-dashboard-filter-value]';
+      const MAX_STATE_VALUE_LENGTH = 256;
+      const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
+        awr: 'selectedAwr',
+        run: 'selectedRun',
+        db: 'selectedDb',
+        system: 'selectedSystem',
+        snapshot: 'selectedSnapshot',
+        domain: 'selectedDomain',
+        severity: 'selectedSeverity',
+        recommendation: 'selectedRecommendation',
+        governanceItem: 'selectedGovernanceItem',
+        governance: 'selectedGovernanceItem',
+        semanticItem: 'selectedSemanticItem',
+        semantic: 'selectedSemanticItem',
+        learningCandidate: 'selectedLearningCandidate',
+        learning: 'selectedLearningCandidate',
+        fleetGroup: 'selectedFleetGroup',
+        fleet: 'selectedFleetGroup',
+        comparisonBaseline: 'selectedComparisonBaseline',
+        baseline: 'selectedComparisonBaseline'
+      });
+      let dashboardInteractivityInitialized = false;
+
+      function safeStateValue(value) {
+        if (value === undefined || value === null) {
+          return '';
+        }
+        return String(value)
+          .replace(/[<>]/g, '')
+          .trim()
+          .slice(0, MAX_STATE_VALUE_LENGTH);
+      }
+
+      function isDashboardStateKey(key) {
+        return DASHBOARD_STATE_KEY_SET.has(String(key || ''));
+      }
+
+      function sanitizeDashboardState(input) {
+        const state = {};
+        if (!input || typeof input !== 'object') {
+          return state;
+        }
+        DASHBOARD_STATE_KEYS.forEach(function (key) {
+          const value = safeStateValue(input[key]);
+          if (value) {
+            state[key] = value;
+          }
+        });
+        return state;
+      }
+
+      function parseHashState(hashValue) {
+        const state = {};
+        const rawHash = typeof hashValue === 'string' ? hashValue : window.location.hash;
+        const hash = String(rawHash || '').replace(/^#/, '').replace(/^\\?/, '');
+        if (!hash) {
+          return state;
+        }
+        try {
+          const params = new URLSearchParams(hash);
+          DASHBOARD_STATE_KEYS.forEach(function (key) {
+            const value = safeStateValue(params.get(key));
+            if (value) {
+              state[key] = value;
+            }
+          });
+        } catch (error) {
+          return {};
+        }
+        return state;
+      }
+
+      function readLocalStorageState() {
+        try {
+          const rawValue = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
+          if (!rawValue) {
+            return {};
+          }
+          return sanitizeDashboardState(JSON.parse(rawValue));
+        } catch (error) {
+          return {};
+        }
+      }
+
+      function writeLocalStorageState(state) {
+        try {
+          window.localStorage.setItem(
+            DASHBOARD_STORAGE_KEY,
+            JSON.stringify(sanitizeDashboardState(state))
+          );
+        } catch (error) {
+          return;
+        }
+      }
+
+      function readDashboardState() {
+        return Object.assign({}, readLocalStorageState(), parseHashState(window.location.hash));
+      }
+
+      function serializeDashboardState(state) {
+        const safeState = sanitizeDashboardState(state);
+        const params = new URLSearchParams();
+        DASHBOARD_STATE_KEYS.forEach(function (key) {
+          if (safeState[key]) {
+            params.set(key, safeState[key]);
+          }
+        });
+        return params.toString();
+      }
+
+      function updateHashState(state) {
+        const serializedState = serializeDashboardState(state);
+        const nextUrl = (
+          window.location.pathname +
+          window.location.search +
+          (serializedState ? '#' + serializedState : '')
+        );
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', nextUrl);
+          return;
+        }
+        if (serializedState) {
+          window.location.hash = serializedState;
+        }
+      }
+
+      function writeDashboardState(nextState, options) {
+        const safeState = sanitizeDashboardState(nextState);
+        writeLocalStorageState(safeState);
+        if (!options || options.updateHash !== false) {
+          updateHashState(safeState);
+        }
+        applyDashboardState(safeState);
+        return safeState;
+      }
+
+      function stateKeyForSelectable(element) {
+        if (!element || !element.getAttribute) {
+          return '';
+        }
+        const explicitKey = safeStateValue(element.getAttribute('data-dashboard-select-key'));
+        if (isDashboardStateKey(explicitKey)) {
+          return explicitKey;
+        }
+        const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
+        if (isDashboardStateKey(selectType)) {
+          return selectType;
+        }
+        return DASHBOARD_TYPE_TO_STATE_KEY[selectType] || '';
+      }
+
+      function valueForSelectable(element) {
+        if (!element || !element.getAttribute) {
+          return '';
+        }
+        return (
+          safeStateValue(element.getAttribute('data-dashboard-select-id')) ||
+          safeStateValue(element.getAttribute('data-dashboard-filter-value')) ||
+          safeStateValue(element.getAttribute('data-dashboard-select-domain')) ||
+          safeStateValue(element.getAttribute('data-dashboard-target'))
+        );
+      }
+
+      function markSelectedElement(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const elements = scope.querySelectorAll(SELECTABLE_SELECTOR);
+        elements.forEach(function (element) {
+          const key = stateKeyForSelectable(element);
+          const value = valueForSelectable(element);
+          const isSelected = Boolean(key && value && safeState[key] === value);
+          element.classList.toggle('is-selected', isSelected);
+          element.setAttribute('data-selected', isSelected ? 'true' : 'false');
+          if (element.hasAttribute('aria-selected')) {
+            element.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+          }
+        });
+      }
+
+      function markReadOnlyFilterPlaceholders(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const elements = scope.querySelectorAll(FILTER_PLACEHOLDER_SELECTOR);
+        elements.forEach(function (element) {
+          const key = safeStateValue(element.getAttribute('data-dashboard-filter-key'));
+          const value = safeStateValue(element.getAttribute('data-dashboard-filter-value'));
+          if (!isDashboardStateKey(key) || !safeState[key]) {
+            element.removeAttribute('data-dashboard-filter-active');
+            return;
+          }
+          element.setAttribute(
+            'data-dashboard-filter-active',
+            safeState[key] === value ? 'true' : 'false'
+          );
+        });
+      }
+
+      function updateSelectedSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const parts = DASHBOARD_STATE_KEYS
+          .filter(function (key) { return Boolean(safeState[key]); })
+          .map(function (key) { return key + ': ' + safeState[key]; });
+        const summaryText = parts.length
+          ? 'Read-only selection state: ' + parts.join(' | ')
+          : 'Read-only selection state: no exploratory selection';
+        scope.querySelectorAll(SELECTED_SUMMARY_SELECTOR).forEach(function (element) {
+          element.textContent = summaryText;
+          element.setAttribute('data-dashboard-state-empty', parts.length ? 'false' : 'true');
+        });
+      }
+
+      function applyDashboardState(state, root) {
+        const safeState = sanitizeDashboardState(state);
+        markSelectedElement(safeState, root);
+        markReadOnlyFilterPlaceholders(safeState, root);
+        updateSelectedSummary(safeState, root);
+        return safeState;
+      }
+
+      function handleDashboardSelectableClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const element = event.target.closest(SELECTABLE_SELECTOR);
+        if (!element || element.getAttribute('data-dashboard-selectable') === 'false') {
+          return;
+        }
+        const key = stateKeyForSelectable(element);
+        const value = valueForSelectable(element);
+        if (!isDashboardStateKey(key) || !value) {
+          return;
+        }
+        const nextState = readDashboardState();
+        nextState[key] = value;
+        writeDashboardState(nextState);
+      }
+
+      function initializeDashboardInteractivity(root) {
+        const scope = root || document;
+        const selectableElements = scope.querySelectorAll(SELECTABLE_SELECTOR);
+        const summaryElements = scope.querySelectorAll(SELECTED_SUMMARY_SELECTOR);
+        const filterPlaceholders = scope.querySelectorAll(FILTER_PLACEHOLDER_SELECTOR);
+        if (!selectableElements.length && !summaryElements.length && !filterPlaceholders.length) {
+          return {};
+        }
+        if (!dashboardInteractivityInitialized) {
+          document.addEventListener('click', handleDashboardSelectableClick);
+          window.addEventListener('hashchange', function () {
+            applyDashboardState(readDashboardState());
+          });
+          dashboardInteractivityInitialized = true;
+        }
+        return applyDashboardState(readDashboardState(), scope);
+      }
+
+      window.DashboardInteractivityFoundation = Object.freeze({
+        label: DASHBOARD_FOUNDATION_LABEL,
+        version: '7H.1',
+        readOnly: true,
+        stateKeys: DASHBOARD_STATE_KEYS.slice(),
+        storageKey: DASHBOARD_STORAGE_KEY,
+        initializeDashboardInteractivity: initializeDashboardInteractivity,
+        readDashboardState: readDashboardState,
+        writeDashboardState: writeDashboardState,
+        parseHashState: parseHashState,
+        updateHashState: updateHashState,
+        applyDashboardState: applyDashboardState,
+        markSelectedElement: markSelectedElement,
+        updateSelectedSummary: updateSelectedSummary
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        initializeDashboardInteractivity(document);
+      });
+    }());
+  </script>
+""".replace(
+        "__DASHBOARD_STATE_KEYS__",
+        state_keys_json,
+    ).replace(
+        "__DASHBOARD_STORAGE_KEY__",
+        storage_key_json,
+    )
 
 
 def _chart_payload_json_safe(value: Any) -> Any:
@@ -5525,6 +5881,21 @@ def _shared_page_styles() -> str:
       margin: 0 0 14px;
       color: var(--muted);
       font-size: 13px;
+    }
+    [data-dashboard-selectable] {
+      cursor: pointer;
+    }
+    [data-dashboard-selectable].is-selected,
+    [data-dashboard-selectable][data-selected="true"] {
+      border-color: rgba(90, 209, 255, 0.74);
+      box-shadow: 0 0 0 2px rgba(90, 209, 255, 0.18);
+    }
+    [data-dashboard-selected-summary] {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    [data-dashboard-filter-active="false"] {
+      opacity: 0.72;
     }
     .scope-chip.active {
       color: #08111d;

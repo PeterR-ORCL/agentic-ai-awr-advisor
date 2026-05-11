@@ -811,7 +811,7 @@ def _render_runtime_state_line(
         '<span class="runtime-state-line">'
         f'DB: <span class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</span>'
         f' · Similarity: <span class="{escape(_similarity_runtime_state_class(similarity_state))}">{escape(similarity_state)}</span>'
-        f' · Memory: <span class="{escape(memory_class)}">{escape(memory_state)}</span>'
+        f' · Governed Memory: <span class="{escape(memory_class)}">{escape(memory_state)}</span>'
         "</span>"
     )
 

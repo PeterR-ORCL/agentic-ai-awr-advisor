@@ -50,7 +50,12 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedActionContext",
     "selectedOutcomeContext",
     "selectedFeedbackContext",
+    "selectedParserSection",
+    "selectedParserDiagnostic",
+    "selectedUnknownSignal",
     "selectedGovernanceItem",
+    "selectedKnowledgeRequest",
+    "selectedArtifact",
     "selectedSemanticItem",
     "selectedLearningCandidate",
     "selectedFleetGroup",
@@ -894,8 +899,19 @@ def _build_dashboard_interactivity_javascript() -> str:
         outcome: 'selectedOutcomeContext',
         feedbackContext: 'selectedFeedbackContext',
         feedback: 'selectedFeedbackContext',
+        'parser-section': 'selectedParserSection',
+        parserSection: 'selectedParserSection',
+        parser: 'selectedParserSection',
+        'parser-diagnostic': 'selectedParserDiagnostic',
+        parserDiagnostic: 'selectedParserDiagnostic',
+        'unknown-signal': 'selectedUnknownSignal',
+        unknownSignal: 'selectedUnknownSignal',
+        unknown: 'selectedUnknownSignal',
         governanceItem: 'selectedGovernanceItem',
         governance: 'selectedGovernanceItem',
+        'knowledge-request': 'selectedKnowledgeRequest',
+        knowledgeRequest: 'selectedKnowledgeRequest',
+        artifact: 'selectedArtifact',
         semanticItem: 'selectedSemanticItem',
         semantic: 'selectedSemanticItem',
         learningCandidate: 'selectedLearningCandidate',
@@ -2138,10 +2154,537 @@ def _render_screen_1_page(
     <div class="grid">
       <!-- Screen 1 = intake / parse confidence / adaptation. -->
       {_render_ingestion_screen(screen_model, parser_review_payload, report_data)}
+      {_render_screen1_governance_parser_exploration(
+          screen_model,
+          parser_review_payload or {},
+          parser_governance_payload or {},
+          report_data or {},
+      )}
       {_render_parser_review_section(parser_review_payload or {})}
       {_render_parser_governance_review_section(parser_governance_payload or {})}
     </div>
     """
+
+
+def _render_screen1_governance_parser_exploration(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    exploration = _build_screen1_governance_parser_exploration_model(
+        screen_model,
+        parser_review_payload,
+        parser_governance_payload,
+        report_data,
+    )
+    return f"""
+      <section class="card secondary screen1-governance-parser-exploration">
+        <div class="section-kicker">Screen 1 Governance / Parser Exploration</div>
+        <h2>Screen 1 Governance / Parser Exploration</h2>
+        <p class="meta">
+          Read-only governance/parser exploration. Exploratory only. No backend writes.
+          Does not change parser output. Does not classify unknown signals.
+          Does not approve mappings. Does not materialize artifacts.
+          Does not change governance state. Does not change diagnostic truth.
+          Does not change recommendation truth. Semantic/learning context is not parser evidence.
+          Selection only highlights existing parser/governance context.
+          Cross-screen propagation remains future Phase 7H.8.
+          No approval controls. No runtime activation.
+        </p>
+        <div class="subgrid">
+          <section class="evidence-pane selector-pane screen1-selected-governance-parser-panel">
+            <h3>Selected Governance / Parser Summary</h3>
+            <p class="screen1-selected-governance-parser-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
+              Read-only governance/parser exploration: no local selection. Selection is local and read-only. Parser and governance output remains unchanged.
+            </p>
+            <div class="meta">
+              Selection does not change loader behavior, parser output, parser diagnostics, unknown signal classification, governance state, knowledge requests, artifacts, diagnostic truth, or recommendation truth.
+            </div>
+          </section>
+          {_render_screen1_selector_group(
+              "Source / Run Selector",
+              "Source and run selection highlights existing ingestion context only. It does not change loading, ingestion, parser output, or selected diagnostic target.",
+              exploration["source_runs"],
+              "No source or run selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Parser Section Selector",
+              "Parser section selection highlights parser section visibility already shown. It does not change parser output.",
+              exploration["parser_sections"],
+              "No parser section selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Parser Diagnostic Selector",
+              "Parser diagnostic selection highlights existing parse confidence or status context only. It does not change parser diagnostics.",
+              exploration["parser_diagnostics"],
+              "No parser diagnostic selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Unknown Signal Selector",
+              "Unknown signal selection highlights existing parser review context only. It does not classify, approve, reject, or map unknown signals.",
+              exploration["unknown_signals"],
+              "No unknown signal groups available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Governance Item Selector",
+              "Governance item selection highlights existing read-only governance rows. It does not approve mappings or change governance state.",
+              exploration["governance_items"],
+              "No governance item selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Knowledge Request Selector",
+              "Knowledge request selection highlights existing governed request context only. It does not create or update knowledge requests.",
+              exploration["knowledge_requests"],
+              "No knowledge requests available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+          {_render_screen1_selector_group(
+              "Artifact Selector",
+              "Artifact selection highlights existing knowledge artifact context only. It does not materialize artifacts or activate them.",
+              exploration["artifacts"],
+              "No knowledge artifacts available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+          )}
+        </div>
+      </section>
+    """
+
+
+def _build_screen1_governance_parser_exploration_model(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    report_rows = _screen1_list(screen_model.get("report_rows"))
+    return {
+        "source_runs": _dedupe_screen1_selector_items(
+            _screen1_source_run_items(screen_model, report_data, report_rows)
+        ),
+        "parser_sections": _dedupe_screen1_selector_items(
+            _screen1_parser_section_items(parse_confidence)
+        ),
+        "parser_diagnostics": _dedupe_screen1_selector_items(
+            _screen1_parser_diagnostic_items(parse_confidence, report_rows)
+        ),
+        "unknown_signals": _dedupe_screen1_selector_items(
+            _screen1_unknown_signal_items(parser_review_payload)
+        ),
+        "governance_items": _dedupe_screen1_selector_items(
+            _screen1_governance_item_items(parser_governance_payload)
+        ),
+        "knowledge_requests": _dedupe_screen1_selector_items(
+            _screen1_context_items(
+                _screen1_first_context_collection(
+                    screen_model,
+                    parser_governance_payload,
+                    report_data,
+                    (
+                        "knowledge_requests",
+                        "knowledge_update_requests",
+                        "update_requests",
+                        "requests",
+                    ),
+                ),
+                select_type="knowledge-request",
+                state_key="selectedKnowledgeRequest",
+                default_label="Knowledge Request",
+                note="Existing knowledge request context only. No request creation or update.",
+            )
+        ),
+        "artifacts": _dedupe_screen1_selector_items(
+            _screen1_context_items(
+                _screen1_first_context_collection(
+                    screen_model,
+                    parser_governance_payload,
+                    report_data,
+                    (
+                        "knowledge_artifacts",
+                        "artifacts",
+                        "artifact_context",
+                        "artifact_contexts",
+                    ),
+                ),
+                select_type="artifact",
+                state_key="selectedArtifact",
+                default_label="Artifact",
+                note="Existing artifact context only. No materialization or activation.",
+            )
+        ),
+    }
+
+
+def _screen1_source_run_items(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    report_rows: list[Any],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    metadata = _to_dict(report_data.get("metadata"))
+    header = _to_dict(screen_model.get("header"))
+    awr_id = metadata.get("awr_id") or header.get("awr_id")
+    if _has_display_value(awr_id):
+        _append_screen1_selector_item(
+            items,
+            label=f"AWR {awr_id}",
+            value=awr_id,
+            select_type="awr",
+            state_key="selectedAwr",
+            display_value=_join_compact_values(
+                [metadata.get("db_name") or header.get("db_name"), metadata.get("dbid") or header.get("dbid")]
+            ) or "Current AWR context",
+            note="Current static export context only. No ingestion changes.",
+        )
+    run_id = (
+        report_data.get("run_history_id")
+        or report_data.get("analysis_run_id")
+        or header.get("run_history_id")
+        or header.get("run_label")
+    )
+    if _has_display_value(run_id):
+        _append_screen1_selector_item(
+            items,
+            label=f"Run {run_id}",
+            value=run_id,
+            select_type="run",
+            state_key="selectedRun",
+            display_value=header.get("scope_label") or "Current run context",
+            note="Run selection is local only. Loader behavior is unchanged.",
+        )
+    for index, raw_row in enumerate(report_rows[:6]):
+        row = _to_dict(raw_row)
+        source_file = (
+            row.get("source_file")
+            or row.get("file_name")
+            or row.get("report_name")
+            or row.get("input_file")
+        )
+        if not _has_display_value(source_file):
+            continue
+        _append_screen1_selector_item(
+            items,
+            label=source_file,
+            value=f"source-{index + 1}-{_screen1_state_id(source_file)}",
+            select_type="run",
+            state_key="selectedRun",
+            display_value=row.get("parse_status") or row.get("status") or "Source file context",
+            note="Source file visibility only. No ingestion or parser output changes.",
+        )
+    return items
+
+
+def _screen1_parser_section_items(parse_confidence: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for key, status in (
+        ("sections_detected", "Detected"),
+        ("detected_sections", "Detected"),
+        ("parsed_sections", "Detected"),
+        ("sections", "Reported"),
+        ("sections_missing", "Missing"),
+        ("missing_sections", "Missing"),
+    ):
+        raw_sections = parse_confidence.get(key)
+        for index, section in enumerate(_screen1_list(raw_sections)[:10]):
+            if not _has_display_value(section):
+                continue
+            label = _display_value(section)
+            _append_screen1_selector_item(
+                items,
+                label=label,
+                value=f"section-{index + 1}-{_screen1_state_id(label)}",
+                select_type="parser-section",
+                state_key="selectedParserSection",
+                display_value=status,
+                note="Parser section visibility only. Does not change parser output.",
+            )
+    if not items and _has_display_value(parse_confidence.get("sections_detected")):
+        _append_screen1_selector_item(
+            items,
+            label="Sections Detected",
+            value="sections-detected",
+            select_type="parser-section",
+            state_key="selectedParserSection",
+            display_value=parse_confidence.get("sections_detected"),
+            note="Parser section count only. Does not change parser output.",
+        )
+    return items
+
+
+def _screen1_parser_diagnostic_items(
+    parse_confidence: dict[str, Any],
+    report_rows: list[Any],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    diagnostics = (
+        ("Parse Completeness Score", "parse_completeness_score"),
+        ("Warnings", "warnings_count"),
+        ("Runtime Parser Unknowns", "unknowns_captured"),
+        ("Alias / Fallback Matching", "alias_fallback_matching"),
+        ("Adaptation Summary", "adaptation_summary"),
+    )
+    for label, key in diagnostics:
+        value = parse_confidence.get(key)
+        if not _has_display_value(value):
+            continue
+        _append_screen1_selector_item(
+            items,
+            label=label,
+            value=f"diagnostic-{_screen1_state_id(label)}",
+            select_type="parser-diagnostic",
+            state_key="selectedParserDiagnostic",
+            display_value=value,
+            note="Parser diagnostic display only. No diagnostic status mutation.",
+        )
+    for index, raw_row in enumerate(report_rows[:6]):
+        row = _to_dict(raw_row)
+        status = row.get("parse_status") or row.get("status")
+        if not _has_display_value(status):
+            continue
+        source_file = row.get("file_name") or row.get("source_file") or f"Report {index + 1}"
+        _append_screen1_selector_item(
+            items,
+            label=f"Parse Status - {source_file}",
+            value=f"parse-status-{index + 1}-{_screen1_state_id(source_file)}",
+            select_type="parser-diagnostic",
+            state_key="selectedParserDiagnostic",
+            display_value=status,
+            note="Existing parser status only. Parser diagnostics remain unchanged.",
+        )
+    return items
+
+
+def _screen1_unknown_signal_items(parser_review_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, raw_pattern in enumerate(_screen1_list(parser_review_payload.get("pattern_summary"))):
+        pattern = _to_dict(raw_pattern)
+        section = pattern.get("section_name") or "Unknown Section"
+        unknown_type = pattern.get("unknown_type") or "Unknown Signal"
+        label = f"{section} / {unknown_type}"
+        _append_screen1_selector_item(
+            items,
+            label=label,
+            value=f"unknown-pattern-{index + 1}-{_screen1_state_id(label)}",
+            select_type="unknown-signal",
+            state_key="selectedUnknownSignal",
+            display_value=f"{pattern.get('count') or 0} record(s)",
+            note="Existing unknown signal group only. Does not classify, approve, reject, or map unknown signals.",
+        )
+    for index, raw_unknown in enumerate(_screen1_list(parser_review_payload.get("recent_unknowns"))[:10]):
+        unknown = _to_dict(raw_unknown)
+        unknown_id = unknown.get("unknown_signal_id") or index + 1
+        label = unknown.get("section_name") or f"Unknown Signal {unknown_id}"
+        _append_screen1_selector_item(
+            items,
+            label=label,
+            value=f"unknown-{unknown_id}",
+            select_type="unknown-signal",
+            state_key="selectedUnknownSignal",
+            display_value=unknown.get("review_status") or unknown.get("unknown_type") or "Unknown signal record",
+            note="Individual unknown signal visibility only. Unknown signal status remains unchanged.",
+        )
+    return items
+
+
+def _screen1_governance_item_items(parser_governance_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, raw_item in enumerate(_screen1_list(parser_governance_payload.get("items"))):
+        item = _to_dict(raw_item)
+        stage = item.get("parser_stage") or "Parser Governance"
+        hint = item.get("classification_hint") or item.get("unknown_signal_id") or f"Item {index + 1}"
+        label = f"{stage}: {hint}"
+        _append_screen1_selector_item(
+            items,
+            label=label,
+            value=f"governance-{index + 1}-{_screen1_state_id(hint)}",
+            select_type="governance-item",
+            state_key="selectedGovernanceItem",
+            display_value=_join_compact_values(
+                [item.get("review_status"), item.get("approval_status")]
+            ) or "Governance item",
+            note="Read-only governance row only. Does not approve mappings or change governance state.",
+        )
+    return items
+
+
+def _screen1_context_items(
+    raw_items: Any,
+    *,
+    select_type: str,
+    state_key: str,
+    default_label: str,
+    note: str,
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for index, raw_item in enumerate(_screen1_list(raw_items)):
+        item = _to_dict(raw_item) if isinstance(raw_item, dict) else {}
+        label = (
+            item.get("title")
+            or item.get("label")
+            or item.get("name")
+            or item.get("request_id")
+            or item.get("artifact_id")
+            or item.get("id")
+            or raw_item
+            or f"{default_label} {index + 1}"
+        )
+        if not _has_display_value(label):
+            continue
+        _append_screen1_selector_item(
+            items,
+            label=label,
+            value=f"{_screen1_state_id(select_type)}-{index + 1}-{_screen1_state_id(label)}",
+            select_type=select_type,
+            state_key=state_key,
+            display_value=(
+                item.get("summary")
+                or item.get("description")
+                or item.get("status")
+                or item.get("approval_status")
+                or item.get("artifact_status")
+                or raw_item
+            ),
+            note=note,
+        )
+    return items
+
+
+def _screen1_first_context_collection(
+    screen_model: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+    keys: tuple[str, ...],
+) -> Any:
+    for source in (screen_model, parser_governance_payload, report_data):
+        for key in keys:
+            value = source.get(key)
+            if value:
+                return value
+    return []
+
+
+def _screen1_list(value: Any) -> list[Any]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, set):
+        return sorted(value)
+    if isinstance(value, dict):
+        for key in ("items", "records", "contexts", "values"):
+            if isinstance(value.get(key), list):
+                return list(value.get(key) or [])
+        return [value]
+    return [value]
+
+
+def _append_screen1_selector_item(
+    items: list[dict[str, Any]],
+    *,
+    label: Any,
+    value: Any,
+    select_type: str,
+    state_key: str,
+    display_value: Any = None,
+    note: Any = None,
+    domain: Any = None,
+) -> None:
+    if not _has_display_value(label) or not _has_display_value(value):
+        return
+    items.append(
+        {
+            "label": _display_value(label),
+            "value": _display_value(value),
+            "select_type": select_type,
+            "state_key": state_key,
+            "display_value": _display_value(display_value) if _has_display_value(display_value) else "",
+            "note": _display_value(note) if _has_display_value(note) else "",
+            "domain": _display_value(domain) if _has_display_value(domain) else "",
+        }
+    )
+
+
+def _render_screen1_selector_group(
+    title: str,
+    description: str,
+    items: list[dict[str, Any]],
+    empty_message: str,
+) -> str:
+    if not items:
+        return f"""
+          <section class="evidence-pane selector-pane">
+            <h3>{escape(title)}</h3>
+            <p class="meta">{escape(description)}</p>
+            <div class="item">
+              <p>{escape(empty_message)}</p>
+            </div>
+          </section>
+        """
+    cards = "".join(_render_screen1_selector_card(item) for item in items)
+    return f"""
+          <section class="evidence-pane selector-pane">
+            <h3>{escape(title)}</h3>
+            <p class="meta">{escape(description)}</p>
+            <div class="screen1-selector-grid">{cards}</div>
+          </section>
+    """
+
+
+def _render_screen1_selector_card(item: dict[str, Any]) -> str:
+    select_type = _display_value(item.get("select_type"))
+    state_key = _display_value(item.get("state_key"))
+    value = _display_value(item.get("value"))
+    domain = _display_value(item.get("domain")) if _has_display_value(item.get("domain")) else ""
+    domain_attribute = (
+        f' data-dashboard-select-domain="{escape(domain, quote=True)}"'
+        if domain
+        else ""
+    )
+    return f"""
+              <article
+                class="screen1-selector-card"
+                data-dashboard-selectable="true"
+                data-dashboard-select-type="{escape(select_type, quote=True)}"
+                data-dashboard-select-key="{escape(state_key, quote=True)}"
+                data-dashboard-select-id="{escape(value, quote=True)}"
+                data-dashboard-filter-key="{escape(state_key, quote=True)}"
+                data-dashboard-filter-value="{escape(value, quote=True)}"{domain_attribute}
+                data-selected="false"
+                aria-selected="false"
+                tabindex="0"
+              >
+                <strong>{escape(select_type.replace("-", " ").title())}</strong>
+                <span>{escape(_display_value(item.get("label")))}</span>
+                {
+                    f'<p>{escape(_display_value(item.get("display_value")))}</p>'
+                    if _has_display_value(item.get("display_value"))
+                    else ""
+                }
+                {
+                    f'<p>{escape(_display_value(item.get("note")))}</p>'
+                    if _has_display_value(item.get("note"))
+                    else ""
+                }
+              </article>
+    """
+
+
+def _screen1_state_id(value: Any) -> str:
+    text = re.sub(r"[^a-zA-Z0-9]+", "-", _display_value(value).strip().lower())
+    return text.strip("-")[:80] or "selection"
+
+
+def _dedupe_screen1_selector_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str]] = set()
+    deduped: list[dict[str, Any]] = []
+    for item in items:
+        key = (_display_value(item.get("state_key")), _display_value(item.get("value")))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
 
 
 def _render_screen_2_page(
@@ -8063,6 +8606,55 @@ def _shared_page_styles() -> str:
       font-size: 12px;
       line-height: 1.35;
     }
+    .screen1-governance-parser-exploration {
+      border-color: rgba(90, 209, 255, 0.32);
+    }
+    .screen1-selected-governance-parser-panel {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen1-selected-governance-parser-summary {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .screen1-selector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen1-selector-card {
+      display: grid;
+      gap: 6px;
+      min-height: 104px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+    .screen1-selector-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen1-selector-card span {
+      color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen1-selector-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen1-selector-card.active {
+      border-color: rgba(90, 209, 255, 0.62);
+      background: rgba(90, 209, 255, 0.12);
+    }
     .screen2-diagnostic-exploration {
       border-color: rgba(90, 209, 255, 0.32);
     }
@@ -9421,6 +10013,7 @@ def _shared_page_styles() -> str:
       .workflow-summary-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
+      .screen1-selector-grid,
       .screen2-selector-grid,
       .screen3-selector-grid,
       .screen4-selector-grid,

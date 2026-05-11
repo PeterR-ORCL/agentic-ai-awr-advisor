@@ -17,16 +17,17 @@ This directory contains architecture, governance, validation, and operational do
 11. [Phase 7 Screen 2 Diagnostic Exploration](phase7_screen2_diagnostic_exploration.md)
 12. [Phase 7 Screen 4 Historical Review Exploration](phase7_screen4_historical_review_exploration.md)
 13. [Phase 7 Screen 5 Recommendation / Action Exploration](phase7_screen5_recommendation_action_exploration.md)
-14. [Phase 7 Roadmap](phase7_roadmap.md)
-15. [Phase 6 Release Notes](phase6_release_notes.md)
-16. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
-17. [Phase 6 Component Inventory](phase6_component_inventory.md)
-18. [Phase 6 Repository Map](phase6_repository_map.md)
-19. [Phase 6 Operational Model](phase6_operational_model.md)
-20. [Phase 6 CLI Operations](phase6_cli_operations.md)
-21. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
-22. [Phase 6 Production Readiness](phase6_production_readiness.md)
-23. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
+14. [Phase 7 Screen 1 Governance / Parser Exploration](phase7_screen1_governance_parser_exploration.md)
+15. [Phase 7 Roadmap](phase7_roadmap.md)
+16. [Phase 6 Release Notes](phase6_release_notes.md)
+17. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
+18. [Phase 6 Component Inventory](phase6_component_inventory.md)
+19. [Phase 6 Repository Map](phase6_repository_map.md)
+20. [Phase 6 Operational Model](phase6_operational_model.md)
+21. [Phase 6 CLI Operations](phase6_cli_operations.md)
+22. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
+23. [Phase 6 Production Readiness](phase6_production_readiness.md)
+24. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
 
 ## Runtime And Architecture
 
@@ -53,9 +54,10 @@ These documents define deterministic runtime truth, governed memory, structured 
 - [Phase 7 Screen 2 Diagnostic Exploration](phase7_screen2_diagnostic_exploration.md)
 - [Phase 7 Screen 4 Historical Review Exploration](phase7_screen4_historical_review_exploration.md)
 - [Phase 7 Screen 5 Recommendation / Action Exploration](phase7_screen5_recommendation_action_exploration.md)
+- [Phase 7 Screen 1 Governance / Parser Exploration](phase7_screen1_governance_parser_exploration.md)
 - [Phase 7 Roadmap](phase7_roadmap.md)
 
-These documents define Phase 7A learning as boundary-only, Phase 7B outcome pattern mining as deterministic and observational only, Phase 7C learning candidates as proposal-only serializable records, Phase 7D candidate generation as deterministic proposal-only conversion from outcome patterns to candidate records, Phase 7E semantic candidate context as optional reviewer-assist context with `runtime_influence=false`, `requires_human_review=true`, and no runtime activation, Phase 7F learning governance bridge as local deterministic review transitions that are approved for implementation only and not runtime integration, Phase 7G dashboard learning visibility as read-only Screen 6 visibility only, Phase 7H.1 dashboard interactivity foundation as browser-side read-only selection state only, Phase 7H.2 Screen 3 Control Center as read-only exploratory selectors only, Phase 7H.3 Screen 2 Diagnostic Exploration as read-only deterministic evidence exploration only, Phase 7H.4 Screen 4 Historical Review Exploration as read-only deterministic historical context exploration only, and Phase 7H.5 Screen 5 Recommendation / Action Exploration as read-only deterministic/governed recommendation/action context exploration only. Screen-specific behavior for later screens and full cross-screen propagation remain future Phase 7H work.
+These documents define Phase 7A learning as boundary-only, Phase 7B outcome pattern mining as deterministic and observational only, Phase 7C learning candidates as proposal-only serializable records, Phase 7D candidate generation as deterministic proposal-only conversion from outcome patterns to candidate records, Phase 7E semantic candidate context as optional reviewer-assist context with `runtime_influence=false`, `requires_human_review=true`, and no runtime activation, Phase 7F learning governance bridge as local deterministic review transitions that are approved for implementation only and not runtime integration, Phase 7G dashboard learning visibility as read-only Screen 6 visibility only, Phase 7H.1 dashboard interactivity foundation as browser-side read-only selection state only, Phase 7H.2 Screen 3 Control Center as read-only exploratory selectors only, Phase 7H.3 Screen 2 Diagnostic Exploration as read-only deterministic evidence exploration only, Phase 7H.4 Screen 4 Historical Review Exploration as read-only deterministic historical context exploration only, Phase 7H.5 Screen 5 Recommendation / Action Exploration as read-only deterministic/governed recommendation/action context exploration only, and Phase 7H.6 Screen 1 Governance / Parser Exploration as read-only parser/governance context exploration only. Screen-specific behavior for later screens and full cross-screen propagation remain future Phase 7H work.
 
 ## Governance And Semantic Memory
 
@@ -94,7 +96,7 @@ This document defines architectural naming semantics, generated artifact policy,
 
 ## Phase Boundary Summary
 
-Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B adds observational outcome pattern mining only. Phase 7C adds the deterministic learning candidate model only. Phase 7D adds deterministic candidate generation only. Phase 7E adds optional reviewer-assist semantic candidate context only. Phase 7F adds local deterministic governance transitions only. Phase 7G adds read-only dashboard learning visibility only. Phase 7H.1 adds read-only dashboard interactivity foundation only. Phase 7H.2 adds read-only Screen 3 Control Center selectors only. Phase 7H.3 adds read-only Screen 2 Diagnostic Exploration only. Phase 7H.4 adds read-only Screen 4 Historical Review Exploration only. Phase 7H.5 adds read-only Screen 5 Recommendation / Action Exploration only.
+Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B adds observational outcome pattern mining only. Phase 7C adds the deterministic learning candidate model only. Phase 7D adds deterministic candidate generation only. Phase 7E adds optional reviewer-assist semantic candidate context only. Phase 7F adds local deterministic governance transitions only. Phase 7G adds read-only dashboard learning visibility only. Phase 7H.1 adds read-only dashboard interactivity foundation only. Phase 7H.2 adds read-only Screen 3 Control Center selectors only. Phase 7H.3 adds read-only Screen 2 Diagnostic Exploration only. Phase 7H.4 adds read-only Screen 4 Historical Review Exploration only. Phase 7H.5 adds read-only Screen 5 Recommendation / Action Exploration only. Phase 7H.6 adds read-only Screen 1 Governance / Parser Exploration only.
 
 - Deterministic runtime remains authoritative.
 - Semantic recall remains non-authoritative.
@@ -115,4 +117,5 @@ Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B 
 - Phase 7H.3 Screen 2 Diagnostic Exploration is read-only, exploratory only, adds no backend writes, adds no approval controls and no write controls, does not change diagnostic truth, does not change primary issue, does not change severity, does not change confidence, does not change recommendation truth, keeps semantic/learning context out of diagnostic evidence, and keeps full cross-screen propagation in future 7H.8.
 - Phase 7H.4 Screen 4 Historical Review Exploration is read-only, exploratory only, adds no backend writes, adds no approval controls and no write controls, does not change historical truth, does not recalculate trends, does not reclassify anomalies, does not change baseline, does not change similarity results, does not change diagnostic truth, does not change recommendation truth, keeps semantic/learning context out of historical evidence, and keeps full cross-screen propagation in future 7H.8.
 - Phase 7H.5 Screen 5 Recommendation / Action Exploration is read-only, exploratory only, adds no backend writes, adds no approval controls and no write controls, does not change recommendation truth, does not change recommendation priority or rank, does not change recommendation rationale, does not change supporting evidence, does not change diagnostic truth, does not change historical truth, keeps learning candidates out of recommendation evidence, keeps semantic context out of recommendation evidence, does not mutate action/outcome/feedback records, and keeps full cross-screen propagation in future 7H.8.
-- No autonomous learning behavior exists in Phase 7A, Phase 7B, Phase 7C, Phase 7D, Phase 7E, Phase 7F, Phase 7G, Phase 7H.1, Phase 7H.2, Phase 7H.3, Phase 7H.4, or Phase 7H.5.
+- Phase 7H.6 Screen 1 Governance / Parser Exploration is read-only, exploratory only, adds no backend writes, adds no approval controls and no write controls, does not change loader behavior, does not change parser output, does not classify unknown signals, does not approve mappings, does not materialize artifacts, does not change governance state, does not create/update knowledge requests, does not change diagnostic truth, does not change recommendation truth, keeps semantic/learning context out of parser evidence, and keeps full cross-screen propagation in future 7H.8.
+- No autonomous learning behavior exists in Phase 7A, Phase 7B, Phase 7C, Phase 7D, Phase 7E, Phase 7F, Phase 7G, Phase 7H.1, Phase 7H.2, Phase 7H.3, Phase 7H.4, Phase 7H.5, or Phase 7H.6.

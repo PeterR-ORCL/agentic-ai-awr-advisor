@@ -10,16 +10,17 @@ This directory contains architecture, governance, validation, and operational do
 4. [Phase 7 Learning Candidate Model](phase7_learning_candidate_model.md)
 5. [Phase 7 Candidate Generation Engine](phase7_candidate_generation_engine.md)
 6. [Phase 7 Semantic Candidate Context](phase7_semantic_candidate_context.md)
-7. [Phase 7 Roadmap](phase7_roadmap.md)
-8. [Phase 6 Release Notes](phase6_release_notes.md)
-9. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
-10. [Phase 6 Component Inventory](phase6_component_inventory.md)
-11. [Phase 6 Repository Map](phase6_repository_map.md)
-12. [Phase 6 Operational Model](phase6_operational_model.md)
-13. [Phase 6 CLI Operations](phase6_cli_operations.md)
-14. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
-15. [Phase 6 Production Readiness](phase6_production_readiness.md)
-16. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
+7. [Phase 7 Learning Governance Bridge](phase7_learning_governance_bridge.md)
+8. [Phase 7 Roadmap](phase7_roadmap.md)
+9. [Phase 6 Release Notes](phase6_release_notes.md)
+10. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
+11. [Phase 6 Component Inventory](phase6_component_inventory.md)
+12. [Phase 6 Repository Map](phase6_repository_map.md)
+13. [Phase 6 Operational Model](phase6_operational_model.md)
+14. [Phase 6 CLI Operations](phase6_cli_operations.md)
+15. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
+16. [Phase 6 Production Readiness](phase6_production_readiness.md)
+17. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
 
 ## Runtime And Architecture
 
@@ -39,9 +40,10 @@ These documents define deterministic runtime truth, governed memory, structured 
 - [Phase 7 Learning Candidate Model](phase7_learning_candidate_model.md)
 - [Phase 7 Candidate Generation Engine](phase7_candidate_generation_engine.md)
 - [Phase 7 Semantic Candidate Context](phase7_semantic_candidate_context.md)
+- [Phase 7 Learning Governance Bridge](phase7_learning_governance_bridge.md)
 - [Phase 7 Roadmap](phase7_roadmap.md)
 
-These documents define Phase 7A learning as boundary-only, Phase 7B outcome pattern mining as deterministic and observational only, Phase 7C learning candidates as proposal-only serializable records, Phase 7D candidate generation as deterministic proposal-only conversion from outcome patterns to candidate records, and Phase 7E semantic candidate context as optional reviewer-assist context with `runtime_influence=false`, `requires_human_review=true`, and no runtime activation. Dashboard interactivity is documented as future Phase 7H work only.
+These documents define Phase 7A learning as boundary-only, Phase 7B outcome pattern mining as deterministic and observational only, Phase 7C learning candidates as proposal-only serializable records, Phase 7D candidate generation as deterministic proposal-only conversion from outcome patterns to candidate records, Phase 7E semantic candidate context as optional reviewer-assist context with `runtime_influence=false`, `requires_human_review=true`, and no runtime activation, and Phase 7F learning governance bridge as local deterministic review transitions that are approved for implementation only and not runtime integration. Dashboard interactivity is documented as future Phase 7H work only.
 
 ## Governance And Semantic Memory
 
@@ -80,7 +82,7 @@ This document defines architectural naming semantics, generated artifact policy,
 
 ## Phase Boundary Summary
 
-Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B adds observational outcome pattern mining only. Phase 7C adds the deterministic learning candidate model only. Phase 7D adds deterministic candidate generation only. Phase 7E adds optional reviewer-assist semantic candidate context only.
+Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B adds observational outcome pattern mining only. Phase 7C adds the deterministic learning candidate model only. Phase 7D adds deterministic candidate generation only. Phase 7E adds optional reviewer-assist semantic candidate context only. Phase 7F adds local deterministic governance transitions only.
 
 - Deterministic runtime remains authoritative.
 - Semantic recall remains non-authoritative.
@@ -94,5 +96,6 @@ Phase 7A is boundary-only and introduces no runtime learning behavior. Phase 7B 
 - Learning candidate records keep `runtime_influence=false` and `requires_human_review=true`.
 - The Phase 7D candidate generation engine is proposal-only and does not approve, implement, or activate candidates.
 - Phase 7E semantic candidate context is optional, reviewer-assist only, non-authoritative, not source evidence, and cannot change confidence or status.
+- Phase 7F governance is approved for implementation only, is not runtime integration, and does not activate runtime behavior.
 - Dashboard interactivity is deferred to future Phase 7H work and remains exploratory/read-only.
-- No autonomous learning behavior exists in Phase 7A, Phase 7B, Phase 7C, Phase 7D, or Phase 7E.
+- No autonomous learning behavior exists in Phase 7A, Phase 7B, Phase 7C, Phase 7D, Phase 7E, or Phase 7F.

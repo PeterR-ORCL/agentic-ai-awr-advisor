@@ -44,6 +44,7 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
 DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
     "data-dashboard-selectable",
     "data-dashboard-select-type",
+    "data-dashboard-select-key",
     "data-dashboard-select-id",
     "data-dashboard-select-domain",
     "data-dashboard-target",
@@ -53,6 +54,7 @@ DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
 DASHBOARD_INTERACTIVITY_STORAGE_KEY = (
     "agenticAiAwrAdvisor.dashboardInteractivityState.v1"
 )
+SCREEN3_CONTROL_CENTER_DOMAINS = ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG")
 
 
 class _TrustedHtml(str):
@@ -584,7 +586,8 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
             page_title="Screen 3 - History Selector",
             report_data=report_data,
             content_html=_render_screen_3_selector_page(
-                screen_models.get("screen_3_history_selector") or {}
+                screen_models.get("screen_3_history_selector") or {},
+                report_data=report_data,
             ),
             generated_at=generated_at,
         ),
@@ -3171,26 +3174,98 @@ def _join_english(values: list[str]) -> str:
     return ", ".join(cleaned[:-1]) + f", and {cleaned[-1]}"
 
 
-def _render_screen_3_selector_page(screen_model: dict[str, Any]) -> str:
+def _render_screen_3_selector_page(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any] | None = None,
+) -> str:
     header = _to_dict(screen_model.get("header"))
     selection_controls = _to_dict(screen_model.get("selection_controls"))
     scope_selection = _to_dict(screen_model.get("scope_selection"))
     timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
     review_mode = _to_dict(screen_model.get("review_mode"))
     current_selection_summary = _to_dict(screen_model.get("current_selection_summary"))
+    control_center = _build_screen3_control_center_model(screen_model, report_data or {})
     return f"""
     <div class="grid">
-      <!-- Screen 3 = history selector / filter / scope definition. -->
-      <section class="card secondary">
-        <div class="section-kicker">Screen 3</div>
-        <h2>History Selector / Filter / Scope Definition</h2>
+      <!-- Phase 7H.2 Screen 3 Control Center: read-only selectors only. -->
+      <section class="card secondary screen3-control-center">
+        <div class="section-kicker">Phase 7H.2</div>
+        <h2>Screen 3 Control Center</h2>
         <p class="static-selection-note">
-          Select the time window and comparison scope used to drive deterministic
-          analysis and historical validation.
+          Read-only selection state. Exploratory only. No backend writes. Does not change diagnostic truth. Does not change recommendation truth.
+        </p>
+        <p class="static-selection-note">
+          Selection does not change primary issue. Selection does not change severity. Cross-screen propagation remains future Phase 7H.8. No approval controls. No runtime activation.
         </p>
         <div class="subgrid selector-subgrid">
+          <section class="evidence-pane selector-pane screen3-selected-state-panel">
+            <h3>Selected State Summary</h3>
+            <p class="screen3-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
+              Read-only selection state: no exploratory selection
+            </p>
+            <div class="mini-pill-group">
+              <span class="mini-pill neutral">Read-only selection state</span>
+              <span class="mini-pill neutral">Exploratory only</span>
+              <span class="mini-pill neutral">No backend writes</span>
+              <span class="mini-pill neutral">No approval controls</span>
+              <span class="mini-pill neutral">No runtime activation</span>
+            </div>
+            <p class="meta">
+              Browser-side selection may update URL hash/local state through the Phase 7H.1 foundation. It does not alter Screen 2 diagnostic evidence or Screen 5 recommendation truth.
+            </p>
+          </section>
           <section class="evidence-pane selector-pane">
-            <h3>Header</h3>
+            <h3>AWR / Run Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["awr_run"],
+                "No additional AWR choices available in this static export. Selection is stored locally for exploration only.",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Database / System Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["database_system"],
+                "No database or system selector metadata is available in this static export. Additional selectable options will appear when export metadata includes them.",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Snapshot Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["snapshot"],
+                "No snapshot selector metadata is available in this static export. This selector does not change diagnostic output.",
+            )}
+          </section>
+          <section class="evidence-pane selector-pane">
+            <h3>Issue Domain Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["domain"],
+                "No issue domain choices are available.",
+            )}
+            <p class="meta">Domain selection is exploratory only; selection does not change primary issue.</p>
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Severity / Status Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["severity"],
+                "No severity or status selector metadata is available. Selection does not change severity.",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Comparison Baseline Selector</h3>
+            {_render_screen3_selector_group(
+                control_center["comparison_baseline"],
+                "No comparison baseline data is available in this static export.",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Fleet / Comparison Context</h3>
+            {_render_screen3_selector_group(
+                control_center["fleet_context"],
+                "No fleet peer or comparison context is available in this static export.",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Current Export Context</h3>
             {_render_info_grid(
                 [
                     ("DB Name", header.get("db_name")),
@@ -3201,16 +3276,11 @@ def _render_screen_3_selector_page(screen_model: dict[str, Any]) -> str:
                 ]
             , extra_class="selector-header-grid")}
           </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Scope Selection</h3>
-            {_render_scope_chips(scope_selection.get("options") or [])}
-            {_render_info_strip([("Scope", scope_selection.get("active_scope"))])}
-          </section>
           <section class="evidence-pane selector-pane">
-            <h3>Selection Controls</h3>
+            <h3>Canonical Static Selection Context</h3>
             <p class="static-selection-note">
               This view reflects the selected analysis window used across all
-              downstream screens.
+              downstream screens. The controls above do not rewrite this canonical context.
             </p>
             {_render_selection_controls(selection_controls)}
           </section>
@@ -3227,11 +3297,16 @@ def _render_screen_3_selector_page(screen_model: dict[str, Any]) -> str:
           </section>
           <section class="half evidence-pane selector-pane">
             <h3>Review Mode / Intent</h3>
-            {_render_scope_chips(review_mode.get("options") or [])}
+            {_render_screen3_option_chips(
+                review_mode.get("options") or [],
+                "reviewMode",
+                "selectedRun",
+                active_value=review_mode.get("active_mode"),
+            )}
             {_render_info_strip([("Active Review Mode", review_mode.get("active_mode"))])}
           </section>
           <section class="half evidence-pane selector-pane">
-            <h3>Current Selection Summary</h3>
+            <h3>Deterministic Current Selection Summary</h3>
             {_render_info_grid(
                 [
                     ("Scope", current_selection_summary.get("scope")),
@@ -3244,6 +3319,350 @@ def _render_screen_3_selector_page(screen_model: dict[str, Any]) -> str:
       </section>
     </div>
     """
+
+
+def _build_screen3_control_center_model(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Build read-only Screen 3 selector cards without changing runtime truth."""
+
+    header = _to_dict(screen_model.get("header"))
+    selection_controls = _to_dict(screen_model.get("selection_controls"))
+    scope_selection = _to_dict(screen_model.get("scope_selection"))
+    timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
+    review_mode = _to_dict(screen_model.get("review_mode"))
+    screen_models = _to_dict(report_data.get("screen_models"))
+    screen_2 = _to_dict(screen_models.get("screen_2_analysis"))
+    metadata = _to_dict(report_data.get("metadata"))
+    analysis_context = _to_dict(report_data.get("analysis_context"))
+    comparison_context = _to_dict(report_data.get("comparison_context"))
+    normalized_decision = _to_dict(screen_2.get("normalized_decision"))
+    decision_summary = _to_dict(screen_2.get("decision_summary"))
+    agentic_decision = _to_dict(report_data.get("agentic_decision"))
+    decision = _to_dict(report_data.get("decision"))
+
+    awr_run = []
+    _append_screen3_selector_item(
+        awr_run,
+        label="Current AWR",
+        value=_first_display_value(
+            metadata.get("awr_id"),
+            report_data.get("awr_id"),
+            agentic_decision.get("awr_id"),
+            decision.get("awr_id"),
+        ),
+        select_type="awr",
+        state_key="selectedAwr",
+        note="Current static export context. Selection is stored locally for exploration only.",
+    )
+    _append_screen3_selector_item(
+        awr_run,
+        label="Current Run",
+        value=_first_display_value(
+            report_data.get("run_history_id"),
+            report_data.get("run_id"),
+            analysis_context.get("run_history_id"),
+            analysis_context.get("run_id"),
+        ),
+        select_type="run",
+        state_key="selectedRun",
+        note="Run selection is browser-side only and does not re-run analysis.",
+    )
+
+    database_system = []
+    _append_screen3_selector_item(
+        database_system,
+        label="Database",
+        value=_first_display_value(
+            selection_controls.get("db_dbid"),
+            _format_scope_label_value(
+                header.get("db_name") or metadata.get("db_name"),
+                header.get("dbid") or metadata.get("dbid"),
+                fallback=scope_selection.get("active_scope"),
+            ),
+        ),
+        select_type="db",
+        state_key="selectedDb",
+        note="Database selection does not change parser output or scoring.",
+    )
+    _append_screen3_selector_item(
+        database_system,
+        label="System",
+        value=_first_display_value(
+            selection_controls.get("host_instance"),
+            _join_compact_values(
+                [
+                    header.get("host_name") or metadata.get("host_name"),
+                    header.get("instance_name") or metadata.get("instance_name"),
+                ]
+            ),
+        ),
+        select_type="system",
+        state_key="selectedSystem",
+        note="System selection is a local exploration marker only.",
+    )
+
+    snapshot = []
+    snapshot_labels = [
+        _display_value(label)
+        for label in list(report_data.get("snapshot_labels") or [])[:8]
+        if _has_display_value(label)
+    ]
+    for label in snapshot_labels:
+        _append_screen3_selector_item(
+            snapshot,
+            label="Snapshot",
+            value=label,
+            select_type="snapshot",
+            state_key="selectedSnapshot",
+            note="Snapshot selection does not change deterministic evidence.",
+        )
+    if not snapshot:
+        for label, value in (
+            ("Latest interval", selection_controls.get("latest_interval") or timeframe_selection.get("window_a")),
+            ("Worst interval", selection_controls.get("worst_interval") or timeframe_selection.get("window_b")),
+            ("Snapshot window", selection_controls.get("snapshot_window") or timeframe_selection.get("comparison_window")),
+        ):
+            _append_screen3_selector_item(
+                snapshot,
+                label=label,
+                value=_first_display_value(value),
+                select_type="snapshot",
+                state_key="selectedSnapshot",
+                note="Snapshot selection is stored locally for exploration only.",
+            )
+
+    primary_domain = _screen3_domain_key(
+        _first_display_value(
+            normalized_decision.get("primary_issue"),
+            decision_summary.get("primary_issue"),
+            decision.get("primary_issue"),
+            decision.get("primary_domain"),
+        )
+    )
+    domain = [
+        {
+            "label": domain_name,
+            "value": domain_name,
+            "select_type": "domain",
+            "state_key": "selectedDomain",
+            "note": "Exploratory domain selection only; does not change primary issue.",
+            "active": domain_name == primary_domain,
+            "domain": domain_name,
+        }
+        for domain_name in SCREEN3_CONTROL_CENTER_DOMAINS
+    ]
+
+    severity = []
+    _append_screen3_selector_item(
+        severity,
+        label="Current status",
+        value=_first_display_value(
+            normalized_decision.get("overall_status"),
+            decision_summary.get("overall_status"),
+            agentic_decision.get("overall_status"),
+            decision.get("overall_status"),
+            decision.get("risk_level"),
+            decision.get("status"),
+        ),
+        select_type="severity",
+        state_key="selectedSeverity",
+        note="Status selection does not change severity.",
+    )
+    _append_screen3_selector_item(
+        severity,
+        label="Display severity",
+        value=_first_display_value(
+            normalized_decision.get("display_severity_label"),
+            decision_summary.get("display_severity_label"),
+            normalized_decision.get("severity_score"),
+            decision_summary.get("severity_score"),
+            agentic_decision.get("severity_score"),
+            decision.get("severity_score"),
+        ),
+        select_type="severity",
+        state_key="selectedSeverity",
+        note="Severity selection is not an authoritative severity override.",
+    )
+
+    comparison_baseline = []
+    for label, value in (
+        ("Comparison window", timeframe_selection.get("comparison_window") or comparison_context.get("comparison_window")),
+        ("Latest interval baseline", timeframe_selection.get("window_a") or comparison_context.get("latest_snapshot_summary")),
+        ("Worst interval baseline", timeframe_selection.get("window_b") or comparison_context.get("worst_snapshot_summary")),
+        ("Latest vs prior", timeframe_selection.get("latest_vs_prior") or comparison_context.get("latest_vs_trend")),
+        ("Comparison mode", timeframe_selection.get("comparison_mode") or selection_controls.get("active_comparison_mode")),
+    ):
+        _append_screen3_selector_item(
+            comparison_baseline,
+            label=label,
+            value=_first_display_value(value),
+            select_type="comparisonBaseline",
+            state_key="selectedComparisonBaseline",
+            note="Baseline selection prepares read-only state for future Phase 7H.8 propagation.",
+        )
+
+    fleet_context = []
+    for option in list(scope_selection.get("options") or []) + list(selection_controls.get("comparison_modes") or []):
+        option_text = _first_display_value(option)
+        if not option_text:
+            continue
+        normalized = option_text.lower()
+        if "fleet" not in normalized and "similar" not in normalized and "global" not in normalized:
+            continue
+        _append_screen3_selector_item(
+            fleet_context,
+            label="Comparison context",
+            value=option_text,
+            select_type="fleetGroup",
+            state_key="selectedFleetGroup",
+            note="Fleet context is exploratory and does not create validated fleet truth.",
+        )
+
+    if not fleet_context and "fleet" in [str(mode).lower() for mode in review_mode.get("options") or []]:
+        _append_screen3_selector_item(
+            fleet_context,
+            label="Review mode",
+            value="fleet",
+            select_type="fleetGroup",
+            state_key="selectedFleetGroup",
+            note="Fleet review mode is read-only context only.",
+        )
+
+    return {
+        "awr_run": awr_run,
+        "database_system": database_system,
+        "snapshot": snapshot,
+        "domain": domain,
+        "severity": severity,
+        "comparison_baseline": comparison_baseline,
+        "fleet_context": fleet_context,
+    }
+
+
+def _append_screen3_selector_item(
+    items: list[dict[str, Any]],
+    *,
+    label: str,
+    value: Any,
+    select_type: str,
+    state_key: str,
+    note: str,
+) -> None:
+    value_text = _first_display_value(value)
+    if not value_text:
+        return
+    item = {
+        "label": label,
+        "value": value_text,
+        "select_type": select_type,
+        "state_key": state_key,
+        "note": note,
+    }
+    if select_type == "domain":
+        item["domain"] = value_text
+    items.append(item)
+
+
+def _render_screen3_selector_group(
+    items: list[dict[str, Any]],
+    empty_message: str,
+) -> str:
+    if not items:
+        return _render_empty_item(empty_message)
+    cards = "".join(_render_screen3_selector_card(item) for item in items)
+    return f'<div class="screen3-selector-grid">{cards}</div>'
+
+
+def _render_screen3_selector_card(item: dict[str, Any]) -> str:
+    label = _display_value(item.get("label"))
+    value = _display_value(item.get("value"))
+    select_type = str(item.get("select_type") or "").strip()
+    state_key = str(item.get("state_key") or "").strip()
+    note = _display_value(item.get("note"))
+    domain_attr = ""
+    if _has_display_value(item.get("domain")):
+        domain_attr = f' data-dashboard-select-domain="{escape(_display_value(item.get("domain")), quote=True)}"'
+    active_class = " active" if bool(item.get("active")) else ""
+    return f"""
+      <article
+        class="screen3-selector-card{active_class}"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="{escape(select_type, quote=True)}"
+        data-dashboard-select-key="{escape(state_key, quote=True)}"
+        data-dashboard-select-id="{escape(value, quote=True)}"
+        data-dashboard-filter-key="{escape(state_key, quote=True)}"
+        data-dashboard-filter-value="{escape(value, quote=True)}"{domain_attr}
+      >
+        <strong>{escape(label)}</strong>
+        <span>{escape(value)}</span>
+        <p>{escape(note)}</p>
+      </article>
+    """
+
+
+def _render_screen3_option_chips(
+    options: list[Any],
+    select_type: str,
+    state_key: str,
+    *,
+    active_value: Any = None,
+) -> str:
+    if not options:
+        return '<div class="meta">No selectable options are available.</div>'
+    active_text = (_first_display_value(active_value) or "").strip().lower()
+    chips = []
+    for option in options:
+        option_text = _first_display_value(option)
+        if not option_text:
+            continue
+        active_class = " active" if option_text.strip().lower() == active_text else ""
+        chips.append(
+            f"""
+            <span
+              class="scope-chip{active_class}"
+              data-dashboard-selectable="true"
+              data-dashboard-select-type="{escape(select_type, quote=True)}"
+              data-dashboard-select-key="{escape(state_key, quote=True)}"
+              data-dashboard-select-id="{escape(option_text, quote=True)}"
+              data-dashboard-filter-key="{escape(state_key, quote=True)}"
+              data-dashboard-filter-value="{escape(option_text, quote=True)}"
+              aria-selected="false"
+            >{escape(option_text)}</span>
+            """
+        )
+    return f'<div class="scope-chip-row">{"".join(chips)}</div>' if chips else '<div class="meta">No selectable options are available.</div>'
+
+
+def _first_display_value(*values: Any) -> str | None:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str) and not _has_display_value(value):
+            continue
+        if isinstance(value, (list, tuple, set)) and not value:
+            continue
+        text = _display_value(value).strip()
+        if text and text != "Insufficient data for a reliable conclusion":
+            return text
+    return None
+
+
+def _screen3_domain_key(value: Any) -> str | None:
+    text = str(value or "").strip().upper()
+    if not text:
+        return None
+    if "USER I/O" in text or " I/O" in text or text == "I/O":
+        return "IO"
+    if "COMMIT" in text or "LOG FILE SYNC" in text:
+        return "COMMIT"
+    for domain in SCREEN3_CONTROL_CENTER_DOMAINS:
+        if domain in text:
+            return domain
+    return None
 
 
 def _render_selection_controls(selection_controls: dict[str, Any]) -> str:
@@ -5897,6 +6316,55 @@ def _shared_page_styles() -> str:
     [data-dashboard-filter-active="false"] {
       opacity: 0.72;
     }
+    .screen3-control-center {
+      border-color: rgba(90, 209, 255, 0.32);
+    }
+    .screen3-selected-state-panel {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-selected-summary {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .screen3-selector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen3-selector-card {
+      display: grid;
+      gap: 6px;
+      min-height: 104px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+    .screen3-selector-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-selector-card span {
+      color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen3-selector-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen3-selector-card.active {
+      border-color: rgba(90, 209, 255, 0.62);
+      background: rgba(90, 209, 255, 0.12);
+    }
     .scope-chip.active {
       color: #08111d;
       background: var(--accent);
@@ -7193,6 +7661,7 @@ def _shared_page_styles() -> str:
       .workflow-summary-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
+      .screen3-selector-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }

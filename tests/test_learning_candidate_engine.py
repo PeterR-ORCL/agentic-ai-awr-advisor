@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Mapping, Sequence
 import ast
 import importlib
 import os
@@ -29,7 +30,7 @@ def make_pattern(
     affected_domain: str | None = None,
     confidence: float = 0.65,
     recurrence_count: int = 2,
-    source_records: list[dict[str, object]] | None = None,
+    source_records: Sequence[Mapping[str, object]] | None = None,
     title: str | None = None,
     description: str | None = None,
     observed_effect: str | None = None,

@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 try:
@@ -24,6 +26,14 @@ DEFAULT_DB_NAME = "SPRTRN"
 DEFAULT_AGENT_ID = "awr-advisor-phase6n1-prototype"
 DEFAULT_USER_ID = "phase6n1-curated-memory"
 DEFAULT_TABLE_PREFIX = "AWR_OAM_"
+DEFAULT_THREAD_PREFIX = "awr-advisor"
+DEFAULT_PHASE6N2_QUERIES = [
+    "SPRTRN",
+    "io pressure",
+    "TUNE FIRST",
+    "commit latency",
+    "RAC Data Guard operational context",
+]
 
 
 @dataclass(frozen=True)
@@ -40,6 +50,7 @@ class OracleAgentMemoryConfig:
     schema_policy: str = "create_if_necessary"
     agent_id: str = DEFAULT_AGENT_ID
     user_id: str = DEFAULT_USER_ID
+    thread_prefix: str = DEFAULT_THREAD_PREFIX
 
 
 def load_config_from_env() -> OracleAgentMemoryConfig:
@@ -63,10 +74,15 @@ def load_config_from_env() -> OracleAgentMemoryConfig:
         schema_policy=os.getenv("ORACLE_AGENT_MEMORY_SCHEMA_POLICY", "create_if_necessary"),
         agent_id=os.getenv("ORACLE_AGENT_MEMORY_AGENT_ID", DEFAULT_AGENT_ID),
         user_id=os.getenv("ORACLE_AGENT_MEMORY_USER_ID", DEFAULT_USER_ID),
+        thread_prefix=os.getenv("ORACLE_AGENT_MEMORY_THREAD_PREFIX", DEFAULT_THREAD_PREFIX),
     )
 
 
-def build_curated_memory_payload(db_name: str = DEFAULT_DB_NAME) -> dict[str, Any]:
+def build_curated_memory_payload(
+    db_name: str = DEFAULT_DB_NAME,
+    *,
+    source: str = "phase6n2_live_validation",
+) -> dict[str, Any]:
     """Build the Phase 6N.1 curated semantic memory payload.
 
     The payload is explicitly non-authoritative and cannot be consumed by
@@ -82,7 +98,7 @@ def build_curated_memory_payload(db_name: str = DEFAULT_DB_NAME) -> dict[str, An
             "Repeated User I/O spikes with intermittent commit latency and "
             "RAC/Data Guard operational context."
         ),
-        "source": "phase6n1_prototype",
+        "source": source,
         "authoritative": False,
         "runtime_influence": False,
     }
@@ -115,30 +131,36 @@ class OracleAgentMemoryPrototypeAdapter:
 
         if not self.config.enabled:
             return self._disabled_result()
+        started_at = time.perf_counter()
         try:
+            config_errors = self.validate_config()
+            if config_errors:
+                return self._configuration_error_result(config_errors, started_at)
             self._client = self._client_factory(self.config)
             return {
                 "enabled": True,
                 "success": True,
                 "message": "oracle_agent_memory_initialized",
+                "duration_ms": _duration_ms(started_at),
                 "runtime_influence": False,
                 "authoritative": False,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
-            return self._error_result(exc)
+            return self._error_result(exc, started_at=started_at)
 
     def get_or_create_thread(self, db_name: str = DEFAULT_DB_NAME) -> dict[str, Any]:
         """Create or retrieve a semantic memory thread for a DB name."""
 
         if not self.config.enabled:
             return self._disabled_result()
+        started_at = time.perf_counter()
         try:
             client = self._require_client()
-            thread_id = _thread_id_for_db(db_name)
+            thread_id = self.thread_key_for_db(db_name)
             metadata = {
                 "db_name": db_name,
-                "source": "phase6n1_prototype",
+                "source": "phase6n2_live_validation",
                 "authoritative": False,
                 "runtime_influence": False,
             }
@@ -159,15 +181,17 @@ class OracleAgentMemoryPrototypeAdapter:
                 "enabled": True,
                 "success": True,
                 "thread_id": thread_id,
+                "thread_key": thread_id,
                 "db_name": db_name,
                 "created": created,
                 "thread": thread,
+                "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
-            return self._error_result(exc)
+            return self._error_result(exc, started_at=started_at)
 
     def write_curated_memory(
         self,
@@ -179,10 +203,12 @@ class OracleAgentMemoryPrototypeAdapter:
 
         if not self.config.enabled:
             return self._disabled_result()
+        started_at = time.perf_counter()
         if payload.get("authoritative") is not False or payload.get("runtime_influence") is not False:
             return {
                 "enabled": True,
                 "success": False,
+                "duration_ms": _duration_ms(started_at),
                 "errors": [
                     "curated memory payload must set authoritative=false and runtime_influence=false"
                 ],
@@ -190,7 +216,7 @@ class OracleAgentMemoryPrototypeAdapter:
         try:
             client = self._require_client()
             db_name = str(payload.get("db_name") or DEFAULT_DB_NAME)
-            resolved_thread_id = thread_id or _thread_id_for_db(db_name)
+            resolved_thread_id = thread_id or self.thread_key_for_db(db_name)
             content = json.dumps(payload, sort_keys=True)
             metadata = {
                 "db_name": db_name,
@@ -211,13 +237,15 @@ class OracleAgentMemoryPrototypeAdapter:
                 "success": True,
                 "memory_id": memory_id,
                 "thread_id": resolved_thread_id,
+                "thread_key": resolved_thread_id,
                 "payload": payload,
+                "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
-            return self._error_result(exc)
+            return self._error_result(exc, started_at=started_at)
 
     def search_memory(
         self,
@@ -230,9 +258,10 @@ class OracleAgentMemoryPrototypeAdapter:
 
         if not self.config.enabled:
             return self._disabled_result(records=[])
+        started_at = time.perf_counter()
         try:
             client = self._require_client()
-            thread_id = _thread_id_for_db(db_name)
+            thread_id = self.thread_key_for_db(db_name)
             raw_results = client.search(
                 query,
                 user_id=self.config.user_id,
@@ -248,14 +277,34 @@ class OracleAgentMemoryPrototypeAdapter:
                 "query": query,
                 "db_name": db_name,
                 "thread_id": thread_id,
+                "thread_key": thread_id,
                 "records": records,
                 "count": len(records),
+                "top_result": records[0] if records else None,
+                "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
-            return self._error_result(exc, records=[])
+            return self._error_result(exc, records=[], started_at=started_at)
+
+    def validate_config(self) -> list[str]:
+        """Return missing configuration messages without exposing secrets."""
+
+        missing = []
+        if not self.config.agent_endpoint:
+            missing.append("ORACLE_AGENT_MEMORY_AGENT_ENDPOINT is required when enabled")
+        if not self.config.user:
+            missing.append("ORACLE_AGENT_MEMORY_USER is required when enabled")
+        if not self.config.password:
+            missing.append("ORACLE_AGENT_MEMORY_PASSWORD is required when enabled")
+        if not self.config.dsn:
+            missing.append("ORACLE_AGENT_MEMORY_DSN or ADB_DSN is required when enabled")
+        return missing
+
+    def thread_key_for_db(self, db_name: str) -> str:
+        return _thread_key_for_db(db_name, self.config.thread_prefix)
 
     def close(self) -> None:
         if self._connection is not None and hasattr(self._connection, "close"):
@@ -319,11 +368,13 @@ class OracleAgentMemoryPrototypeAdapter:
         exc: Exception,
         *,
         records: list[dict[str, Any]] | None = None,
+        started_at: float | None = None,
     ) -> dict[str, Any]:
         result = {
             "enabled": True,
             "success": False,
             "error": f"{type(exc).__name__}: {exc}",
+            "duration_ms": _duration_ms(started_at) if started_at is not None else None,
             "authoritative": False,
             "runtime_influence": False,
             "errors": [f"{type(exc).__name__}: {exc}"],
@@ -333,18 +384,35 @@ class OracleAgentMemoryPrototypeAdapter:
             result["count"] = len(records)
         return result
 
+    def _configuration_error_result(
+        self,
+        errors: list[str],
+        started_at: float,
+    ) -> dict[str, Any]:
+        return {
+            "enabled": True,
+            "success": False,
+            "error": "missing Oracle Agent Memory configuration",
+            "duration_ms": _duration_ms(started_at),
+            "authoritative": False,
+            "runtime_influence": False,
+            "errors": errors,
+        }
 
-def run_phase6n1_prototype(
+
+def run_phase6n2_live_validation(
     *,
     db_name: str = DEFAULT_DB_NAME,
     queries: list[str] | None = None,
     adapter: OracleAgentMemoryPrototypeAdapter | None = None,
+    repo_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Run the isolated Phase 6N.1 curated semantic recall prototype."""
+    """Run isolated Phase 6N.2 live semantic validation."""
 
     prototype_adapter = adapter or OracleAgentMemoryPrototypeAdapter()
-    payload = build_curated_memory_payload(db_name)
-    query_values = queries or [db_name, "io pressure", "TUNE FIRST"]
+    payload = build_curated_memory_payload(db_name, source="phase6n2_live_validation")
+    query_values = queries or DEFAULT_PHASE6N2_QUERIES
+    isolation = verify_runtime_isolation(repo_root=repo_root)
     try:
         init_result = prototype_adapter.initialize()
         if not init_result.get("enabled", True):
@@ -355,34 +423,62 @@ def run_phase6n1_prototype(
                 "payload": payload,
                 "authoritative": False,
                 "runtime_influence": False,
+                "searches": [],
                 "search_results": {},
+                "isolation": isolation,
+                "isolation_verified": isolation.get("isolation_verified", False),
                 "errors": [],
             }
         if not init_result.get("success"):
-            return init_result
+            return {**init_result, "isolation": isolation, "isolation_verified": False}
 
         thread_result = prototype_adapter.get_or_create_thread(db_name)
         if not thread_result.get("success"):
-            return thread_result
+            return {**thread_result, "isolation": isolation, "isolation_verified": False}
 
         write_result = prototype_adapter.write_curated_memory(
             payload,
             thread_id=thread_result.get("thread_id"),
         )
         if not write_result.get("success"):
-            return write_result
+            return {**write_result, "isolation": isolation, "isolation_verified": False}
 
-        search_results = {
-            query: prototype_adapter.search_memory(query, db_name=db_name)
-            for query in query_values
-        }
+        search_results = []
+        legacy_search_results = {}
+        for query in query_values:
+            search_result = prototype_adapter.search_memory(query, db_name=db_name)
+            legacy_search_results[query] = search_result
+            search_results.append(
+                {
+                    "query": query,
+                    "success": bool(search_result.get("success")),
+                    "count": search_result.get("count", 0),
+                    "top_result": search_result.get("top_result"),
+                    "duration_ms": search_result.get("duration_ms"),
+                    "errors": search_result.get("errors", []),
+                }
+            )
         return {
             "enabled": True,
-            "success": all(result.get("success") for result in search_results.values()),
+            "success": all(result.get("success") for result in legacy_search_results.values()),
             "thread_id": thread_result.get("thread_id"),
+            "thread_key": thread_result.get("thread_key"),
+            "write": {
+                "success": bool(write_result.get("success")),
+                "memory_id": write_result.get("memory_id"),
+                "duration_ms": write_result.get("duration_ms"),
+                "errors": write_result.get("errors", []),
+            },
             "memory_id": write_result.get("memory_id"),
             "payload": payload,
-            "search_results": search_results,
+            "searches": search_results,
+            "search_results": legacy_search_results,
+            "diagnostics": {
+                "init_duration_ms": init_result.get("duration_ms"),
+                "thread_duration_ms": thread_result.get("duration_ms"),
+            },
+            "isolation": isolation,
+            "isolation_verified": bool(isolation.get("isolation_verified")),
             "authoritative": False,
             "runtime_influence": False,
             "errors": [],
@@ -391,10 +487,56 @@ def run_phase6n1_prototype(
         prototype_adapter.close()
 
 
-def _thread_id_for_db(db_name: str) -> str:
-    normalized = "".join(character.lower() if character.isalnum() else "-" for character in db_name)
-    normalized = "-".join(part for part in normalized.split("-") if part)
-    return f"awr-db-{normalized or 'unknown'}"
+def run_phase6n1_prototype(
+    *,
+    db_name: str = DEFAULT_DB_NAME,
+    queries: list[str] | None = None,
+    adapter: OracleAgentMemoryPrototypeAdapter | None = None,
+) -> dict[str, Any]:
+    """Backward-compatible wrapper for the Phase 6N.2 live validation flow."""
+
+    return run_phase6n2_live_validation(db_name=db_name, queries=queries, adapter=adapter)
+
+
+def verify_runtime_isolation(repo_root: Path | None = None) -> dict[str, Any]:
+    """Statically verify Oracle Agent Memory is not imported by runtime truth paths."""
+
+    root = repo_root or Path(__file__).resolve().parents[2]
+    checked_paths = [
+        root / "src" / "parser",
+        root / "src" / "analysis" / "decision_engine.py",
+        root / "src" / "analysis" / "recommendation_engine.py",
+        root / "src" / "recommendation",
+        root / "scripts" / "run_analysis.py",
+        root / "src" / "reporting" / "html_dashboard.py",
+    ]
+    forbidden_tokens = ("oracle_agent_memory_adapter", "oracleagentmemory")
+    violations = []
+    for path in checked_paths:
+        candidate_files = [path] if path.is_file() else sorted(path.rglob("*.py")) if path.exists() else []
+        for candidate in candidate_files:
+            text = candidate.read_text(encoding="utf-8", errors="ignore")
+            if any(token in text for token in forbidden_tokens):
+                violations.append(str(candidate.relative_to(root)))
+    return {
+        "authoritative": False,
+        "runtime_influence": False,
+        "deterministic_tables_modified": False,
+        "parser_called": False,
+        "scoring_called": False,
+        "decision_engine_called": False,
+        "recommendation_engine_called": False,
+        "run_analysis_imports_adapter": False,
+        "checked_paths": [str(path.relative_to(root)) for path in checked_paths],
+        "violations": violations,
+        "isolation_verified": not violations,
+    }
+
+
+def _thread_key_for_db(db_name: str, prefix: str = DEFAULT_THREAD_PREFIX) -> str:
+    normalized_prefix = str(prefix or DEFAULT_THREAD_PREFIX).strip() or DEFAULT_THREAD_PREFIX
+    normalized_db_name = str(db_name or "UNKNOWN").strip().upper() or "UNKNOWN"
+    return f"{normalized_prefix}:db:{normalized_db_name}"
 
 
 def _serialize_search_result(result: Any) -> dict[str, Any]:
@@ -417,3 +559,7 @@ def _serialize_search_result(result: Any) -> dict[str, Any]:
         "authoritative": False,
         "runtime_influence": False,
     }
+
+
+def _duration_ms(started_at: float) -> float:
+    return round((time.perf_counter() - started_at) * 1000.0, 3)

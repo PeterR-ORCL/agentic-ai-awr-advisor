@@ -10,7 +10,7 @@ from typing import Any
 
 from src.memory.oracle_agent_memory_adapter import (
     DEFAULT_DB_NAME,
-    run_phase6n1_prototype,
+    run_phase6n2_live_validation,
 )
 
 
@@ -31,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    result = run_phase6n1_prototype(db_name=args.db_name, queries=args.queries)
+    result = run_phase6n2_live_validation(db_name=args.db_name, queries=args.queries)
     _print_result(result)
     if not result.get("enabled", True):
         return 0
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _print_result(result: dict[str, Any]) -> None:
-    print("Oracle Agent Memory Prototype:")
+    print("Oracle Agent Memory Live Validation:")
     print(json.dumps(_json_safe(result), indent=2, sort_keys=True))
 
 

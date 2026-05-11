@@ -6,11 +6,14 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 from src.memory.oracle_agent_memory_adapter import (
+    DEFAULT_PHASE6N2_QUERIES,
     OracleAgentMemoryConfig,
     OracleAgentMemoryPrototypeAdapter,
     build_curated_memory_payload,
     load_config_from_env,
     run_phase6n1_prototype,
+    run_phase6n2_live_validation,
+    verify_runtime_isolation,
 )
 
 
@@ -113,9 +116,42 @@ class OracleAgentMemoryPrototypeTests(unittest.TestCase):
         self.assertEqual(payload["primary_issue"], "io_pressure")
         self.assertEqual(payload["secondary_issue"], "commit_pressure")
         self.assertEqual(payload["posture"], "TUNE FIRST")
-        self.assertEqual(payload["source"], "phase6n1_prototype")
+        self.assertEqual(payload["source"], "phase6n2_live_validation")
         self.assertFalse(payload["authoritative"])
         self.assertFalse(payload["runtime_influence"])
+
+    def test_missing_required_env_behavior(self) -> None:
+        adapter = OracleAgentMemoryPrototypeAdapter(
+            OracleAgentMemoryConfig(enabled=True),
+            client_factory=lambda config: FakeClient(),
+        )
+
+        result = adapter.initialize()
+
+        self.assertFalse(result["success"])
+        self.assertIn("ORACLE_AGENT_MEMORY_AGENT_ENDPOINT is required when enabled", result["errors"])
+        self.assertIn("ORACLE_AGENT_MEMORY_USER is required when enabled", result["errors"])
+        self.assertNotIn("secret", str(result))
+
+    def test_thread_key_generation(self) -> None:
+        adapter = OracleAgentMemoryPrototypeAdapter(
+            OracleAgentMemoryConfig(enabled=False, thread_prefix="awr-advisor"),
+            client_factory=lambda config: FakeClient(),
+        )
+
+        self.assertEqual(adapter.thread_key_for_db("SPRTRN"), "awr-advisor:db:SPRTRN")
+
+    def test_phase6n2_search_query_list(self) -> None:
+        self.assertEqual(
+            DEFAULT_PHASE6N2_QUERIES,
+            [
+                "SPRTRN",
+                "io pressure",
+                "TUNE FIRST",
+                "commit latency",
+                "RAC Data Guard operational context",
+            ],
+        )
 
     def test_adapter_initialization_uses_client_factory(self) -> None:
         fake_client = FakeClient()
@@ -145,11 +181,14 @@ class OracleAgentMemoryPrototypeTests(unittest.TestCase):
         )
 
         self.assertTrue(thread_result["success"])
-        self.assertEqual(thread_result["thread_id"], "awr-db-sprtrn")
+        self.assertEqual(thread_result["thread_id"], "awr-advisor:db:SPRTRN")
+        self.assertEqual(thread_result["thread_key"], "awr-advisor:db:SPRTRN")
+        self.assertIn("duration_ms", thread_result)
         self.assertEqual(fake_client.created_threads[0]["metadata"]["db_name"], "SPRTRN")
         self.assertEqual(fake_client.created_threads[0]["extract_memories"], False)
         self.assertTrue(write_result["success"])
         self.assertEqual(write_result["memory_id"], "memory-1")
+        self.assertIn("duration_ms", write_result)
         self.assertFalse(write_result["payload"]["authoritative"])
         self.assertFalse(write_result["payload"]["runtime_influence"])
 
@@ -178,28 +217,76 @@ class OracleAgentMemoryPrototypeTests(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["query"], "io pressure")
-        self.assertEqual(result["thread_id"], "awr-db-sprtrn")
-        self.assertEqual(fake_client.searches[0]["thread_id"], "awr-db-sprtrn")
+        self.assertEqual(result["thread_id"], "awr-advisor:db:SPRTRN")
+        self.assertEqual(result["thread_key"], "awr-advisor:db:SPRTRN")
+        self.assertEqual(fake_client.searches[0]["thread_id"], "awr-advisor:db:SPRTRN")
         self.assertEqual(fake_client.searches[0]["max_results"], 3)
         self.assertTrue(fake_client.searches[0]["exact_thread_match"])
+        self.assertIn("duration_ms", result)
         self.assertFalse(result["records"][0]["authoritative"])
         self.assertFalse(result["records"][0]["runtime_influence"])
 
-    def test_run_prototype_preserves_isolation(self) -> None:
+    def test_run_live_validation_preserves_isolation_report_shape(self) -> None:
         fake_client = FakeClient()
         adapter = OracleAgentMemoryPrototypeAdapter(
             _enabled_config(),
             client_factory=lambda config: fake_client,
         )
 
-        result = run_phase6n1_prototype(adapter=adapter)
+        result = run_phase6n2_live_validation(adapter=adapter)
 
         self.assertTrue(result["success"])
-        self.assertEqual(result["thread_id"], "awr-db-sprtrn")
-        self.assertEqual(result["memory_id"], "memory-1")
+        self.assertEqual(result["thread_id"], "awr-advisor:db:SPRTRN")
+        self.assertEqual(result["thread_key"], "awr-advisor:db:SPRTRN")
+        self.assertTrue(result["write"]["success"])
+        self.assertEqual(result["write"]["memory_id"], "memory-1")
         self.assertFalse(result["authoritative"])
         self.assertFalse(result["runtime_influence"])
-        self.assertEqual(set(result["search_results"].keys()), {"SPRTRN", "io pressure", "TUNE FIRST"})
+        self.assertEqual(
+            [search["query"] for search in result["searches"]],
+            DEFAULT_PHASE6N2_QUERIES,
+        )
+        self.assertIn("isolation", result)
+        self.assertTrue(result["isolation_verified"])
+        self.assertFalse(result["isolation"]["deterministic_tables_modified"])
+        self.assertFalse(result["isolation"]["parser_called"])
+        self.assertFalse(result["isolation"]["scoring_called"])
+        self.assertFalse(result["isolation"]["decision_engine_called"])
+        self.assertFalse(result["isolation"]["recommendation_engine_called"])
+
+    def test_backward_compatible_wrapper_uses_live_validation(self) -> None:
+        fake_client = FakeClient()
+        adapter = OracleAgentMemoryPrototypeAdapter(
+            _enabled_config(),
+            client_factory=lambda config: fake_client,
+        )
+
+        result = run_phase6n1_prototype(adapter=adapter, queries=["SPRTRN"])
+
+        self.assertTrue(result["success"])
+        self.assertEqual([search["query"] for search in result["searches"]], ["SPRTRN"])
+
+    def test_isolation_static_report_shape(self) -> None:
+        result = verify_runtime_isolation()
+
+        self.assertIn("checked_paths", result)
+        self.assertIn("violations", result)
+        self.assertFalse(result["authoritative"])
+        self.assertFalse(result["runtime_influence"])
+
+    def test_no_secrets_in_missing_config_output(self) -> None:
+        adapter = OracleAgentMemoryPrototypeAdapter(
+            OracleAgentMemoryConfig(
+                enabled=True,
+                password="super-secret",
+            ),
+            client_factory=lambda config: FakeClient(),
+        )
+
+        result = adapter.initialize()
+
+        self.assertFalse(result["success"])
+        self.assertNotIn("super-secret", str(result))
 
 
 if __name__ == "__main__":

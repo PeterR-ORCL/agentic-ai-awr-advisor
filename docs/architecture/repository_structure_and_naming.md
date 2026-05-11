@@ -216,14 +216,14 @@ Do not reorganize without a dedicated migration cleanup commit.
 
 ## 8. Provider Adapter Naming Policy
 
-The provider package is a future adapter rename candidate. Do not perform these renames without a dedicated rename pass.
+The provider package uses explicit adapter and router naming for external AI provider boundaries.
 
-Future rename candidates:
+Current provider boundary files:
 
-- `ai_providers/ai_router.py` → `ai_providers/ai_provider_router.py`
-- `ai_providers/oci_provider.py` → `ai_providers/oci_provider_adapter.py`
-- `ai_providers/openai_provider.py` → `ai_providers/openai_provider_adapter.py`
-- `src/analysis/ai_provider.py` → `src/analysis/ai_provider_adapter.py`
+- `ai_providers/ai_provider_router.py`
+- `ai_providers/oci_provider_adapter.py`
+- `ai_providers/openai_provider_adapter.py`
+- `src/analysis/ai_provider_adapter.py`
 
 Rules:
 

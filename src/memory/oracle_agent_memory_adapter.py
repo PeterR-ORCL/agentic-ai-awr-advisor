@@ -3,6 +3,10 @@
 Oracle Agent Memory is non-authoritative semantic memory. It must never
 influence deterministic runtime diagnosis, scoring, recommendations, or
 dashboard truth in Phase 6.
+
+Semantic recall is non-authoritative analyst-assist context only.
+It must never influence deterministic runtime diagnosis, scoring,
+recommendations, governance approvals, or dashboard truth.
 """
 
 from __future__ import annotations
@@ -101,6 +105,7 @@ def build_curated_memory_payload(
         "source": source,
         "authoritative": False,
         "runtime_influence": False,
+        "semantic_only": True,
     }
 
 
@@ -144,6 +149,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "duration_ms": _duration_ms(started_at),
                 "runtime_influence": False,
                 "authoritative": False,
+                "semantic_only": True,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
@@ -163,6 +169,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "source": "phase6n2_live_validation",
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
             }
             try:
                 thread = client.get_thread(thread_id)
@@ -188,6 +195,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
@@ -209,6 +217,9 @@ class OracleAgentMemoryPrototypeAdapter:
                 "enabled": True,
                 "success": False,
                 "duration_ms": _duration_ms(started_at),
+                "authoritative": False,
+                "runtime_influence": False,
+                "semantic_only": True,
                 "errors": [
                     "curated memory payload must set authoritative=false and runtime_influence=false"
                 ],
@@ -223,6 +234,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "source": payload.get("source", "phase6n1_prototype"),
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             }
             memory_id = client.add_memory(
@@ -242,6 +254,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
@@ -284,6 +297,7 @@ class OracleAgentMemoryPrototypeAdapter:
                 "duration_ms": _duration_ms(started_at),
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
                 "errors": [],
             }
         except Exception as exc:  # noqa: BLE001
@@ -356,6 +370,7 @@ class OracleAgentMemoryPrototypeAdapter:
             "skipped": ["oracle_agent_memory_disabled"],
             "authoritative": False,
             "runtime_influence": False,
+            "semantic_only": True,
             "errors": [],
         }
         if records is not None:
@@ -377,6 +392,7 @@ class OracleAgentMemoryPrototypeAdapter:
             "duration_ms": _duration_ms(started_at) if started_at is not None else None,
             "authoritative": False,
             "runtime_influence": False,
+            "semantic_only": True,
             "errors": [f"{type(exc).__name__}: {exc}"],
         }
         if records is not None:
@@ -396,6 +412,7 @@ class OracleAgentMemoryPrototypeAdapter:
             "duration_ms": _duration_ms(started_at),
             "authoritative": False,
             "runtime_influence": False,
+            "semantic_only": True,
             "errors": errors,
         }
 
@@ -423,6 +440,7 @@ def run_phase6n2_live_validation(
                 "payload": payload,
                 "authoritative": False,
                 "runtime_influence": False,
+                "semantic_only": True,
                 "searches": [],
                 "search_results": {},
                 "isolation": isolation,
@@ -481,6 +499,7 @@ def run_phase6n2_live_validation(
             "isolation_verified": bool(isolation.get("isolation_verified")),
             "authoritative": False,
             "runtime_influence": False,
+            "semantic_only": True,
             "errors": [],
         }
     finally:
@@ -558,6 +577,7 @@ def _serialize_search_result(result: Any) -> dict[str, Any]:
         "metadata": metadata,
         "authoritative": False,
         "runtime_influence": False,
+        "semantic_only": True,
     }
 
 

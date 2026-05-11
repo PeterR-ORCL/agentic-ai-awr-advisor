@@ -64,3 +64,37 @@ When enabled and configured, expected output includes:
 ```
 
 Oracle Agent Memory remains non-authoritative in Phase 6N.2. Its semantic recall output is not consumed by parser extraction, feature engineering, scoring engines, decision engines, recommendation engines, dashboard truth, governed approval state, or deterministic Phase 6 memory persistence.
+
+## Phase 6N.3 Curated Semantic Recall APIs
+
+Phase 6N.3 adds a reusable curated semantic recall service on top of the isolated Oracle Agent Memory adapter. The service is intended for analyst assistance and future phrasing enrichment experiments only. It provides read-only APIs for recall by database name, issue type, posture, and related context, plus a deterministic summary builder that aggregates retrieved semantic memory themes.
+
+The public service module is:
+
+```text
+src/memory/semantic_recall_service.py
+```
+
+The supported APIs are:
+
+- `recall_by_db_name(db_name, limit=5)`
+- `recall_by_issue_type(issue_type, limit=5)`
+- `recall_by_posture(posture, limit=5)`
+- `recall_related_context(query, limit=5)`
+- `build_curated_semantic_summary(query, limit=5)`
+
+All service responses are explicitly marked:
+
+```json
+{
+  "authoritative": false,
+  "runtime_influence": false,
+  "semantic_only": true
+}
+```
+
+The service may rank retrieved semantic records deterministically for display by preferring exact database, posture, or issue matches before preserving Oracle Agent Memory semantic relevance order. This ranking is not scoring, not recommendation generation, and not runtime decision logic.
+
+Curated summaries must use observational language such as "semantic recall suggests," "retrieved memory context indicates," or "historical semantic entries referenced." They must not state root cause, determine severity, generate recommendations, approve governance records, activate artifacts, or override deterministic evidence.
+
+Oracle Agent Memory remains non-authoritative in Phase 6N.3. Semantic recall must not be imported into parser extraction, feature engineering, scoring engines, decision engines, recommendation engines, dashboard truth rendering, governed approval state, or deterministic Phase 6 memory persistence.

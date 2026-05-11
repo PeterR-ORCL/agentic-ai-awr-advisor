@@ -4,15 +4,18 @@ This directory contains architecture, governance, validation, and operational do
 
 ## Recommended Reading Order
 
-1. [Phase 6 Release Notes](phase6_release_notes.md)
-2. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
-3. [Phase 6 Component Inventory](phase6_component_inventory.md)
-4. [Phase 6 Repository Map](phase6_repository_map.md)
-5. [Phase 6 Operational Model](phase6_operational_model.md)
-6. [Phase 6 CLI Operations](phase6_cli_operations.md)
-7. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
-8. [Phase 6 Production Readiness](phase6_production_readiness.md)
-9. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
+1. [Phase 7 Learning Boundary](phase7_learning_boundary.md)
+2. [Phase 7 Candidate Lifecycle](phase7_candidate_lifecycle.md)
+3. [Phase 7 Roadmap](phase7_roadmap.md)
+4. [Phase 6 Release Notes](phase6_release_notes.md)
+5. [Phase 6 Memory Architecture](phase6_memory_architecture.md)
+6. [Phase 6 Component Inventory](phase6_component_inventory.md)
+7. [Phase 6 Repository Map](phase6_repository_map.md)
+8. [Phase 6 Operational Model](phase6_operational_model.md)
+9. [Phase 6 CLI Operations](phase6_cli_operations.md)
+10. [Phase 6 Validation Matrix](phase6_validation_matrix.md)
+11. [Phase 6 Production Readiness](phase6_production_readiness.md)
+12. [Phase 6 Demo Walkthrough](phase6_demo_walkthrough.md)
 
 ## Runtime And Architecture
 
@@ -23,6 +26,14 @@ This directory contains architecture, governance, validation, and operational do
 - [Phase 6 Acceptance Criteria](phase6_acceptance_criteria.md)
 
 These documents define deterministic runtime truth, governed memory, structured recall, governance workflows, semantic recall isolation, dashboard visibility, and operational boundaries.
+
+## Phase 7 Learning Boundary
+
+- [Phase 7 Learning Boundary](phase7_learning_boundary.md)
+- [Phase 7 Candidate Lifecycle](phase7_candidate_lifecycle.md)
+- [Phase 7 Roadmap](phase7_roadmap.md)
+
+These documents define Phase 7A learning as boundary-only, candidate-based, human-reviewed, non-authoritative until approved, non-runtime-mutating, governed, auditable, and isolated from deterministic runtime diagnosis. Dashboard interactivity is documented as future Phase 7H work only.
 
 ## Governance And Semantic Memory
 
@@ -61,11 +72,13 @@ This document defines architectural naming semantics, generated artifact policy,
 
 ## Phase Boundary Summary
 
-Phase 6 is governed, deterministic, explicit, and validated.
+Phase 7A is boundary-only and introduces no runtime learning behavior.
 
 - Deterministic runtime remains authoritative.
 - Semantic recall remains non-authoritative.
 - Governance remains human-controlled.
 - Dashboard truth remains deterministic.
-- No autonomous learning behavior exists in Phase 6.
-- Future adaptive or activation behavior belongs to later phases only.
+- Learning is candidate-based and human-reviewed.
+- Learning candidates do not modify runtime behavior.
+- Dashboard interactivity is deferred to future Phase 7H work and remains exploratory/read-only.
+- No autonomous learning behavior exists in Phase 7A.

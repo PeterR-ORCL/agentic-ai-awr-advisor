@@ -11,6 +11,8 @@ from html import escape
 from pathlib import Path
 from typing import Any, Iterable
 
+from src.reporting.ai_display_metadata import build_learning_visibility_metadata
+
 AI_SECTION_ORDER = [
     "Executive Summary",
     "Technical Narrative",
@@ -509,6 +511,10 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
     parser_governance_payload = _build_parser_governance_payload()
     governance_visibility_payload = _build_governance_visibility_payload()
     semantic_recall_visibility_payload = _build_semantic_recall_visibility_payload()
+    learning_visibility_payload = _build_learning_visibility_payload(
+        report_data,
+        screen_6_model,
+    )
 
     pages = {
         "index.html": _build_page_html(
@@ -591,6 +597,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
                 screen_6_model,
                 governance_payload=governance_visibility_payload,
                 semantic_recall_payload=semantic_recall_visibility_payload,
+                learning_visibility_payload=learning_visibility_payload,
             ),
             generated_at=generated_at,
         ),
@@ -1207,6 +1214,54 @@ def _build_semantic_recall_visibility_payload() -> dict[str, Any]:
         ],
         "latest_context": [],
     }
+
+
+def _build_learning_visibility_payload(
+    report_data: dict[str, Any],
+    screen_6_model: dict[str, Any],
+) -> dict[str, Any]:
+    """Build optional Phase 7G display metadata without live dependencies."""
+
+    report_learning = _to_dict(report_data.get("learning_visibility"))
+    screen_learning = _to_dict(screen_6_model.get("learning_visibility"))
+    learning_source = report_learning or screen_learning
+    candidates = _first_learning_value(
+        report_data.get("learning_candidates"),
+        report_data.get("learning_candidate_records"),
+        screen_6_model.get("learning_candidates"),
+        screen_6_model.get("learning_candidate_records"),
+        learning_source.get("candidates"),
+        learning_source.get("learning_candidates"),
+    )
+    governance_records = _first_learning_value(
+        report_data.get("learning_governance"),
+        report_data.get("learning_governance_records"),
+        report_data.get("learning_governance_decisions"),
+        screen_6_model.get("learning_governance"),
+        screen_6_model.get("learning_governance_records"),
+        screen_6_model.get("learning_governance_decisions"),
+        learning_source.get("governance_records"),
+        learning_source.get("governance_decisions"),
+        _to_dict(learning_source.get("governance")).get("records"),
+        _to_dict(learning_source.get("governance")).get("decisions"),
+    )
+    return build_learning_visibility_metadata(
+        learning_source,
+        candidates=candidates,
+        governance_records=governance_records,
+    )
+
+
+def _first_learning_value(*values: Any) -> Any:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        if isinstance(value, (list, tuple, set, dict)) and not value:
+            continue
+        return value
+    return None
 
 
 def _env_flag_enabled(name: str) -> bool:
@@ -3381,6 +3436,220 @@ def _render_semantic_recall_visibility_section(payload: dict[str, Any]) -> str:
     """
 
 
+def _render_learning_visibility_section(payload: dict[str, Any]) -> str:
+    display_payload = payload or build_learning_visibility_metadata()
+    candidate_count = int(display_payload.get("candidate_count") or 0)
+    governance = _to_dict(display_payload.get("governance"))
+    governance_records = list(governance.get("records") or [])
+    empty_state_html = ""
+    if candidate_count == 0:
+        empty_state_html = _render_learning_empty_state(
+            display_payload.get("empty_state_messages") or []
+        )
+
+    return f"""
+      <section class="card secondary learning-visibility-card">
+        <div class="section-kicker">Phase 7G Learning Visibility</div>
+        <h2>Learning Visibility</h2>
+        <p class="meta">
+          Learning Visibility is Read-only. Learning candidates are proposed / review-state records only. Human review required; runtime_influence=false; requires_human_review=true. Not diagnostic evidence. Not recommendation truth. Not automatically applied.
+        </p>
+        <div class="governance-section-block">
+          <h3>Read-only Boundary</h3>
+          {_render_learning_safety_labels(display_payload.get("safety_labels") or [])}
+        </div>
+        {empty_state_html}
+        <div class="governance-section-block">
+          <h3>Candidate Summary</h3>
+          {_render_learning_summary(display_payload)}
+        </div>
+        <div class="governance-section-block">
+          <h3>Top Proposed Candidates</h3>
+          {_render_learning_candidate_rows(display_payload.get("candidates") or [])}
+        </div>
+        <div class="governance-section-block">
+          <h3>Governance Bridge Review State</h3>
+          {_render_learning_governance_rows(governance_records)}
+        </div>
+        <p class="meta learning-boundary-notice">
+          Approved for implementation only, not runtime activation. Governance approval is not runtime activation. Semantic context is reviewer-assist only and is not source_evidence, not diagnostic evidence, and not recommendation truth. Full dashboard interactivity remains future Phase 7H.
+        </p>
+      </section>
+    """
+
+
+def _render_learning_empty_state(messages: list[Any]) -> str:
+    rendered = [
+        _render_empty_item(_memory_cell_text(message))
+        for message in messages
+        if _has_display_value(message)
+    ]
+    if not rendered:
+        rendered = [
+            _render_empty_item("No learning candidates available"),
+            _render_empty_item("Learning visibility is read-only"),
+            _render_empty_item("No runtime influence"),
+        ]
+    return '<div class="learning-empty-state">' + "".join(rendered) + "</div>"
+
+
+def _render_learning_safety_labels(labels: list[Any]) -> str:
+    rendered = [
+        f'<span class="mini-pill neutral">{escape(_memory_cell_text(label))}</span>'
+        for label in labels
+        if _has_display_value(label)
+    ]
+    if not rendered:
+        rendered = [
+            '<span class="mini-pill neutral">Read-only</span>',
+            '<span class="mini-pill neutral">runtime_influence=false</span>',
+        ]
+    return '<div class="mini-pill-group learning-safety-labels">' + "".join(rendered) + "</div>"
+
+
+def _render_learning_summary(payload: dict[str, Any]) -> str:
+    status_counts = _to_dict(payload.get("status_counts"))
+    type_counts = _to_dict(payload.get("type_counts"))
+    component_counts = _to_dict(payload.get("affected_component_counts"))
+    domain_counts = _to_dict(payload.get("affected_domain_counts"))
+    summary_parts = [
+        _render_memory_count_card("Total candidates", payload.get("candidate_count"), "neutral"),
+        _render_memory_count_card("Semantic context present", payload.get("semantic_context_count"), "neutral"),
+        _render_memory_count_card("runtime_influence=false", 1, "success"),
+        _render_memory_count_card("requires_human_review=true", 1, "warning"),
+    ]
+    for label, count in status_counts.items():
+        summary_parts.append(
+            _render_memory_count_card(
+                f"Status {label}",
+                count,
+                _learning_status_class(label),
+            )
+        )
+    for label, count in type_counts.items():
+        summary_parts.append(_render_memory_count_card(f"Type {label}", count, "neutral"))
+    for label, count in component_counts.items():
+        summary_parts.append(_render_memory_count_card(f"Component {label}", count, "neutral"))
+    for label, count in domain_counts.items():
+        summary_parts.append(_render_memory_count_card(f"Domain {label}", count, "neutral"))
+    return '<div class="governance-summary-grid learning-summary-grid">' + "".join(summary_parts) + "</div>"
+
+
+def _render_learning_candidate_rows(candidates: list[Any]) -> str:
+    rows = [_to_dict(candidate) for candidate in candidates]
+    if not rows:
+        return _render_empty_item("No learning candidates available")
+    rendered_rows = []
+    for row in rows[:5]:
+        status = _memory_cell_text(row.get("status"))
+        semantic_label = (
+            "semantic_context present - Semantic context is reviewer-assist only"
+            if bool(row.get("semantic_context_present"))
+            else "semantic_context absent"
+        )
+        materialization = row.get("materialization_reference_label") or "—"
+        rendered_rows.append(
+            f"""
+            <article class="learning-candidate-row">
+              <div>
+                <strong>{escape(_memory_cell_text(row.get("candidate_id")))}</strong>
+                <span>{escape(_memory_cell_text(row.get("title")))}</span>
+              </div>
+              <div>{escape(_memory_cell_text(row.get("candidate_type")))}</div>
+              <div><span class="mini-pill {escape(_learning_status_class(status))}">{escape(status)}</span></div>
+              <div>{escape(_memory_cell_text(row.get("affected_component")))}</div>
+              <div>{escape(_memory_cell_text(row.get("affected_domain")))}</div>
+              <div>{escape(_learning_confidence_text(row.get("confidence")))}</div>
+              <div>
+                <span>requires_human_review=true</span>
+                <span>runtime_influence=false</span>
+              </div>
+              <div>
+                <span>source evidence count: {escape(_memory_cell_text(row.get("source_evidence_count")))}</span>
+                <span>{escape(semantic_label)}</span>
+              </div>
+              <div>{escape(_memory_cell_text(materialization))}</div>
+            </article>
+            """
+        )
+    return f"""
+        <div class="learning-candidate-list">
+          <div class="learning-candidate-row learning-candidate-header">
+            <div>candidate_id / title</div>
+            <div>candidate_type</div>
+            <div>status</div>
+            <div>affected_component</div>
+            <div>affected_domain</div>
+            <div>confidence</div>
+            <div>safety</div>
+            <div>source / semantic</div>
+            <div>materialization_reference</div>
+          </div>
+          {"".join(rendered_rows)}
+        </div>
+    """
+
+
+def _render_learning_governance_rows(records: list[Any]) -> str:
+    rows = [_to_dict(record) for record in records]
+    if not rows:
+        return _render_empty_item(
+            "No learning governance review state is available. Approved for implementation only, not runtime activation."
+        )
+    rendered_rows = []
+    for row in rows[:5]:
+        status = _memory_cell_text(row.get("status_label") or row.get("status"))
+        rendered_rows.append(
+            f"""
+            <article class="learning-governance-row">
+              <div><span class="mini-pill {escape(_learning_status_class(row.get("status")))}">{escape(status)}</span></div>
+              <div>{escape(_memory_cell_text(row.get("reviewed_by")))}</div>
+              <div>{escape(_truncate_memory_text(row.get("review_notes"), 96))}</div>
+              <div>{escape(_memory_cell_text(row.get("materialization_reference_label")))}</div>
+              <div>{escape(_learning_bool_text("approved_for_implementation_only", row.get("approved_for_implementation_only")))}</div>
+              <div>runtime_influence=false</div>
+            </article>
+            """
+        )
+    return f"""
+        <div class="learning-governance-list">
+          <div class="learning-governance-row learning-governance-header">
+            <div>status</div>
+            <div>reviewed_by</div>
+            <div>review_notes</div>
+            <div>materialization_reference</div>
+            <div>approved_for_implementation_only</div>
+            <div>runtime_influence</div>
+          </div>
+          {"".join(rendered_rows)}
+        </div>
+    """
+
+
+def _learning_confidence_text(value: Any) -> str:
+    if not _has_display_value(value):
+        return "—"
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return _memory_cell_text(value)
+
+
+def _learning_bool_text(label: str, value: Any) -> str:
+    return f"{label}={'true' if bool(value) else 'false'}"
+
+
+def _learning_status_class(status: Any) -> str:
+    normalized = _memory_status_key(status)
+    if normalized in {"PROPOSED", "UNDER_REVIEW", "NEEDS_REVISION"}:
+        return "warning"
+    if normalized in {"APPROVED_FOR_IMPLEMENTATION", "IMPLEMENTED", "VALIDATED"}:
+        return "success"
+    if normalized == "REJECTED":
+        return "error"
+    return "neutral"
+
+
 def _render_semantic_assist_scope(items: list[Any]) -> str:
     if not items:
         return _render_empty_item("No semantic assist scope is configured.")
@@ -3642,6 +3911,7 @@ def _render_screen_6_page(
     screen_model: dict[str, Any],
     governance_payload: dict[str, Any] | None = None,
     semantic_recall_payload: dict[str, Any] | None = None,
+    learning_visibility_payload: dict[str, Any] | None = None,
 ) -> str:
     header = _to_dict(screen_model.get("header"))
     fleet_summary = _to_dict(screen_model.get("fleet_summary"))
@@ -3689,6 +3959,7 @@ def _render_screen_6_page(
       </section>
       {_render_governance_visibility_section(governance_payload or {})}
       {_render_semantic_recall_visibility_section(semantic_recall_payload or {})}
+      {_render_learning_visibility_section(learning_visibility_payload or build_learning_visibility_metadata())}
     </div>
     """
     return f"""
@@ -3746,6 +4017,7 @@ def _render_screen_6_page(
       </section>
       {_render_governance_visibility_section(governance_payload or {})}
       {_render_semantic_recall_visibility_section(semantic_recall_payload or {})}
+      {_render_learning_visibility_section(learning_visibility_payload or build_learning_visibility_metadata())}
     </div>
     """
 
@@ -5609,7 +5881,9 @@ def _shared_page_styles() -> str:
     .parser-governance-list,
     .unknown-pattern-list,
     .governance-linkage-list,
-    .semantic-context-list {
+    .semantic-context-list,
+    .learning-candidate-list,
+    .learning-governance-list {
       display: grid;
       gap: 8px;
       margin-top: 12px;
@@ -5641,7 +5915,9 @@ def _shared_page_styles() -> str:
     .parser-governance-row,
     .unknown-pattern-row,
     .governance-linkage-row,
-    .semantic-context-row {
+    .semantic-context-row,
+    .learning-candidate-row,
+    .learning-governance-row {
       display: grid;
       align-items: center;
       gap: 10px;
@@ -5668,16 +5944,25 @@ def _shared_page_styles() -> str:
     .semantic-context-row {
       grid-template-columns: 0.85fr 0.35fr 2fr;
     }
+    .learning-candidate-row {
+      grid-template-columns: 1.2fr 1fr 0.9fr 0.9fr 0.9fr 0.55fr 1.05fr 1.4fr 1fr;
+    }
+    .learning-governance-row {
+      grid-template-columns: 1.35fr 0.9fr 1.4fr 1.1fr 1.25fr 0.9fr;
+    }
     .parser-review-row strong,
     .parser-governance-row strong,
     .unknown-pattern-row strong,
     .governance-linkage-row strong,
-    .semantic-context-row strong {
+    .semantic-context-row strong,
+    .learning-candidate-row strong,
+    .learning-governance-row strong {
       color: var(--text);
     }
     .parser-review-row span:not(.mini-pill),
     .parser-governance-row span:not(.mini-pill),
-    .unknown-pattern-row span:not(.mini-pill) {
+    .unknown-pattern-row span:not(.mini-pill),
+    .learning-candidate-row span:not(.mini-pill) {
       display: block;
       margin-top: 2px;
       color: var(--muted);
@@ -5699,7 +5984,9 @@ def _shared_page_styles() -> str:
     .parser-governance-header,
     .unknown-pattern-header,
     .governance-linkage-header,
-    .semantic-context-header {
+    .semantic-context-header,
+    .learning-candidate-header,
+    .learning-governance-header {
       background: transparent;
       border-color: transparent;
       padding-top: 0;
@@ -5735,8 +6022,17 @@ def _shared_page_styles() -> str:
       line-height: 1.35;
     }
     .semantic-boundary-notice,
-    .semantic-status-message {
+    .semantic-status-message,
+    .learning-boundary-notice {
       margin-top: 10px;
+    }
+    .learning-empty-state {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .learning-summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .nav-card-note {
       margin-top: 8px;
@@ -6533,14 +6829,18 @@ def _shared_page_styles() -> str:
       .parser-governance-header,
       .unknown-pattern-header,
       .governance-linkage-header,
-      .semantic-context-header {
+      .semantic-context-header,
+      .learning-candidate-header,
+      .learning-governance-header {
         display: none;
       }
       .parser-review-row,
       .parser-governance-row,
       .unknown-pattern-row,
       .governance-linkage-row,
-      .semantic-context-row {
+      .semantic-context-row,
+      .learning-candidate-row,
+      .learning-governance-row {
         grid-template-columns: 1fr;
       }
     }

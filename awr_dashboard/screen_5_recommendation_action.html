@@ -1210,9 +1210,36 @@
 
     .pipeline-flow {
       display: grid;
-      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 10px;
       margin-top: 18px;
+    }
+
+    .pipeline-lane {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(9, 18, 30, 0.42);
+    }
+
+    .pipeline-lane-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-lane-header strong {
+      color: var(--text);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pipeline-lane-header span {
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .pipeline-node {
@@ -1280,6 +1307,51 @@
       border-color: rgba(90, 209, 255, 0.52);
       background:
         linear-gradient(180deg, rgba(28, 67, 84, 0.62), rgba(13, 24, 40, 0.92));
+    }
+
+    .pipeline-support-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pipeline-side-panel {
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(16, 28, 45, 0.78), rgba(10, 19, 32, 0.86));
+    }
+
+    .pipeline-side-panel strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-side-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .governed-memory-panel {
+      border-color: rgba(90, 209, 255, 0.45);
+    }
+
+    .semantic-recall-panel {
+      border-color: rgba(255, 205, 86, 0.42);
+      background:
+        linear-gradient(180deg, rgba(64, 51, 24, 0.48), rgba(10, 19, 32, 0.88));
+    }
+
+    .phase7-boundary-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(159, 176, 199, 0.16);
     }
 
     .future-input-layout {
@@ -1359,7 +1431,7 @@
 
     .agent-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-top: 16px;
     }
@@ -1473,6 +1545,7 @@
       .governance-summary-grid,
       .governance-artifact-grid,
       .workflow-summary-grid,
+      .pipeline-support-grid,
       .semantic-assist-scope-list,
       .fleet-detail-list {
         grid-template-columns: 1fr;
@@ -1554,7 +1627,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 11, 2026, 1:53 PM</div>
+        <div class="hero-meta">Generated: May 11, 2026, 3:58 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link active" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1580,7 +1653,7 @@
               POSTURE
             </span>
             <span class="status-insight-note">
-              Validate and tune before scaling.
+              Validate and tune prior to scaling.
             </span>
           </div>
     
@@ -1616,7 +1689,7 @@
         <div class="action-summary-grid">
         <section class="evidence-pane action-summary-pane">
           <h3>Action Rationale</h3>
-          <div class="supportive-panel compact-supportive-panel"><ul><li>TUNE FIRST posture means validation and tuning should precede scaling.</li><li>No canonical recommendation object was emitted for the selected scope.</li><li>Low confidence indicates limited evidence coverage and is not a scaling trigger.</li></ul></div>
+          <div class="supportive-panel compact-supportive-panel"><ul><li>The TUNE FIRST posture means that validation and tuning should precede scaling.</li><li>No canonical recommendation object was emitted for the selected scope.</li><li>Low confidence indicates limited evidence coverage, not a scaling trigger.</li></ul></div>
         </section>
         <section class="evidence-pane action-summary-pane">
           <h3>Validation Plan</h3>
@@ -1627,17 +1700,17 @@
             <div class="validation-plan-groups">
             <div class="validation-plan-group">
               <strong>SQL / Access Path</strong>
-              <ul><li>Review SQL and access-path efficiency where applicable.</li><li>Investigate User I/O contributors (db file sequential read).</li></ul>
+              <ul><li>Where applicable, review SQL and access-path efficiency.</li><li>Investigate User I/O contributors for db file sequential read.</li></ul>
             </div>
             
             <div class="validation-plan-group">
               <strong>Commit / Transaction Behavior</strong>
-              <ul><li>Validate commit latency behavior (log file sync).</li></ul>
+              <ul><li>Validate commit latency behavior related to log file sync.</li></ul>
             </div>
             
             <div class="validation-plan-group">
               <strong>RAC / Data Guard Context</strong>
-              <ul><li>Evaluate RAC coordination separately from CPU pressure.</li><li>If Data Guard replication context is present, review it.</li></ul>
+              <ul><li>Evaluate RAC coordination independently of CPU pressure.</li><li>If Data Guard replication context is present, review it.</li></ul>
             </div>
             
             <div class="validation-plan-group">
@@ -1659,7 +1732,7 @@
             <article class="item evidence-checklist-item">
               <h3>Anomalies</h3>
               <ul class="compact-list"><li>Commit / log file sync: Commit / log file sync spiked from a baseline of 18.10 to 68.10.</li><li>User I/O: User I/O spiked from a baseline of 11.72 to 31.10.</li><li>User I/O: User I/O spiked from a baseline of 10.24 to 37.00.</li><li>User I/O: User I/O spiked from a baseline of 10.24 to 48.64.</li><li>Commit / log file sync: Commit / log file sync spiked from a baseline of 22.35 to 51.70.</li></ul>
-              <div class="meta">Additional anomaly windows are available in Screen 4 Historical Review.</div>
+              <div class="meta">In Screen 4 Historical Review, additional anomaly windows are available.</div>
             </article>
             
             <article class="item evidence-checklist-item warning-note">
@@ -1690,7 +1763,7 @@
     </div>
     
 
-    <div class="footer">Generated at May 11, 2026, 1:53 PM</div>
+    <div class="footer">Generated at May 11, 2026, 3:58 PM</div>
   </div>
 
 

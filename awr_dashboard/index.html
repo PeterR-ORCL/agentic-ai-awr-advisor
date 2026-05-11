@@ -1210,9 +1210,36 @@
 
     .pipeline-flow {
       display: grid;
-      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 10px;
       margin-top: 18px;
+    }
+
+    .pipeline-lane {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(9, 18, 30, 0.42);
+    }
+
+    .pipeline-lane-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-lane-header strong {
+      color: var(--text);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pipeline-lane-header span {
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .pipeline-node {
@@ -1280,6 +1307,51 @@
       border-color: rgba(90, 209, 255, 0.52);
       background:
         linear-gradient(180deg, rgba(28, 67, 84, 0.62), rgba(13, 24, 40, 0.92));
+    }
+
+    .pipeline-support-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pipeline-side-panel {
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(16, 28, 45, 0.78), rgba(10, 19, 32, 0.86));
+    }
+
+    .pipeline-side-panel strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-side-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .governed-memory-panel {
+      border-color: rgba(90, 209, 255, 0.45);
+    }
+
+    .semantic-recall-panel {
+      border-color: rgba(255, 205, 86, 0.42);
+      background:
+        linear-gradient(180deg, rgba(64, 51, 24, 0.48), rgba(10, 19, 32, 0.88));
+    }
+
+    .phase7-boundary-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(159, 176, 199, 0.16);
     }
 
     .future-input-layout {
@@ -1359,7 +1431,7 @@
 
     .agent-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-top: 16px;
     }
@@ -1473,6 +1545,7 @@
       .governance-summary-grid,
       .governance-artifact-grid,
       .workflow-summary-grid,
+      .pipeline-support-grid,
       .semantic-assist-scope-list,
       .fleet-detail-list {
         grid-template-columns: 1fr;
@@ -1554,7 +1627,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 11, 2026, 1:53 PM</div>
+        <div class="hero-meta">Generated: May 11, 2026, 3:58 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link active" href="index.html">Home</a><a class="nav-link" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1578,7 +1651,7 @@
         <div class="section-kicker">System Flow</div>
         <h2>AWR Intelligence Pipeline</h2>
         <p class="meta pipeline-intro">
-          Current mode: local AWR staging from <strong>data/input</strong>. The pipeline converts staged AWR files into deterministic diagnosis, governed memory, and dashboard evidence. Phase 6 memory supports parser review, action/outcome tracking, feedback, approvals, and inactive knowledge artifacts without changing runtime decisions.
+          Current mode: local AWR staging from <strong>data/input</strong>. The pipeline converts staged AWR files into deterministic diagnosis, governed memory, and dashboard evidence. Governed deterministic memory supports parser review, action/outcome tracking, feedback, approvals, and inactive knowledge artifacts without changing runtime decisions.
         </p>
 
         <div class="pipeline-mode-badge">
@@ -1586,50 +1659,58 @@
           <span class="meta">Default source: data/input</span>
         </div>
 
-        <div class="pipeline-flow" aria-label="AWR intelligence pipeline">
-          <div class="pipeline-node source-node">
-            <span>Input Source</span>
-            <small>Local path or future object storage staging</small>
+        <div class="pipeline-lane">
+          <div class="pipeline-lane-header">
+            <strong>Deterministic Runtime Pipeline</strong>
+            <span>Authoritative truth generation</span>
+          </div>
+          <div class="pipeline-flow runtime-flow" aria-label="Deterministic runtime pipeline">
+            <div class="pipeline-node source-node">
+              <span>Ingestion</span>
+              <small>Stages local AWR input and file inventory</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Parsing</span>
+              <small>Extracts AWR sections, metrics, and unknowns</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Feature Engineering</span>
+              <small>Builds structured diagnostic signals</small>
+            </div>
+
+            <div class="pipeline-node core-node">
+              <span>Scoring</span>
+              <small>Computes deterministic domain scores</small>
+            </div>
+
+            <div class="pipeline-node core-node">
+              <span>Decision</span>
+              <small>Determines posture and issue prioritization</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Recommendation</span>
+              <small>Produces deterministic action guidance</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Dashboard Truth</span>
+              <small>Renders deterministic evidence and guidance</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-support-grid" aria-label="Phase 6 supporting visibility layers">
+          <div class="pipeline-side-panel governed-memory-panel">
+            <strong>Governed Memory</strong>
+            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing runtime decisions.</p>
           </div>
 
-          <div class="pipeline-node">
-            <span>Loader Agent</span>
-            <small>Discovers files and prepares source inventory</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Parser Agent</span>
-            <small>Extracts AWR sections, metrics, and unknowns</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Feature Model</span>
-            <small>Builds structured diagnostic signals</small>
-          </div>
-
-          <div class="pipeline-node core-node">
-            <span>Scoring Engine</span>
-            <small>Computes deterministic domain scores</small>
-          </div>
-
-          <div class="pipeline-node core-node">
-            <span>Decision Engine</span>
-            <small>Determines posture and issue prioritization</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Recommendation Engine</span>
-            <small>Produces deterministic action guidance</small>
-          </div>
-
-          <div class="pipeline-node memory-node">
-            <span>Memory &amp; Governance</span>
-            <small>Runs, actions, outcomes, feedback, approvals, artifacts</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Dashboard / Visualization</span>
-            <small>Renders evidence, review state, and guidance</small>
+          <div class="pipeline-side-panel semantic-recall-panel">
+            <strong>Parallel Reviewer-Assist Semantic Context</strong>
+            <p>Optional non-authoritative context outside deterministic runtime truth generation.</p>
           </div>
         </div>
       </section>
@@ -1675,17 +1756,17 @@
       </section>
 
       <section class="card secondary agent-architecture-card">
-        <div class="section-kicker">Agent Boundary</div>
-        <h2>Deterministic Agent Architecture</h2>
+        <div class="section-kicker">Runtime Boundary</div>
+        <h2>Deterministic Runtime Architecture</h2>
 
         <div class="agent-grid">
           <article class="agent-card">
-            <strong>Loader Agent</strong>
+            <strong>Loader Layer</strong>
             <p>Ingests and normalizes AWR inputs from the current staging source.</p>
           </article>
 
           <article class="agent-card">
-            <strong>Parser Agent</strong>
+            <strong>Parser Layer</strong>
             <p>Extracts structured signals and captures unknown parser patterns.</p>
           </article>
 
@@ -1700,8 +1781,13 @@
           </article>
 
           <article class="agent-card">
-            <strong>Memory Layer</strong>
-            <p>Persists runs, recommendations, actions, outcomes, and feedback.</p>
+            <strong>Governed Memory Layer</strong>
+            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts.</p>
+          </article>
+
+          <article class="agent-card">
+            <strong>Semantic Recall Layer</strong>
+            <p>Provides optional non-authoritative reviewer-assist context from curated semantic memory.</p>
           </article>
         </div>
       </section>
@@ -1739,9 +1825,9 @@
 
       <section class="card secondary memory-explainer-card">
         <div class="section-kicker">Phase 6</div>
-        <h2>Memory Layer</h2>
+        <h2>Governed Memory &amp; Semantic Recall</h2>
         <p class="meta">
-          Phase 6 captures what happened, what was recommended, what action was taken, and what changed afterward. It does not change scoring or decision logic.
+          Phase 6 captures governed deterministic memory such as runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts. Semantic recall operates outside the deterministic runtime truth path. Semantic recall provides optional reviewer-assist context only and cannot modify scoring, posture, recommendations, approvals, or dashboard truth.
         </p>
 
         <div class="memory-capability-grid">
@@ -1775,6 +1861,10 @@
             <span>Captures unmapped parser signals for approval workflow.</span>
           </div>
         </div>
+
+        <p class="meta phase7-boundary-note">
+          Autonomous learning, adaptive runtime behavior, semantic runtime influence, and self-modifying governance remain deferred to future Phase 7 research.
+        </p>
       </section>
     
 
@@ -1819,7 +1909,7 @@
         <div class="nav-card-grid">
           
       <a class="nav-card" href="screen_1_ingestion.html">
-        <h3>Screen 1 - Ingestion / Parse Confidence / Adaptation</h3>
+        <h3>Screen 1 - Intake / Parser Review / Governance Visibility</h3>
         <ul><li><strong>Total Files:</strong> 24</li><li><strong>Succeeded:</strong> 24</li><li><strong>Source Mode:</strong> LOCAL</li></ul>
         
       </a>
@@ -1849,7 +1939,7 @@
       </a>
     
       <a class="nav-card" href="screen_6_fleet_overview.html">
-        <h3>Screen 6 - Fleet Overview</h3>
+        <h3>Screen 6 - Fleet / Governance / Semantic Visibility</h3>
         <ul><li><strong>Similar AWRs:</strong> 5</li><li><strong>Cluster:</strong> No stable similarity cluster has been established for this dataset.</li><li><strong>Rarity:</strong> Pattern appears common within the current similarity space.</li></ul>
         
       </a>
@@ -1859,7 +1949,7 @@
     </div>
     
 
-    <div class="footer">Generated at May 11, 2026, 1:53 PM</div>
+    <div class="footer">Generated at May 11, 2026, 3:58 PM</div>
   </div>
 
 

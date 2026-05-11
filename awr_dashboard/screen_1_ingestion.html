@@ -1210,9 +1210,36 @@
 
     .pipeline-flow {
       display: grid;
-      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 10px;
       margin-top: 18px;
+    }
+
+    .pipeline-lane {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(9, 18, 30, 0.42);
+    }
+
+    .pipeline-lane-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-lane-header strong {
+      color: var(--text);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pipeline-lane-header span {
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .pipeline-node {
@@ -1280,6 +1307,51 @@
       border-color: rgba(90, 209, 255, 0.52);
       background:
         linear-gradient(180deg, rgba(28, 67, 84, 0.62), rgba(13, 24, 40, 0.92));
+    }
+
+    .pipeline-support-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pipeline-side-panel {
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(16, 28, 45, 0.78), rgba(10, 19, 32, 0.86));
+    }
+
+    .pipeline-side-panel strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-side-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .governed-memory-panel {
+      border-color: rgba(90, 209, 255, 0.45);
+    }
+
+    .semantic-recall-panel {
+      border-color: rgba(255, 205, 86, 0.42);
+      background:
+        linear-gradient(180deg, rgba(64, 51, 24, 0.48), rgba(10, 19, 32, 0.88));
+    }
+
+    .phase7-boundary-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(159, 176, 199, 0.16);
     }
 
     .future-input-layout {
@@ -1359,7 +1431,7 @@
 
     .agent-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-top: 16px;
     }
@@ -1473,6 +1545,7 @@
       .governance-summary-grid,
       .governance-artifact-grid,
       .workflow-summary-grid,
+      .pipeline-support-grid,
       .semantic-assist-scope-list,
       .fleet-detail-list {
         grid-template-columns: 1fr;
@@ -1554,7 +1627,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 11, 2026, 1:53 PM</div>
+        <div class="hero-meta">Generated: May 11, 2026, 3:58 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html">Home</a><a class="nav-link active" href="screen_1_ingestion.html">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html">6 Fleet</a></nav>
@@ -1571,7 +1644,7 @@
         <div class="info-grid">
             <div class="info-box">
               <strong>Run Label</strong>
-              <div>May 11, 2026, 1:53 PM</div>
+              <div>May 11, 2026, 3:58 PM</div>
             </div>
             
             <div class="info-box">
@@ -2197,7 +2270,7 @@
           <h3>Validation Notes</h3>
           
       <article class="item validation-note-summary">
-        <p>24 validation notes were detected across 24 files, representing repeated intake conditions (summarized above).</p>
+        <p>24 validation notes were detected across 24 files, representing repeated intake conditions summarized above.</p>
         <h4>Validation Notes Summary</h4>
         <div class="validation-note-list">
           
@@ -2218,7 +2291,7 @@
             <div class="meta">
               Summary of processed files, parsing completeness, validation notes, and selected scope.
             </div>
-            <div class="narrative">24 validation notes were detected across 24 files, representing repeated intake conditions (summarized above).</div>
+            <div class="narrative">24 validation notes were detected across 24 files, representing repeated intake conditions summarized above.</div>
           </div>
         </section>
       </div>
@@ -2916,7 +2989,7 @@
     </div>
     
 
-    <div class="footer">Generated at May 11, 2026, 1:53 PM</div>
+    <div class="footer">Generated at May 11, 2026, 3:58 PM</div>
   </div>
 
 

@@ -1338,7 +1338,7 @@ def _render_home_page(
     ]
     navigation_cards = [
         (
-            "Screen 1 - Ingestion / Parse Confidence / Adaptation",
+            "Screen 1 - Intake / Parser Review / Governance Visibility",
             "screen_1_ingestion.html",
             [
                 ("Total Files", intake_summary.get("total_files")),
@@ -1396,7 +1396,7 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 6 - Fleet Overview",
+            "Screen 6 - Fleet / Governance / Semantic Visibility",
             "screen_6_fleet_overview.html",
             [
                 ("Similar AWRs", fleet_summary.get("similar_awrs")),
@@ -1450,7 +1450,7 @@ def _render_home_system_ux_sections() -> str:
         <div class="section-kicker">System Flow</div>
         <h2>AWR Intelligence Pipeline</h2>
         <p class="meta pipeline-intro">
-          Current mode: local AWR staging from <strong>data/input</strong>. The pipeline converts staged AWR files into deterministic diagnosis, governed memory, and dashboard evidence. Phase 6 memory supports parser review, action/outcome tracking, feedback, approvals, and inactive knowledge artifacts without changing runtime decisions.
+          Current mode: local AWR staging from <strong>data/input</strong>. The pipeline converts staged AWR files into deterministic diagnosis, governed memory, and dashboard evidence. Governed deterministic memory supports parser review, action/outcome tracking, feedback, approvals, and inactive knowledge artifacts without changing runtime decisions.
         </p>
 
         <div class="pipeline-mode-badge">
@@ -1458,50 +1458,58 @@ def _render_home_system_ux_sections() -> str:
           <span class="meta">Default source: data/input</span>
         </div>
 
-        <div class="pipeline-flow" aria-label="AWR intelligence pipeline">
-          <div class="pipeline-node source-node">
-            <span>Input Source</span>
-            <small>Local path or future object storage staging</small>
+        <div class="pipeline-lane">
+          <div class="pipeline-lane-header">
+            <strong>Deterministic Runtime Pipeline</strong>
+            <span>Authoritative truth generation</span>
+          </div>
+          <div class="pipeline-flow runtime-flow" aria-label="Deterministic runtime pipeline">
+            <div class="pipeline-node source-node">
+              <span>Ingestion</span>
+              <small>Stages local AWR input and file inventory</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Parsing</span>
+              <small>Extracts AWR sections, metrics, and unknowns</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Feature Engineering</span>
+              <small>Builds structured diagnostic signals</small>
+            </div>
+
+            <div class="pipeline-node core-node">
+              <span>Scoring</span>
+              <small>Computes deterministic domain scores</small>
+            </div>
+
+            <div class="pipeline-node core-node">
+              <span>Decision</span>
+              <small>Determines posture and issue prioritization</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Recommendation</span>
+              <small>Produces deterministic action guidance</small>
+            </div>
+
+            <div class="pipeline-node">
+              <span>Dashboard Truth</span>
+              <small>Renders deterministic evidence and guidance</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-support-grid" aria-label="Phase 6 supporting visibility layers">
+          <div class="pipeline-side-panel governed-memory-panel">
+            <strong>Governed Memory</strong>
+            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing runtime decisions.</p>
           </div>
 
-          <div class="pipeline-node">
-            <span>Loader Agent</span>
-            <small>Discovers files and prepares source inventory</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Parser Agent</span>
-            <small>Extracts AWR sections, metrics, and unknowns</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Feature Model</span>
-            <small>Builds structured diagnostic signals</small>
-          </div>
-
-          <div class="pipeline-node core-node">
-            <span>Scoring Engine</span>
-            <small>Computes deterministic domain scores</small>
-          </div>
-
-          <div class="pipeline-node core-node">
-            <span>Decision Engine</span>
-            <small>Determines posture and issue prioritization</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Recommendation Engine</span>
-            <small>Produces deterministic action guidance</small>
-          </div>
-
-          <div class="pipeline-node memory-node">
-            <span>Memory &amp; Governance</span>
-            <small>Runs, actions, outcomes, feedback, approvals, artifacts</small>
-          </div>
-
-          <div class="pipeline-node">
-            <span>Dashboard / Visualization</span>
-            <small>Renders evidence, review state, and guidance</small>
+          <div class="pipeline-side-panel semantic-recall-panel">
+            <strong>Parallel Reviewer-Assist Semantic Context</strong>
+            <p>Optional non-authoritative context outside deterministic runtime truth generation.</p>
           </div>
         </div>
       </section>
@@ -1547,17 +1555,17 @@ def _render_home_system_ux_sections() -> str:
       </section>
 
       <section class="card secondary agent-architecture-card">
-        <div class="section-kicker">Agent Boundary</div>
-        <h2>Deterministic Agent Architecture</h2>
+        <div class="section-kicker">Runtime Boundary</div>
+        <h2>Deterministic Runtime Architecture</h2>
 
         <div class="agent-grid">
           <article class="agent-card">
-            <strong>Loader Agent</strong>
+            <strong>Loader Layer</strong>
             <p>Ingests and normalizes AWR inputs from the current staging source.</p>
           </article>
 
           <article class="agent-card">
-            <strong>Parser Agent</strong>
+            <strong>Parser Layer</strong>
             <p>Extracts structured signals and captures unknown parser patterns.</p>
           </article>
 
@@ -1572,8 +1580,13 @@ def _render_home_system_ux_sections() -> str:
           </article>
 
           <article class="agent-card">
-            <strong>Memory Layer</strong>
-            <p>Persists runs, recommendations, actions, outcomes, and feedback.</p>
+            <strong>Governed Memory Layer</strong>
+            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts.</p>
+          </article>
+
+          <article class="agent-card">
+            <strong>Semantic Recall Layer</strong>
+            <p>Provides optional non-authoritative reviewer-assist context from curated semantic memory.</p>
           </article>
         </div>
       </section>
@@ -1611,9 +1624,9 @@ def _render_home_system_ux_sections() -> str:
 
       <section class="card secondary memory-explainer-card">
         <div class="section-kicker">Phase 6</div>
-        <h2>Memory Layer</h2>
+        <h2>Governed Memory &amp; Semantic Recall</h2>
         <p class="meta">
-          Phase 6 captures what happened, what was recommended, what action was taken, and what changed afterward. It does not change scoring or decision logic.
+          Phase 6 captures governed deterministic memory such as runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts. Semantic recall operates outside the deterministic runtime truth path. Semantic recall provides optional reviewer-assist context only and cannot modify scoring, posture, recommendations, approvals, or dashboard truth.
         </p>
 
         <div class="memory-capability-grid">
@@ -1647,6 +1660,10 @@ def _render_home_system_ux_sections() -> str:
             <span>Captures unmapped parser signals for approval workflow.</span>
           </div>
         </div>
+
+        <p class="meta phase7-boundary-note">
+          Autonomous learning, adaptive runtime behavior, semantic runtime influence, and self-modifying governance remain deferred to future Phase 7 research.
+        </p>
       </section>
     """
 
@@ -2653,7 +2670,7 @@ def _screen2_clean_text(value: Any) -> str:
     )
     text = re.sub(
         r"\bAcross the full window,\s*the workload remained primarily CPU-led,\s*with average CPU data was not sufficient[^.]*\.",
-        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance.",
+        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance. Populated summary values included average User I/O 17.1%, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
@@ -2714,6 +2731,12 @@ def _screen2_clean_text(value: Any) -> str:
     text = re.sub(
         r"\bTop SQL concentration[^.]*Insufficient data for a reliable conclusion[^.]*\.",
         "Top SQL concentration could not be evaluated from available data.",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bAcross the full window,\s*populated summary values included average User I/O 17\.1%\.\s*CPU evidence was not sufficiently populated to confirm CPU dominance across the populated window\.\s*Top SQL concentration could not be evaluated from available data\.",
+        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance. Populated summary values included average User I/O 17.1%, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
@@ -6166,9 +6189,36 @@ def _shared_page_styles() -> str:
 
     .pipeline-flow {
       display: grid;
-      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 10px;
       margin-top: 18px;
+    }
+
+    .pipeline-lane {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(9, 18, 30, 0.42);
+    }
+
+    .pipeline-lane-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-lane-header strong {
+      color: var(--text);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pipeline-lane-header span {
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .pipeline-node {
@@ -6236,6 +6286,51 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.52);
       background:
         linear-gradient(180deg, rgba(28, 67, 84, 0.62), rgba(13, 24, 40, 0.92));
+    }
+
+    .pipeline-support-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pipeline-side-panel {
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(16, 28, 45, 0.78), rgba(10, 19, 32, 0.86));
+    }
+
+    .pipeline-side-panel strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-side-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .governed-memory-panel {
+      border-color: rgba(90, 209, 255, 0.45);
+    }
+
+    .semantic-recall-panel {
+      border-color: rgba(255, 205, 86, 0.42);
+      background:
+        linear-gradient(180deg, rgba(64, 51, 24, 0.48), rgba(10, 19, 32, 0.88));
+    }
+
+    .phase7-boundary-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(159, 176, 199, 0.16);
     }
 
     .future-input-layout {
@@ -6315,7 +6410,7 @@ def _shared_page_styles() -> str:
 
     .agent-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-top: 16px;
     }
@@ -6429,6 +6524,7 @@ def _shared_page_styles() -> str:
       .governance-summary-grid,
       .governance-artifact-grid,
       .workflow-summary-grid,
+      .pipeline-support-grid,
       .semantic-assist-scope-list,
       .fleet-detail-list {
         grid-template-columns: 1fr;
@@ -10838,7 +10934,8 @@ def _render_analysis_technical_sections(
         if title.lower() == "multi-snapshot summary":
             normalized_summary = (
                 "21 snapshots were analyzed in chronological order. "
-                "The workload remained primarily CPU-led across the window, with User I/O averaging 17.4%. "
+                "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance. "
+                "Populated summary values included average User I/O 17.1%, while Top SQL concentration could not be evaluated from available data. "
                 "The same workload shape persisted rather than rotating between unrelated bottlenecks. "
                 "The worst interval occurred at 2026-03-01 19:00 -> 20:00, while the latest interval reflects moderation rather than deviation from that pattern. "
                 "11 anomaly windows were detected, primarily driven by User I/O spikes that later moderated. "
@@ -10849,9 +10946,9 @@ def _render_analysis_technical_sections(
         elif title.lower() == "latest snapshot assessment":
             normalized_summary = (
                 "Latest snapshot (2026-03-08 15:00 -> 16:00): "
-                "CPU remained the primary workload driver. User I/O registered at 10.1%, and commit at 5.6%. "
+                "CPU percentage was unavailable, so CPU dominance could not be confirmed from that metric. User I/O registered at 10.1%, and commit at 5.6%. "
                 "Concurrency data was insufficient for a reliable conclusion. "
-                "User I/O and commit signals remain present but secondary, keeping access-path efficiency and transaction behavior in scope without displacing CPU as the primary driver."
+                "User I/O and commit signals remain present, keeping access-path efficiency and transaction behavior in scope."
             )
         if (
             title.lower() == "trend findings"

@@ -25,6 +25,12 @@ SEMANTIC_ONLY_FLAGS = {
 MAX_RECALL_LIMIT = 25
 
 
+def semantic_boundary_flags() -> dict[str, bool]:
+    """Return non-authoritative semantic recall boundary flags."""
+
+    return dict(SEMANTIC_ONLY_FLAGS)
+
+
 def recall_by_db_name(
     db_name: str,
     limit: int = 5,

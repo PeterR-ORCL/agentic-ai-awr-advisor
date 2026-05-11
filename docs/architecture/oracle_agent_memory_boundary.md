@@ -98,3 +98,37 @@ The service may rank retrieved semantic records deterministically for display by
 Curated summaries must use observational language such as "semantic recall suggests," "retrieved memory context indicates," or "historical semantic entries referenced." They must not state root cause, determine severity, generate recommendations, approve governance records, activate artifacts, or override deterministic evidence.
 
 Oracle Agent Memory remains non-authoritative in Phase 6N.3. Semantic recall must not be imported into parser extraction, feature engineering, scoring engines, decision engines, recommendation engines, dashboard truth rendering, governed approval state, or deterministic Phase 6 memory persistence.
+
+## Phase 6N.4 Governance-Assisted Semantic Recall
+
+Phase 6N.4 adds optional semantic assistance for human governance and review workflows. The service can retrieve curated semantic context for unknown signal review, parser governance review, knowledge request review, and artifact review. It is intended to help reviewers see related historical semantic context without making or changing any governance decision.
+
+The public service module is:
+
+```text
+src/memory/governance_semantic_assist.py
+```
+
+The supported reviewer-assist APIs are:
+
+- `assist_unknown_signal_review(unknown_signal, limit=5)`
+- `assist_knowledge_request_review(request, limit=5)`
+- `assist_artifact_review(artifact, limit=5)`
+- `assist_parser_governance_review(parser_context, limit=5)`
+
+All governance-assist responses are explicitly marked:
+
+```json
+{
+  "authoritative": false,
+  "runtime_influence": false,
+  "semantic_only": true,
+  "reviewer_assist_only": true
+}
+```
+
+Governance semantic assistance is non-authoritative reviewer context only. It must never determine governance outcomes, approval status, parser classification, runtime diagnosis, scoring, recommendations, or dashboard truth.
+
+Reviewer-assist observations must use language such as "semantic recall suggests," "prior semantic entries referenced," "retrieved governance context indicates," or "historical reviewer context included." They must never approve, reject, classify, materialize, recommend, or instruct parser behavior.
+
+Human reviewers remain authoritative. Phase 6N.4 does not add autonomous governance decisions, automatic parser classification, automatic approval, automatic artifact materialization, learning loops, or runtime truth influence.

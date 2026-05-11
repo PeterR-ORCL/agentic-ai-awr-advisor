@@ -3,7 +3,12 @@
 from importlib import import_module
 from typing import Any
 
-__all__ = ["memory_orchestrator", "memory_recall", "semantic_recall_service"]
+__all__ = [
+    "governance_semantic_assist",
+    "memory_orchestrator",
+    "memory_recall",
+    "semantic_recall_service",
+]
 
 
 def __getattr__(name: str) -> Any:

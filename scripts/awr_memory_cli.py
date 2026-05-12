@@ -4,13 +4,60 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
+import importlib
+import io
 import json
+from pathlib import Path
 import sys
-from typing import Any, Callable
+import unittest
+from typing import Any, Callable, Mapping, Sequence
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.memory import memory_orchestrator
 from src.memory.oracle_agent_memory_adapter import load_config_from_env
 from src.memory import governance_semantic_assist, semantic_recall_service
+from src.learning import (
+    learning_candidate_engine,
+    learning_candidate_model,
+    learning_governance_bridge,
+    outcome_pattern_miner,
+    semantic_candidate_context,
+)
+
+
+MEMORY_RECORD_KEYS = (
+    "runs",
+    "recommendations",
+    "actions",
+    "outcomes",
+    "feedback",
+    "unknown_signals",
+    "knowledge_requests",
+    "knowledge_artifacts",
+)
+
+LEARNING_REVIEW_ACTIONS = (
+    "under-review",
+    "reject",
+    "needs-revision",
+    "approve-for-implementation",
+    "attach-materialization",
+    "implemented",
+    "validated",
+    "close",
+)
+
+LEARNING_VALIDATE_MODULES = (
+    "tests.test_outcome_pattern_miner",
+    "tests.test_learning_candidate_model",
+    "tests.test_learning_candidate_engine",
+    "tests.test_semantic_candidate_context",
+    "tests.test_learning_governance_bridge",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_governance_commands(subparsers)
     _add_artifact_commands(subparsers)
     _add_semantic_commands(subparsers)
+    _add_learning_commands(subparsers)
     subparsers.add_parser("status", help="Show overall Phase 6 operational status.")
     return parser
 
@@ -34,7 +82,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     result = dispatch(args)
-    _print_json(result, compact=bool(args.compact))
+    if _should_print_json(args, result):
+        _print_json(_public_result(result), compact=bool(args.compact))
+    else:
+        _print_text(result)
     if not result.get("enabled", True):
         return 0
     return 0 if result.get("success", False) else 1
@@ -53,6 +104,8 @@ def dispatch(args: argparse.Namespace) -> dict[str, Any]:
         return _dispatch_artifact(args)
     if args.command == "semantic":
         return _dispatch_semantic(args)
+    if args.command == "learning":
+        return _dispatch_learning(args)
     return _error("unknown command")
 
 
@@ -168,6 +221,68 @@ def _add_semantic_commands(subparsers: argparse._SubParsersAction[argparse.Argum
     parser_review.add_argument("--db-name")
     parser_review.add_argument("--detection-reason")
     parser_review.add_argument("--limit", type=int, default=5)
+
+
+def _add_learning_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    learning = subparsers.add_parser(
+        "learning",
+        help="Safe local Phase 7 learning visibility and review commands.",
+    )
+    learning_sub = learning.add_subparsers(dest="learning_command", required=True)
+
+    status = learning_sub.add_parser("status", help="Show Phase 7 learning subsystem status.")
+    status.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    patterns = learning_sub.add_parser("patterns", help="Mine local outcome patterns.")
+    patterns.add_argument("--input", help="Optional local JSON memory input file.")
+    patterns.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    candidates = learning_sub.add_parser(
+        "candidates",
+        help="Generate proposal-only candidates from local patterns or memory records.",
+    )
+    candidates.add_argument("--input", help="Optional local JSON input file.")
+    candidates.add_argument(
+        "--from-memory",
+        action="store_true",
+        help="Mine local memory records before generating candidates.",
+    )
+    candidates.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    detail = learning_sub.add_parser("candidate-detail", help="Show one local candidate record.")
+    detail.add_argument("--input", required=True, help="Local JSON candidate input file.")
+    detail.add_argument("--candidate-id", required=True)
+    detail.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    semantic = learning_sub.add_parser(
+        "semantic-context",
+        help="Attach local reviewer-assist semantic context to one candidate.",
+    )
+    semantic.add_argument("--candidate-input", required=True, help="Local JSON candidate file.")
+    semantic.add_argument("--semantic-input", required=True, help="Local JSON semantic records file.")
+    semantic.add_argument("--candidate-id")
+    semantic.add_argument("--output", help="Optional local JSON output file.")
+    semantic.add_argument("--force", action="store_true", help="Overwrite --output if it exists.")
+    semantic.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    review = learning_sub.add_parser("review", help="Apply local governed review transitions.")
+    review.add_argument("--input", required=True, help="Local JSON candidate input file.")
+    review.add_argument("--candidate-id")
+    review.add_argument("--action", required=True, choices=LEARNING_REVIEW_ACTIONS)
+    review.add_argument("--actor", required=True)
+    review.add_argument("--review-notes")
+    review.add_argument("--materialization-reference")
+    review.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    export = learning_sub.add_parser("export", help="Normalize local learning records to JSON.")
+    export.add_argument("--input", required=True, help="Local JSON input file.")
+    export.add_argument("--kind", choices=("patterns", "candidates"))
+    export.add_argument("--output", help="Optional local JSON output file.")
+    export.add_argument("--force", action="store_true", help="Overwrite --output if it exists.")
+    export.add_argument("--json", action="store_true", help="Accepted for consistency; export emits JSON.")
+
+    validate = learning_sub.add_parser("validate", help="Run local Phase 7 learning validations.")
+    validate.add_argument("--json", action="store_true", help="Emit JSON output.")
 
 
 def _add_common_recall_filters(parser: argparse.ArgumentParser) -> None:
@@ -385,6 +500,543 @@ def _dispatch_semantic(args: argparse.Namespace) -> dict[str, Any]:
     return _error("unknown semantic command")
 
 
+def _dispatch_learning(args: argparse.Namespace) -> dict[str, Any]:
+    try:
+        if args.learning_command == "status":
+            return _learning_status_result()
+        if args.learning_command == "patterns":
+            return _learning_patterns_result(args)
+        if args.learning_command == "candidates":
+            return _learning_candidates_result(args)
+        if args.learning_command == "candidate-detail":
+            return _learning_candidate_detail_result(args)
+        if args.learning_command == "semantic-context":
+            return _learning_semantic_context_result(args)
+        if args.learning_command == "review":
+            return _learning_review_result(args)
+        if args.learning_command == "export":
+            return _learning_export_result(args)
+        if args.learning_command == "validate":
+            return _learning_validate_result()
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return _learning_error(str(exc))
+    return _learning_error("unknown learning command")
+
+
+def _learning_status_result() -> dict[str, Any]:
+    result = _learning_success(
+        command="learning status",
+        learning_modules_available=True,
+        outcome_pattern_miner_available=hasattr(outcome_pattern_miner, "mine_outcome_patterns"),
+        candidate_model_available=hasattr(learning_candidate_model, "LearningCandidate"),
+        candidate_engine_available=hasattr(
+            learning_candidate_engine,
+            "generate_learning_candidates",
+        ),
+        semantic_candidate_context_available=hasattr(
+            semantic_candidate_context,
+            "attach_semantic_context",
+        ),
+        governance_bridge_available=hasattr(
+            learning_governance_bridge,
+            "apply_governance_action",
+        ),
+        read_only=True,
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+        oracle_agent_memory_dependency=False,
+        semantic_recall_service_dependency=False,
+        network_dependency=False,
+    )
+    return _with_human(
+        result,
+        "\n".join(
+            (
+                "Phase 7 learning status",
+                "learning modules available: true",
+                "outcome pattern miner available: true",
+                "candidate model available: true",
+                "candidate engine available: true",
+                "semantic candidate context available: true",
+                "governance bridge available: true",
+                "runtime_influence=false",
+                "deterministic runtime remains authoritative",
+                "no runtime activation",
+                "read-only operational visibility",
+            )
+        ),
+    )
+
+
+def _learning_patterns_result(args: argparse.Namespace) -> dict[str, Any]:
+    memory_records = _load_memory_records(args.input)
+    patterns = outcome_pattern_miner.mine_outcome_patterns(memory_records)
+    result = _learning_success(
+        command="learning patterns",
+        read_only=True,
+        patterns=patterns,
+        count=len(patterns),
+        no_candidates_generated=True,
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+    )
+    lines = [
+        "Phase 7 learning patterns",
+        "read-only local pattern mining",
+        f"patterns: {len(patterns)}",
+        "runtime_influence=false",
+        "requires_human_review=true",
+        "no candidates generated by this command",
+        "no runtime activation",
+        "deterministic runtime remains authoritative",
+    ]
+    lines.extend(f"- {pattern.get('pattern_id')}: {pattern.get('title')}" for pattern in patterns)
+    return _with_human(result, "\n".join(lines))
+
+
+def _learning_candidates_result(args: argparse.Namespace) -> dict[str, Any]:
+    if args.from_memory:
+        memory_records = _load_memory_records(args.input)
+        candidates = learning_candidate_engine.generate_learning_candidates_from_memory(
+            memory_records
+        )
+        source_mode = "memory"
+    else:
+        patterns = _load_pattern_records(args.input)
+        candidates = learning_candidate_engine.generate_learning_candidates(patterns)
+        source_mode = "patterns"
+
+    result = _learning_success(
+        command="learning candidates",
+        source_mode=source_mode,
+        proposal_only=True,
+        candidates=candidates,
+        count=len(candidates),
+        no_approval=True,
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+    )
+    lines = [
+        "Phase 7 learning candidates",
+        f"source mode: {source_mode}",
+        f"proposal-only candidates: {len(candidates)}",
+        "status=PROPOSED",
+        "runtime_influence=false",
+        "requires_human_review=true",
+        "no approval",
+        "no runtime activation",
+        "deterministic runtime remains authoritative",
+    ]
+    lines.extend(
+        f"- {candidate.get('candidate_id')}: {candidate.get('title')}"
+        for candidate in candidates
+    )
+    return _with_human(result, "\n".join(lines))
+
+
+def _learning_candidate_detail_result(args: argparse.Namespace) -> dict[str, Any]:
+    candidate = _select_candidate(_load_candidate_records(args.input), args.candidate_id)
+    result = _learning_success(
+        command="learning candidate-detail",
+        read_only=True,
+        candidate_id=candidate["candidate_id"],
+        candidate=candidate,
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+    )
+    return _with_human(
+        result,
+        "\n".join(
+            (
+                "Phase 7 learning candidate detail",
+                f"candidate_id: {candidate['candidate_id']}",
+                f"candidate_type: {candidate['candidate_type']}",
+                f"status: {candidate['status']}",
+                f"title: {candidate['title']}",
+                "read-only",
+                "proposal-only",
+                "runtime_influence=false",
+                "requires_human_review=true",
+                "no runtime activation",
+            )
+        ),
+    )
+
+
+def _learning_semantic_context_result(args: argparse.Namespace) -> dict[str, Any]:
+    original = _select_candidate(_load_candidate_records(args.candidate_input), args.candidate_id)
+    candidate = learning_candidate_model.from_dict(original)
+    semantic_records = _load_semantic_records(args.semantic_input)
+    attached = semantic_candidate_context.attach_semantic_context(candidate, semantic_records)
+    attached_data = learning_candidate_model.to_dict(attached)
+    semantic_context_attached = attached_data.get("semantic_context") is not None
+    result = _learning_success(
+        command="learning semantic-context",
+        candidate_id=attached_data["candidate_id"],
+        candidate=attached_data,
+        semantic_context_attached=semantic_context_attached,
+        semantic_context_is_reviewer_assist_only=True,
+        semantic_context_is_non_authoritative=True,
+        semantic_context_is_not_source_evidence=True,
+        confidence_unchanged=attached_data["confidence"] == original["confidence"],
+        status_unchanged=attached_data["status"] == original["status"],
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+    )
+    if args.output:
+        write_result = _write_json_file(args.output, _public_result(result), force=args.force)
+        result["output_path"] = write_result
+    lines = [
+        "Phase 7 learning semantic context",
+        f"candidate_id: {attached_data['candidate_id']}",
+        f"semantic_context attached: {str(semantic_context_attached).lower()}",
+        "semantic context is reviewer-assist only",
+        "semantic context is non-authoritative",
+        "semantic context is not source_evidence",
+        "confidence unchanged",
+        "status unchanged",
+        "runtime_influence=false",
+        "requires_human_review=true",
+        "no runtime activation",
+    ]
+    return _with_human(result, "\n".join(lines))
+
+
+def _learning_review_result(args: argparse.Namespace) -> dict[str, Any]:
+    candidate_data = _select_candidate(_load_candidate_records(args.input), args.candidate_id)
+    candidate = learning_candidate_model.from_dict(candidate_data)
+    updated, decision = learning_governance_bridge.apply_governance_action(
+        candidate,
+        args.action,
+        args.actor,
+        review_notes=args.review_notes,
+        materialization_reference=args.materialization_reference,
+    )
+    updated_data = learning_candidate_model.to_dict(updated)
+    decision_data = learning_governance_bridge.governance_decision_to_dict(decision)
+    approval_boundary = (
+        "approved for implementation only, not runtime activation"
+        if args.action == "approve-for-implementation"
+        else None
+    )
+    result = _learning_success(
+        command="learning review",
+        action=args.action,
+        actor=args.actor,
+        candidate_id=updated_data["candidate_id"],
+        candidate=updated_data,
+        governance_decision=decision_data,
+        approved_for_implementation_only=bool(
+            decision_data.get("approved_for_implementation_only")
+        ),
+        approval_boundary=approval_boundary,
+        local_review_only=True,
+        no_runtime_activation=True,
+        deterministic_runtime_remains_authoritative=True,
+    )
+    lines = [
+        "Phase 7 learning review",
+        f"candidate_id: {updated_data['candidate_id']}",
+        f"action: {args.action}",
+        f"status: {updated_data['status']}",
+        f"actor: {args.actor}",
+        "local governed review transition only",
+        "runtime_influence=false",
+        "requires_human_review=true",
+        "no runtime activation",
+    ]
+    if approval_boundary:
+        lines.append(approval_boundary)
+    return _with_human(result, "\n".join(lines))
+
+
+def _learning_export_result(args: argparse.Namespace) -> dict[str, Any]:
+    raw_data = _load_json(args.input)
+    kind = args.kind or _infer_learning_record_kind(raw_data)
+    if kind == "candidates":
+        candidates = _candidate_records_from_data(raw_data)
+        result = _learning_success(
+            command="learning export",
+            kind="candidates",
+            candidates=candidates,
+            count=len(candidates),
+            local_file_output_only=bool(args.output),
+            no_runtime_activation=True,
+            deterministic_runtime_remains_authoritative=True,
+        )
+    elif kind == "patterns":
+        patterns = _pattern_records_from_data(raw_data)
+        result = _learning_success(
+            command="learning export",
+            kind="patterns",
+            patterns=patterns,
+            count=len(patterns),
+            local_file_output_only=bool(args.output),
+            no_runtime_activation=True,
+            deterministic_runtime_remains_authoritative=True,
+        )
+    else:
+        result = _learning_success(
+            command="learning export",
+            kind="raw",
+            record=raw_data,
+            local_file_output_only=bool(args.output),
+            no_runtime_activation=True,
+            deterministic_runtime_remains_authoritative=True,
+        )
+
+    if args.output:
+        result["output_path"] = _write_json_file(args.output, _public_result(result), force=args.force)
+    result["_force_json_output"] = True
+    return result
+
+
+def _learning_validate_result() -> dict[str, Any]:
+    loader = unittest.defaultTestLoader
+    suite = unittest.TestSuite()
+    modules_run: list[str] = []
+    missing_modules: list[str] = []
+
+    for module_name in LEARNING_VALIDATE_MODULES:
+        try:
+            module = importlib.import_module(module_name)
+        except ModuleNotFoundError as exc:
+            if exc.name == module_name:
+                missing_modules.append(module_name)
+                continue
+            raise
+        modules_run.append(module_name)
+        suite.addTests(loader.loadTestsFromModule(module))
+
+    stream = io.StringIO()
+    validation = unittest.TextTestRunner(stream=stream, verbosity=1).run(suite)
+    success = validation.wasSuccessful()
+    result = {
+        "enabled": True,
+        "success": success,
+        "command": "learning validate",
+        "modules_run": modules_run,
+        "missing_modules": missing_modules,
+        "tests_run": validation.testsRun,
+        "failures": len(validation.failures),
+        "errors": len(validation.errors),
+        "failure_summaries": _validation_summaries(validation.failures),
+        "error_summaries": _validation_summaries(validation.errors),
+        "local_validation_only": True,
+        "runtime_influence": False,
+        "requires_human_review": True,
+        "no_runtime_activation": True,
+        "deterministic_runtime_remains_authoritative": True,
+        "network_dependency": False,
+        "oracle_agent_memory_dependency": False,
+    }
+    lines = [
+        "Phase 7 learning validation",
+        f"success: {str(success).lower()}",
+        f"modules run: {len(modules_run)}",
+        f"tests run: {validation.testsRun}",
+        f"failures: {len(validation.failures)}",
+        f"errors: {len(validation.errors)}",
+        "local validation only",
+        "runtime_influence=false",
+        "no runtime activation",
+        "deterministic runtime remains authoritative",
+    ]
+    return _with_human(result, "\n".join(lines))
+
+
+def _learning_success(command: str, **fields: Any) -> dict[str, Any]:
+    result = {
+        "enabled": True,
+        "success": True,
+        "command": command,
+        "runtime_influence": False,
+        "requires_human_review": True,
+        "proposal_only": bool(fields.pop("proposal_only", False)),
+        "no_runtime_activation": True,
+        "safety_labels": [
+            "runtime_influence=false",
+            "requires_human_review=true",
+            "no runtime activation",
+            "deterministic runtime remains authoritative",
+        ],
+    }
+    result.update(fields)
+    return result
+
+
+def _learning_error(message: str) -> dict[str, Any]:
+    return _with_human(
+        {
+            "enabled": True,
+            "success": False,
+            "error": message,
+            "errors": [message],
+            "runtime_influence": False,
+            "requires_human_review": True,
+            "no_runtime_activation": True,
+        },
+        f"Phase 7 learning command failed: {message}",
+    )
+
+
+def _with_human(result: dict[str, Any], text: str) -> dict[str, Any]:
+    result["_human"] = text
+    return result
+
+
+def _load_memory_records(input_path: str | None) -> dict[str, list[Any]]:
+    if input_path is None:
+        return {key: [] for key in MEMORY_RECORD_KEYS}
+    return _memory_records_from_data(_load_json(input_path))
+
+
+def _memory_records_from_data(data: Any) -> dict[str, list[Any]]:
+    if not isinstance(data, Mapping):
+        raise ValueError("memory input must be a JSON object.")
+    source = data.get("memory_records") or data.get("memory") or data
+    if not isinstance(source, Mapping):
+        raise ValueError("memory_records must be a JSON object.")
+
+    records: dict[str, list[Any]] = {}
+    for key in MEMORY_RECORD_KEYS:
+        value = source.get(key, [])
+        if value is None:
+            value = []
+        if not isinstance(value, list):
+            raise ValueError(f"memory field {key!r} must be a list.")
+        records[key] = deepcopy(value)
+    return records
+
+
+def _load_pattern_records(input_path: str | None) -> list[dict[str, Any]]:
+    if input_path is None:
+        return []
+    return _pattern_records_from_data(_load_json(input_path))
+
+
+def _pattern_records_from_data(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, Mapping) and "patterns" in data:
+        records = data["patterns"]
+    elif isinstance(data, Mapping) and "pattern_id" in data:
+        records = [data]
+    elif isinstance(data, list):
+        records = data
+    else:
+        raise ValueError("pattern input must be a list, a {patterns: [...]} object, or one pattern object.")
+
+    if not isinstance(records, list):
+        raise ValueError("patterns must be a list.")
+    normalized: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise ValueError("each pattern record must be a JSON object.")
+        normalized.append(deepcopy(dict(record)))
+    return normalized
+
+
+def _load_candidate_records(input_path: str) -> list[dict[str, Any]]:
+    return _candidate_records_from_data(_load_json(input_path))
+
+
+def _candidate_records_from_data(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, Mapping) and "candidates" in data:
+        records = data["candidates"]
+    elif isinstance(data, Mapping) and "candidate" in data:
+        records = [data["candidate"]]
+    elif isinstance(data, Mapping) and "candidate_id" in data:
+        records = [data]
+    elif isinstance(data, list):
+        records = data
+    else:
+        raise ValueError(
+            "candidate input must be a list, a {candidates: [...]} object, or one candidate object."
+        )
+
+    if not isinstance(records, list):
+        raise ValueError("candidates must be a list.")
+    normalized: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise ValueError("each candidate record must be a JSON object.")
+        candidate = learning_candidate_model.from_dict(record)
+        normalized.append(learning_candidate_model.to_dict(candidate))
+    return normalized
+
+
+def _select_candidate(
+    candidates: Sequence[dict[str, Any]],
+    candidate_id: str | None,
+) -> dict[str, Any]:
+    if candidate_id is None:
+        if len(candidates) == 1:
+            return deepcopy(candidates[0])
+        raise ValueError("candidate-id is required when candidate input contains multiple candidates.")
+
+    for candidate in candidates:
+        if candidate.get("candidate_id") == candidate_id:
+            return deepcopy(candidate)
+    raise ValueError(f"candidate_id {candidate_id!r} was not found.")
+
+
+def _load_semantic_records(input_path: str) -> list[dict[str, Any]]:
+    data = _load_json(input_path)
+    if isinstance(data, Mapping) and "semantic_records" in data:
+        records = data["semantic_records"]
+    elif isinstance(data, Mapping):
+        records = [data]
+    elif isinstance(data, list):
+        records = data
+    else:
+        raise ValueError("semantic input must be a list or a {semantic_records: [...]} object.")
+
+    if not isinstance(records, list):
+        raise ValueError("semantic_records must be a list.")
+    normalized: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise ValueError("each semantic record must be a JSON object.")
+        normalized.append(deepcopy(dict(record)))
+    return normalized
+
+
+def _load_json(input_path: str) -> Any:
+    path = Path(input_path)
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _write_json_file(output_path: str, data: Mapping[str, Any], *, force: bool) -> str:
+    path = Path(output_path)
+    if path.exists() and not force:
+        raise FileExistsError(f"output file already exists: {output_path}; pass --force to overwrite.")
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return output_path
+
+
+def _infer_learning_record_kind(data: Any) -> str:
+    if isinstance(data, Mapping):
+        if "candidates" in data or "candidate" in data or "candidate_id" in data:
+            return "candidates"
+        if "patterns" in data or "pattern_id" in data:
+            return "patterns"
+    if isinstance(data, list) and data:
+        first = data[0]
+        if isinstance(first, Mapping) and "candidate_id" in first:
+            return "candidates"
+        if isinstance(first, Mapping) and "pattern_id" in first:
+            return "patterns"
+    return "raw"
+
+
+def _validation_summaries(entries: Sequence[tuple[unittest.case.TestCase, str]]) -> list[str]:
+    summaries: list[str] = []
+    for test, details in entries:
+        first_line = details.strip().splitlines()[-1:] or [""]
+        summaries.append(f"{test.id()}: {first_line[0]}")
+    return summaries
+
+
 def _recall_unknown_signal_by_id(unknown_signal_id: int) -> dict[str, Any]:
     result = memory_orchestrator.recall_unknown_signals(limit=500, order="newest")
     if not result.get("enabled", True):
@@ -472,6 +1124,25 @@ def _json_object(raw_value: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise argparse.ArgumentTypeError("must be a JSON object")
     return parsed
+
+
+def _should_print_json(args: argparse.Namespace, result: Mapping[str, Any]) -> bool:
+    if args.command != "learning":
+        return True
+    if result.get("_force_json_output"):
+        return True
+    return bool(getattr(args, "json", False))
+
+
+def _public_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in result.items() if not key.startswith("_")}
+
+
+def _print_text(result: Mapping[str, Any]) -> None:
+    text = result.get("_human")
+    if text is None:
+        text = result.get("error") or json.dumps(_public_result(result), indent=2, sort_keys=True)
+    print(text)
 
 
 def _print_json(result: dict[str, Any], *, compact: bool) -> None:

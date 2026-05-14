@@ -964,7 +964,9 @@ def _build_summary_key_signals(
     elif _is_populated_metric(metrics.get("gc_total_wait_pct_db_time")):
         signals.append(
             "Combined GC current + GC CR: "
-            + str(_format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%"))
+            + str(
+                _format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%")
+            )
             + " DB time"
         )
 
@@ -1945,7 +1947,10 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
         )
     elif not cpu_text:
         statements.append(
-            "CPU percentage was unavailable in the latest interval, so CPU dominance cannot be confirmed from that metric alone."
+            (
+                "CPU percentage was unavailable in the latest interval, so CPU dominance "
+                "cannot be confirmed from that metric alone."
+            )
         )
     if "sql_concentration" in issue_types:
         sql_text = _format_metric_evidence(metrics.get("top_sql_concentration"), "%")
@@ -1993,10 +1998,14 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
                 )
             )
         else:
-            statements.append("Concurrency percentage was unavailable for this interval.")
+            statements.append(
+                "Concurrency percentage was unavailable for this interval."
+            )
     if topology.get("is_rac"):
         rac_parts = []
-        cluster_text = _format_metric_evidence(metrics.get("cluster_wait_pct_db_time"), "%")
+        cluster_text = _format_metric_evidence(
+            metrics.get("cluster_wait_pct_db_time"), "%"
+        )
         gc_text = _format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%")
         if cluster_text:
             rac_parts.append(f"cluster waits at {cluster_text}")
@@ -2010,7 +2019,10 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
             )
         else:
             statements.append(
-                "RAC coordination evidence is present, but populated RAC wait percentages were unavailable in this interval."
+                (
+                    "RAC coordination evidence is present, but populated RAC wait "
+                    "percentages were unavailable in this interval."
+                )
             )
     if (
         topology.get("is_dataguard")
@@ -2045,7 +2057,10 @@ def _build_latest_interval_interpretation(context: dict[str, Any]) -> str:
             )
         else:
             statements.append(
-                "Exadata-specific execution paths are present, but populated cell-wait and offload metrics were unavailable in this interval."
+                (
+                    "Exadata-specific execution paths are present, but populated cell-wait "
+                    "and offload metrics were unavailable in this interval."
+                )
             )
     if topology.get("operational_event_class") not in {None, "NONE"}:
         statements.append(
@@ -2344,8 +2359,18 @@ def _build_latest_snapshot_summary(context: dict[str, Any]) -> str:
     unavailable_notes = []
     metric_definitions = (
         ("CPU", "cpu_pct", "%", "CPU evidence was unavailable for this interval."),
-        ("User I/O", "user_io_pct", "%", "User I/O evidence was unavailable for this interval."),
-        ("commit", "commit_pct", "%", "Commit percentage was unavailable for this interval."),
+        (
+            "User I/O",
+            "user_io_pct",
+            "%",
+            "User I/O evidence was unavailable for this interval.",
+        ),
+        (
+            "commit",
+            "commit_pct",
+            "%",
+            "Commit percentage was unavailable for this interval.",
+        ),
         (
             "concurrency",
             "concurrency_pct",
@@ -2373,7 +2398,8 @@ def _build_latest_snapshot_summary(context: dict[str, Any]) -> str:
         )
     else:
         latest_metrics_sentence = (
-            f"Latest snapshot ({context['snapshot_label']}) did not include populated CPU, wait, concurrency, or Top SQL concentration percentages."
+            f"Latest snapshot ({context['snapshot_label']}) did not include populated CPU, "
+            "wait, concurrency, or Top SQL concentration percentages."
         )
     if unavailable_notes:
         latest_metrics_sentence += " " + " ".join(unavailable_notes)
@@ -2407,7 +2433,9 @@ def _build_multi_snapshot_summary(
         )
     )
 
-    avg_cpu_text = _format_metric_evidence(_average_metric(time_series["cpu_trend"]), "%")
+    avg_cpu_text = _format_metric_evidence(
+        _average_metric(time_series["cpu_trend"]), "%"
+    )
     avg_io_text = _format_metric_evidence(_average_metric(time_series["io_trend"]), "%")
     avg_sql_text = _format_metric_evidence(
         _average_metric(time_series["sql_concentration_trend"]),
@@ -2418,13 +2446,19 @@ def _build_multi_snapshot_summary(
     if avg_cpu_text:
         populated_summary.append(f"average CPU {avg_cpu_text}")
     else:
-        unavailable_summary.append("CPU evidence was unavailable across the populated window")
+        unavailable_summary.append(
+            "CPU evidence was unavailable across the populated window"
+        )
     if avg_io_text:
         populated_summary.append(f"average User I/O {avg_io_text}")
     else:
-        unavailable_summary.append("User I/O evidence was unavailable across the populated window")
+        unavailable_summary.append(
+            "User I/O evidence was unavailable across the populated window"
+        )
     if avg_sql_text:
-        populated_summary.append(f"average Top SQL concentration (top 3 share) {avg_sql_text}")
+        populated_summary.append(
+            f"average Top SQL concentration (top 3 share) {avg_sql_text}"
+        )
     else:
         unavailable_summary.append(
             "Top SQL concentration could not be evaluated from available data"
@@ -2436,11 +2470,11 @@ def _build_multi_snapshot_summary(
             + ". "
         )
     else:
-        window_summary = (
-            "Across the full window, CPU, User I/O, and Top SQL concentration metrics were not populated. "
-        )
+        window_summary = "Across the full window, CPU, User I/O, and Top SQL concentration metrics were not populated. "
     window_summary += " ".join(sentence + "." for sentence in unavailable_summary)
-    window_summary += " The conclusion relies on other populated signals where available."
+    window_summary += (
+        " The conclusion relies on other populated signals where available."
+    )
     paragraph_one = " ".join(
         [
             f"{len(snapshot_contexts)} snapshots were analyzed in chronological order.",
@@ -2486,7 +2520,6 @@ def _build_multi_snapshot_executive_summary(
 ) -> str:
     snapshot_count = len(multi_snapshot_analysis["ordered_snapshots"])
     posture = multi_snapshot_analysis["decision_posture"]
-    time_series = multi_snapshot_analysis["time_series"]
     latest_snapshot = multi_snapshot_analysis["latest_snapshot"]
     latest_metrics = latest_snapshot.get("metrics") or {}
     latest_cpu = latest_metrics.get("cpu_pct")
@@ -2515,7 +2548,10 @@ def _build_multi_snapshot_executive_summary(
             + _join_readable_labels(populated)
             + "."
             if populated
-            else "The single available interval does not have populated CPU, User I/O, or Top SQL concentration evidence."
+            else (
+                "The single available interval does not have populated CPU, User I/O, or "
+                "Top SQL concentration evidence."
+            )
         )
         return " ".join(
             [
@@ -2593,7 +2629,8 @@ def _build_confidence(
     )
     if not cpu_available or not sql_available:
         latest_phrase += (
-            " CPU and Top SQL concentration values that were unavailable were not used as measured evidence."
+            " CPU and Top SQL concentration values that were unavailable were not "
+            "used as measured evidence."
         )
     topology_phrase = ""
     if latest_topology.get("is_rac"):
@@ -2716,7 +2753,9 @@ def _build_root_cause_interpretation(
         )
     if topology.get("is_rac"):
         rac_parts = []
-        cluster_text = _format_metric_evidence(metrics.get("cluster_wait_pct_db_time"), "%")
+        cluster_text = _format_metric_evidence(
+            metrics.get("cluster_wait_pct_db_time"), "%"
+        )
         gc_text = _format_metric_evidence(metrics.get("gc_total_wait_pct_db_time"), "%")
         if cluster_text:
             rac_parts.append(f"cluster waits at {cluster_text}")
@@ -2726,7 +2765,8 @@ def _build_root_cause_interpretation(
             root_cause_sentences.append(
                 "RAC topology is part of the story, with "
                 + " and ".join(rac_parts)
-                + " of DB time, so cross-instance coordination should be interpreted separately from generic single-instance CPU pressure."
+                + " of DB time, so cross-instance coordination should be interpreted "
+                "separately from generic single-instance CPU pressure."
             )
         else:
             root_cause_sentences.append(
@@ -2761,7 +2801,8 @@ def _build_root_cause_interpretation(
             root_cause_sentences.append(
                 "Exadata behavior is also present, with "
                 + " and ".join(exadata_parts)
-                + ". Those signals should be interpreted as engineered-system behavior rather than generic storage pressure."
+                + ". Those signals should be interpreted as engineered-system behavior "
+                "rather than generic storage pressure."
             )
         else:
             root_cause_sentences.append(
@@ -2815,7 +2856,9 @@ def _build_executive_summary_rationale(
         else:
             unavailable_parts.append("User I/O evidence was unavailable")
         if latest_sql_text:
-            latest_parts.append(f"Top SQL concentration (top 3 share) {latest_sql_text}")
+            latest_parts.append(
+                f"Top SQL concentration (top 3 share) {latest_sql_text}"
+            )
         else:
             unavailable_parts.append("Top SQL concentration could not be evaluated")
         populated_text = (
@@ -2826,7 +2869,11 @@ def _build_executive_summary_rationale(
         )
         return (
             f"{posture['posture']}: {populated_text}. "
-            + (" ".join(part + "." for part in unavailable_parts) + " " if unavailable_parts else "")
+            + (
+                " ".join(part + "." for part in unavailable_parts) + " "
+                if unavailable_parts
+                else ""
+            )
             + "No historical trend is available, so this posture is anchored to "
             "the current interval alone. "
             "The latest-interval evidence below explains why that single-snapshot conclusion was chosen."
@@ -2857,7 +2904,8 @@ def _build_executive_summary_rationale(
         )
     else:
         first_sentence = (
-            f"Across the full {snapshot_count}-snapshot window, CPU, User I/O, and Top SQL concentration were not populated in the available evidence."
+            f"Across the full {snapshot_count}-snapshot window, CPU, User I/O, and Top SQL "
+            "concentration were not populated in the available evidence."
         )
     if unavailable_avg_parts:
         first_sentence += (
@@ -3829,9 +3877,13 @@ def _build_agentic_decision(
 
     execution_plan = []
     if "cpu_pressure" in issue_by_type:
-        execution_plan.append("Tune the highest populated CPU-consuming execution paths first.")
+        execution_plan.append(
+            "Tune the highest populated CPU-consuming execution paths first."
+        )
     if "sql_concentration" in issue_by_type:
-        execution_plan.append("Prioritize populated high-impact SQL statements for review.")
+        execution_plan.append(
+            "Prioritize populated high-impact SQL statements for review."
+        )
     if "io_pressure" in issue_by_type:
         execution_plan.append(
             "Reduce physical reads by correcting SQL and access paths behind the dominant User I/O waits."
@@ -3897,15 +3949,20 @@ def _build_oci_guidance(
 
     if has_cpu and has_sql:
         current_state = (
-            "The workload has populated CPU and SQL concentration evidence, with User I/O and commit latency as secondary contributors. The current state supports tuning first, not immediate scaling."
+            "The workload has populated CPU and SQL concentration evidence, with User I/O "
+            "and commit latency as secondary contributors. The current state supports tuning "
+            "first, not immediate scaling."
         )
     elif has_io or has_commit:
         current_state = (
-            "The available populated evidence is strongest for User I/O, commit latency, topology, and operational state signals. CPU and Top SQL concentration should not be treated as measured drivers when unavailable."
+            "The available populated evidence is strongest for User I/O, commit latency, "
+            "topology, and operational state signals. CPU and Top SQL concentration should "
+            "not be treated as measured drivers when unavailable."
         )
     else:
         current_state = (
-            "The available evidence is limited. Unavailable metrics are excluded from driver claims, and the current state supports validation before scaling."
+            "The available evidence is limited. Unavailable metrics are excluded from driver "
+            "claims, and the current state supports validation before scaling."
         )
     if decision_posture is not None:
         current_state += (
@@ -3916,13 +3973,21 @@ def _build_oci_guidance(
     return {
         "current_state_assessment": current_state,
         "scaling_trigger_conditions": (
-            "Scaling becomes appropriate only after populated workload constraints, physical read demand, commit behavior, and topology-state signals have been validated or tuned and the same measured constraints still remain."
+            "Scaling becomes appropriate only after populated workload constraints, physical "
+            "read demand, commit behavior, and topology-state signals have been validated or "
+            "tuned and the same measured constraints still remain."
         ),
         "oci_architecture_guidance": (
-            "Keep the architecture aligned to a tune-and-validate path. Use an OCI database deployment pattern that can scale capacity cleanly only if residual measured pressure remains after SQL, transaction, and topology validation. Treat storage and broader architectural changes as secondary unless post-tuning evidence still shows persistent I/O pressure."
+            "Keep the architecture aligned to a tune-and-validate path. Use an OCI database "
+            "deployment pattern that can scale capacity cleanly only if residual measured "
+            "pressure remains after SQL, transaction, and topology validation. Treat storage "
+            "and broader architectural changes as secondary unless post-tuning evidence still "
+            "shows persistent I/O pressure."
         ),
         "resource_direction": (
-            "Do not select a capacity dimension from unavailable metrics. If populated post-tuning evidence still shows residual pressure, size the specific resource dimension supported by that measured evidence."
+            "Do not select a capacity dimension from unavailable metrics. If populated "
+            "post-tuning evidence still shows residual pressure, size the specific resource "
+            "dimension supported by that measured evidence."
         ),
         "risk_considerations": (
             "Scaling too early will mask the real problem and carry "
@@ -4137,9 +4202,7 @@ def _build_ingestion_runtime_context(
                 )
             )
         ]
-        warning_notes = [
-            note for note in parser_notes if _is_warning_parser_note(note)
-        ]
+        warning_notes = [note for note in parser_notes if _is_warning_parser_note(note)]
         if result.parse_errors:
             parse_status = "FAILED"
             failed += 1
@@ -4396,9 +4459,7 @@ def _prepare_db_backed_similarity_runtime(
     }
     if any(record is None for record in loaded_records.values()):
         missing = [
-            file_name
-            for file_name, record in loaded_records.items()
-            if record is None
+            file_name for file_name, record in loaded_records.items() if record is None
         ]
         print(
             "Similarity load/reuse: loading missing AWR history into ADB for "
@@ -4451,7 +4512,8 @@ def _prepare_db_backed_similarity_runtime(
         else _runtime_awr_id(latest_context)
     )
     newly_loaded = sum(
-        1 for file_name, row in file_rows.items()
+        1
+        for file_name, row in file_rows.items()
         if row.get("db_status") == "Newly Loaded"
     )
     already_loaded = len(initially_loaded)
@@ -4478,7 +4540,9 @@ def _prepare_db_backed_similarity_runtime(
     }
 
 
-def _db_ingestion_not_checked_context(reason: str, *, failed: bool = False) -> dict[str, Any]:
+def _db_ingestion_not_checked_context(
+    reason: str, *, failed: bool = False
+) -> dict[str, Any]:
     return {
         "summary": {
             "db_connectivity": "Failed" if failed else "Not checked",
@@ -5247,9 +5311,7 @@ if __name__ == "__main__":
             "source_files": awr_files,
             "latest_context": latest_context,
             "decision_posture": decision_posture,
-            "analysis_timestamp": analysis_output["metadata"].get(
-                "generated_at"
-            ),
+            "analysis_timestamp": analysis_output["metadata"].get("generated_at"),
         },
         parser_output=snapshot_results,
     )
@@ -5456,9 +5518,7 @@ if __name__ == "__main__":
             "state": (
                 "Off"
                 if not memory_result.get("enabled")
-                else "Active"
-                if memory_result.get("success")
-                else "Error"
+                else "Active" if memory_result.get("success") else "Error"
             ),
         },
     }

@@ -25,5 +25,19 @@
 
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
-  }
+  },
+
+  "cSpell.words": [
+    "agentic",
+    "dataguard",
+    "DBID",
+    "dbid",
+    "dedupe",
+    "dotenv",
+    "Exadata",
+    "exadata",
+    "hostnames",
+    "OCPUs",
+    "ocpus"
+  ]
 }

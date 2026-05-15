@@ -36,12 +36,16 @@ FORBIDDEN_BEHAVIOR_FILES = (
     "scripts/run_analysis.py",
 )
 
-PHASE7BG_ALLOWED_BEHAVIOR_FILE = "src/reporting/html_dashboard.py"
-PHASE7BG_ARTIFACT_FILES = {
+SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE = "src/reporting/html_dashboard.py"
+SCREEN5_PREVIEW_ARTIFACT_FILES = {
     "docs/architecture/phase7bg_screen5_action_tracking_panel.md",
     "docs/architecture/phase7bg_action_tracking_preview_model.md",
     "src/learning/screen5_action_tracking.py",
     "tests/test_dashboard_screen5_action_tracking_panel.py",
+    "docs/architecture/phase7bh_screen5_outcome_capture_panel.md",
+    "docs/architecture/phase7bh_outcome_capture_preview_model.md",
+    "src/learning/screen5_outcome_capture.py",
+    "tests/test_dashboard_screen5_outcome_capture_panel.py",
 }
 
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
@@ -130,10 +134,10 @@ def git_changed_paths(pathspecs: tuple[str, ...] = ()) -> set[str]:
 def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set[str]:
     disallowed = set(changed)
     if (
-        PHASE7BG_ALLOWED_BEHAVIOR_FILE in disallowed
-        and PHASE7BG_ARTIFACT_FILES.intersection(all_changed)
+        SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE in disallowed
+        and SCREEN5_PREVIEW_ARTIFACT_FILES.intersection(all_changed)
     ):
-        disallowed.remove(PHASE7BG_ALLOWED_BEHAVIOR_FILE)
+        disallowed.remove(SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE)
     return disallowed
 
 

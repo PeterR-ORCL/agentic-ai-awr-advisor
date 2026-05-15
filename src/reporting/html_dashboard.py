@@ -6649,6 +6649,7 @@ def _render_screen_5_page(
         {_render_recommendation_action_screen(screen_model, report_data or {})}
       </section>
       {_render_screen5_action_tracking_preview_panel(screen_model, report_data or {})}
+      {_render_screen5_outcome_capture_preview_panel(screen_model, report_data or {})}
       {_render_screen5_recommendation_action_exploration(screen_model, report_data or {})}
       {
           f'''
@@ -6794,6 +6795,128 @@ def _screen5_first_recommendation_for_action_preview(
     if not flattened:
         return {}
     return _to_dict(flattened[0])
+
+
+def _render_screen5_outcome_capture_preview_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    preview = _build_screen5_outcome_preview(screen_model, report_data)
+    control_cards = "".join(
+        f"""
+              <div class="screen5-outcome-preview-card disabled-preview-only" aria-disabled="true" data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <p>{escape(description)}</p>
+              </div>
+        """
+        for label, description in (
+            ("Capture Outcome", "Future outcome capture requires actor identity, audit, and governed write path."),
+            ("Mark Improved", "Improvement classification is preview metadata only."),
+            ("Mark Worsened", "Worsened classification is disabled in this phase."),
+            ("Mark No Change", "No-change classification does not update scoring."),
+            ("Mark Issue Recurred", "Recurrence classification is not persisted here."),
+            ("Mark Inconclusive", "Inconclusive outcome preview creates no record."),
+            ("Link Follow-up AWR / Run", "Follow-up report linking remains a future governed field."),
+            ("View Feedback / Learning Next Step", "Feedback and learning routing remain future phases."),
+        )
+    )
+    summary_rows = "".join(
+        f"<div><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>"
+        for label, value in (
+            ("selected recommendation/action state", preview["selected_recommendation_action_state"]),
+            ("recommendation_id", preview["recommendation_id"]),
+            ("linked_action_id", preview["linked_action_id"]),
+            ("outcome_status", preview["outcome_status"]),
+            ("outcome_effectiveness", preview["outcome_effectiveness"]),
+            ("issue_recurred", preview["issue_recurred"]),
+            ("followup_awr", preview["followup_awr"]),
+            ("followup_run", preview["followup_run"]),
+            ("implementation_date", preview["implementation_date"]),
+            ("outcome_notes", preview["outcome_notes"]),
+            ("actor required", preview["actor_required"]),
+            ("audit required", preview["audit_required"]),
+            ("governed write path required", preview["governed_write_path_required"]),
+            ("write_performed=false", "write_performed=false"),
+            ("outcome_created=false", "outcome_created=false"),
+            ("feedback_created=false", "feedback_created=false"),
+            ("label_created=false", "label_created=false"),
+            ("candidate_created=false", "candidate_created=false"),
+            ("scoring_mutation_requested=false", "scoring_mutation_requested=false"),
+            ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+            ("runtime_influence=false", "runtime_influence=false"),
+        )
+    )
+    return f"""
+      <section class="card secondary screen5-outcome-capture-preview-panel">
+        <div class="section-kicker">Phase 7BH Preview</div>
+        <h2>Screen 5 Outcome Capture Preview</h2>
+        <p class="meta">
+          Preview only. Outcome capture disabled in this phase. Outcome capture is not execution.
+          No backend write. No governed write path invoked. No outcome record persisted.
+          No feedback created. No learning label created. No candidate created automatically.
+          Does not change recommendation truth. Does not change scoring.
+          Does not mutate Phase 4I. Deterministic runtime remains authoritative.
+        </p>
+        <div class="screen5-outcome-preview-grid">
+          {control_cards}
+        </div>
+        <section class="evidence-pane screen5-outcome-preview-summary">
+          <h3>Read-Only Outcome Request Preview</h3>
+          <p class="meta">
+            No selected recommendation/action exists in this static export. The preview
+            below shows future outcome fields only and does not claim outcome was captured.
+          </p>
+          <dl class="screen5-outcome-preview-list">
+            {summary_rows}
+          </dl>
+        </section>
+      </section>
+    """
+
+
+def _build_screen5_outcome_preview(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, str]:
+    recommendation = _screen5_first_recommendation_for_action_preview(screen_model)
+    action_preview = _build_screen5_action_tracking_preview(screen_model, report_data)
+    recommendation_id = (
+        recommendation.get("recommendation_id")
+        or recommendation.get("id")
+        or recommendation.get("recommendation_key")
+        or action_preview.get("recommendation_id")
+    )
+    if not _has_display_value(recommendation_id) or _display_value(recommendation_id) == "no recommendation selected":
+        recommendation_id = "no recommendation selected"
+    linked_action_id = (
+        recommendation.get("action_id")
+        or recommendation.get("id")
+        or (
+            f"preview-action-{_screen5_state_id(action_preview.get('action_title'))}"
+            if _has_display_value(action_preview.get("action_title"))
+            else None
+        )
+    )
+    return {
+        "selected_recommendation_action_state": "no selected recommendation/action exists",
+        "recommendation_id": _display_value(recommendation_id),
+        "linked_action_id": (
+            _display_value(linked_action_id)
+            if _has_display_value(linked_action_id)
+            else "no linked action selected"
+        ),
+        "outcome_status": "pending",
+        "outcome_effectiveness": "unknown",
+        "issue_recurred": "unknown preview",
+        "followup_awr": "not linked",
+        "followup_run": "not linked",
+        "implementation_date": action_preview.get("implementation_date") or "not set",
+        "outcome_notes": "not captured",
+        "actor_required": "actor required before future outcome capture",
+        "audit_required": "audit required before future outcome capture",
+        "governed_write_path_required": "governed write path required before future write",
+    }
 
 
 def _render_parser_review_section(payload: dict[str, Any]) -> str:
@@ -10739,6 +10862,78 @@ def _shared_page_styles() -> str:
       line-height: 1.35;
       overflow-wrap: anywhere;
     }
+    .screen5-outcome-capture-preview-panel {
+      border-color: rgba(255, 205, 86, 0.32);
+    }
+    .screen5-outcome-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen5-outcome-preview-card {
+      display: grid;
+      gap: 6px;
+      min-height: 92px;
+      border: 1px dashed rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.58);
+      color: inherit;
+      opacity: 0.80;
+    }
+    .screen5-outcome-preview-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen5-outcome-preview-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen5-outcome-preview-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen5-outcome-preview-summary {
+      border-color: rgba(255, 205, 86, 0.32);
+      background: rgba(255, 205, 86, 0.08);
+    }
+    .screen5-outcome-preview-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen5-outcome-preview-list div {
+      display: grid;
+      grid-template-columns: minmax(190px, 0.74fr) minmax(0, 1.26fr);
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.14);
+      padding-bottom: 8px;
+    }
+    .screen5-outcome-preview-list div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .screen5-outcome-preview-list dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen5-outcome-preview-list dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
     .screen5-selected-recommendation-panel {
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(90, 209, 255, 0.08);
@@ -12044,6 +12239,7 @@ def _shared_page_styles() -> str:
       .screen3-source-mode-grid,
       .screen4-selector-grid,
       .screen5-action-preview-grid,
+      .screen5-outcome-preview-grid,
       .screen5-selector-grid,
       .screen6-selector-grid,
       .fleet-detail-list {

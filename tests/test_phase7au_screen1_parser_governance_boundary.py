@@ -39,7 +39,9 @@ FORBIDDEN_BEHAVIOR_FILES = (
 PHASE7AW_ALLOWED_BEHAVIOR_FILE = "src/reporting/html_dashboard.py"
 PHASE7AW_PREVIEW_ARTIFACT_FILES = {
     "docs/architecture/phase7aw_screen1_parser_unknown_review_panel.md",
+    "docs/architecture/phase7ax_screen1_knowledge_artifact_review_panel.md",
     "tests/test_dashboard_screen1_parser_unknown_review_panel.py",
+    "tests/test_dashboard_screen1_knowledge_artifact_review_panel.py",
 }
 
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (

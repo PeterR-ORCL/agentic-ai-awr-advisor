@@ -2416,6 +2416,11 @@ def _render_screen_1_page(
           parser_review_payload or {},
           report_data or {},
       )}
+      {_render_screen1_knowledge_artifact_review_preview_panel(
+          screen_model,
+          parser_governance_payload or {},
+          report_data or {},
+      )}
       {_render_parser_review_section(parser_review_payload or {})}
       {_render_parser_governance_review_section(parser_governance_payload or {})}
     </div>
@@ -3098,6 +3103,186 @@ def _screen1_first_parser_unknown_for_review_preview(
         if pattern:
             return pattern
     return {}
+
+
+def _render_screen1_knowledge_artifact_review_preview_panel(
+    screen_model: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    preview = _build_screen1_knowledge_artifact_review_preview(
+        screen_model,
+        parser_governance_payload,
+        report_data,
+    )
+    control_cards = "".join(
+        f"""
+              <div class="screen1-knowledge-artifact-review-card disabled-preview-only" aria-disabled="true" data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <p>{escape(description)}</p>
+              </div>
+        """
+        for label, description in (
+            ("Approve for Review", "Future approval-for-review is disabled in this phase."),
+            ("Reject Artifact", "Artifact rejection is preview-only and is not executed here."),
+            ("Request Revision", "Revision request is preview-only and is not persisted here."),
+            ("Link to Candidate", "Candidate link intent is preview-only; no candidate is created."),
+            ("Link to Materialization", "Materialization link intent is preview-only; no materialization is created."),
+            ("Link to Parser Review", "Parser review linkage is future governed metadata only."),
+            ("Link to Scoring Review", "Scoring review linkage is future governed metadata only."),
+            ("Link to Recommendation Review", "Recommendation review linkage is future governed metadata only."),
+            ("Mark Superseded", "Superseded status is preview-only and is not persisted here."),
+            ("Add Review Note", "Review notes are preview-only and are not persisted here."),
+        )
+    )
+    summary_rows = "".join(
+        f"<div><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>"
+        for label, value in (
+            ("selected artifact state", preview["selected_artifact_state"]),
+            ("artifact_id", preview["artifact_id"]),
+            ("artifact_type", preview["artifact_type"]),
+            ("artifact_title", preview["artifact_title"]),
+            ("review_decision", preview["review_decision"]),
+            ("review_status", preview["review_status"]),
+            ("candidate_type", preview["candidate_type"]),
+            ("materialization_type", preview["materialization_type"]),
+            ("followup_type", preview["followup_type"]),
+            ("actor required", preview["actor_required"]),
+            ("audit required", preview["audit_required"]),
+            ("governed write path required", preview["governed_write_path_required"]),
+            ("write_performed=false", "write_performed=false"),
+            ("artifact_approved=false", "artifact_approved=false"),
+            ("artifact_rejected=false", "artifact_rejected=false"),
+            ("artifact_revision_requested=false", "artifact_revision_requested=false"),
+            ("candidate_created=false", "candidate_created=false"),
+            ("materialization_created=false", "materialization_created=false"),
+            ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+            ("runtime_influence=false", "runtime_influence=false"),
+        )
+    )
+    return f"""
+      <section class="card secondary screen1-knowledge-artifact-review-preview-panel" id="screen1-knowledge-artifact-review-preview-panel" data-phase="7AX" data-preview-only="true">
+        <div class="section-kicker">Phase 7AX Preview</div>
+        <h2>Screen 1 Knowledge Artifact Review Preview</h2>
+        <p class="meta">
+          Preview only. Knowledge artifact review disabled in this phase.
+          No artifact approval executed. No artifact rejection executed.
+          No revision request persisted. No candidate created automatically.
+          No materialization created. No parser/scoring/recommendation change.
+          No Phase 4I mutation. No backend write.
+          No governed write path invoked. Deterministic runtime remains authoritative.
+        </p>
+        <div class="screen1-knowledge-artifact-review-grid">
+          {control_cards}
+        </div>
+        <section class="evidence-pane screen1-knowledge-artifact-review-preview-summary">
+          <h3>Read-Only Knowledge Artifact Review Request Preview</h3>
+          <p class="meta">
+            No selected artifact exists in this static export. The preview below
+            shows future knowledge artifact review fields only and does not claim an
+            artifact was approved, rejected, revised, linked, materialized, or persisted.
+          </p>
+          <dl class="screen1-knowledge-artifact-review-preview-list">
+            {summary_rows}
+          </dl>
+        </section>
+      </section>
+    """
+
+
+def _build_screen1_knowledge_artifact_review_preview(
+    screen_model: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, str]:
+    artifact = _screen1_first_knowledge_artifact_for_review_preview(
+        screen_model,
+        parser_governance_payload,
+        report_data,
+    )
+    artifact_id = artifact.get("artifact_id") or artifact.get("id")
+    artifact_type = artifact.get("artifact_type") or artifact.get("type") or "unknown"
+    artifact_title = (
+        artifact.get("artifact_title")
+        or artifact.get("title")
+        or artifact.get("name")
+    )
+    candidate_type = _screen1_artifact_candidate_type_label(artifact_type)
+    materialization_type = _screen1_artifact_materialization_type_label(artifact_type)
+    return {
+        "selected_artifact_state": (
+            "preview artifact available"
+            if artifact
+            else "no selected artifact exists"
+        ),
+        "artifact_id": (
+            _display_value(artifact_id)
+            if _has_display_value(artifact_id)
+            else "no artifact selected"
+        ),
+        "artifact_type": _display_value(artifact_type),
+        "artifact_title": (
+            _display_value(artifact_title)
+            if _has_display_value(artifact_title)
+            else "no artifact title selected"
+        ),
+        "review_decision": "future review decision only",
+        "review_status": "proposed",
+        "candidate_type": candidate_type,
+        "materialization_type": materialization_type,
+        "followup_type": "human_review_required preview only",
+        "actor_required": "actor required before future artifact review",
+        "audit_required": "audit required before future artifact review",
+        "governed_write_path_required": "governed write path required before future write",
+    }
+
+
+def _screen1_first_knowledge_artifact_for_review_preview(
+    screen_model: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, Any]:
+    for source in (parser_governance_payload, screen_model, report_data):
+        for key in (
+            "knowledge_artifacts",
+            "artifacts",
+            "artifact_context",
+            "artifact_contexts",
+        ):
+            for raw_artifact in _screen1_list(source.get(key)):
+                artifact = _to_dict(raw_artifact)
+                if artifact:
+                    return artifact
+    return {}
+
+
+def _screen1_artifact_candidate_type_label(artifact_type: Any) -> str:
+    mapping = {
+        "parser_mapping_guidance": "parser_mapping_candidate preview only",
+        "scoring_review_guidance": "scoring_weight_review_candidate preview only",
+        "recommendation_rule_guidance": "recommendation_rule_candidate preview only",
+        "semantic_summary": "semantic_summary_candidate preview only",
+        "documentation": "documentation_candidate preview only",
+        "validation": "validation_candidate preview only",
+        "governance_workflow": "governance_workflow_candidate preview only",
+        "materialization_reference": "validation_candidate preview only",
+    }
+    return mapping.get(_display_value(artifact_type), "documentation_candidate preview only")
+
+
+def _screen1_artifact_materialization_type_label(artifact_type: Any) -> str:
+    mapping = {
+        "parser_mapping_guidance": "parser_mapping_artifact preview only",
+        "scoring_review_guidance": "scoring_review_artifact preview only",
+        "recommendation_rule_guidance": "recommendation_rule_artifact preview only",
+        "semantic_summary": "semantic_summary_artifact preview only",
+        "documentation": "documentation_artifact preview only",
+        "validation": "validation_artifact preview only",
+        "governance_workflow": "governance_workflow_artifact preview only",
+        "materialization_reference": "validation_artifact preview only",
+    }
+    return mapping.get(_display_value(artifact_type), "documentation_artifact preview only")
 
 
 def _render_screen_2_page(

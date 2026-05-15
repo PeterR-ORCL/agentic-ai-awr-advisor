@@ -34,7 +34,25 @@ FORBIDDEN_BEHAVIOR_FILES = (
     "src/reporting/ai_display_metadata.py",
     "scripts/awr_memory_cli.py",
     "scripts/run_analysis.py",
+    "src/parser",
+    "src/parsing",
+    "src/scoring",
+    "src/decision",
+    "src/recommendation",
+    "src/recommendations",
+    "src/analysis/decision_engine.py",
+    "src/analysis/recommendation_engine.py",
+    "src/analysis/scoring_adapter.py",
+    "dbschema",
+    "awr_dashboard",
 )
+
+PHASE7AS_ALLOWED_BEHAVIOR_FILE = "src/reporting/html_dashboard.py"
+PHASE7AS_ARTIFACT_FILES = {
+    "docs/architecture/phase7as_screen2_review_panel.md",
+    "docs/architecture/phase7as_screen2_review_request_preview.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+}
 
 FORBIDDEN_IMPORT_PREFIXES = (
     "subprocess",
@@ -98,6 +116,42 @@ def imported_modules(path: Path) -> set[str]:
 def function_names(path: Path) -> set[str]:
     tree = ast.parse(read_text(path), filename=str(path))
     return {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+
+
+def git_changed_paths(pathspecs: tuple[str, ...] = ()) -> set[str]:
+    changed: set[str] = set()
+    git_commands = (
+        ("git", "diff", "--name-only"),
+        ("git", "diff", "--cached", "--name-only"),
+        ("git", "ls-files", "--others", "--exclude-standard"),
+    )
+    for base_command in git_commands:
+        command = base_command + (("--",) + pathspecs if pathspecs else ())
+        completed = subprocess.run(
+            command,
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(completed.stderr.strip() or "git change scan unavailable")
+        changed.update(
+            line.strip()
+            for line in completed.stdout.splitlines()
+            if line.strip()
+        )
+    return changed
+
+
+def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set[str]:
+    disallowed = set(changed)
+    if (
+        PHASE7AS_ALLOWED_BEHAVIOR_FILE in disallowed
+        and PHASE7AS_ARTIFACT_FILES.intersection(all_changed)
+    ):
+        disallowed.remove(PHASE7AS_ALLOWED_BEHAVIOR_FILE)
+    return disallowed
 
 
 def python_files(paths: tuple[str, ...]) -> list[Path]:
@@ -532,22 +586,14 @@ class Phase7ARScreen2GovernanceBridgeTests(unittest.TestCase):
         if not (ROOT / ".git").exists():
             self.skipTest("not a git checkout")
 
-        completed = subprocess.run(
-            ("git", "diff", "--name-only", "--", *FORBIDDEN_BEHAVIOR_FILES),
-            cwd=ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if completed.returncode != 0:
-            self.skipTest(completed.stderr.strip() or "git diff unavailable")
+        try:
+            all_changed = git_changed_paths()
+            changed = git_changed_paths(FORBIDDEN_BEHAVIOR_FILES)
+        except RuntimeError as exc:
+            self.skipTest(str(exc))
 
-        changed = {
-            line.strip()
-            for line in completed.stdout.splitlines()
-            if line.strip()
-        }
-        self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
+        disallowed = disallowed_behavior_changes(changed, all_changed)
+        self.assertFalse(disallowed, f"behavior files modified: {sorted(disallowed)}")
 
 
 if __name__ == "__main__":

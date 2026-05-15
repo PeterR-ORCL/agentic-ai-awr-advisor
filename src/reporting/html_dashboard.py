@@ -3013,6 +3013,12 @@ def _render_screen_2_page(
           report_data,
           authoritative_confidence,
       )}
+      {_render_screen2_review_panel(
+          screen_model,
+          visual_summary,
+          report_data,
+          authoritative_confidence,
+      )}
       <section class="card prominent diagnostic-compact-card">
         <div class="section-kicker">DECISION</div>
         <h2>Diagnostic Snapshot</h2>
@@ -3089,6 +3095,159 @@ def _render_screen_2_page(
         {_render_screen2_similarity_compact(screen_model, report_data)}
       </section>
     </div>
+    """
+
+
+def _render_screen2_review_panel(
+    screen_model: dict[str, Any],
+    visual_summary: dict[str, Any],
+    report_data: dict[str, Any],
+    authoritative_confidence: Any,
+) -> str:
+    """Render Phase 7AS disabled Screen 2 review workflow visibility."""
+
+    decision_summary = _to_dict(screen_model.get("decision_summary"))
+    normalized_decision = _to_dict(screen_model.get("normalized_decision"))
+    primary_issue = _display_value(
+        decision_summary.get("primary_issue")
+        or normalized_decision.get("primary_issue")
+        or "No selected primary issue"
+    )
+    severity = _display_value(
+        decision_summary.get("display_severity_label")
+        or normalized_decision.get("display_severity_label")
+        or normalized_decision.get("overall_status")
+        or "No selected severity/status"
+    )
+    confidence_label = _confidence_level_from_value(authoritative_confidence)
+    selected_domain = _screen2_selector_domain(primary_issue) or "No selected domain"
+    domain_scores = _to_dict(
+        normalized_decision.get("domain_scores")
+        or _to_dict(report_data.get("scores")).get("domain_scores")
+    )
+    selected_score = _screen2_domain_score(domain_scores, selected_domain)
+    metric_group = (
+        f"{selected_domain} domain_score {_format_screen2_metric(selected_score)}"
+        if selected_score is not None
+        else "No selected metric group"
+    )
+    evidence_group = (
+        f"{selected_domain} evidence_group from deterministic diagnostic drivers"
+        if selected_domain != "No selected domain"
+        else "No selected evidence group"
+    )
+    wait_event_group = "selectedWaitEventGroup safe empty state"
+    sql_signal_group = "selectedSqlSignal safe empty state"
+    diagnostic_section = "selectedDiagnosticSection safe empty state"
+    availability_marker = "missing/evidence availability marker pending future governed review"
+    safety_labels = (
+        "Preview only",
+        "Review action disabled in this phase",
+        "Review is not mutation",
+        "Does not change diagnostic truth",
+        "Does not change primary issue",
+        "Does not change severity",
+        "Does not change confidence",
+        "Does not change score",
+        "Does not change parser output",
+        "Does not change recommendation truth",
+        "Does not mutate Phase 4I",
+        "No backend write",
+        "No governed write path invoked",
+        "No candidate created automatically",
+        "Deterministic runtime remains authoritative",
+    )
+    action_controls = (
+        ("confirm", "Confirm Evidence"),
+        ("dispute", "Dispute Evidence"),
+        ("insufficient_evidence", "Mark Insufficient Evidence"),
+        ("needs_parser_review", "Request Parser Review"),
+        ("needs_scoring_review", "Request Scoring Review"),
+        ("needs_recommendation_review", "Request Recommendation Review"),
+        ("needs_learning_candidate", "Request Learning Candidate"),
+        ("add_reviewer_note", "Add Reviewer Note"),
+    )
+    safety_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+    action_html = "".join(
+        f"""
+              <div
+                class="screen2-review-action-card"
+                aria-disabled="true"
+                data-preview-only="true"
+                data-review-decision="{escape(decision)}"
+              >
+                <strong>{escape(label)}</strong>
+                <span>Preview only. Review action disabled in this phase.</span>
+              </div>
+        """
+        for decision, label in action_controls
+    )
+    return f"""
+      <!-- Phase 7AS Screen 2 Review Panel start: disabled preview-only UI. -->
+      <section class="card secondary screen2-review-panel" id="screen2-review-panel" data-phase="7AS" data-preview-only="true">
+        <div class="section-kicker">Phase 7AS</div>
+        <h2>Screen 2 Diagnostic Review / Approval Panel</h2>
+        <p class="static-selection-note">
+          Preview only. Review action disabled in this phase. Review is not mutation.
+        </p>
+        <div class="mini-pill-group screen2-review-safety-labels">
+          {safety_html}
+        </div>
+        <div class="subgrid screen2-review-subgrid">
+          <section class="evidence-pane selector-pane screen2-review-target-summary">
+            <h3>Review Target Summary</h3>
+            <p class="screen2-review-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
+              Review target summary section: No review target selected. Safe empty state for selected diagnostic/evidence context.
+            </p>
+            <p class="meta">
+              Selected diagnostic/evidence context references selectedDomain, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, and selectedDiagnosticSection. The summary does not imply submission occurred.
+            </p>
+            <dl class="screen2-review-summary-list">
+              <div><dt>selected domain</dt><dd>{escape(selected_domain)}</dd></div>
+              <div><dt>selected evidence group</dt><dd>{escape(evidence_group)}</dd></div>
+              <div><dt>selected metric group</dt><dd>{escape(metric_group)}</dd></div>
+              <div><dt>selected wait event group</dt><dd>{escape(wait_event_group)}</dd></div>
+              <div><dt>selected SQL signal</dt><dd>{escape(sql_signal_group)}</dd></div>
+              <div><dt>selected diagnostic section</dt><dd>{escape(diagnostic_section)}</dd></div>
+              <div><dt>selected severity/status</dt><dd>{escape(severity)}</dd></div>
+              <div><dt>selected confidence label</dt><dd>{escape(confidence_label)}</dd></div>
+              <div><dt>selected missing/evidence availability marker</dt><dd>{escape(availability_marker)}</dd></div>
+              <div><dt>selected primary issue</dt><dd>{escape(primary_issue)}</dd></div>
+            </dl>
+          </section>
+          <section class="evidence-pane selector-pane screen2-review-action-preview">
+            <h3>Review Action Preview Controls</h3>
+            <div class="screen2-review-action-grid">
+              {action_html}
+            </div>
+            <p class="meta">
+              These visual controls are disabled/preview-only and do not submit, write, route, or execute review workflow state.
+            </p>
+          </section>
+          <section class="evidence-pane selector-pane screen2-review-request-preview">
+            <h3>Review Request Preview</h3>
+            <dl class="screen2-review-summary-list">
+              <div><dt>target type</dt><dd>future review target type only</dd></div>
+              <div><dt>review decision</dt><dd>future review decision only</dd></div>
+              <div><dt>actor required</dt><dd>actor required before any future review action</dd></div>
+              <div><dt>audit required</dt><dd>audit required before any future review action</dd></div>
+              <div><dt>governed write path required</dt><dd>governed write path required for future writes</dd></div>
+              <div><dt>governance bridge required</dt><dd>governance bridge required before routing</dd></div>
+              <div><dt>candidate intent possible</dt><dd>candidate intent possible, but no candidate is created automatically</dd></div>
+              <div><dt>write_performed=false</dt><dd>write_performed=false</dd></div>
+              <div><dt>runtime_influence=false</dt><dd>runtime_influence=false</dd></div>
+              <div><dt>phase4i_mutation_requested=false</dt><dd>phase4i_mutation_requested=false</dd></div>
+            </dl>
+            <p class="meta">
+              This preview does not create a request object at runtime. No backend write. No governed write path invoked.
+            </p>
+          </section>
+        </div>
+      </section>
+      <!-- Phase 7AS Screen 2 Review Panel end. -->
     """
 
 
@@ -10237,6 +10396,83 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen2-review-panel {
+      border-color: rgba(102, 187, 106, 0.28);
+    }
+    .screen2-review-safety-labels {
+      margin: 12px 0 0;
+    }
+    .screen2-review-subgrid {
+      margin-top: 14px;
+    }
+    .screen2-review-target-summary {
+      border-color: rgba(102, 187, 106, 0.30);
+      background: rgba(102, 187, 106, 0.08);
+    }
+    .screen2-review-selected-summary {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .screen2-review-action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen2-review-action-card {
+      display: grid;
+      gap: 6px;
+      min-height: 72px;
+      border: 1px dashed rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.58);
+      color: inherit;
+      opacity: 0.78;
+    }
+    .screen2-review-action-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen2-review-action-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen2-review-summary-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen2-review-summary-list div {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.7fr) minmax(0, 1.3fr);
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.14);
+      padding-bottom: 8px;
+    }
+    .screen2-review-summary-list div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .screen2-review-summary-list dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen2-review-summary-list dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
     .decision-box, .info-box, .provider-box, .scalar-box {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -11597,6 +11833,7 @@ def _shared_page_styles() -> str:
       .semantic-assist-scope-list,
       .screen1-selector-grid,
       .screen2-selector-grid,
+      .screen2-review-action-grid,
       .screen3-selector-grid,
       .screen3-action-grid,
       .screen3-source-mode-grid,

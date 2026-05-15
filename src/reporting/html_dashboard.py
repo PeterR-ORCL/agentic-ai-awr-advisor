@@ -4602,6 +4602,7 @@ def _render_screen_3_selector_page(
                 extra_class="selector-header-grid",
             )}
           </section>
+          {_render_screen3_reanalysis_action_ui(screen_model, report_data or {}, control_center)}
           <section class="evidence-pane selector-pane">
             <h3>Canonical Static Selection Context</h3>
             <p class="static-selection-note">
@@ -4647,6 +4648,183 @@ def _render_screen_3_selector_page(
       </section>
     </div>
     """
+
+
+def _render_screen3_reanalysis_action_ui(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    preview = _build_screen3_reanalysis_request_preview_model(
+        screen_model,
+        report_data,
+        control_center,
+    )
+    safety_labels = [
+        "Preview only",
+        "Execution disabled in this phase",
+        "Selection is not execution",
+        "No backend execution",
+        "No run_analysis.py call",
+        "No object storage call",
+        "No local file read",
+        "No DB lookup",
+        "No Phase 4I mutation",
+        "Deterministic runtime remains authoritative",
+    ]
+    safety_label_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>' for label in safety_labels
+    )
+
+    actions = [
+        (
+            "Analyze Selection",
+            "analyze_selection",
+            "Request preview only. Future backend validation must occur before analysis.",
+        ),
+        (
+            "Re-run Analysis",
+            "rerun_analysis",
+            "Request preview only. No run_analysis.py call is made from this dashboard.",
+        ),
+        (
+            "Build Comparison",
+            "build_comparison",
+            "Preview only. AWR/report comparison is future 7AM.1 engine only and not triggered here.",
+        ),
+        (
+            "Load From Object Storage",
+            "load_from_object_storage",
+            "Preview only. Object Storage metadata is displayed but no object storage call is made.",
+        ),
+    ]
+    action_cards = "".join(
+        f"""
+        <div class="screen3-reanalysis-action-card disabled-preview-only" aria-disabled="true">
+          <strong>{escape(label)}</strong>
+          <span>{escape(action_key)}</span>
+          <p>{escape(description)}</p>
+          <em>Preview only - disabled/request-generation-only</em>
+        </div>
+        """
+        for label, action_key, description in actions
+    )
+    source_modes = [
+        ("Local staged", "Metadata only; no local file read."),
+        ("Local file", "Path display only; no file open or file content validation."),
+        ("Existing run", "Reference display only; no DB lookup."),
+        ("Object Storage", "Object values are metadata only; no object storage call."),
+        ("Future EM Extract", "Placeholder only. EM Extract implementation belongs to Phase 8."),
+    ]
+    source_mode_cards = "".join(
+        f"""
+        <div class="screen3-source-mode-card">
+          <strong>{escape(label)}</strong>
+          <p>{escape(description)}</p>
+        </div>
+        """
+        for label, description in source_modes
+    )
+
+    return f"""
+          <section class="evidence-pane selector-pane screen3-reanalysis-actions-panel">
+            <div class="section-kicker">Phase 7AN</div>
+            <h3>Screen 3 Backend Re-Analysis Actions</h3>
+            <p class="static-selection-note">
+              Action UI is disabled/preview-only. Selection is not execution. No backend execution. No run_analysis.py call. No object storage call. No local file read. No DB lookup. No Phase 4I mutation.
+            </p>
+            <div class="mini-pill-group screen3-reanalysis-safety-labels">
+              {safety_label_html}
+            </div>
+            <div class="screen3-action-grid">
+              {action_cards}
+            </div>
+            <p class="meta">
+              Controlled adaptive execution requires future validation/gate. AWR/report comparison is future 7AM.1 engine only and not triggered here. Missing metric/evidence handling remains future 7AO.1 / 7AQ.1.
+            </p>
+          </section>
+          <section class="half evidence-pane selector-pane screen3-request-preview-panel">
+            <h3>Read-Only Request Preview</h3>
+            <p class="static-selection-note">
+              Request preview is not execution, is not backend validation, does not call backend, does not write, and does not mutate runtime. Selected state summary remains read-only. Preview does not imply execution.
+            </p>
+            {_render_info_grid(
+                [
+                    ("Selected AWR / Run", preview.get("selected_awr_run")),
+                    ("Selected Database / System", preview.get("selected_database_system")),
+                    ("Selected Snapshot", preview.get("selected_snapshot")),
+                    ("Selected Comparison Baseline", preview.get("selected_comparison_baseline")),
+                    ("Selected Issue Domain", preview.get("selected_issue_domain")),
+                    ("Selected Severity / Status", preview.get("selected_severity_status")),
+                    ("Selected Source Mode", preview.get("selected_source_mode")),
+                    ("Selected Execution Mode", preview.get("selected_execution_mode")),
+                    ("Requested Action Placeholder", preview.get("requested_action_placeholder")),
+                    ("Validation / Blocked Status", preview.get("validation_blocked_status")),
+                ],
+                extra_class="selector-compact-grid screen3-request-preview-grid",
+            )}
+          </section>
+          <section class="half evidence-pane selector-pane screen3-source-mode-panel">
+            <h3>Future Source Modes</h3>
+            <p class="static-selection-note">
+              Source selection is metadata only. Object storage is not called. Future EM Extract is placeholder only. EM Extract implementation belongs to Phase 8.
+            </p>
+            <div class="screen3-source-mode-grid">
+              {source_mode_cards}
+            </div>
+          </section>
+    """
+
+
+def _build_screen3_reanalysis_request_preview_model(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> dict[str, str]:
+    header = _to_dict(screen_model.get("header"))
+    metadata = _to_dict(report_data.get("metadata"))
+    analysis_context = _to_dict(report_data.get("analysis_context"))
+
+    def first_selector_value(group_key: str) -> str | None:
+        for item in control_center.get(group_key, []):
+            value = _first_display_value(item.get("value"))
+            if value:
+                return value
+        return None
+
+    selected_awr = first_selector_value("awr_run")
+    selected_run = _first_display_value(
+        report_data.get("run_history_id"),
+        report_data.get("run_id"),
+        analysis_context.get("run_history_id"),
+        analysis_context.get("run_id"),
+    )
+    selected_database = _first_display_value(
+        first_selector_value("database_system"),
+        header.get("db_name"),
+        metadata.get("db_name"),
+    )
+    selected_system = _first_display_value(
+        header.get("host_name"),
+        metadata.get("host_name"),
+        header.get("instance_name"),
+        metadata.get("instance_name"),
+    )
+
+    return {
+        "selected_awr_run": _join_compact_values([selected_awr, selected_run]) or "No selected AWR / run",
+        "selected_database_system": _join_compact_values([selected_database, selected_system])
+        or "No selected database / system",
+        "selected_snapshot": first_selector_value("snapshot") or "No selected snapshot",
+        "selected_comparison_baseline": first_selector_value("comparison_baseline")
+        or "No selected comparison baseline",
+        "selected_issue_domain": first_selector_value("domain") or "No selected issue domain",
+        "selected_severity_status": first_selector_value("severity") or "No selected severity/status",
+        "selected_source_mode": "none / preview metadata only",
+        "selected_execution_mode": "static_read_only / execution disabled in this phase",
+        "requested_action_placeholder": "analyze_selection, rerun_analysis, build_comparison, load_from_object_storage",
+        "validation_blocked_status": "preview_only / execution_blocked=true / can_execute=false",
+    }
 
 
 def _build_screen3_control_center_model(
@@ -9821,6 +9999,61 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen3-reanalysis-actions-panel {
+      border-color: rgba(246, 184, 76, 0.34);
+      background: rgba(246, 184, 76, 0.06);
+    }
+    .screen3-reanalysis-safety-labels {
+      margin: 10px 0 14px;
+    }
+    .screen3-action-grid,
+    .screen3-source-mode-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen3-source-mode-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .screen3-reanalysis-action-card,
+    .screen3-source-mode-card {
+      display: grid;
+      gap: 6px;
+      min-height: 116px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+    .screen3-reanalysis-action-card.disabled-preview-only {
+      border-color: rgba(246, 184, 76, 0.42);
+      opacity: 0.82;
+      cursor: not-allowed;
+    }
+    .screen3-reanalysis-action-card strong,
+    .screen3-source-mode-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-reanalysis-action-card span,
+    .screen3-reanalysis-action-card em,
+    .screen3-source-mode-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen3-reanalysis-action-card p,
+    .screen3-source-mode-card p {
+      margin: 0;
+    }
+    .screen3-reanalysis-action-card em {
+      font-style: normal;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
     .scope-chip.active {
       color: #08111d;
       background: var(--accent);
@@ -11365,6 +11598,8 @@ def _shared_page_styles() -> str:
       .screen1-selector-grid,
       .screen2-selector-grid,
       .screen3-selector-grid,
+      .screen3-action-grid,
+      .screen3-source-mode-grid,
       .screen4-selector-grid,
       .screen5-selector-grid,
       .screen6-selector-grid,

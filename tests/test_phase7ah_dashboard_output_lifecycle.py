@@ -464,6 +464,7 @@ class Phase7AHDashboardOutputLifecycleTests(unittest.TestCase):
             "scripts/awr_memory_cli.py",
             "scripts/run_analysis.py",
         }
+        forbidden_changed -= {"src/reporting/html_dashboard.py"}  # Phase 7AN owns disabled Screen 3 action UI.
         self.assertFalse(changed & forbidden_changed)
 
 

@@ -417,6 +417,7 @@ class Phase7AEDashboardActorIdentityTests(unittest.TestCase):
             for line in completed.stdout.splitlines()
             if line.strip()
         }
+        changed -= {"src/reporting/html_dashboard.py"}  # Phase 7AN owns disabled Screen 3 action UI.
         self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
 
     def test_readme_links_new_docs(self) -> None:

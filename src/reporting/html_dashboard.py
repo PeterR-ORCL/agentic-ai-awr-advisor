@@ -6648,6 +6648,7 @@ def _render_screen_5_page(
       <section class="card prominent action-page-card">
         {_render_recommendation_action_screen(screen_model, report_data or {})}
       </section>
+      {_render_screen5_action_tracking_preview_panel(screen_model, report_data or {})}
       {_render_screen5_recommendation_action_exploration(screen_model, report_data or {})}
       {
           f'''
@@ -6661,6 +6662,138 @@ def _render_screen_5_page(
       }
     </div>
     """
+
+
+def _render_screen5_action_tracking_preview_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    preview = _build_screen5_action_tracking_preview(screen_model, report_data)
+    control_cards = "".join(
+        f"""
+              <div class="screen5-action-preview-card disabled-preview-only" aria-disabled="true" data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <p>{escape(description)}</p>
+              </div>
+        """
+        for label, description in (
+            ("Assign Owner", "Future owner assignment requires actor identity, audit, and governed write path."),
+            ("Create Action Item", "Future action item creation is disabled in this phase."),
+            ("Set Action Status", "Future status selection is metadata preview only."),
+            ("Mark In Progress", "Tracking is not execution and no status update occurs."),
+            ("Mark Implemented", "Implementation marking remains disabled until a future governed phase."),
+            ("Mark Blocked", "Blocked status preview does not persist action state."),
+            ("Add Implementation Date", "Implementation date is a future governed field only."),
+            ("View Required Outcome Capture", "Outcome capture is required later, but no outcome is captured here."),
+        )
+    )
+    summary_rows = "".join(
+        f"<div><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>"
+        for label, value in (
+            ("selected recommendation state", preview["selected_recommendation_state"]),
+            ("recommendation_id", preview["recommendation_id"]),
+            ("action_title", preview["action_title"]),
+            ("assigned_owner", preview["assigned_owner"]),
+            ("owner_role", preview["owner_role"]),
+            ("action_status", preview["action_status"]),
+            ("implementation_date", preview["implementation_date"]),
+            ("due_date", preview["due_date"]),
+            ("required_outcome_capture", preview["required_outcome_capture"]),
+            ("actor required", preview["actor_required"]),
+            ("audit required", preview["audit_required"]),
+            ("governed write path required", preview["governed_write_path_required"]),
+            ("write_performed=false", "write_performed=false"),
+            ("outcome_created=false", "outcome_created=false"),
+            ("feedback_created=false", "feedback_created=false"),
+            ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+            ("runtime_influence=false", "runtime_influence=false"),
+        )
+    )
+    return f"""
+      <section class="card secondary screen5-action-tracking-preview-panel">
+        <div class="section-kicker">Phase 7BG Preview</div>
+        <h2>Screen 5 Action Assignment / Tracking Preview</h2>
+        <p class="meta">
+          Preview only. Action assignment disabled in this phase. Tracking is not execution.
+          No backend write. No governed write path invoked. No action record persisted.
+          No outcome captured. No feedback created. No candidate created automatically.
+          Does not change recommendation truth. Does not change recommendation ranking.
+          Does not change recommendation evidence. Does not mutate Phase 4I.
+          Deterministic runtime remains authoritative.
+        </p>
+        <div class="screen5-action-preview-grid">
+          {control_cards}
+        </div>
+        <section class="evidence-pane screen5-action-preview-summary">
+          <h3>Read-Only Action Request Preview</h3>
+          <p class="meta">
+            No selected recommendation exists in this static export. The preview below
+            shows future action assignment fields only and does not claim an action was
+            assigned or status was updated.
+          </p>
+          <dl class="screen5-action-preview-list">
+            {summary_rows}
+          </dl>
+        </section>
+      </section>
+    """
+
+
+def _build_screen5_action_tracking_preview(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, str]:
+    recommendation = _screen5_first_recommendation_for_action_preview(screen_model)
+    action_title = (
+        recommendation.get("action")
+        or recommendation.get("recommendation")
+        or recommendation.get("title")
+        or "Future action item preview"
+    )
+    recommendation_id = (
+        recommendation.get("recommendation_id")
+        or recommendation.get("id")
+        or recommendation.get("recommendation_key")
+    )
+    if not _has_display_value(recommendation_id) and recommendation:
+        recommendation_id = f"preview-{_screen5_state_id(action_title)}"
+    del report_data
+    return {
+        "selected_recommendation_state": "no selected recommendation exists",
+        "recommendation_id": (
+            _display_value(recommendation_id)
+            if _has_display_value(recommendation_id)
+            else "no recommendation selected"
+        ),
+        "action_title": (
+            _display_value(action_title)
+            if _has_display_value(action_title)
+            else "No action preview available"
+        ),
+        "assigned_owner": "unassigned preview",
+        "owner_role": "future owner role required",
+        "action_status": "proposed",
+        "implementation_date": "not set",
+        "due_date": "not set",
+        "required_outcome_capture": "required after future implementation",
+        "actor_required": "actor required before future assignment",
+        "audit_required": "audit required before future assignment",
+        "governed_write_path_required": "governed write path required before future write",
+    }
+
+
+def _screen5_first_recommendation_for_action_preview(
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    recommendations = (
+        list(screen_model.get("recommendation_groups") or [])
+        or list(screen_model.get("recommendation_list") or [])
+    )
+    flattened = _screen5_flatten_recommendations(recommendations)
+    if not flattened:
+        return {}
+    return _to_dict(flattened[0])
 
 
 def _render_parser_review_section(payload: dict[str, Any]) -> str:
@@ -10534,6 +10667,78 @@ def _shared_page_styles() -> str:
     .screen5-recommendation-action-exploration {
       border-color: rgba(90, 209, 255, 0.32);
     }
+    .screen5-action-tracking-preview-panel {
+      border-color: rgba(102, 187, 106, 0.30);
+    }
+    .screen5-action-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen5-action-preview-card {
+      display: grid;
+      gap: 6px;
+      min-height: 92px;
+      border: 1px dashed rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.58);
+      color: inherit;
+      opacity: 0.80;
+    }
+    .screen5-action-preview-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen5-action-preview-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen5-action-preview-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen5-action-preview-summary {
+      border-color: rgba(102, 187, 106, 0.30);
+      background: rgba(102, 187, 106, 0.08);
+    }
+    .screen5-action-preview-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen5-action-preview-list div {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.72fr) minmax(0, 1.28fr);
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.14);
+      padding-bottom: 8px;
+    }
+    .screen5-action-preview-list div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .screen5-action-preview-list dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen5-action-preview-list dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
     .screen5-selected-recommendation-panel {
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(90, 209, 255, 0.08);
@@ -11838,6 +12043,7 @@ def _shared_page_styles() -> str:
       .screen3-action-grid,
       .screen3-source-mode-grid,
       .screen4-selector-grid,
+      .screen5-action-preview-grid,
       .screen5-selector-grid,
       .screen6-selector-grid,
       .fleet-detail-list {

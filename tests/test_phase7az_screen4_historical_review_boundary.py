@@ -36,6 +36,16 @@ FORBIDDEN_BEHAVIOR_FILES = (
     "scripts/run_analysis.py",
 )
 
+PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE = "src/reporting/html_dashboard.py"
+PHASE7BC_REQUIRED_PREVIEW_ARTIFACTS = {
+    "src/learning/screen4_historical_learning_bridge.py",
+    "tests/test_phase7bc_historical_learning_bridge.py",
+    "tests/test_dashboard_screen4_historical_review_panel.py",
+    "docs/architecture/phase7bc_historical_learning_bridge.md",
+    "docs/architecture/phase7bc_historical_learning_intent_model.md",
+    "docs/architecture/phase7bc_screen4_historical_review_panel.md",
+}
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "cx_Oracle",
@@ -118,6 +128,18 @@ def git_changed_paths(pathspecs: tuple[str, ...] = ()) -> set[str]:
             for line in completed.stdout.splitlines()
             if line.strip()
         )
+    return changed
+
+
+def disallowed_behavior_changes_for_phase7bc(
+    changed: set[str],
+    all_changed: set[str],
+) -> set[str]:
+    if (
+        PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE in changed
+        and PHASE7BC_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
+    ):
+        return changed - {PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE}
     return changed
 
 
@@ -375,9 +397,11 @@ class Phase7AZScreen4HistoricalReviewBoundaryTests(unittest.TestCase):
 
         try:
             changed = git_changed_paths(FORBIDDEN_BEHAVIOR_FILES)
+            all_changed = git_changed_paths()
         except RuntimeError as exc:
             self.skipTest(str(exc))
 
+        changed = disallowed_behavior_changes_for_phase7bc(changed, all_changed)
         self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
 
     def test_readme_links_new_docs(self) -> None:

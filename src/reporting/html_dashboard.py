@@ -5785,6 +5785,9 @@ def _render_screen_4_page(
         time_series_groups,
         derived_scalar_metrics,
     )
+    screen4_review_preview_html = _render_screen4_historical_review_preview_panel(
+        screen_model
+    )
     return f"""
     <div class="grid">
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
@@ -5851,6 +5854,7 @@ def _render_screen_4_page(
         </div>
       </section>
       {screen4_exploration_html}
+      {screen4_review_preview_html}
       {ordered_visual_sections}
       {topology_scalar_html}
       {_render_similarity_evidence_section(similarity_evidence)}
@@ -5973,6 +5977,80 @@ def _render_screen4_historical_exploration(
         </div>
       </section>
     """
+
+
+def _render_screen4_historical_review_preview_panel(
+    screen_model: dict[str, Any],
+) -> str:
+    preview = _build_screen4_historical_review_preview_model(screen_model)
+    controls = "".join(
+        f"""
+          <div class="screen4-historical-review-preview-card disabled-preview-only"
+               aria-disabled="true"
+               data-preview-only="true">
+            <strong>{escape(item["label"])}</strong>
+            <span>{escape(item["status"])}</span>
+          </div>
+        """
+        for item in preview["controls"]
+    )
+    safety_labels = "".join(
+        f"<span class=\"scope-chip\">{escape(label)}</span>"
+        for label in preview["safety_labels"]
+    )
+    return f"""
+      <section class="card secondary screen4-historical-review-preview-panel">
+        <div class="section-kicker">Screen 4 Historical Review Preview</div>
+        <h2>Screen 4 Historical Review / Learning Preview</h2>
+        <p class="meta">
+          Disabled / preview-only historical review controls for future governed
+          workflow. These controls do not submit, route, write, or execute.
+        </p>
+        <div class="screen4-historical-review-preview-grid">
+          {controls}
+        </div>
+        <div class="screen4-historical-review-preview-summary">
+          {safety_labels}
+        </div>
+      </section>
+    """
+
+
+def _build_screen4_historical_review_preview_model(
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    _ = screen_model
+    control_labels = (
+        "Approve Trend",
+        "Dispute Trend",
+        "Mark Trend Insufficient",
+        "Approve Anomaly",
+        "Mark Anomaly False Positive",
+        "Mark Anomaly Insufficient",
+        "Request Trend-Aware Scoring Review",
+        "Request Anomaly Sensitivity Review",
+        "Request Scoring Threshold Review",
+        "Request Learning Candidate",
+        "Add Historical Review Note",
+    )
+    safety_labels = (
+        "Preview only",
+        "Historical review disabled in this phase",
+        "No trend truth mutation",
+        "No anomaly truth mutation",
+        "No scoring change",
+        "No candidate created automatically",
+        "No governed write path invoked",
+        "No Phase 4I mutation",
+        "Deterministic runtime remains authoritative",
+    )
+    return {
+        "controls": [
+            {"label": label, "status": "Disabled preview only"}
+            for label in control_labels
+        ],
+        "safety_labels": list(safety_labels),
+    }
 
 
 def _build_screen4_historical_exploration_model(
@@ -11133,6 +11211,44 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen4-historical-review-preview-panel {
+      border-color: rgba(102, 187, 106, 0.30);
+    }
+    .screen4-historical-review-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen4-historical-review-preview-card {
+      display: grid;
+      gap: 6px;
+      min-height: 86px;
+      border: 1px dashed rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.58);
+      color: inherit;
+      opacity: 0.78;
+    }
+    .screen4-historical-review-preview-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      overflow-wrap: anywhere;
+    }
+    .screen4-historical-review-preview-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen4-historical-review-preview-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
     .screen5-recommendation-action-exploration {
       border-color: rgba(90, 209, 255, 0.32);
     }
@@ -12584,6 +12700,7 @@ def _shared_page_styles() -> str:
       .screen3-action-grid,
       .screen3-source-mode-grid,
       .screen4-selector-grid,
+      .screen4-historical-review-preview-grid,
       .screen5-action-preview-grid,
       .screen5-outcome-preview-grid,
       .screen5-selector-grid,

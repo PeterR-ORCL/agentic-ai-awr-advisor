@@ -9177,6 +9177,9 @@ def _render_screen_6_page(
         semantic_display_payload,
         learning_display_payload,
     )
+    screen6_candidate_review_html = _render_screen6_candidate_review_preview_panel(
+        learning_display_payload
+    )
     if not screen_model.get("similarity_enabled") and not similar_cases:
         return f"""
     <div class="grid">
@@ -9202,6 +9205,7 @@ def _render_screen_6_page(
         </p>
       </section>
       {screen6_exploration_html}
+      {screen6_candidate_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
@@ -9262,11 +9266,135 @@ def _render_screen_6_page(
         {_render_similarity_cases(outliers) if outliers else _render_empty_item("No outlier case aggregation is established yet.")}
       </section>
       {screen6_exploration_html}
+      {screen6_candidate_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
       {_render_ml_explainability_visibility_section(ml_display_payload)}
     </div>
+    """
+
+
+def _render_screen6_candidate_review_preview_panel(
+    learning_visibility_payload: dict[str, Any],
+) -> str:
+    candidates = [
+        _to_dict(candidate)
+        for candidate in _screen6_list(learning_visibility_payload.get("candidates"))
+    ]
+    selected_candidate = candidates[0] if candidates else {}
+    candidate_id = _display_value(
+        selected_candidate.get("candidate_id")
+        or selected_candidate.get("id")
+        or "No candidate selected"
+    )
+    candidate_type = _display_value(
+        selected_candidate.get("candidate_type") or "No candidate type selected"
+    )
+    candidate_status = _display_value(
+        selected_candidate.get("status") or "preview_only"
+    )
+    controls = (
+        (
+            "Mark Under Review",
+            "Future candidate review only. No candidate status changed.",
+        ),
+        (
+            "Approve for Implementation",
+            "Future approval preview only. No governance action performed.",
+        ),
+        ("Reject", "Future rejection preview only. Candidate state is unchanged."),
+        (
+            "Request Revision",
+            "Future revision request preview only. No review record persisted.",
+        ),
+        ("Close Candidate", "Future closure preview only. No candidate is closed."),
+        (
+            "Add Governance Note",
+            "Future governance note preview only. No note is persisted.",
+        ),
+        (
+            "Attach Materialization Reference",
+            "Future reference preview only. No materialization reference attached.",
+        ),
+    )
+    control_buttons = "".join(
+        f"""
+              <button type="button"
+                      class="screen6-candidate-review-control preview-only"
+                      disabled
+                      aria-disabled="true"
+                      data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <small>{escape(description)}</small>
+              </button>
+        """
+        for label, description in controls
+    )
+    safety_labels = (
+        "Preview only",
+        "Candidate review disabled in this phase",
+        "No candidate status changed",
+        "No governance action performed",
+        "No materialization reference attached",
+        "No runtime activation",
+        "No governed write path invoked",
+        "No Phase 4I mutation",
+        "Deterministic runtime remains authoritative",
+    )
+    safety_pills = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+    selected_note = (
+        "First visible candidate is shown as preview context only."
+        if selected_candidate
+        else "No candidate is selected in this static export; controls remain disabled."
+    )
+    return f"""
+      <section class="card secondary screen6-candidate-review-preview-panel" id="screen6-candidate-review-preview-panel" data-phase="7BL" data-preview-only="true">
+        <div class="section-kicker">Phase 7BL Preview</div>
+        <h2>Screen 6 Learning Candidate Review Preview</h2>
+        <p class="meta">
+          Preview only. Candidate review disabled in this phase. Controls are disabled/preview-only.
+          No candidate status changed. No governance action performed. No materialization reference attached.
+          No runtime activation. No governed write path invoked. No Phase 4I mutation.
+          Deterministic runtime remains authoritative.
+        </p>
+        <div class="mini-pill-group screen6-candidate-review-safety-labels">
+          {safety_pills}
+        </div>
+        <div class="screen6-candidate-review-control-grid" aria-label="Screen 6 learning candidate review preview controls">
+          {control_buttons}
+        </div>
+        <section class="evidence-pane screen6-candidate-review-summary">
+          <h3>Read-Only Candidate Review Request Preview</h3>
+          <p class="meta">{escape(selected_note)}</p>
+          {_render_info_grid(
+              [
+                  ("candidate_id", candidate_id),
+                  ("candidate_type", candidate_type),
+                  ("candidate_status", candidate_status),
+                  ("requested_action", "preview_only"),
+                  ("validation_status", "preview_only"),
+                  ("actor required", "7AE actor identity required for future actions"),
+                  ("audit required", "audit trail required for future actions"),
+                  ("governed write path required", "7AG required before future writes"),
+                  ("governance_note", "preview only; no note persisted"),
+                  ("materialization_reference", "preview only; no reference attached"),
+                  ("write_performed=false", "write_performed=false"),
+                  ("candidate_status_changed=false", "candidate_status_changed=false"),
+                  ("governance_action_performed=false", "governance_action_performed=false"),
+                  ("materialization_reference_attached=false", "materialization_reference_attached=false"),
+                  ("runtime_influence=false", "runtime_influence=false"),
+                  ("runtime_activation_requested=false", "runtime_activation_requested=false"),
+                  ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+              ],
+              extra_class="screen6-candidate-review-info-grid",
+          )}
+        </section>
+      </section>
     """
 
 
@@ -11491,6 +11619,50 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen6-candidate-review-preview-panel {
+      border-color: rgba(246, 184, 76, 0.36);
+      background: rgba(246, 184, 76, 0.06);
+    }
+    .screen6-candidate-review-safety-labels {
+      margin: 10px 0 14px;
+    }
+    .screen6-candidate-review-control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen6-candidate-review-control {
+      display: grid;
+      gap: 6px;
+      min-height: 112px;
+      border: 1px solid rgba(246, 184, 76, 0.42);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+      text-align: left;
+      cursor: not-allowed;
+      opacity: 0.82;
+    }
+    .screen6-candidate-review-control strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen6-candidate-review-control span,
+    .screen6-candidate-review-control small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen6-candidate-review-control small {
+      display: block;
+    }
+    .screen6-candidate-review-summary {
+      margin-top: 14px;
+    }
     .screen4-compact-pane {
       padding: 14px;
     }
@@ -12705,6 +12877,7 @@ def _shared_page_styles() -> str:
       .screen5-outcome-preview-grid,
       .screen5-selector-grid,
       .screen6-selector-grid,
+      .screen6-candidate-review-control-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }

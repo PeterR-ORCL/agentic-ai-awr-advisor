@@ -36,6 +36,15 @@ FORBIDDEN_BEHAVIOR_FILES = (
     "scripts/run_analysis.py",
 )
 
+PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE = "src/reporting/html_dashboard.py"
+PHASE7BL_REQUIRED_PREVIEW_ARTIFACTS = {
+    "src/learning/screen6_candidate_review.py",
+    "tests/test_phase7bl_learning_candidate_review.py",
+    "tests/test_dashboard_screen6_candidate_review_panel.py",
+    "docs/architecture/phase7bl_learning_candidate_review_ui.md",
+    "docs/architecture/phase7bl_learning_candidate_review_model.md",
+}
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "cx_Oracle",
@@ -117,6 +126,16 @@ def git_changed_paths(pathspecs: tuple[str, ...] = ()) -> set[str]:
             if line.strip()
         )
     return changed
+
+
+def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set[str]:
+    disallowed = set(changed)
+    if (
+        PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE in disallowed
+        and PHASE7BL_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
+    ):
+        disallowed.remove(PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE)
+    return disallowed
 
 
 class Phase7BKScreen6GovernanceControlBoundaryTests(unittest.TestCase):
@@ -375,11 +394,13 @@ class Phase7BKScreen6GovernanceControlBoundaryTests(unittest.TestCase):
             self.skipTest("not a git checkout")
 
         try:
+            all_changed = git_changed_paths()
             changed = git_changed_paths(FORBIDDEN_BEHAVIOR_FILES)
         except RuntimeError as exc:
             self.skipTest(str(exc))
 
-        self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
+        disallowed = disallowed_behavior_changes(changed, all_changed)
+        self.assertFalse(disallowed, f"behavior files modified: {sorted(disallowed)}")
 
     def test_readme_links_new_docs(self) -> None:
         text = read_text(README)

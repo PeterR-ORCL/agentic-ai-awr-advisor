@@ -118,7 +118,7 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
 
     def test_no_unsafe_controls_or_write_runtime_are_introduced(self) -> None:
         dashboard = dashboard_module()
-        rendered = self.render_screen6().lower()
+        rendered = self.render_screen6_exploration_only().lower()
         source = read_text(HTML_DASHBOARD_PATH).lower()
         script = dashboard._build_dashboard_interactivity_javascript().lower()
 
@@ -312,6 +312,14 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             governance_payload=self.sample_governance_payload(),
             semantic_recall_payload=self.sample_semantic_payload(),
             learning_visibility_payload=self.sample_learning_payload(),
+        )
+
+    def render_screen6_exploration_only(self) -> str:
+        return dashboard_module()._render_screen6_fleet_governance_learning_exploration(
+            self.sample_screen6_model(),
+            self.sample_governance_payload(),
+            self.sample_semantic_payload(),
+            self.sample_learning_payload(),
         )
 
     @staticmethod

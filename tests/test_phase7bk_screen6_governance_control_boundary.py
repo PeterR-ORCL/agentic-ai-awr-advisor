@@ -45,6 +45,15 @@ PHASE7BL_REQUIRED_PREVIEW_ARTIFACTS = {
     "docs/architecture/phase7bl_learning_candidate_review_model.md",
 }
 
+PHASE7BM_ALLOWED_DASHBOARD_PREVIEW_FILE = "src/reporting/html_dashboard.py"
+PHASE7BM_REQUIRED_PREVIEW_ARTIFACTS = {
+    "src/learning/screen6_materialization_review.py",
+    "tests/test_phase7bm_materialization_review.py",
+    "tests/test_dashboard_screen6_materialization_review_panel.py",
+    "docs/architecture/phase7bm_materialization_review_ui.md",
+    "docs/architecture/phase7bm_materialization_review_model.md",
+}
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "cx_Oracle",
@@ -135,6 +144,11 @@ def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set
         and PHASE7BL_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
     ):
         disallowed.remove(PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE)
+    if (
+        PHASE7BM_ALLOWED_DASHBOARD_PREVIEW_FILE in disallowed
+        and PHASE7BM_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
+    ):
+        disallowed.remove(PHASE7BM_ALLOWED_DASHBOARD_PREVIEW_FILE)
     return disallowed
 
 

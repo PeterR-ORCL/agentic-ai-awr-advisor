@@ -9183,6 +9183,9 @@ def _render_screen_6_page(
     screen6_materialization_review_html = _render_screen6_materialization_review_preview_panel(
         governance_display_payload
     )
+    screen6_model_registry_review_html = _render_screen6_model_registry_review_preview_panel(
+        ml_display_payload
+    )
     if not screen_model.get("similarity_enabled") and not similar_cases:
         return f"""
     <div class="grid">
@@ -9210,6 +9213,7 @@ def _render_screen_6_page(
       {screen6_exploration_html}
       {screen6_candidate_review_html}
       {screen6_materialization_review_html}
+      {screen6_model_registry_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
@@ -9272,12 +9276,177 @@ def _render_screen_6_page(
       {screen6_exploration_html}
       {screen6_candidate_review_html}
       {screen6_materialization_review_html}
+      {screen6_model_registry_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
       {_render_ml_explainability_visibility_section(ml_display_payload)}
     </div>
     """
+
+
+def _render_screen6_model_registry_review_preview_panel(
+    ml_visibility_payload: dict[str, Any],
+) -> str:
+    model_rows = [
+        _to_dict(row)
+        for row in _screen6_list(ml_visibility_payload.get("model_registry_rows"))
+    ]
+    selected_model = next(
+        (
+            row
+            for row in model_rows
+            if _has_display_value(row.get("model_id"))
+        ),
+        {},
+    )
+    model_id = _display_value(
+        selected_model.get("model_id") or "No model selected"
+    )
+    model_family = _screen6_model_family_label(
+        selected_model.get("model_family") or "unknown"
+    )
+    model_version = _display_value(
+        selected_model.get("model_version") or "preview_only"
+    )
+    model_status = _display_value(
+        selected_model.get("model_status")
+        or selected_model.get("governance_status")
+        or "preview_only"
+    )
+    controls = (
+        (
+            "Mark Model Under Review",
+            "Future model registry review only. No model status changed.",
+        ),
+        (
+            "Approve for Shadow",
+            "Future shadow review preview only. No shadow eligibility changed.",
+        ),
+        (
+            "Request Runtime Review",
+            "Future runtime review preview only. No runtime review requested.",
+        ),
+        (
+            "Reject Model",
+            "Future model rejection preview only. Model registry state is unchanged.",
+        ),
+        (
+            "Retire Model",
+            "Future retirement preview only. No model is retired here.",
+        ),
+        (
+            "Attach Validation Reference",
+            "Future validation reference preview only. No validation reference attached.",
+        ),
+        (
+            "Attach Rollback Reference",
+            "Future rollback reference preview only. No rollback reference attached.",
+        ),
+        (
+            "Add Model Governance Note",
+            "Future model note preview only. No note is persisted.",
+        ),
+        (
+            "Close Model Review",
+            "Future closure preview only. No model review is closed.",
+        ),
+    )
+    control_buttons = "".join(
+        f"""
+              <button type="button"
+                      class="screen6-model-registry-review-control preview-only"
+                      disabled
+                      aria-disabled="true"
+                      data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <small>{escape(description)}</small>
+              </button>
+        """
+        for label, description in controls
+    )
+    safety_labels = (
+        "Preview only",
+        "Model registry review disabled in this phase",
+        "No model status changed",
+        "No shadow eligibility changed",
+        "No runtime review requested",
+        "No runtime eligibility granted",
+        "No runtime activation",
+        "No governed write path invoked",
+        "No Phase 4I mutation",
+        "Deterministic runtime remains authoritative",
+    )
+    safety_pills = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+    selected_note = (
+        "First visible model registry entry is shown as preview context only."
+        if selected_model
+        else "No model registry entry is selected in this static export; controls remain disabled."
+    )
+    return f"""
+      <section class="card secondary screen6-model-registry-review-preview-panel" id="screen6-model-registry-review-preview-panel" data-phase="7BN" data-preview-only="true">
+        <div class="section-kicker">Phase 7BN Preview</div>
+        <h2>Screen 6 ML Model Registry Review Preview</h2>
+        <p class="meta">
+          Preview only. Model registry review disabled in this phase. Controls are disabled/preview-only.
+          No model status changed. No shadow eligibility changed. No runtime review requested.
+          No runtime eligibility granted. No runtime activation. No governed write path invoked.
+          No Phase 4I mutation. Deterministic runtime remains authoritative.
+        </p>
+        <div class="mini-pill-group screen6-model-registry-review-safety-labels">
+          {safety_pills}
+        </div>
+        <div class="screen6-model-registry-review-control-grid" aria-label="Screen 6 model registry review preview controls">
+          {control_buttons}
+        </div>
+        <section class="evidence-pane screen6-model-registry-review-summary">
+          <h3>Read-Only Model Registry Review Request Preview</h3>
+          <p class="meta">{escape(selected_note)}</p>
+          {_render_info_grid(
+              [
+                  ("model_id", model_id),
+                  ("model_family", model_family),
+                  ("model_version", model_version),
+                  ("model_status", model_status),
+                  ("requested_action", "preview_only"),
+                  ("validation_status", "preview_only"),
+                  ("actor required", "7AE actor identity required for future actions"),
+                  ("audit required", "audit trail required for future actions"),
+                  ("governed write path required", "7AG required before future writes"),
+                  ("runtime_eligibility_granted=false", "runtime_eligibility_granted=false"),
+                  ("runtime_active=false", "runtime_active=false"),
+                  ("write_performed=false", "write_performed=false"),
+                  ("model_status_changed=false", "model_status_changed=false"),
+                  ("shadow_eligibility_changed=false", "shadow_eligibility_changed=false"),
+                  ("runtime_review_requested=false", "runtime_review_requested=false"),
+                  ("governance_action_performed=false", "governance_action_performed=false"),
+                  ("validation_reference_attached=false", "validation_reference_attached=false"),
+                  ("rollback_reference_attached=false", "rollback_reference_attached=false"),
+                  ("runtime_influence=false", "runtime_influence=false"),
+                  ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+              ],
+              extra_class="screen6-model-registry-review-info-grid",
+          )}
+        </section>
+      </section>
+    """
+
+
+def _screen6_model_family_label(value: Any) -> str:
+    text = _display_value(value).strip()
+    normalized = text.lower()
+    mapping = {
+        "shadow": "shadow_placeholder",
+        "mock": "baseline_mock",
+        "majority": "baseline_majority",
+        "numeric_mean": "baseline_numeric_mean",
+        "external": "external_placeholder",
+    }
+    return mapping.get(normalized, text or "unknown")
 
 
 def _render_screen6_materialization_review_preview_panel(
@@ -11885,6 +12054,50 @@ def _shared_page_styles() -> str:
     .screen6-materialization-review-summary {
       margin-top: 14px;
     }
+    .screen6-model-registry-review-preview-panel {
+      border-color: rgba(126, 178, 255, 0.34);
+      background: rgba(126, 178, 255, 0.06);
+    }
+    .screen6-model-registry-review-safety-labels {
+      margin: 10px 0 14px;
+    }
+    .screen6-model-registry-review-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen6-model-registry-review-control {
+      display: grid;
+      gap: 6px;
+      min-height: 112px;
+      border: 1px solid rgba(126, 178, 255, 0.42);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+      text-align: left;
+      cursor: not-allowed;
+      opacity: 0.82;
+    }
+    .screen6-model-registry-review-control strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen6-model-registry-review-control span,
+    .screen6-model-registry-review-control small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen6-model-registry-review-control small {
+      display: block;
+    }
+    .screen6-model-registry-review-summary {
+      margin-top: 14px;
+    }
     .screen4-compact-pane {
       padding: 14px;
     }
@@ -13101,6 +13314,7 @@ def _shared_page_styles() -> str:
       .screen6-selector-grid,
       .screen6-candidate-review-control-grid,
       .screen6-materialization-review-control-grid,
+      .screen6-model-registry-review-control-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }

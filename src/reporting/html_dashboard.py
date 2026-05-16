@@ -15,6 +15,7 @@ from src.reporting.ai_display_metadata import (
     build_learning_visibility_metadata,
     build_ml_explainability_visibility_metadata,
 )
+from src.learning.index_source_mode_entry import create_index_source_mode_summary
 
 AI_SECTION_ORDER = [
     "Executive Summary",
@@ -2147,6 +2148,7 @@ def _render_home_page(
       </section>
 
       {_render_home_system_ux_sections()}
+      {_render_index_source_mode_entry_preview()}
 
       <section class="card secondary compact-card">
         <div class="section-kicker">AI Explanation Layer</div>
@@ -2166,6 +2168,102 @@ def _render_home_page(
         </div>
       </section>
     </div>
+    """
+
+
+def _render_index_source_mode_entry_preview() -> str:
+    """Render Phase 7BQ disabled index source mode entry visibility."""
+
+    summary = create_index_source_mode_summary(
+        notes="Phase 7BQ index source mode entry preview only"
+    )
+    safety_labels = [
+        "Preview only",
+        "Source selection is not execution",
+        "No local file read",
+        "No object storage call",
+        "No DB lookup",
+        "No run_analysis.py call",
+        "No Screen 3 handoff in this phase",
+        "Future EM Extract belongs to Phase 8",
+        "Phase 8 sizing/TCO is not implemented",
+        "Deterministic runtime remains authoritative",
+    ]
+    safety_label_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+
+    cards = []
+    for entry in summary.entries:
+        status_note = (
+            "Metadata entry available"
+            if entry.implemented
+            else "Future source placeholder"
+        )
+        config_note = (
+            "Requires future configuration"
+            if entry.requires_configuration
+            else "No configuration checked"
+        )
+        cards.append(
+            f"""
+            <article class="index-source-mode-entry-card disabled-preview-only"
+                     data-source-mode="{escape(entry.source_mode)}"
+                     data-preview-only="true"
+                     aria-disabled="true">
+              <div>
+                <strong>{escape(entry.display_name)}</strong>
+                <span>{escape(entry.status_label)}</span>
+              </div>
+              <p>{escape(entry.description)}</p>
+              <dl class="index-source-mode-entry-flags">
+                <div><dt>source_mode</dt><dd>{escape(entry.source_mode)}</dd></div>
+                <div><dt>target_screen</dt><dd>{escape(entry.target_screen)}</dd></div>
+                <div><dt>handoff_supported</dt><dd>false</dd></div>
+                <div><dt>execution_supported</dt><dd>false</dd></div>
+                <div><dt>status</dt><dd>{escape(status_note)}</dd></div>
+                <div><dt>configuration</dt><dd>{escape(config_note)}</dd></div>
+              </dl>
+              <button type="button"
+                      class="index-source-mode-entry-control preview-only"
+                      disabled
+                      aria-disabled="true"
+                      data-preview-only="true">
+                Preview only
+              </button>
+            </article>
+            """
+        )
+
+    return f"""
+      <!-- Phase 7BQ Index Source Mode Entry: preview-only, no execution. -->
+      <section class="card secondary index-source-mode-entry-panel"
+               id="index-source-mode-entry-panel"
+               data-phase="7BQ"
+               data-preview-only="true">
+        <div class="section-kicker">Phase 7BQ</div>
+        <h2>Source Mode Entry</h2>
+        <p class="meta">
+          Index source mode entry is preview-only. Source selection is not execution.
+          No files are read. No object storage calls are made. No DB lookup is made.
+          No run_analysis.py call is made. No Screen 3 handoff is implemented.
+        </p>
+        <div class="mini-pill-group index-source-mode-entry-safety-labels">
+          {safety_label_html}
+        </div>
+        <div class="index-source-mode-entry-grid">
+          {"".join(cards)}
+        </div>
+        <div class="supportive-panel index-source-mode-entry-boundary-note">
+          <strong>Boundary</strong>
+          <p>
+            future_em_extract is placeholder only. EM Extract implementation
+            belongs to Phase 8. Phase 8 sizing/TCO is not implemented.
+            Handoff and execution remain disabled for all index entries.
+          </p>
+        </div>
+      </section>
     """
 
 
@@ -13364,6 +13462,97 @@ def _shared_page_styles() -> str:
       padding: 14px 16px;
     }
 
+    .index-source-mode-entry-panel {
+      border-color: rgba(90, 209, 255, 0.26);
+      background: rgba(90, 209, 255, 0.05);
+    }
+
+    .index-source-mode-entry-safety-labels {
+      margin: 10px 0 14px;
+    }
+
+    .index-source-mode-entry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .index-source-mode-entry-card {
+      display: grid;
+      gap: 10px;
+      min-height: 260px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+
+    .index-source-mode-entry-card.disabled-preview-only {
+      border-color: rgba(90, 209, 255, 0.32);
+    }
+
+    .index-source-mode-entry-card strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .index-source-mode-entry-card span,
+    .index-source-mode-entry-card p,
+    .index-source-mode-entry-flags {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .index-source-mode-entry-card p {
+      margin: 0;
+    }
+
+    .index-source-mode-entry-flags {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+
+    .index-source-mode-entry-flags div {
+      display: grid;
+      grid-template-columns: minmax(96px, 0.9fr) minmax(0, 1.1fr);
+      gap: 8px;
+    }
+
+    .index-source-mode-entry-flags dt,
+    .index-source-mode-entry-flags dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .index-source-mode-entry-flags dt {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .index-source-mode-entry-control.preview-only {
+      min-height: 36px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(20, 36, 58, 0.84);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      cursor: not-allowed;
+    }
+
+    .index-source-mode-entry-boundary-note {
+      margin-top: 12px;
+      padding: 12px;
+    }
+
     .future-input-panel {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -13521,7 +13710,8 @@ def _shared_page_styles() -> str:
     }
 
     @media (max-width: 1100px) {
-      .agent-grid {
+      .agent-grid,
+      .index-source-mode-entry-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -13544,6 +13734,7 @@ def _shared_page_styles() -> str:
       .governance-summary-grid,
       .governance-artifact-grid,
       .workflow-summary-grid,
+      .index-source-mode-entry-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
@@ -13619,6 +13810,7 @@ def _shared_page_styles() -> str:
       .visual-summary-grid, .domain-strip, .selector-control-grid,
       .diagnostic-snapshot-grid,
       .diagnostic-driver-stack,
+      .index-source-mode-entry-grid,
       .screen4-verdict-grid,
       .screen4-topology-grid {
         grid-template-columns: 1fr;

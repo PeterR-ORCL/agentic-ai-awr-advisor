@@ -17,6 +17,10 @@ from src.reporting.ai_display_metadata import (
 )
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
 from src.learning.index_source_status import create_source_mode_status_summary
+from src.learning.index_screen3_handoff import (
+    create_index_screen3_handoff,
+    evaluate_index_screen3_handoff,
+)
 from src.learning.object_storage_config_validation import (
     build_object_storage_configuration_summary,
     default_object_storage_configuration,
@@ -2157,6 +2161,7 @@ def _render_home_page(
       {_render_index_source_mode_entry_preview()}
       {_render_index_source_status_panel()}
       {_render_index_object_storage_config_panel()}
+      {_render_index_screen3_handoff_panel()}
 
       <section class="card secondary compact-card">
         <div class="section-kicker">AI Explanation Layer</div>
@@ -2269,6 +2274,99 @@ def _render_index_object_storage_config_panel() -> str:
             {summary.incomplete_count}. Unsupported credential modes:
             {summary.unsupported_credential_count}. Object Storage access
             remains blocked until a future phase.
+          </p>
+        </div>
+      </section>
+    """
+
+
+def _render_index_screen3_handoff_panel() -> str:
+    """Render Phase 7BT preview-only index-to-Screen-3 handoff visibility."""
+
+    handoff = create_index_screen3_handoff(
+        "local_staged",
+        source_mode_entry_id="INDEX-SOURCE-MODE-ENTRY-LOCAL-STAGED",
+        source_status_id="INDEX-SOURCE-STATUS-LOCAL-STAGED",
+        notes="Phase 7BT index to Screen 3 handoff preview only",
+    )
+    validation = evaluate_index_screen3_handoff(handoff)
+    safety_labels = [
+        "Preview only",
+        "Handoff is not active in this phase",
+        "No Screen 3 state update",
+        "No backend request created",
+        "No object storage call",
+        "No local file read",
+        "No DB lookup",
+        "No run_analysis.py call",
+        "Future EM Extract belongs to Phase 8",
+        "Phase 8 sizing/TCO not implemented",
+    ]
+    safety_label_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+
+    return f"""
+      <!-- Phase 7BT Index to Screen 3 Handoff Preview: metadata-only. -->
+      <section class="card secondary index-screen3-handoff-panel"
+               id="index-screen3-handoff-panel"
+               data-phase="7BT"
+               data-preview-only="true">
+        <div class="section-kicker">Phase 7BT</div>
+        <h2>Index to Screen 3 Selection Handoff Preview</h2>
+        <p class="meta">
+          Handoff is metadata-only in this phase. No handoff is performed. No
+          Screen 3 state is updated. No backend request is created. No source
+          access occurs.
+        </p>
+        <div class="mini-pill-group index-screen3-handoff-safety-labels">
+          {safety_label_html}
+        </div>
+        <div class="index-screen3-handoff-grid">
+          <article class="index-screen3-handoff-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Handoff Candidate</strong>
+            <dl class="index-screen3-handoff-flags">
+              <div><dt>selected source mode preview</dt><dd>{escape(handoff.selected_source_mode)}</dd></div>
+              <div><dt>target screen</dt><dd>Screen 3 Control Center</dd></div>
+              <div><dt>target_state_key</dt><dd>{escape(handoff.target_state_key)}</dd></div>
+              <div><dt>handoff_supported</dt><dd>false in this phase</dd></div>
+              <div><dt>validation_status</dt><dd>{escape(validation.validation_status)}</dd></div>
+            </dl>
+          </article>
+          <article class="index-screen3-handoff-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Safety State</strong>
+            <dl class="index-screen3-handoff-flags">
+              <div><dt>handoff_performed</dt><dd>false</dd></div>
+              <div><dt>screen3_state_updated</dt><dd>false</dd></div>
+              <div><dt>backend_request_created</dt><dd>false</dd></div>
+              <div><dt>can_handoff</dt><dd>false</dd></div>
+              <div><dt>handoff_blocked</dt><dd>true</dd></div>
+            </dl>
+          </article>
+          <article class="index-screen3-handoff-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Access Boundary</strong>
+            <dl class="index-screen3-handoff-flags">
+              <div><dt>source_access_performed</dt><dd>false</dd></div>
+              <div><dt>object_storage_called</dt><dd>false</dd></div>
+              <div><dt>local_file_read_performed</dt><dd>false</dd></div>
+              <div><dt>db_lookup_performed</dt><dd>false</dd></div>
+              <div><dt>run_analysis_called</dt><dd>false</dd></div>
+            </dl>
+          </article>
+        </div>
+        <div class="supportive-panel index-screen3-handoff-boundary-note">
+          <strong>Future next step</strong>
+          <p>
+            Screen 3 selection handoff remains a future controlled workflow.
+            Active handoff, backend request creation, object storage access,
+            source intake, EM Extract, and Phase 8 sizing/TCO are not implemented.
           </p>
         </div>
       </section>
@@ -13916,6 +14014,75 @@ def _shared_page_styles() -> str:
       padding: 12px;
     }
 
+    .index-screen3-handoff-panel {
+      border-color: rgba(171, 120, 255, 0.28);
+      background: rgba(171, 120, 255, 0.05);
+    }
+
+    .index-screen3-handoff-safety-labels {
+      margin: 10px 0 14px;
+    }
+
+    .index-screen3-handoff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .index-screen3-handoff-card {
+      display: grid;
+      gap: 10px;
+      min-height: 222px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+
+    .index-screen3-handoff-card.disabled-preview-only {
+      border-color: rgba(171, 120, 255, 0.36);
+    }
+
+    .index-screen3-handoff-card strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .index-screen3-handoff-flags {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .index-screen3-handoff-flags div {
+      display: grid;
+      grid-template-columns: minmax(136px, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .index-screen3-handoff-flags dt,
+    .index-screen3-handoff-flags dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .index-screen3-handoff-flags dt {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .index-screen3-handoff-boundary-note {
+      margin-top: 12px;
+      padding: 12px;
+    }
+
     .future-input-panel {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -14076,7 +14243,8 @@ def _shared_page_styles() -> str:
       .agent-grid,
       .index-source-mode-entry-grid,
       .index-source-status-grid,
-      .index-object-storage-config-grid {
+      .index-object-storage-config-grid,
+      .index-screen3-handoff-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -14102,6 +14270,7 @@ def _shared_page_styles() -> str:
       .index-source-mode-entry-grid,
       .index-source-status-grid,
       .index-object-storage-config-grid,
+      .index-screen3-handoff-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
@@ -14180,6 +14349,7 @@ def _shared_page_styles() -> str:
       .index-source-mode-entry-grid,
       .index-source-status-grid,
       .index-object-storage-config-grid,
+      .index-screen3-handoff-grid,
       .screen4-verdict-grid,
       .screen4-topology-grid {
         grid-template-columns: 1fr;

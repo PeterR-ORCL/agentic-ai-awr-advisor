@@ -16,6 +16,7 @@ from src.reporting.ai_display_metadata import (
     build_ml_explainability_visibility_metadata,
 )
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
+from src.learning.index_source_status import create_source_mode_status_summary
 
 AI_SECTION_ORDER = [
     "Executive Summary",
@@ -2149,6 +2150,7 @@ def _render_home_page(
 
       {_render_home_system_ux_sections()}
       {_render_index_source_mode_entry_preview()}
+      {_render_index_source_status_panel()}
 
       <section class="card secondary compact-card">
         <div class="section-kicker">AI Explanation Layer</div>
@@ -2169,6 +2171,119 @@ def _render_home_page(
       </section>
     </div>
     """
+
+
+def _render_index_source_status_panel() -> str:
+    """Render Phase 7BR preview-only index source status visibility."""
+
+    summary = create_source_mode_status_summary(
+        notes="Phase 7BR source status preview only"
+    )
+    safety_labels = [
+        "Preview only",
+        "Source status is not source access",
+        "No local file read",
+        "No object storage call",
+        "No DB lookup",
+        "No run_analysis.py call",
+        "No Screen 3 handoff in this phase",
+        "Future EM Extract belongs to Phase 8",
+        "Phase 8 sizing/TCO is not implemented",
+    ]
+    safety_label_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+
+    status_cards = []
+    for status in summary.statuses:
+        config_text = (
+            "Configuration required"
+            if status.requires_configuration
+            else "Configuration not checked"
+        )
+        validation_text = (
+            "Validation required"
+            if status.requires_validation
+            else "Future source placeholder"
+        )
+        future_text = status.future_phase or "Not future-phased"
+        status_cards.append(
+            f"""
+            <article class="index-source-status-card disabled-preview-only"
+                     data-source-mode="{escape(status.source_mode)}"
+                     data-preview-only="true"
+                     aria-disabled="true">
+              <div class="index-source-status-card-header">
+                <strong>{escape(status.display_name)}</strong>
+                <span>{escape(status.status_label)}</span>
+              </div>
+              <dl class="index-source-status-flags">
+                <div><dt>status</dt><dd>{escape(status.status)}</dd></div>
+                <div><dt>readiness</dt><dd>{escape(status.readiness_level)}</dd></div>
+                <div><dt>configuration</dt><dd>{escape(config_text)}</dd></div>
+                <div><dt>validation</dt><dd>{escape(validation_text)}</dd></div>
+                <div><dt>configured_hint</dt><dd>{_render_bool_text(status.configured_hint)}</dd></div>
+                <div><dt>available_hint</dt><dd>{_render_bool_text(status.available_hint)}</dd></div>
+                <div><dt>execution_supported</dt><dd>false</dd></div>
+                <div><dt>handoff_supported</dt><dd>false</dd></div>
+                <div><dt>source_access_performed</dt><dd>false</dd></div>
+                <div><dt>future_phase</dt><dd>{escape(future_text)}</dd></div>
+              </dl>
+            </article>
+            """
+        )
+
+    return f"""
+      <!-- Phase 7BR Source Status Panel: preview-only, no source access. -->
+      <section class="card secondary index-source-status-panel"
+               id="index-source-status-panel"
+               data-phase="7BR"
+               data-preview-only="true">
+        <div class="section-kicker">Phase 7BR</div>
+        <h2>Source Status</h2>
+        <p class="meta">
+          Source status is not source access. No files are read. No object
+          storage calls are made. No DB lookup is made. No run_analysis.py call
+          is made. Execution and handoff remain unsupported in this phase.
+        </p>
+        <div class="mini-pill-group index-source-status-safety-labels">
+          {safety_label_html}
+        </div>
+        <div class="index-source-status-summary-grid">
+          {_render_info_grid(
+              [
+                  ("Source Count", summary.source_count),
+                  ("Ready Metadata Only", summary.ready_count),
+                  ("Needs Configuration", summary.needs_configuration_count),
+                  ("Future Sources", summary.future_count),
+                  ("Blocked Sources", summary.blocked_count),
+                  ("Default Source Mode", summary.default_source_mode),
+                  ("execution_supported", "false"),
+                  ("handoff_supported", "false"),
+                  ("source_access_performed", "false"),
+              ],
+              extra_class="index-source-status-summary",
+          )}
+        </div>
+        <div class="index-source-status-grid">
+          {"".join(status_cards)}
+        </div>
+        <div class="supportive-panel index-source-status-boundary-note">
+          <strong>Boundary</strong>
+          <p>
+            Object storage configuration is metadata-only here and belongs to
+            future 7BS validation. No Screen 3 handoff is implemented until
+            future 7BT. future_em_extract remains a Phase 8 placeholder.
+            Phase 8 sizing/TCO is not implemented.
+          </p>
+        </div>
+      </section>
+    """
+
+
+def _render_bool_text(value: bool) -> str:
+    return "true" if value else "false"
 
 
 def _render_index_source_mode_entry_preview() -> str:
@@ -13553,6 +13668,83 @@ def _shared_page_styles() -> str:
       padding: 12px;
     }
 
+    .index-source-status-panel {
+      border-color: rgba(246, 184, 76, 0.28);
+      background: rgba(246, 184, 76, 0.05);
+    }
+
+    .index-source-status-safety-labels {
+      margin: 10px 0 14px;
+    }
+
+    .index-source-status-summary-grid {
+      margin-bottom: 12px;
+    }
+
+    .index-source-status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .index-source-status-card {
+      display: grid;
+      gap: 10px;
+      min-height: 244px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+
+    .index-source-status-card.disabled-preview-only {
+      border-color: rgba(246, 184, 76, 0.36);
+    }
+
+    .index-source-status-card strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .index-source-status-card span,
+    .index-source-status-flags {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .index-source-status-flags {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+
+    .index-source-status-flags div {
+      display: grid;
+      grid-template-columns: minmax(112px, 0.9fr) minmax(0, 1.1fr);
+      gap: 8px;
+    }
+
+    .index-source-status-flags dt,
+    .index-source-status-flags dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .index-source-status-flags dt {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .index-source-status-boundary-note {
+      margin-top: 12px;
+      padding: 12px;
+    }
+
     .future-input-panel {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -13711,7 +13903,8 @@ def _shared_page_styles() -> str:
 
     @media (max-width: 1100px) {
       .agent-grid,
-      .index-source-mode-entry-grid {
+      .index-source-mode-entry-grid,
+      .index-source-status-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -13735,6 +13928,7 @@ def _shared_page_styles() -> str:
       .governance-artifact-grid,
       .workflow-summary-grid,
       .index-source-mode-entry-grid,
+      .index-source-status-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
@@ -13811,6 +14005,7 @@ def _shared_page_styles() -> str:
       .diagnostic-snapshot-grid,
       .diagnostic-driver-stack,
       .index-source-mode-entry-grid,
+      .index-source-status-grid,
       .screen4-verdict-grid,
       .screen4-topology-grid {
         grid-template-columns: 1fr;

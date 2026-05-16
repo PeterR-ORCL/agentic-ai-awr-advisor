@@ -17,6 +17,11 @@ from src.reporting.ai_display_metadata import (
 )
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
 from src.learning.index_source_status import create_source_mode_status_summary
+from src.learning.object_storage_config_validation import (
+    build_object_storage_configuration_summary,
+    default_object_storage_configuration,
+    evaluate_object_storage_configuration,
+)
 
 AI_SECTION_ORDER = [
     "Executive Summary",
@@ -2151,6 +2156,7 @@ def _render_home_page(
       {_render_home_system_ux_sections()}
       {_render_index_source_mode_entry_preview()}
       {_render_index_source_status_panel()}
+      {_render_index_object_storage_config_panel()}
 
       <section class="card secondary compact-card">
         <div class="section-kicker">AI Explanation Layer</div>
@@ -2170,6 +2176,102 @@ def _render_home_page(
         </div>
       </section>
     </div>
+    """
+
+
+def _render_index_object_storage_config_panel() -> str:
+    """Render Phase 7BS preview-only object storage config status visibility."""
+
+    config = default_object_storage_configuration(
+        notes="Phase 7BS object storage configuration metadata preview"
+    )
+    validation = evaluate_object_storage_configuration(config)
+    summary = build_object_storage_configuration_summary([validation])
+    safety_labels = [
+        "Preview only",
+        "Object Storage metadata validation only",
+        "No credential validation",
+        "No object storage call",
+        "No bucket listing",
+        "No object download",
+        "No Screen 3 handoff in this phase",
+        "No run_analysis.py call",
+        "Phase 8 EM Extract not implemented",
+        "Phase 8 sizing/TCO not implemented",
+    ]
+    safety_label_html = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+
+    return f"""
+      <!-- Phase 7BS Object Storage Configuration Status: metadata validation only. -->
+      <section class="card secondary index-object-storage-config-panel"
+               id="index-object-storage-config-panel"
+               data-phase="7BS"
+               data-preview-only="true">
+        <div class="section-kicker">Phase 7BS</div>
+        <h2>Object Storage Configuration Status</h2>
+        <p class="meta">
+          Object Storage configuration validation is metadata validation only.
+          No credential validation is performed. No object storage call is made.
+          No bucket listing occurs. No object download occurs.
+        </p>
+        <div class="mini-pill-group index-object-storage-config-safety-labels">
+          {safety_label_html}
+        </div>
+        <div class="index-object-storage-config-grid">
+          <article class="index-object-storage-config-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Configuration Metadata</strong>
+            <dl class="index-object-storage-config-flags">
+              <div><dt>namespace present</dt><dd>{_render_bool_text(validation.namespace_present)}</dd></div>
+              <div><dt>bucket present</dt><dd>{_render_bool_text(validation.bucket_present)}</dd></div>
+              <div><dt>object or prefix present</dt><dd>{_render_bool_text(validation.object_or_prefix_present)}</dd></div>
+              <div><dt>region present</dt><dd>{_render_bool_text(validation.region_present)}</dd></div>
+              <div><dt>compartment present</dt><dd>{_render_bool_text(validation.compartment_present)}</dd></div>
+              <div><dt>credential mode</dt><dd>{escape(config.credential_mode)}</dd></div>
+            </dl>
+          </article>
+          <article class="index-object-storage-config-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Validation Result</strong>
+            <dl class="index-object-storage-config-flags">
+              <div><dt>validation_status</dt><dd>{escape(validation.validation_status)}</dd></div>
+              <div><dt>valid_metadata</dt><dd>{_render_bool_text(validation.valid_metadata)}</dd></div>
+              <div><dt>can_attempt_future_access</dt><dd>{_render_bool_text(validation.can_attempt_future_access)}</dd></div>
+              <div><dt>execution_blocked</dt><dd>true</dd></div>
+              <div><dt>credential validation</dt><dd>not performed</dd></div>
+              <div><dt>future validation</dt><dd>required</dd></div>
+            </dl>
+          </article>
+          <article class="index-object-storage-config-card disabled-preview-only"
+                   data-preview-only="true"
+                   aria-disabled="true">
+            <strong>Access Boundary</strong>
+            <dl class="index-object-storage-config-flags">
+              <div><dt>credential_validation_performed</dt><dd>false</dd></div>
+              <div><dt>object_storage_call_performed</dt><dd>false</dd></div>
+              <div><dt>bucket_list_performed</dt><dd>false</dd></div>
+              <div><dt>object_download_performed</dt><dd>false</dd></div>
+              <div><dt>execution_supported</dt><dd>false</dd></div>
+              <div><dt>handoff_supported</dt><dd>false</dd></div>
+            </dl>
+          </article>
+        </div>
+        <div class="supportive-panel index-object-storage-config-boundary-note">
+          <strong>Summary</strong>
+          <p>
+            Configurations: {summary.configured_count}. Valid metadata:
+            {summary.valid_metadata_count}. Incomplete:
+            {summary.incomplete_count}. Unsupported credential modes:
+            {summary.unsupported_credential_count}. Object Storage access
+            remains blocked until a future phase.
+          </p>
+        </div>
+      </section>
     """
 
 
@@ -13745,6 +13847,75 @@ def _shared_page_styles() -> str:
       padding: 12px;
     }
 
+    .index-object-storage-config-panel {
+      border-color: rgba(38, 166, 154, 0.28);
+      background: rgba(38, 166, 154, 0.05);
+    }
+
+    .index-object-storage-config-safety-labels {
+      margin: 10px 0 14px;
+    }
+
+    .index-object-storage-config-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .index-object-storage-config-card {
+      display: grid;
+      gap: 10px;
+      min-height: 218px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+    }
+
+    .index-object-storage-config-card.disabled-preview-only {
+      border-color: rgba(38, 166, 154, 0.36);
+    }
+
+    .index-object-storage-config-card strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .index-object-storage-config-flags {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .index-object-storage-config-flags div {
+      display: grid;
+      grid-template-columns: minmax(136px, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .index-object-storage-config-flags dt,
+    .index-object-storage-config-flags dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .index-object-storage-config-flags dt {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .index-object-storage-config-boundary-note {
+      margin-top: 12px;
+      padding: 12px;
+    }
+
     .future-input-panel {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -13904,7 +14075,8 @@ def _shared_page_styles() -> str:
     @media (max-width: 1100px) {
       .agent-grid,
       .index-source-mode-entry-grid,
-      .index-source-status-grid {
+      .index-source-status-grid,
+      .index-object-storage-config-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -13929,6 +14101,7 @@ def _shared_page_styles() -> str:
       .workflow-summary-grid,
       .index-source-mode-entry-grid,
       .index-source-status-grid,
+      .index-object-storage-config-grid,
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
@@ -14006,6 +14179,7 @@ def _shared_page_styles() -> str:
       .diagnostic-driver-stack,
       .index-source-mode-entry-grid,
       .index-source-status-grid,
+      .index-object-storage-config-grid,
       .screen4-verdict-grid,
       .screen4-topology-grid {
         grid-template-columns: 1fr;

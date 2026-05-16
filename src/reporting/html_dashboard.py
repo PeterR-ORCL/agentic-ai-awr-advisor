@@ -9186,6 +9186,9 @@ def _render_screen_6_page(
     screen6_model_registry_review_html = _render_screen6_model_registry_review_preview_panel(
         ml_display_payload
     )
+    screen6_runtime_gate_review_html = _render_screen6_runtime_gate_review_preview_panel(
+        ml_display_payload
+    )
     if not screen_model.get("similarity_enabled") and not similar_cases:
         return f"""
     <div class="grid">
@@ -9214,6 +9217,7 @@ def _render_screen_6_page(
       {screen6_candidate_review_html}
       {screen6_materialization_review_html}
       {screen6_model_registry_review_html}
+      {screen6_runtime_gate_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
@@ -9277,12 +9281,210 @@ def _render_screen_6_page(
       {screen6_candidate_review_html}
       {screen6_materialization_review_html}
       {screen6_model_registry_review_html}
+      {screen6_runtime_gate_review_html}
       {_render_governance_visibility_section(governance_display_payload)}
       {_render_semantic_recall_visibility_section(semantic_display_payload)}
       {_render_learning_visibility_section(learning_display_payload)}
       {_render_ml_explainability_visibility_section(ml_display_payload)}
     </div>
     """
+
+
+def _render_screen6_runtime_gate_review_preview_panel(
+    ml_visibility_payload: dict[str, Any],
+) -> str:
+    gate_rows = [
+        _to_dict(row)
+        for row in _screen6_list(ml_visibility_payload.get("runtime_gate_rows"))
+    ]
+    adapter_rows = [
+        _to_dict(row)
+        for row in _screen6_list(ml_visibility_payload.get("adapter_rows"))
+    ]
+    fallback_rows = [
+        _to_dict(row)
+        for row in _screen6_list(ml_visibility_payload.get("fallback_rows"))
+    ]
+    selected_gate = next(
+        (
+            row
+            for row in gate_rows + adapter_rows + fallback_rows
+            if _has_display_value(row.get("gate_id"))
+            or _has_display_value(row.get("result_id"))
+            or _has_display_value(row.get("decision_id"))
+        ),
+        {},
+    )
+    gate_id = _display_value(
+        selected_gate.get("gate_id")
+        or selected_gate.get("result_id")
+        or selected_gate.get("decision_id")
+        or "No runtime gate selected"
+    )
+    gate_type = _screen6_runtime_gate_type_label(selected_gate)
+    gate_status = _display_value(
+        selected_gate.get("gate_status")
+        or selected_gate.get("final_runtime_posture")
+        or selected_gate.get("status")
+        or "preview_only"
+    )
+    controls = (
+        (
+            "Mark Gate Under Review",
+            "Future runtime gate review only. No runtime gate state changed.",
+        ),
+        (
+            "Review Adaptive Runtime Context",
+            "Future context review preview only. Adaptive runtime remains disabled.",
+        ),
+        (
+            "Review Scoring Integration",
+            "Future scoring integration review only. Runtime influence not granted.",
+        ),
+        (
+            "Review Recommendation Integration",
+            "Future recommendation integration review only. Runtime eligibility not granted.",
+        ),
+        (
+            "Review Parser Integration",
+            "Future parser integration review only. Parser behavior is unchanged.",
+        ),
+        (
+            "Review Fallback Posture",
+            "Future fallback posture review only. No rollback execution.",
+        ),
+        (
+            "Request Runtime Review",
+            "Future runtime review preview only. Runtime active false.",
+        ),
+        (
+            "Request Rollback Review",
+            "Future rollback review preview only. No rollback execution.",
+        ),
+        (
+            "Request Gate Revision",
+            "Future gate revision preview only. No gate state changed.",
+        ),
+        (
+            "Close Gate Review",
+            "Future closure preview only. No review record persisted.",
+        ),
+        (
+            "Add Runtime Gate Note",
+            "Future runtime gate note preview only. No note is persisted.",
+        ),
+    )
+    control_buttons = "".join(
+        f"""
+              <button type="button"
+                      class="screen6-runtime-gate-review-control preview-only"
+                      disabled
+                      aria-disabled="true"
+                      data-preview-only="true">
+                <strong>{escape(label)}</strong>
+                <span>Preview only</span>
+                <small>{escape(description)}</small>
+              </button>
+        """
+        for label, description in controls
+    )
+    safety_labels = (
+        "Preview only",
+        "Runtime gate review disabled in this phase",
+        "No runtime gate state changed",
+        "Adaptive runtime remains disabled",
+        "Runtime influence not granted",
+        "Runtime eligibility not granted",
+        "Runtime active false",
+        "No rollback execution",
+        "No governed write path invoked",
+        "No Phase 4I mutation",
+        "Deterministic runtime remains authoritative",
+    )
+    safety_pills = "".join(
+        f'<span class="mini-pill neutral">{escape(label)}</span>'
+        for label in safety_labels
+    )
+    selected_note = (
+        "First visible runtime gate, adapter, or fallback record is shown as preview context only."
+        if selected_gate
+        else "No runtime gate record is selected in this static export; controls remain disabled."
+    )
+    return f"""
+      <section class="card secondary screen6-runtime-gate-review-preview-panel" id="screen6-runtime-gate-review-preview-panel" data-phase="7BO" data-preview-only="true">
+        <div class="section-kicker">Phase 7BO Preview</div>
+        <h2>Screen 6 Runtime Gate Review Preview</h2>
+        <p class="meta">
+          Preview only. Runtime gate review disabled in this phase. Controls are disabled/preview-only.
+          No runtime gate state changed. Adaptive runtime remains disabled. Runtime influence not granted.
+          Runtime eligibility not granted. Runtime active false. No rollback execution.
+          No governed write path invoked. No Phase 4I mutation. Deterministic runtime remains authoritative.
+        </p>
+        <div class="mini-pill-group screen6-runtime-gate-review-safety-labels">
+          {safety_pills}
+        </div>
+        <div class="screen6-runtime-gate-review-control-grid" aria-label="Screen 6 runtime gate review preview controls">
+          {control_buttons}
+        </div>
+        <section class="evidence-pane screen6-runtime-gate-review-summary">
+          <h3>Read-Only Runtime Gate Review Request Preview</h3>
+          <p class="meta">{escape(selected_note)}</p>
+          {_render_info_grid(
+              [
+                  ("gate_id", gate_id),
+                  ("gate_type", gate_type),
+                  ("gate_status", gate_status),
+                  ("requested_action", "preview_only"),
+                  ("validation_status", "preview_only"),
+                  ("actor required", "7AE actor identity required for future actions"),
+                  ("audit required", "audit trail required for future actions"),
+                  ("governed write path required", "7AG required before future writes"),
+                  ("adaptive_runtime_enabled_changed=false", "adaptive_runtime_enabled_changed=false"),
+                  ("runtime_influence_allowed_changed=false", "runtime_influence_allowed_changed=false"),
+                  ("runtime_influence_granted=false", "runtime_influence_granted=false"),
+                  ("runtime_eligibility_granted=false", "runtime_eligibility_granted=false"),
+                  ("runtime_active=false", "runtime_active=false"),
+                  ("write_performed=false", "write_performed=false"),
+                  ("gate_state_changed=false", "gate_state_changed=false"),
+                  ("runtime_review_requested=false", "runtime_review_requested=false"),
+                  ("rollback_review_requested=false", "rollback_review_requested=false"),
+                  ("governance_action_performed=false", "governance_action_performed=false"),
+                  ("validation_reference_attached=false", "validation_reference_attached=false"),
+                  ("rollback_reference_attached=false", "rollback_reference_attached=false"),
+                  ("phase4i_mutation_requested=false", "phase4i_mutation_requested=false"),
+              ],
+              extra_class="screen6-runtime-gate-review-info-grid",
+          )}
+        </section>
+      </section>
+    """
+
+
+def _screen6_runtime_gate_type_label(row: dict[str, Any]) -> str:
+    if not row:
+        return "unknown"
+    if _has_display_value(row.get("gate_type")):
+        return _display_value(row.get("gate_type"))
+    if _has_display_value(row.get("component_type")):
+        component_type = _display_value(row.get("component_type")).lower()
+        return {
+            "scoring": "scoring_integration_result",
+            "recommendation": "recommendation_integration_result",
+            "parser": "parser_integration_result",
+            "shadow_ml": "adaptive_runtime_gate",
+            "model_registry": "adaptive_runtime_gate",
+            "materialization_artifact": "adaptive_runtime_gate",
+        }.get(component_type, "adaptive_runtime_gate")
+    if _has_display_value(row.get("adapter_type")):
+        adapter_type = _display_value(row.get("adapter_type")).lower()
+        return {
+            "scoring": "scoring_integration_result",
+            "recommendation": "recommendation_integration_result",
+            "parser": "parser_integration_result",
+        }.get(adapter_type, "adaptive_runtime_context")
+    if _has_display_value(row.get("decision_id")):
+        return "runtime_fallback_decision"
+    return "unknown"
 
 
 def _render_screen6_model_registry_review_preview_panel(
@@ -12098,6 +12300,50 @@ def _shared_page_styles() -> str:
     .screen6-model-registry-review-summary {
       margin-top: 14px;
     }
+    .screen6-runtime-gate-review-preview-panel {
+      border-color: rgba(233, 139, 255, 0.34);
+      background: rgba(233, 139, 255, 0.06);
+    }
+    .screen6-runtime-gate-review-safety-labels {
+      margin: 10px 0 14px;
+    }
+    .screen6-runtime-gate-review-control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen6-runtime-gate-review-control {
+      display: grid;
+      gap: 6px;
+      min-height: 112px;
+      border: 1px solid rgba(233, 139, 255, 0.42);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+      text-align: left;
+      cursor: not-allowed;
+      opacity: 0.82;
+    }
+    .screen6-runtime-gate-review-control strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen6-runtime-gate-review-control span,
+    .screen6-runtime-gate-review-control small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen6-runtime-gate-review-control small {
+      display: block;
+    }
+    .screen6-runtime-gate-review-summary {
+      margin-top: 14px;
+    }
     .screen4-compact-pane {
       padding: 14px;
     }
@@ -13315,6 +13561,7 @@ def _shared_page_styles() -> str:
       .screen6-candidate-review-control-grid,
       .screen6-materialization-review-control-grid,
       .screen6-model-registry-review-control-grid,
+      .screen6-runtime-gate-review-control-grid,
       .fleet-detail-list {
         grid-template-columns: 1fr;
       }

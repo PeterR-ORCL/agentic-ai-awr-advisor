@@ -55,7 +55,7 @@ The harness requires the existing opt-in DB flags before it runs DB-backed valid
 - `AWR_PHASE7CD_DB_TEST=1`
 - `AWR_PHASE7CE_DB_TEST=1`
 
-If these flags are missing, DB checks are skipped by default. With `--strict-live`, missing DB flags fail the harness. No DB secrets are hard-coded and the harness does not invent credentials.
+If these flags are missing, DB checks are skipped by default. With `--strict-live`, missing DB flags fail the harness. No DB secrets are hard-coded and the harness does not invent credentials. In 7CL, live evidence that exits zero but reports skipped live tests is treated as failed evidence for requested DB checks.
 
 ## Object Storage Opt-In Behavior
 
@@ -67,7 +67,7 @@ python scripts/run_phase7_end_to_end_validation.py --include-object-storage
 
 The harness requires Object Storage metadata from environment/config before it enables the existing live 7CD validation path. Supported environment names include `OCI_NAMESPACE` or `OCI_OBJECT_STORAGE_NAMESPACE`, `OCI_BUCKET_NAME` or `OCI_OBJECT_STORAGE_BUCKET`, `OCI_OBJECT_NAME` or `OCI_OBJECT_STORAGE_OBJECT_NAME`, and `OCI_REGION`.
 
-If these values are missing, Object Storage checks are skipped by default. With `--strict-live`, missing Object Storage metadata fails the harness. The harness does not hard-code OCI namespace, bucket, object name, region, credentials, or rclone remote values.
+If these values are missing, Object Storage checks are skipped by default. With `--strict-live`, missing Object Storage metadata fails the harness. The harness does not hard-code OCI namespace, bucket, object name, region, credentials, or rclone remote values. In 7CL, live evidence that exits zero but reports skipped live tests is treated as failed evidence for requested Object Storage checks.
 
 ## Strict-Live Behavior
 
@@ -99,7 +99,7 @@ Each check record includes its name, category, command, required flag, status, r
 
 The harness uses explicit check allowlists. It uses argument-list subprocess calls with `shell=False`, runs from the repository root, captures output, and does not execute arbitrary discovered files.
 
-For Screen 2, the harness uses targeted existing boundary, model, governance bridge, and diagnostic exploration tests. The broader Screen 2 review-panel validator is reserved for 7CK–7CY remediation because the existing validator currently fails on pre-existing dashboard `<button>` detection outside the 7CH harness change.
+For Screen 2, the harness uses targeted existing boundary, model, governance bridge, and diagnostic exploration tests. The broader Screen 2 review-panel validator is evaluated by the operational readiness gate and was remediated in 7CK.
 
 The harness explicitly reports these invariant values:
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -223,11 +224,11 @@ LISTED_REQUIREMENTS: tuple[RequirementSpec, ...] = (
         command=py_command(
             "-m",
             "unittest",
-            "tests/test_phase7ca_governed_workflow_repository.py",
-            "tests/test_phase7cb_deterministic_execution.py",
-            "tests/test_phase7cc_comparison_execution.py",
-            "tests/test_phase7cd_object_storage_load_execution.py",
-            "tests/test_phase7ce_dashboard_output_refresh.py",
+            "tests.test_phase7ca_governed_workflow_repository.Phase7CAGovernedWorkflowRepositoryTests.test_optional_db_backed_insert_read_idempotency",
+            "tests.test_phase7cb_deterministic_execution.Phase7CBDeterministicExecutionTests.test_optional_db_backed_deterministic_execution",
+            "tests.test_phase7cc_comparison_execution.Phase7CCComparisonExecutionTests.test_optional_db_backed_comparison_execution",
+            "tests.test_phase7cd_object_storage_load_execution.Phase7CDObjectStorageLoadExecutionTests.test_optional_db_backed_object_storage_load",
+            "tests.test_phase7ce_dashboard_output_refresh.Phase7CEDashboardOutputRefreshTests.test_optional_db_backed_dashboard_refresh",
         ),
         timeout_seconds=600,
     ),
@@ -652,11 +653,12 @@ def evaluate_db_requirement(args: argparse.Namespace) -> dict[str, Any]:
             remediation_subphase="7CK-7CY",
         )
     result = run_command(spec)
-    return command_requirement_result(
+    return live_command_requirement_result(
         spec,
         result,
         passed_reason="DB-backed governed workflow persistence validation passed.",
         failed_reason="DB-backed governed workflow persistence validation failed.",
+        skipped_reason="DB-backed governed workflow persistence validation did not execute live DB checks because one or more opt-in tests were skipped.",
         remediation_subphase="7CK-7CY",
     )
 
@@ -687,11 +689,12 @@ def evaluate_object_storage_requirement(args: argparse.Namespace) -> dict[str, A
             remediation_subphase="7CK-7CY",
         )
     result = run_command(spec, env_update={"AWR_PHASE7CD_OBJECT_STORAGE_TEST": "1"})
-    return command_requirement_result(
+    return live_command_requirement_result(
         spec,
         result,
         passed_reason="Live Object Storage path validation passed.",
         failed_reason="Live Object Storage path validation failed.",
+        skipped_reason="Live Object Storage path validation did not execute because the opt-in live test was skipped.",
         remediation_subphase="7CK-7CY",
     )
 
@@ -816,6 +819,37 @@ def command_requirement_result(
 ) -> dict[str, Any]:
     status = "satisfied" if command_result["status"] == "passed" else "blocked"
     reason = passed_reason if status == "satisfied" else f"{failed_reason} {command_result['reason']}"
+    return requirement_result(
+        spec,
+        status,
+        reason,
+        evidence=format_command(spec.command),
+        remediation_subphase=remediation_subphase or spec.remediation_subphase,
+        command=command_result.get("command", ""),
+        returncode=command_result.get("returncode"),
+        stdout_tail=command_result.get("stdout_tail", ""),
+        stderr_tail=command_result.get("stderr_tail", ""),
+    )
+
+
+def live_command_requirement_result(
+    spec: RequirementSpec,
+    command_result: dict[str, Any],
+    *,
+    passed_reason: str,
+    failed_reason: str,
+    skipped_reason: str,
+    remediation_subphase: str = "",
+) -> dict[str, Any]:
+    if command_result["status"] == "passed" and not command_result_reports_skips(command_result):
+        status = "satisfied"
+        reason = passed_reason
+    elif command_result["status"] == "passed":
+        status = "blocked"
+        reason = skipped_reason
+    else:
+        status = "blocked"
+        reason = f"{failed_reason} {command_result['reason']}"
     return requirement_result(
         spec,
         status,
@@ -961,6 +995,18 @@ def missing_object_storage_env() -> list[str]:
         if not any(os.getenv(name) for name in names):
             missing.append(" or ".join(names))
     return missing
+
+
+def command_result_reports_skips(command_result: dict[str, Any]) -> bool:
+    combined = "\n".join(
+        str(command_result.get(key, ""))
+        for key in ("stdout_tail", "stderr_tail")
+        if command_result.get(key)
+    ).lower()
+    for match in re.finditer(r"skipped=(\d+)", combined):
+        if int(match.group(1)) > 0:
+            return True
+    return False
 
 
 def spec_by_id(req_id: str) -> RequirementSpec:

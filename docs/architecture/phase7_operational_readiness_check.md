@@ -51,6 +51,8 @@ python scripts/run_phase7_operational_readiness_check.py --final-certification -
 
 If DB or Object Storage prerequisites are missing in safe local mode, the relevant requirement is skipped. If they are missing in final certification mode, readiness is blocked.
 
+7CL tightens final live evidence recognition so a live validation command that exits zero but reports skipped live tests is not accepted as satisfied evidence. Final certification requires the DB and Object Storage checks to run and pass without live-test skips.
+
 ## Known Screen 2 Blocker
 
 The checker records this blocker explicitly:

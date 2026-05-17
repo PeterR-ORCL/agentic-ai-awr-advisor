@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import unittest
+from importlib import util
 from pathlib import Path
 
 
@@ -35,6 +36,19 @@ def clean_env() -> dict[str, str]:
     for key in LIVE_ENV_KEYS:
         env.pop(key, None)
     return env
+
+
+def harness_module():
+    spec = util.spec_from_file_location(
+        "phase7_end_to_end_validation_test_module",
+        SCRIPT,
+    )
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"unable to load {SCRIPT}")
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 class Phase7EndToEndValidationHarnessTests(unittest.TestCase):
@@ -130,6 +144,16 @@ class Phase7EndToEndValidationHarnessTests(unittest.TestCase):
         failures = {failure["name"]: failure for failure in payload["failures"]}
         self.assertIn("phase7_object_storage_live_validation", failures)
         self.assertIn("OCI_NAMESPACE", failures["phase7_object_storage_live_validation"]["reason"])
+
+    def test_live_unittest_skip_output_is_not_successful_evidence(self) -> None:
+        module = harness_module()
+        self.assertFalse(module.command_output_reports_skips("", "Ran 1 test\n\nOK"))
+        self.assertTrue(
+            module.command_output_reports_skips(
+                "",
+                "Ran 1 test in 0.1s\n\nOK (skipped=1)",
+            )
+        )
 
     def test_harness_never_marks_phase7_complete(self) -> None:
         completed = self.run_harness("--fast", "--json")

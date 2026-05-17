@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -342,11 +343,11 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
         command=py_command(
             "-m",
             "unittest",
-            "tests/test_phase7ca_governed_workflow_repository.py",
-            "tests/test_phase7cb_deterministic_execution.py",
-            "tests/test_phase7cc_comparison_execution.py",
-            "tests/test_phase7cd_object_storage_load_execution.py",
-            "tests/test_phase7ce_dashboard_output_refresh.py",
+            "tests.test_phase7ca_governed_workflow_repository.Phase7CAGovernedWorkflowRepositoryTests.test_optional_db_backed_insert_read_idempotency",
+            "tests.test_phase7cb_deterministic_execution.Phase7CBDeterministicExecutionTests.test_optional_db_backed_deterministic_execution",
+            "tests.test_phase7cc_comparison_execution.Phase7CCComparisonExecutionTests.test_optional_db_backed_comparison_execution",
+            "tests.test_phase7cd_object_storage_load_execution.Phase7CDObjectStorageLoadExecutionTests.test_optional_db_backed_object_storage_load",
+            "tests.test_phase7ce_dashboard_output_refresh.Phase7CEDashboardOutputRefreshTests.test_optional_db_backed_dashboard_refresh",
         ),
         modes=("default", "fast", "full"),
         optional_group="db",
@@ -625,6 +626,15 @@ def run_subprocess_check(spec: CheckSpec) -> dict[str, Any]:
         return failed_result(spec, f"unable to execute check: {type(exc).__name__}: {exc}")
     status = "passed" if completed.returncode == 0 else "failed"
     reason = "command completed successfully" if status == "passed" else "command failed"
+    stdout_tail = tail_text(completed.stdout)
+    stderr_tail = tail_text(completed.stderr)
+    if (
+        status == "passed"
+        and spec.optional_group in {"db", "object_storage"}
+        and command_output_reports_skips(stdout_tail, stderr_tail)
+    ):
+        status = "failed"
+        reason = "live validation command completed but one or more opt-in live tests were skipped"
     return {
         "name": spec.name,
         "category": spec.category,
@@ -633,8 +643,8 @@ def run_subprocess_check(spec: CheckSpec) -> dict[str, Any]:
         "status": status,
         "returncode": completed.returncode,
         "reason": reason,
-        "stdout_tail": tail_text(completed.stdout),
-        "stderr_tail": tail_text(completed.stderr),
+        "stdout_tail": stdout_tail,
+        "stderr_tail": stderr_tail,
         "description": spec.description,
     }
 
@@ -661,6 +671,14 @@ def missing_object_storage_env() -> list[str]:
     if not os.getenv("OCI_REGION"):
         missing.append("OCI_REGION")
     return missing
+
+
+def command_output_reports_skips(stdout_tail: str, stderr_tail: str) -> bool:
+    combined = f"{stdout_tail}\n{stderr_tail}".lower()
+    for match in re.finditer(r"skipped=(\d+)", combined):
+        if int(match.group(1)) > 0:
+            return True
+    return False
 
 
 def passed_result(spec: CheckSpec, reason: str, *, checks_run: int = 1) -> dict[str, Any]:

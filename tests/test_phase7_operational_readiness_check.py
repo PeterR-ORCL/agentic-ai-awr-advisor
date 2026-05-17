@@ -135,6 +135,114 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         self.assertIn("required for final certification", blocked["db_persistence_validation"]["reason"])
         self.assertIn("required for final certification", blocked["object_storage_live_validation"]["reason"])
 
+    def test_db_live_evidence_satisfies_requirement_when_not_skipped(self) -> None:
+        module = readiness_module()
+        flags = {flag: "1" for flag in module.DB_FLAGS}
+
+        def fake_run_command(spec, *, env_update=None):
+            del env_update
+            self.assertEqual("db_persistence_validation", spec.id)
+            return {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python -m unittest db",
+                "stdout_tail": "",
+                "stderr_tail": "Ran 8 tests in 1.0s\n\nOK",
+            }
+
+        with mock.patch.dict(os.environ, flags, clear=True):
+            with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+                result = module.evaluate_db_requirement(
+                    SimpleNamespace(include_db=True, final_certification=True)
+                )
+
+        self.assertEqual("satisfied", result["status"])
+
+    def test_db_live_evidence_blocks_when_unittest_skipped(self) -> None:
+        module = readiness_module()
+        flags = {flag: "1" for flag in module.DB_FLAGS}
+
+        def fake_run_command(spec, *, env_update=None):
+            del env_update
+            self.assertEqual("db_persistence_validation", spec.id)
+            return {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python -m unittest db",
+                "stdout_tail": "",
+                "stderr_tail": "Ran 8 tests in 1.0s\n\nOK (skipped=1)",
+            }
+
+        with mock.patch.dict(os.environ, flags, clear=True):
+            with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+                result = module.evaluate_db_requirement(
+                    SimpleNamespace(include_db=True, final_certification=True)
+                )
+
+        self.assertEqual("blocked", result["status"])
+        self.assertIn("skipped", result["reason"])
+
+    def test_object_storage_live_evidence_satisfies_requirement_when_not_skipped(self) -> None:
+        module = readiness_module()
+        env = {
+            "OCI_NAMESPACE": "configured",
+            "OCI_BUCKET_NAME": "configured",
+            "OCI_OBJECT_NAME": "configured",
+            "OCI_REGION": "configured",
+        }
+
+        def fake_run_command(spec, *, env_update=None):
+            self.assertEqual("object_storage_live_validation", spec.id)
+            self.assertEqual({"AWR_PHASE7CD_OBJECT_STORAGE_TEST": "1"}, env_update)
+            return {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python -m unittest object-storage",
+                "stdout_tail": "",
+                "stderr_tail": "Ran 1 test in 1.0s\n\nOK",
+            }
+
+        with mock.patch.dict(os.environ, env, clear=True):
+            with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+                result = module.evaluate_object_storage_requirement(
+                    SimpleNamespace(include_object_storage=True, final_certification=True)
+                )
+
+        self.assertEqual("satisfied", result["status"])
+
+    def test_object_storage_live_evidence_blocks_when_unittest_skipped(self) -> None:
+        module = readiness_module()
+        env = {
+            "OCI_NAMESPACE": "configured",
+            "OCI_BUCKET_NAME": "configured",
+            "OCI_OBJECT_NAME": "configured",
+            "OCI_REGION": "configured",
+        }
+
+        def fake_run_command(spec, *, env_update=None):
+            self.assertEqual("object_storage_live_validation", spec.id)
+            self.assertEqual({"AWR_PHASE7CD_OBJECT_STORAGE_TEST": "1"}, env_update)
+            return {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python -m unittest object-storage",
+                "stdout_tail": "",
+                "stderr_tail": "Ran 1 test in 1.0s\n\nOK (skipped=1)",
+            }
+
+        with mock.patch.dict(os.environ, env, clear=True):
+            with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+                result = module.evaluate_object_storage_requirement(
+                    SimpleNamespace(include_object_storage=True, final_certification=True)
+                )
+
+        self.assertEqual("blocked", result["status"])
+        self.assertIn("skipped", result["reason"])
+
     def test_known_screen2_blocker_is_resolved_when_broad_validator_passes(self) -> None:
         payload = self.default_payload
         blockers = {blocker["id"]: blocker for blocker in payload["known_blockers"]}

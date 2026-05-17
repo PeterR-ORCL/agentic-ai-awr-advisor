@@ -36,6 +36,13 @@ OBJECT_STORAGE_ENV_GROUPS: tuple[tuple[str, ...], ...] = (
     ("OCI_REGION",),
 )
 
+RELEASE_CERTIFICATION_DOCS: tuple[str, ...] = (
+    "phase7_final_release_certification.md",
+    "phase7_final_validation_matrix.md",
+    "phase7_final_operational_checklist.md",
+    "phase7_final_certification_runbook.md",
+)
+
 INVARIANTS: dict[str, bool] = {
     "deterministic_runtime_authoritative": True,
     "phase4i_contract_protected": True,
@@ -301,7 +308,7 @@ LISTED_REQUIREMENTS: tuple[RequirementSpec, ...] = (
     ),
     RequirementSpec(
         id="final_release_documentation_pending",
-        name="Final release documentation still pending until 7CJ",
+        name="Final release documentation complete for 7CJ",
         category="release_documentation",
         required_for_final_certification=True,
         evidence_source="7CJ release certification documentation",
@@ -395,7 +402,7 @@ def evaluate_readiness(args: argparse.Namespace) -> dict[str, Any]:
     requirements.append(evaluate_object_storage_requirement(args))
     requirements.extend(evaluate_runtime_invariant_requirements())
     requirements.append(evaluate_known_blockers_requirement(requirements))
-    requirements.append(pending_requirement("final_release_documentation_pending"))
+    requirements.append(evaluate_release_documentation_requirement())
     requirements.append(pending_requirement("final_certification_tag_pending"))
     requirements.append(evaluate_phase6_requirement(args))
 
@@ -418,7 +425,7 @@ def evaluate_readiness(args: argparse.Namespace) -> dict[str, Any]:
         and INVARIANTS["phase7_complete"] is False
         and INVARIANTS["phase8_started"] is False
     )
-    recommended_next = recommended_next_subphase(known_blockers, blocked_checks)
+    recommended_next = recommended_next_subphase(known_blockers, blocked_checks, pending_checks)
 
     return {
         "phase": "Phase 7",
@@ -767,6 +774,46 @@ def evaluate_known_blockers_requirement(
     )
 
 
+def evaluate_release_documentation_requirement() -> dict[str, Any]:
+    spec = spec_by_id("final_release_documentation_pending")
+    docs_dir = ROOT / "docs" / "architecture"
+    readme = docs_dir / "README.md"
+    missing = [
+        f"docs/architecture/{name}"
+        for name in RELEASE_CERTIFICATION_DOCS
+        if not (docs_dir / name).is_file()
+    ]
+    if readme.is_file():
+        readme_text = read_text(readme)
+        missing_refs = [
+            name for name in RELEASE_CERTIFICATION_DOCS if name not in readme_text
+        ]
+    else:
+        missing_refs = list(RELEASE_CERTIFICATION_DOCS)
+    if missing or missing_refs:
+        details: list[str] = []
+        if missing:
+            details.append("missing release doc(s): " + ", ".join(missing))
+        if missing_refs:
+            details.append(
+                "README missing release doc reference(s): " + ", ".join(missing_refs)
+            )
+        return requirement_result(
+            spec,
+            "pending",
+            "; ".join(details),
+            evidence="7CJ release certification documentation",
+            remediation_subphase="7CJ",
+        )
+    return requirement_result(
+        spec,
+        "satisfied",
+        "7CJ final release certification documentation exists and is referenced from README.",
+        evidence="docs/architecture/phase7_final_release_certification.md",
+        remediation_subphase="",
+    )
+
+
 def evaluate_phase6_requirement(args: argparse.Namespace) -> dict[str, Any]:
     spec = spec_by_id("phase6_regression_optional")
     if not args.include_phase6:
@@ -977,12 +1024,18 @@ def build_known_blockers(requirements: list[dict[str, Any]]) -> list[dict[str, s
 def recommended_next_subphase(
     known_blockers: list[dict[str, str]],
     blocked_checks: list[dict[str, Any]],
+    pending_checks: list[dict[str, Any]],
 ) -> str:
     if known_blockers:
         return "7CK - remediation before release certification"
     if blocked_checks:
         return "7CL - remaining certification gap closure before release certification"
-    return "7CJ - release certification documentation"
+    pending_ids = {check["id"] for check in pending_checks}
+    if "final_release_documentation_pending" in pending_ids:
+        return "7CJ - release certification documentation"
+    if "final_certification_tag_pending" in pending_ids:
+        return "7CZ - final Phase 7 certification / tag readiness"
+    return "7CZ - final Phase 7 certification / tag readiness"
 
 
 def missing_db_flags() -> list[str]:

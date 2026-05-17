@@ -1,94 +1,85 @@
-# Phase 7 Final Release Certification
+# Phase 7CJ — Final Phase 7 Release Certification
 
-## Certification Purpose
+## Status
 
-This document certifies the complete Phase 7 path as governed adaptive intelligence with controlled runtime integration scaffolding and read-only ML explainability visibility.
+7CJ is the final release certification documentation package for Phase 7. It prepares the repository for 7CZ, but it does not perform final certification, does not create `PHASE7_COMPLETE`, and does not make Phase 7 complete.
 
-## Certified Scope
+Phase 7 remains incomplete after 7CJ. Phase 8 remains not started.
 
-The certified scope includes Phase 7A through Phase 7AC:
+## Completed Certification Chain
 
-- Learning foundation.
-- Controlled materialization.
-- ML / adaptive scoring foundation.
-- Controlled adaptive runtime integration scaffolding.
-- Dashboard / CLI ML explainability visibility.
-- Final readiness and certification.
+The final operational certification chain has completed these subphases:
 
-## Certified Capabilities
+- 7CG final operational certification boundary: `4c18b55 Add Phase 7CG final operational certification boundary`.
+- 7CH end-to-end validation harness: `def9bd4 Add Phase 7CH end-to-end validation harness`.
+- 7CI operational readiness gate: `8fffba6 Add Phase 7CI operational readiness gate`.
+- 7CK Screen 2 broad operational wiring remediation: `4569def Fix Phase 7CK Screen 2 broad operational wiring validation`.
+- 7CL live DB and Object Storage certification closure: `38f81e0 Add Phase 7CL live infrastructure certification closure`.
 
-Certified capabilities include governed learning candidates, controlled materialization artifacts, shadow/advisory ML records, adaptive runtime gate/context/adapter result layers, fallback/rollback decision records, read-only visibility, and final readiness validation.
+## Remaining Certification Chain
 
-## Certified Non-Goals
+The remaining final certification step is:
 
-Phase 7 is not certified as fully active autonomous runtime mutation. It does not certify adaptive runtime activation, runtime scoring replacement, runtime recommendation replacement, runtime parser mutation, rollback execution, or Phase 8 sizing/TCO.
+- 7CZ final Phase 7 certification and tag readiness.
 
-## Certified Learning Foundation
+7CZ is the only place where final certification execution, final readiness signoff, and `PHASE7_COMPLETE` tag creation may happen.
 
-The learning foundation is certified as governed and proposal-oriented. Learning candidates do not activate themselves and do not silently alter parser/scoring/decision/recommendation runtime truth.
+## Release Readiness Summary
 
-## Certified Controlled Materialization
+The repository now has the final Phase 7 release documentation package, validation matrix, operational checklist, and 7CZ runbook. The current readiness posture is:
 
-Controlled materialization is certified as governed artifact generation only. Materialization artifacts do not activate runtime behavior and do not grant runtime influence by default.
+- `phase7_operational_ready=false` until 7CZ passes.
+- `phase7_complete=false`.
+- `phase8_started=false`.
+- `SCREEN2_BROAD_VALIDATOR_FAILURE` is resolved by 7CK and remains absent from active blockers when the broad Screen 2 validator passes.
+- DB persistence and Object Storage live path validation passed in 7CL, but final certification mode must still include live evidence when 7CZ runs.
 
-## Certified ML / Adaptive Scoring Foundation
+## What Has Been Validated
 
-The ML / adaptive scoring foundation is certified as shadow/advisory. ML explanations, trend-aware scores, shadow ML outputs, and model registry records do not become diagnostic truth or runtime scoring truth.
+7CG defined the final certification boundary, completion criteria, certification scope matrix, non-negotiable invariants, DB/Object Storage validation stance, reserved fix range, and final tag policy.
 
-## Certified Controlled Runtime Integration
+7CH created the consolidated validation harness with safe defaults, JSON output, fast/full modes, optional DB checks, optional Object Storage checks, optional Phase 6 checks, strict-live behavior, and list-checks mode.
 
-Controlled runtime integration is certified as scaffolding only. Phase 7 is certified as governed adaptive intelligence with controlled runtime integration scaffolding. Adaptive runtime is not enabled by default.
+7CI created the strict operational readiness gate. It distinguishes safe local validation from final certification readiness, requires DB and Object Storage evidence for final certification mode, requires screen operational wiring validation, records known blockers, and keeps Phase 7 incomplete until 7CZ.
 
-## Certified Dashboard / CLI Visibility
+7CK resolved `SCREEN2_BROAD_VALIDATOR_FAILURE` by fixing the actual broad Screen 2 operational wiring issue and preserving the rule that Screen 2 review controls do not mutate diagnostic truth, severity, confidence, scores, recommendations, parser output, or Phase 4I.
 
-Dashboard and CLI ML visibility are certified as read-only. They expose advisory state, model metadata, gate posture, adapter summaries, and fallback posture without adding write controls or activation controls.
+7CL closed live infrastructure certification gaps. The DB-backed 7CA-7CE exact-method validation ran with `.venv/bin/python` and passed 5 tests with no skips. The live Object Storage 7CD exact-method validation ran with `.venv/bin/python` and passed 1 live test with no skips. The readiness gate recognizes DB and Object Storage as satisfied only when requested live evidence passes without skipped live tests.
 
-## Certified Runtime Boundaries
+## What Remains Pending
 
-The certified runtime boundaries are:
+7CZ must execute final certification using the runbook in `docs/architecture/phase7_final_certification_runbook.md`.
 
-- Deterministic runtime remains authoritative.
-- Adaptive runtime remains opt-in and gated.
-- Default config denies adaptive influence.
-- Runtime adapter outputs are result layers only.
-- Fallback/rollback is decision-only.
-- Rollback is not executed.
-- `run_analysis.py` is not integrated with adaptive runtime modules.
-- Phase 4I contract remains protected.
+7CZ must run final readiness with live DB and Object Storage evidence, run the full deterministic `scripts/run_analysis.py` validation path, verify evidence and artifact cleanliness, and only then create `PHASE7_COMPLETE`.
 
-## Certified Validation Results
+## Final PHASE7_COMPLETE Tag Policy
 
-Certified validation is provided by `scripts/run_phase7_final_readiness_check.py`. The script runs the established Phase 7 readiness blocks and direct final isolation/safety checks.
+Do not create `PHASE7_COMPLETE` in 7CJ.
 
-## Certified Documentation Set
+The `PHASE7_COMPLETE` tag is only allowed in 7CZ after all required final certification checks pass, final readiness is true, the working tree is clean, no secrets or unwanted generated artifacts are staged, and Phase 8 remains unimplemented.
 
-The final documentation set includes:
+Any earlier use of `PHASE7_COMPLETE` is invalid.
 
-- `phase7_final_readiness.md`
-- `phase7_final_release_certification.md`
-- `phase7_final_operational_checklist.md`
-- `phase7_final_validation_matrix.md`
+## Safety Boundaries
 
-## Certified Operational Commands
+Phase 4 deterministic runtime remains authoritative.
 
-Certified operational commands include:
+The Phase 4I output contract remains protected.
 
-```bash
-python3 scripts/run_phase7_final_readiness_check.py
-python3 scripts/run_phase7_final_readiness_check.py --json
-python3 scripts/run_phase7aa_runtime_integration_readiness_check.py
-python3 scripts/run_phase7_ml_readiness_check.py
-python3 scripts/run_phase7_materialization_readiness_check.py
-python3 scripts/run_phase7_readiness_check.py
-PYTHONPATH=. .venv/bin/python scripts/run_phase6_validation.py
-```
+Adaptive and ML scoring remain shadow/advisory unless explicitly gated; default runtime influence is denied.
 
-## Known Follow-Ups
+Dashboard workflows must be governed and must not mutate parser output, diagnostic truth, recommendation truth, historical truth, scoring, decisions, or Phase 4I directly.
 
-Future phases may define explicitly certified runtime activation paths. Those follow-ups must preserve the Phase 4I contract, deterministic fallback, rollback safety, and explicit opt-in governance.
+No uncontrolled subprocess execution is allowed. The final `scripts/run_analysis.py` validation in 7CZ is a deterministic runtime/demo evidence path only; it must not become governed workflow execution coupling and must not be wired into Screen 3 execution.
 
-Phase 8 sizing/TCO is not certified here.
+## No Phase 8 Statement
 
-## Release Certification Statement
+Phase 8 is not implemented by 7CJ.
 
-Phase 7 is certified as governed adaptive intelligence with controlled runtime integration scaffolding. Phase 7 is not certified as fully active autonomous runtime mutation. Adaptive runtime is not enabled by default. Phase 8 sizing/TCO is not certified here.
+Sizing, TCO, what-if advisory, capacity planning, cost modeling, and EM Extract runtime support remain Phase 8 and are not part of Phase 7 final certification.
+
+## Expected Next Step
+
+Next subphase:
+
+7CZ — Final Phase 7 Certification / Tag Readiness.

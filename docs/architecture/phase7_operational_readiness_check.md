@@ -180,7 +180,7 @@ The checker models these final certification requirements:
 - No adaptive runtime activation occurs by default.
 - No Phase 8 implementation exists.
 - Known blockers are resolved.
-- Final release documentation remains pending until 7CJ.
+- Final release documentation is satisfied once the 7CJ release certification, validation matrix, operational checklist, and final certification runbook exist and are referenced from the README.
 - Final certification and the `PHASE7_COMPLETE` tag remain pending until 7CZ.
 
 ## Phase Boundary

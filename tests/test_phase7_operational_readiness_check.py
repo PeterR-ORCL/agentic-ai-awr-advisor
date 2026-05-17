@@ -243,6 +243,19 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"])
         self.assertIn("skipped", result["reason"])
 
+    def test_7cj_release_documentation_is_recognized(self) -> None:
+        payload = self.default_payload
+        requirements = {req["id"]: req for req in payload["requirements"]}
+        pending = {req["id"]: req for req in payload["pending_checks"]}
+
+        self.assertEqual(
+            "satisfied",
+            requirements["final_release_documentation_pending"]["status"],
+        )
+        self.assertNotIn("final_release_documentation_pending", pending)
+        self.assertIn("final_certification_tag_pending", pending)
+        self.assertIs(payload["phase7_operational_ready"], False)
+
     def test_known_screen2_blocker_is_resolved_when_broad_validator_passes(self) -> None:
         payload = self.default_payload
         blockers = {blocker["id"]: blocker for blocker in payload["known_blockers"]}

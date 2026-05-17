@@ -1,120 +1,142 @@
-# Phase 7 Final Operational Checklist
+# Phase 7CJ — Final Phase 7 Operational Checklist
 
 ## Purpose
 
-This checklist defines the final Phase 7 operator flow for readiness validation and release certification.
+This checklist is the human-run operational checklist for 7CZ final certification. It is prepared in 7CJ, but it must not be executed as final certification until 7CZ.
 
-## Pre-Run Checklist
+## Pre-Run Checks
 
-- Confirm the branch is `phase7-controlled-runtime-integration`.
-- Confirm the working tree is clean.
-- Confirm no runtime activation, rollback execution, parser mutation, scoring mutation, decision mutation, or recommendation mutation is in scope.
-- Use `.venv/bin/python` if system Python lacks `dotenv` or other project dependencies.
+- Confirm the branch is `phase7-final-operational-certification`.
+- Confirm the working tree is clean with `git status`.
+- Confirm the latest commit is the expected 7CJ commit when 7CZ begins.
+- Confirm no `PHASE7_COMPLETE` tag exists before final certification unless the run is explicitly verifying a completed 7CZ state.
+- Confirm `.venv/bin/python` is available for project dependencies when system Python is insufficient.
+- Confirm required input AWR files are present under `data/input/` for the full `scripts/run_analysis.py` validation.
+- Confirm DB opt-in flags and wallet/config are prepared for final live DB validation.
+- Confirm Object Storage env/config is prepared for final live Object Storage validation.
+- Confirm no secrets, wallet contents, OCI credentials, generated dashboard artifacts, or unrelated files are staged.
 
-## Final Validation Checklist
+## Safe Local Checks
+
+Run these before live checks:
+
+```bash
+git status --short
+python -m py_compile scripts/run_phase7_end_to_end_validation.py
+python -m py_compile scripts/run_phase7_operational_readiness_check.py
+python -m unittest tests/test_phase7_end_to_end_validation.py
+python -m unittest tests/test_phase7_operational_readiness_check.py
+python scripts/run_phase7_end_to_end_validation.py --json
+python scripts/run_phase7_operational_readiness_check.py --json
+```
+
+Safe local checks are non-live and non-destructive. They may skip DB and Object Storage and must not mark Phase 7 complete.
+
+## Final Certification Checks
+
+Run final certification readiness with live evidence:
+
+```bash
+python scripts/run_phase7_operational_readiness_check.py --final-certification --include-db --include-object-storage --json
+```
+
+The output must show DB persistence validation satisfied, Object Storage live path validation satisfied, `SCREEN2_BROAD_VALIDATOR_FAILURE` absent, `phase7_complete=false`, `phase8_started=false`, and `phase7_operational_ready=false` until the 7CZ tag step is complete.
+
+## Required Live DB Check
+
+Use the exact DB-backed 7CA-7CE method set:
+
+```bash
+AWR_PHASE7CA_DB_TEST=1 \
+AWR_PHASE7CB_DB_TEST=1 \
+AWR_PHASE7CC_DB_TEST=1 \
+AWR_PHASE7CD_DB_TEST=1 \
+AWR_PHASE7CE_DB_TEST=1 \
+.venv/bin/python -m unittest -v \
+  tests.test_phase7ca_governed_workflow_repository.Phase7CAGovernedWorkflowRepositoryTests.test_optional_db_backed_insert_read_idempotency \
+  tests.test_phase7cb_deterministic_execution.Phase7CBDeterministicExecutionTests.test_optional_db_backed_deterministic_execution \
+  tests.test_phase7cc_comparison_execution.Phase7CCComparisonExecutionTests.test_optional_db_backed_comparison_execution \
+  tests.test_phase7cd_object_storage_load_execution.Phase7CDObjectStorageLoadExecutionTests.test_optional_db_backed_object_storage_load \
+  tests.test_phase7ce_dashboard_output_refresh.Phase7CEDashboardOutputRefreshTests.test_optional_db_backed_dashboard_refresh
+```
+
+Pass criteria: all 5 tests run and pass with no skips.
+
+## Required Live Object Storage Check
+
+Use the existing 7CD live validation path:
+
+```bash
+AWR_PHASE7CD_OBJECT_STORAGE_TEST=1 \
+.venv/bin/python -m unittest -v \
+  tests.test_phase7cd_object_storage_load_execution.Phase7CDObjectStorageLoadExecutionTests.test_optional_live_object_storage_validation
+```
+
+Pass criteria: the live test runs and passes with no skips. Namespace, bucket, object name, region, credentials, and rclone convenience values must come from environment/config and must not be committed.
+
+## Screen 2 Broad Validator Check
 
 Run:
 
 ```bash
-python3 scripts/run_phase7_final_readiness_check.py
-python3 scripts/run_phase7_final_readiness_check.py --json
+python scripts/run_phase7_screen2_review_validation.py --json
 ```
 
-Do not certify if validation fails.
+Pass criteria: the broad Screen 2 validator passes and `SCREEN2_BROAD_VALIDATOR_FAILURE` remains absent from readiness output.
 
-## Learning Foundation Checklist
+## Full run_analysis.py Final Deterministic Demo/Runtime Check
+
+Run this only in 7CZ, not 7CJ:
+
+```bash
+python scripts/run_analysis.py
+```
+
+The script has no CLI arguments. It reads AWR input files from `data/input/`, loads the repository `.env` when present, resolves the configured AI provider, builds deterministic analysis output, attempts DB-backed similarity and Phase 6 memory persistence when configured, and generates the dashboard via `src.reporting.html_dashboard.generate_html_dashboard`.
+
+Pass criteria:
+
+- The command exits zero.
+- Console output includes the executive summary, trend findings, decision posture, recommendations, derived metric availability, AI narrative layer, HTML dashboard path, and memory persistence section.
+- The reported dashboard path resolves to the generated dashboard `index.html`.
+- Any generated artifacts are reviewed and either intentionally ignored or removed before commit unless 7CZ explicitly requires an artifact.
+- Phase 4I is not mutated outside the deterministic runtime output path.
+- Adaptive runtime influence is not enabled by default.
+- No Phase 8 sizing/TCO/what-if advisory or EM Extract runtime behavior appears.
+
+## Final Readiness Gate
 
 Run:
 
 ```bash
-python3 scripts/run_phase7_readiness_check.py
+python scripts/run_phase7_operational_readiness_check.py --final-certification --include-db --include-object-storage --fail-on-not-ready
 ```
 
-Learning candidates must remain governed proposal/review records.
+Before the final tag step, a non-zero exit can be expected if the only remaining blocker is the 7CZ tag requirement. Do not suppress any other blocker.
 
-## Materialization Checklist
+## Diff And Staging Checks
 
 Run:
 
 ```bash
-python3 scripts/run_phase7_materialization_readiness_check.py
+git diff --check
+git status --short
 ```
-
-Materialization artifacts must remain governed records and must not activate runtime influence.
-
-## ML / Adaptive Scoring Checklist
-
-Run:
-
-```bash
-python3 scripts/run_phase7_ml_readiness_check.py
-```
-
-ML outputs must remain shadow/advisory, and deterministic runtime remains authoritative.
-
-## Runtime Integration Checklist
-
-Run:
-
-```bash
-python3 scripts/run_phase7aa_runtime_integration_readiness_check.py
-```
-
-Adaptive runtime must remain gated, opt-in, default-deny, and inactive unless a future phase explicitly certifies activation.
-
-## Dashboard / CLI Visibility Checklist
-
-Run the dashboard and CLI validation commands:
-
-```bash
-python3 scripts/run_phase7h_dashboard_validation.py
-.venv/bin/python scripts/awr_memory_cli.py learning validate --json
-```
-
-Dashboard and CLI visibility must remain read-only.
-
-## Runtime Isolation Checklist
 
 Confirm:
 
-- `run_analysis.py` is not wired to Phase 7AA runtime modules.
-- Parser/scoring/decision/recommendation runtime paths do not import Phase 7AA runtime modules.
-- Runtime paths do not import Phase 7 ML modules for runtime execution.
-- No rollback execution functions exist.
-- No adaptive apply functions exist.
+- No generated or unwanted artifacts are staged.
+- No secrets are staged.
+- No Phase 8 files or behavior are staged.
+- No direct governed workflow coupling to `scripts/run_analysis.py` has been added.
+- No uncontrolled subprocess behavior has been added.
 
-## Documentation Checklist
+## Tag Policy
 
-Confirm these documents exist:
+Create `PHASE7_COMPLETE` only in 7CZ after every required check passes, final readiness is acceptable for tag creation, the working tree is clean, and all evidence is captured.
 
-- `docs/architecture/phase7_final_readiness.md`
-- `docs/architecture/phase7_final_release_certification.md`
-- `docs/architecture/phase7_final_operational_checklist.md`
-- `docs/architecture/phase7_final_validation_matrix.md`
+Do not create `PHASE7_COMPLETE` in 7CJ.
 
 ## Failure Handling
 
-If any readiness command fails:
-
-- Do not certify if validation fails.
-- Do not treat readiness as runtime activation.
-- Do not bypass runtime isolation boundaries.
-- Do not modify runtime parser/scoring/decision/recommendation behavior to force readiness.
-- Re-run validation after any scoped fix.
-
-## Acceptance Checklist
-
-Acceptance requires:
-
-- `phase7_final_ready=true`.
-- Deterministic runtime remains authoritative.
-- Adaptive runtime remains gated.
-- Runtime mutation remains absent.
-- Phase 4I contract remains protected.
-- Phase 8 is not implemented.
-
-For full release signoff, also run:
-
-```bash
-PYTHONPATH=. .venv/bin/python scripts/run_phase6_validation.py
-```
+If any required check fails, do not tag. Record the failure, leave Phase 7 incomplete, and use the reserved 7CK-7CY range only for scoped remediation that preserves Phase 7 boundaries and does not become Phase 8.

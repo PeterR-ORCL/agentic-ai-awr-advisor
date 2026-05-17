@@ -48,6 +48,12 @@ SCREEN5_PREVIEW_ARTIFACT_FILES = {
     "tests/test_dashboard_screen5_outcome_capture_panel.py",
 }
 
+PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS = {
+    "docs/architecture/phase7_screen2_broad_operational_wiring_remediation.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+    "tests/test_phase7_operational_readiness_check.py",
+}
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "cx_Oracle",
@@ -136,6 +142,11 @@ def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set
     if (
         SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE in disallowed
         and SCREEN5_PREVIEW_ARTIFACT_FILES.intersection(all_changed)
+    ):
+        disallowed.remove(SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE)
+    if (
+        SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE in disallowed
+        and PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS.issubset(all_changed)
     ):
         disallowed.remove(SCREEN5_WORKFLOW_ALLOWED_BEHAVIOR_FILE)
     return disallowed

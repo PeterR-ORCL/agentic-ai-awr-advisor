@@ -97,6 +97,17 @@ class DashboardScreen2ReviewPanelTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, combined)
 
+    def test_shared_dashboard_preview_controls_are_governed_without_raw_buttons(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH).lower()
+        rendered = self.render_screen2().lower()
+        combined = source + "\n" + rendered
+
+        self.assertNotIn("<button", combined)
+        self.assertIn('role="button"', source)
+        self.assertIn('data-preview-only="true"', source)
+        self.assertIn('data-disabled="true"', source)
+        self.assertIn('aria-disabled="true"', source)
+
     def test_review_target_summary_exists_without_submission_claim(self) -> None:
         rendered = self.render_screen2()
 

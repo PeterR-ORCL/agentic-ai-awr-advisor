@@ -7,7 +7,10 @@ import os
 import subprocess
 import sys
 import unittest
+from importlib import util
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +52,19 @@ def git_phase7_complete_tags() -> list[str]:
     if completed.returncode != 0:
         raise AssertionError(completed.stderr)
     return [line for line in completed.stdout.splitlines() if line]
+
+
+def readiness_module():
+    spec = util.spec_from_file_location(
+        "phase7_operational_readiness_check_test_module",
+        SCRIPT,
+    )
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"unable to load {SCRIPT}")
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 class Phase7OperationalReadinessCheckTests(unittest.TestCase):
@@ -105,7 +121,7 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         self.assertIn("object_storage_live_validation", skipped)
         self.assertIn("screen1_operational_wiring", skipped)
 
-    def test_final_certification_blocks_on_live_and_screen_requirements(self) -> None:
+    def test_final_certification_blocks_on_live_requirements(self) -> None:
         self.assertEqual(0, self.final_result.returncode, self.final_result.stderr)
         payload = self.final_payload
         self.assertIs(payload["final_certification_mode"], True)
@@ -115,18 +131,44 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         blocked = {check["id"]: check for check in payload["blocked_checks"]}
         self.assertIn("db_persistence_validation", blocked)
         self.assertIn("object_storage_live_validation", blocked)
-        self.assertIn("screen2_operational_wiring", blocked)
+        self.assertNotIn("screen2_operational_wiring", blocked)
         self.assertIn("required for final certification", blocked["db_persistence_validation"]["reason"])
         self.assertIn("required for final certification", blocked["object_storage_live_validation"]["reason"])
 
-    def test_known_screen2_blocker_is_not_downgraded(self) -> None:
+    def test_known_screen2_blocker_is_resolved_when_broad_validator_passes(self) -> None:
         payload = self.default_payload
         blockers = {blocker["id"]: blocker for blocker in payload["known_blockers"]}
-        self.assertIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
+        self.assertNotIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
 
         requirements = {req["id"]: req for req in payload["requirements"]}
-        self.assertNotEqual("satisfied", requirements["screen2_operational_wiring"]["status"])
+        self.assertEqual("satisfied", requirements["screen2_operational_wiring"]["status"])
         self.assertIs(payload["phase7_operational_ready"], False)
+
+    def test_screen2_blocker_is_active_when_broad_validator_fails(self) -> None:
+        module = readiness_module()
+
+        def fake_run_command(spec, *, env_update=None):
+            del env_update
+            if spec.id == "screen2_operational_wiring":
+                return {
+                    "status": "failed",
+                    "reason": "command failed",
+                    "returncode": 1,
+                    "command": "python scripts/run_phase7_screen2_review_validation.py --json",
+                    "stdout_tail": "",
+                    "stderr_tail": "",
+                }
+            raise AssertionError(f"unexpected command for {spec.id}")
+
+        with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+            requirements = module.evaluate_screen_and_operational_wiring(
+                SimpleNamespace(final_certification=False)
+            )
+
+        blockers = {blocker["id"]: blocker for blocker in module.build_known_blockers(requirements)}
+        requirements_by_id = {req["id"]: req for req in requirements}
+        self.assertIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
+        self.assertEqual("blocked", requirements_by_id["screen2_operational_wiring"]["status"])
 
     def test_list_requirements_does_not_execute_live_checks(self) -> None:
         self.assertEqual(0, self.list_result.returncode, self.list_result.stderr)

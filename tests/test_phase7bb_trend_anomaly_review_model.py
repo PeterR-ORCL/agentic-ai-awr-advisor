@@ -47,6 +47,12 @@ PHASE7BC_REQUIRED_PREVIEW_ARTIFACTS = {
     "docs/architecture/phase7bc_screen4_historical_review_panel.md",
 }
 
+PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS = {
+    "docs/architecture/phase7_screen2_broad_operational_wiring_remediation.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+    "tests/test_phase7_operational_readiness_check.py",
+}
+
 FORBIDDEN_IMPORT_PREFIXES = (
     "subprocess",
     "oracledb",
@@ -161,6 +167,11 @@ def disallowed_behavior_changes_for_phase7bc(
     if (
         PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE in changed
         and PHASE7BC_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
+    ):
+        return changed - {PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE}
+    if (
+        PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE in changed
+        and PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS.issubset(all_changed)
     ):
         return changed - {PHASE7BC_ALLOWED_DASHBOARD_PREVIEW_FILE}
     return changed

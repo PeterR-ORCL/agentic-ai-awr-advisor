@@ -61,6 +61,13 @@ BEHAVIOR_FILES: tuple[str, ...] = (
     "scripts/run_analysis.py",
 )
 
+PHASE7CK_DASHBOARD_REMEDIATION_FILE = "src/reporting/html_dashboard.py"
+PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS: tuple[str, ...] = (
+    "docs/architecture/phase7_screen2_broad_operational_wiring_remediation.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+    "tests/test_phase7_operational_readiness_check.py",
+)
+
 REQUIRED_DOCS: tuple[str, ...] = (
     "docs/architecture/phase7ad_dashboard_workflow_boundary.md",
     "docs/architecture/phase7ad_dashboard_workflow_lifecycle.md",
@@ -383,22 +390,38 @@ def find_true_safety_flags(path: Path, tree: ast.AST) -> list[str]:
 
 
 def check_behavior_file_diff() -> list[str]:
-    completed = subprocess.run(
+    changed: set[str] = set()
+    all_changed: set[str] = set()
+    git_commands = (
         ("git", "diff", "--name-only"),
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
+        ("git", "diff", "--cached", "--name-only"),
+        ("git", "ls-files", "--others", "--exclude-standard"),
     )
-    if completed.returncode != 0:
-        return [f"git diff unavailable: {completed.stderr.strip()}"]
-    changed = {line.strip() for line in completed.stdout.splitlines() if line.strip()}
+    for base_command in git_commands:
+        completed = subprocess.run(
+            base_command,
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            return [f"git diff unavailable: {completed.stderr.strip()}"]
+        all_changed.update(
+            line.strip()
+            for line in completed.stdout.splitlines()
+            if line.strip()
+        )
+    changed.update(path for path in BEHAVIOR_FILES if path in all_changed)
+    if (
+        PHASE7CK_DASHBOARD_REMEDIATION_FILE in changed
+        and set(PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS).issubset(all_changed)
+    ):
+        changed.remove(PHASE7CK_DASHBOARD_REMEDIATION_FILE)
     return [
         f"behavior file modified by workflow infrastructure task: {path}"
-        for path in BEHAVIOR_FILES
-        if path in changed
+        for path in sorted(changed)
     ]
-
 
 def check_phase8_not_implemented() -> list[str]:
     return [

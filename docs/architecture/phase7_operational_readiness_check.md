@@ -65,6 +65,8 @@ Expected remediation: use the reserved 7CK–7CY fix range if the blocker is not
 
 The blocker must not be hidden, downgraded to an informational warning, or bypassed by targeted Screen 2 tests.
 
+7CK remediates this blocker only when the broad Screen 2 validator passes. The readiness checker evaluates the broad validator directly; the blocker remains active if that validation fails and is absent from active blockers when the broad validator succeeds.
+
 ## Screen Operational Wiring Policy
 
 By final Phase 7 certification, all Phase 7 dashboard workflow screens must be interactive and properly wired within their governed Phase 7 scope. This does not permit uncontrolled backend mutation.

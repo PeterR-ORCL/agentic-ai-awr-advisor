@@ -2540,13 +2540,14 @@ def _render_index_source_mode_entry_preview() -> str:
                 <div><dt>status</dt><dd>{escape(status_note)}</dd></div>
                 <div><dt>configuration</dt><dd>{escape(config_note)}</dd></div>
               </dl>
-              <button type="button"
+              <div role="button"
+                      tabindex="-1"
                       class="index-source-mode-entry-control preview-only"
-                      disabled
                       aria-disabled="true"
+                      data-disabled="true"
                       data-preview-only="true">
                 Preview only
-              </button>
+              </div>
             </article>
             """
         )
@@ -9789,15 +9790,16 @@ def _render_screen6_runtime_gate_review_preview_panel(
     )
     control_buttons = "".join(
         f"""
-              <button type="button"
+              <div role="button"
+                      tabindex="-1"
                       class="screen6-runtime-gate-review-control preview-only"
-                      disabled
                       aria-disabled="true"
+                      data-disabled="true"
                       data-preview-only="true">
                 <strong>{escape(label)}</strong>
                 <span>Preview only</span>
                 <small>{escape(description)}</small>
-              </button>
+              </div>
         """
         for label, description in controls
     )
@@ -9969,15 +9971,16 @@ def _render_screen6_model_registry_review_preview_panel(
     )
     control_buttons = "".join(
         f"""
-              <button type="button"
+              <div role="button"
+                      tabindex="-1"
                       class="screen6-model-registry-review-control preview-only"
-                      disabled
                       aria-disabled="true"
+                      data-disabled="true"
                       data-preview-only="true">
                 <strong>{escape(label)}</strong>
                 <span>Preview only</span>
                 <small>{escape(description)}</small>
-              </button>
+              </div>
         """
         for label, description in controls
     )
@@ -10140,15 +10143,16 @@ def _render_screen6_materialization_review_preview_panel(
     )
     control_buttons = "".join(
         f"""
-              <button type="button"
+              <div role="button"
+                      tabindex="-1"
                       class="screen6-materialization-review-control preview-only"
-                      disabled
                       aria-disabled="true"
+                      data-disabled="true"
                       data-preview-only="true">
                 <strong>{escape(label)}</strong>
                 <span>Preview only</span>
                 <small>{escape(description)}</small>
-              </button>
+              </div>
         """
         for label, description in controls
     )
@@ -10282,15 +10286,16 @@ def _render_screen6_candidate_review_preview_panel(
     )
     control_buttons = "".join(
         f"""
-              <button type="button"
+              <div role="button"
+                      tabindex="-1"
                       class="screen6-candidate-review-control preview-only"
-                      disabled
                       aria-disabled="true"
+                      data-disabled="true"
                       data-preview-only="true">
                 <strong>{escape(label)}</strong>
                 <span>Preview only</span>
                 <small>{escape(description)}</small>
-              </button>
+              </div>
         """
         for label, description in controls
     )

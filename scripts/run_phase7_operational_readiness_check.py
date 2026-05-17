@@ -579,16 +579,20 @@ def evaluate_screen_and_operational_wiring(
         "runtime_materialization_metadata",
     ):
         spec = spec_by_id(req_id)
-        if req_id == "screen2_operational_wiring" and not args.final_certification:
+        if req_id == "screen2_operational_wiring":
+            result = run_command(spec)
             results.append(
-                requirement_result(
+                command_requirement_result(
                     spec,
-                    "blocked",
-                    (
-                        "Known blocker SCREEN2_BROAD_VALIDATOR_FAILURE remains open; "
-                        "the broad Screen 2 validator is not bypassed by safe local mode."
+                    result,
+                    passed_reason=(
+                        "Broad Screen 2 validation passed; "
+                        "SCREEN2_BROAD_VALIDATOR_FAILURE is resolved."
                     ),
-                    evidence="Known 7CH broad Screen 2 validator failure",
+                    failed_reason=(
+                        "Broad Screen 2 validation failed; "
+                        "SCREEN2_BROAD_VALIDATOR_FAILURE remains a readiness blocker."
+                    ),
                     remediation_subphase="7CK-7CY",
                 )
             )
@@ -943,7 +947,7 @@ def recommended_next_subphase(
     if known_blockers:
         return "7CK - remediation before release certification"
     if blocked_checks:
-        return "7CK - remediation or certification gap closure before release certification"
+        return "7CL - remaining certification gap closure before release certification"
     return "7CJ - release certification documentation"
 
 

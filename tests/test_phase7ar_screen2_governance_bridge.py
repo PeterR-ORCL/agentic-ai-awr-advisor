@@ -53,6 +53,11 @@ PHASE7AS_ARTIFACT_FILES = {
     "docs/architecture/phase7as_screen2_review_request_preview.md",
     "tests/test_dashboard_screen2_review_panel.py",
 }
+PHASE7CK_ARTIFACT_FILES = {
+    "docs/architecture/phase7_screen2_broad_operational_wiring_remediation.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+    "tests/test_phase7_operational_readiness_check.py",
+}
 
 FORBIDDEN_IMPORT_PREFIXES = (
     "subprocess",
@@ -149,6 +154,11 @@ def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set
     if (
         PHASE7AS_ALLOWED_BEHAVIOR_FILE in disallowed
         and PHASE7AS_ARTIFACT_FILES.intersection(all_changed)
+    ):
+        disallowed.remove(PHASE7AS_ALLOWED_BEHAVIOR_FILE)
+    if (
+        PHASE7AS_ALLOWED_BEHAVIOR_FILE in disallowed
+        and PHASE7CK_ARTIFACT_FILES.issubset(all_changed)
     ):
         disallowed.remove(PHASE7AS_ALLOWED_BEHAVIOR_FILE)
     return disallowed

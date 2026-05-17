@@ -72,6 +72,12 @@ PHASE7BO_REQUIRED_PREVIEW_ARTIFACTS = {
     "docs/architecture/phase7bo_runtime_gate_review_model.md",
 }
 
+PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS = {
+    "docs/architecture/phase7_screen2_broad_operational_wiring_remediation.md",
+    "tests/test_dashboard_screen2_review_panel.py",
+    "tests/test_phase7_operational_readiness_check.py",
+}
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "cx_Oracle",
@@ -177,6 +183,11 @@ def disallowed_behavior_changes(changed: set[str], all_changed: set[str]) -> set
         and PHASE7BO_REQUIRED_PREVIEW_ARTIFACTS.issubset(all_changed)
     ):
         disallowed.remove(PHASE7BO_ALLOWED_DASHBOARD_PREVIEW_FILE)
+    if (
+        PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE in disallowed
+        and PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS.issubset(all_changed)
+    ):
+        disallowed.remove(PHASE7BL_ALLOWED_DASHBOARD_PREVIEW_FILE)
     return disallowed
 
 

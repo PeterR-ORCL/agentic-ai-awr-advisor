@@ -26,7 +26,9 @@ python -m py_compile scripts/run_phase7_end_to_end_validation.py
 python -m py_compile scripts/run_phase7_operational_readiness_check.py
 python -m unittest tests/test_phase7_end_to_end_validation.py
 python -m unittest tests/test_phase7_operational_readiness_check.py
+python -m unittest tests/test_phase7_dashboard_runtime_interaction_wiring.py
 python scripts/run_phase7_end_to_end_validation.py --json
+python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json
 python scripts/run_phase7_operational_readiness_check.py --json
 ```
 
@@ -40,7 +42,7 @@ Run final certification readiness with live evidence:
 python scripts/run_phase7_operational_readiness_check.py --final-certification --include-db --include-object-storage --json
 ```
 
-The output must show DB persistence validation satisfied, Object Storage live path validation satisfied, `SCREEN2_BROAD_VALIDATOR_FAILURE` absent, `phase7_complete=false`, `phase8_started=false`, and `phase7_operational_ready=false` until the 7CZ tag step is complete.
+The output must show DB persistence validation satisfied, Object Storage live path validation satisfied, `SCREEN2_BROAD_VALIDATOR_FAILURE` absent, `DASHBOARD_RUNTIME_INTERACTION_NOT_WIRED` absent, `phase7_complete=false`, `phase8_started=false`, and `phase7_operational_ready=false` until the 7CZ tag step is complete.
 
 ## Required Live DB Check
 
@@ -84,6 +86,26 @@ python scripts/run_phase7_screen2_review_validation.py --json
 
 Pass criteria: the broad Screen 2 validator passes and `SCREEN2_BROAD_VALIDATOR_FAILURE` remains absent from readiness output.
 
+## Dashboard Runtime Interaction Wiring Check
+
+Run:
+
+```bash
+python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json
+```
+
+Pass criteria:
+
+- `index_source_selection_ready=true`.
+- `picker_support_ready=true`.
+- `service_validation_ready=true`.
+- Index-scope `blocker_active=false`.
+- Screens 1–6 and cross-screen integration remain explicitly pending for 7CN–7CT.
+- Index source-selection controls submit governed, validated payloads through the 7CM action contract/service bridge outside `html_dashboard.py`.
+- Existing Run uses service-side lookup with selectable run options; Object Storage uses service-side validation before handoff.
+- No direct `scripts/run_analysis.py` button coupling exists.
+- No diagnostic truth, recommendation truth, Phase 4I, adaptive runtime default activation, or Phase 8 path is exposed.
+
 ## Full run_analysis.py Final Deterministic Demo/Runtime Check
 
 Run this only in 7CZ, not 7CJ:
@@ -99,6 +121,7 @@ Pass criteria:
 - The command exits zero.
 - Console output includes the executive summary, trend findings, decision posture, recommendations, derived metric availability, AI narrative layer, HTML dashboard path, and memory persistence section.
 - The reported dashboard path resolves to the generated dashboard `index.html`.
+- The regenerated dashboard contains 7CM governed action controls and passes `python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json`.
 - Any generated artifacts are reviewed and either intentionally ignored or removed before commit unless 7CZ explicitly requires an artifact.
 - Phase 4I is not mutated outside the deterministic runtime output path.
 - Adaptive runtime influence is not enabled by default.

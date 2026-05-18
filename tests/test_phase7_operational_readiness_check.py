@@ -256,46 +256,132 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         self.assertIn("final_certification_tag_pending", pending)
         self.assertIs(payload["phase7_operational_ready"], False)
 
-    def test_known_screen2_blocker_is_resolved_when_broad_validator_passes(self) -> None:
+    def test_known_screen2_blocker_is_not_reopened_by_narrowed_7cm_scope(self) -> None:
         payload = self.default_payload
         blockers = {blocker["id"]: blocker for blocker in payload["known_blockers"]}
         self.assertNotIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
 
         requirements = {req["id"]: req for req in payload["requirements"]}
-        self.assertEqual("satisfied", requirements["screen2_operational_wiring"]["status"])
+        self.assertIn(
+            requirements["screen2_operational_wiring"]["status"],
+            {"skipped", "pending"},
+        )
+        self.assertEqual(
+            "pending",
+            requirements["screen2_diagnostic_review_runtime_workflow"]["status"],
+        )
         self.assertIs(payload["phase7_operational_ready"], False)
 
-    def test_screen2_blocker_is_active_when_broad_validator_fails(self) -> None:
+    def test_index_source_selection_can_pass_while_broader_dashboard_runtime_remains_blocked(self) -> None:
         module = readiness_module()
 
         def fake_run_command(spec, *, env_update=None):
             del env_update
-            if spec.id == "screen2_operational_wiring":
-                return {
-                    "status": "failed",
-                    "reason": "command failed",
-                    "returncode": 1,
-                    "command": "python scripts/run_phase7_screen2_review_validation.py --json",
-                    "stdout_tail": "",
-                    "stderr_tail": "",
-                }
-            raise AssertionError(f"unexpected command for {spec.id}")
+            self.assertEqual("index_source_selection_runtime_workflow", spec.id)
+            return {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json",
+                "stdout_tail": json.dumps(
+                    {
+                        "index_source_selection_ready": True,
+                        "dashboard_runtime_interaction_ready": True,
+                        "blocker_active": False,
+                    }
+                ),
+                "stderr_tail": "",
+            }
 
         with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+            index_requirement = module.evaluate_index_source_selection_runtime_requirement()
+
+        requirements = {
+            req["id"]: req
+            for req in [
+                index_requirement,
+                module.evaluate_dashboard_runtime_interaction_requirement(),
+                *module.evaluate_deferred_dashboard_runtime_workflow_requirements(),
+            ]
+        }
+        blockers = {
+            blocker["id"]: blocker
+            for blocker in module.build_known_blockers(list(requirements.values()))
+        }
+        self.assertIn("DASHBOARD_RUNTIME_INTERACTION_NOT_WIRED", blockers)
+        self.assertIn("DASHBOARD_SELECTION_WORKFLOW_UNCLEAR", blockers)
+        self.assertEqual(
+            "satisfied",
+            requirements["index_source_selection_runtime_workflow"]["status"],
+        )
+        self.assertEqual(
+            "pending",
+            requirements["dashboard_runtime_interaction_wiring"]["status"],
+        )
+        self.assertEqual(
+            "pending",
+            requirements["screen1_parser_governance_runtime_workflow"]["status"],
+        )
+
+    def test_index_source_selection_blocker_is_active_when_validator_fails(self) -> None:
+        module = readiness_module()
+
+        def fake_run_command(spec, *, env_update=None):
+            del env_update
+            self.assertEqual("index_source_selection_runtime_workflow", spec.id)
+            return {
+                "status": "failed",
+                "reason": "command failed",
+                "returncode": 1,
+                "command": "python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json",
+                "stdout_tail": json.dumps(
+                    {
+                        "index_source_selection_ready": False,
+                        "blocker_active": True,
+                    }
+                ),
+                "stderr_tail": "",
+            }
+
+        with mock.patch.object(module, "run_command", side_effect=fake_run_command):
+            requirement = module.evaluate_index_source_selection_runtime_requirement()
+
+        blockers = {
+            blocker["id"]: blocker
+            for blocker in module.build_known_blockers([requirement])
+        }
+        self.assertIn("DASHBOARD_RUNTIME_INTERACTION_NOT_WIRED", blockers)
+        self.assertEqual("blocked", requirement["status"])
+
+    def test_screen_operational_validators_are_deferred_after_narrowed_7cm(self) -> None:
+        module = readiness_module()
+
+        with mock.patch.object(module, "run_command") as run_command:
             requirements = module.evaluate_screen_and_operational_wiring(
-                SimpleNamespace(final_certification=False)
+                SimpleNamespace(final_certification=True)
             )
+            executed_ids = {call.args[0].id for call in run_command.call_args_list}
+            self.assertNotIn("screen1_operational_wiring", executed_ids)
+            self.assertNotIn("screen2_operational_wiring", executed_ids)
+            self.assertNotIn("screen3_active_backend_execution", executed_ids)
+            self.assertNotIn("screen4_operational_wiring", executed_ids)
+            self.assertNotIn("screen5_operational_wiring", executed_ids)
+            self.assertNotIn("screen6_operational_wiring", executed_ids)
 
         blockers = {blocker["id"]: blocker for blocker in module.build_known_blockers(requirements)}
         requirements_by_id = {req["id"]: req for req in requirements}
-        self.assertIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
-        self.assertEqual("blocked", requirements_by_id["screen2_operational_wiring"]["status"])
+        self.assertNotIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
+        self.assertEqual("pending", requirements_by_id["screen2_operational_wiring"]["status"])
+        self.assertEqual("pending", requirements_by_id["screen1_operational_wiring"]["status"])
 
     def test_list_requirements_does_not_execute_live_checks(self) -> None:
         self.assertEqual(0, self.list_result.returncode, self.list_result.stderr)
         stdout = self.list_result.stdout
         self.assertIn("db_persistence_validation", stdout)
         self.assertIn("object_storage_live_validation", stdout)
+        self.assertIn("index_source_selection_runtime_workflow", stdout)
+        self.assertIn("dashboard_runtime_interaction_wiring", stdout)
+        self.assertIn("screen1_parser_governance_runtime_workflow", stdout)
         self.assertIn("screen2_operational_wiring", stdout)
         self.assertIn("required_for_final_certification=true", stdout)
         self.assertIn("List mode does not execute checks", stdout)

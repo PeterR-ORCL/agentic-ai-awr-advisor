@@ -4,10 +4,16 @@ import re
 import html
 import hashlib
 import math
+import socket
+import subprocess
+import sys
+import tempfile
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 from src.analysis.ai_narrative_generator import generate_ai_narrative
@@ -96,6 +102,104 @@ def _runtime_config() -> dict[str, Any]:
     if is_similarity_intelligence_disabled():
         config["disable_similarity_intelligence"] = True
     return config
+
+
+def _phase7_dashboard_action_endpoint() -> str:
+    return str(
+        os.getenv(
+            "PHASE7_DASHBOARD_ACTION_ENDPOINT",
+            "http://127.0.0.1:8765/phase7/dashboard/actions",
+        )
+        or ""
+    ).strip()
+
+
+def _phase7_dashboard_endpoint_is_local(endpoint: str) -> bool:
+    parsed = urlparse(endpoint)
+    return (parsed.hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}
+
+
+def _phase7_dashboard_local_service_running(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.4):
+            return True
+    except OSError:
+        return False
+
+
+def _ensure_dashboard_workflow_service() -> None:
+    """Start the local governed service for browser-facing source workflow demos."""
+
+    autostart = str(
+        os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_AUTOSTART", "true")
+    ).strip().lower()
+    if autostart in {"0", "false", "no", "off"}:
+        print("Dashboard workflow service autostart: disabled by environment.")
+        return
+
+    action_endpoint = _phase7_dashboard_action_endpoint()
+    if not _phase7_dashboard_endpoint_is_local(action_endpoint):
+        print(
+            "Dashboard workflow service autostart: skipped for non-local "
+            f"configured endpoint {action_endpoint}."
+        )
+        return
+
+    host = str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1"))
+    port = int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765"))
+    if _phase7_dashboard_local_service_running(host, port):
+        print(f"Dashboard workflow service: already listening on {host}:{port}.")
+        return
+
+    queue_dir = Path(
+        os.getenv(
+            "AWR_PHASE7_DASHBOARD_ACTION_QUEUE",
+            str(Path(tempfile.gettempdir()) / "awr_phase7_dashboard_actions"),
+        )
+    )
+    log_path = Path(tempfile.gettempdir()) / "phase7cm-dashboard-workflow-service.log"
+    service_script = Path(__file__).resolve().with_name(
+        "dashboard_workflow_service.py"
+    )
+    command = [
+        sys.executable,
+        str(service_script),
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--queue-dir",
+        str(queue_dir),
+    ]
+    env = os.environ.copy()
+    env["AWR_PHASE7_DASHBOARD_ACTION_QUEUE"] = str(queue_dir)
+    try:
+        with log_path.open("a", encoding="utf-8") as log_handle:
+            subprocess.Popen(
+                command,
+                cwd=str(Path(__file__).resolve().parents[1]),
+                env=env,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+    except OSError as exc:
+        print(f"Dashboard workflow service: unable to start local service: {exc}")
+        return
+
+    for _ in range(12):
+        if _phase7_dashboard_local_service_running(host, port):
+            print(
+                "Dashboard workflow service: started local demo service at "
+                f"http://{host}:{port}/phase7/dashboard/actions "
+                f"(log: {log_path})."
+            )
+            return
+        time.sleep(0.25)
+    print(
+        "Dashboard workflow service: local service start requested but endpoint "
+        f"{host}:{port} did not become reachable; check {log_path}."
+    )
 
 
 def _normalize_terminology(text: str) -> str:
@@ -5197,6 +5301,7 @@ if __name__ == "__main__":
     print(f"  .env loaded: {'yes' if env_loaded else 'no'} ({env_path})")
     print(f"  provider: {provider}")
     print(f"  model: {resolved_model or '(not configured)'}")
+    _ensure_dashboard_workflow_service()
     input_dir = Path("data/input")
     loader_result = load_awr_sources(input_dir)
     awr_files = loader_file_paths(loader_result)

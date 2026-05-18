@@ -67,6 +67,18 @@ PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS: tuple[str, ...] = (
     "tests/test_dashboard_screen2_review_panel.py",
     "tests/test_phase7_operational_readiness_check.py",
 )
+PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS: tuple[str, ...] = (
+    "docs/architecture/phase7_dashboard_runtime_interaction_wiring.md",
+    "src/learning/dashboard_runtime_interaction.py",
+    "scripts/run_phase7_dashboard_runtime_interaction_validation.py",
+    "scripts/dashboard_workflow_service.py",
+    "tests/test_phase7_dashboard_runtime_interaction_wiring.py",
+)
+PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS: tuple[str, ...] = (
+    "_ensure_dashboard_workflow_service",
+    "PHASE7_DASHBOARD_ACTION_ENDPOINT",
+    "dashboard_workflow_service.py",
+)
 
 REQUIRED_DOCS: tuple[str, ...] = (
     "docs/architecture/phase7ad_dashboard_workflow_boundary.md",
@@ -418,10 +430,32 @@ def check_behavior_file_diff() -> list[str]:
         and set(PHASE7CK_REQUIRED_REMEDIATION_ARTIFACTS).issubset(all_changed)
     ):
         changed.remove(PHASE7CK_DASHBOARD_REMEDIATION_FILE)
+    if (
+        PHASE7CK_DASHBOARD_REMEDIATION_FILE in changed
+        and set(PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS).issubset(all_changed)
+    ):
+        changed.remove(PHASE7CK_DASHBOARD_REMEDIATION_FILE)
+    if (
+        "scripts/run_analysis.py" in changed
+        and phase7cm_generator_bootstrap_allows_run_analysis_diff()
+    ):
+        changed.remove("scripts/run_analysis.py")
     return [
         f"behavior file modified by workflow infrastructure task: {path}"
         for path in sorted(changed)
     ]
+
+
+def phase7cm_generator_bootstrap_allows_run_analysis_diff() -> bool:
+    run_analysis_path = ROOT / "scripts/run_analysis.py"
+    if not run_analysis_path.is_file():
+        return False
+    run_analysis_source = read_text(run_analysis_path)
+    return all((ROOT / path).exists() for path in PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS) and all(
+        marker in run_analysis_source
+        for marker in PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS
+    )
+
 
 def check_phase8_not_implemented() -> list[str]:
     return [

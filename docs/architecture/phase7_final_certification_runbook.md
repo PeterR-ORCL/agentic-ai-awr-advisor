@@ -25,7 +25,9 @@ python -m py_compile scripts/run_phase7_end_to_end_validation.py
 python -m py_compile scripts/run_phase7_operational_readiness_check.py
 python -m unittest tests/test_phase7_end_to_end_validation.py
 python -m unittest tests/test_phase7_operational_readiness_check.py
+python -m unittest tests/test_phase7_dashboard_runtime_interaction_wiring.py
 python scripts/run_phase7_end_to_end_validation.py --json
+python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json
 python scripts/run_phase7_operational_readiness_check.py --json
 ```
 
@@ -45,6 +47,7 @@ Expected output:
 - Object Storage live path validation is satisfied.
 - Screen operational wiring checks are satisfied.
 - `SCREEN2_BROAD_VALIDATOR_FAILURE` is absent.
+- `DASHBOARD_RUNTIME_INTERACTION_NOT_WIRED` is absent.
 - `phase7_complete=false`.
 - `phase8_started=false`.
 - `phase7_operational_ready=false` until the final 7CZ tag requirement is resolved.
@@ -81,6 +84,16 @@ AWR_PHASE7CD_OBJECT_STORAGE_TEST=1 \
 
 Expected output: the live Object Storage test runs, passes, and reports no skips.
 
+## Dashboard Runtime Interaction Wiring Check
+
+Run:
+
+```bash
+python scripts/run_phase7_dashboard_runtime_interaction_validation.py --json
+```
+
+Pass criteria for the current 7CM scope: `index_source_selection_ready=true`, `picker_support_ready=true`, `service_validation_ready=true`, and index-scope `blocker_active=false`. The validation must show that index/source-selection controls submit governed, validated payloads through the 7CM action contract/service bridge outside `html_dashboard.py`; that Existing Run uses service-side lookup rather than a blind text box; that Object Storage uses service-side validation rather than browser-side OCI access; and that active source configuration, submit labels, result/request ID, and audit status are visible. Screens 1–6 remain pending for 7CN–7CS and cross-screen integration remains pending for 7CT. The validation must also show no direct `run_analysis.py` button coupling, no direct diagnostic or recommendation truth mutation, no Phase 4I mutation, no adaptive runtime activation by default, and no Phase 8 behavior.
+
 ## Full run_analysis.py final validation
 
 Run this in 7CZ, not 7CJ.
@@ -106,6 +119,7 @@ Evidence to capture:
 - Command exit code.
 - Console log showing AI provider resolution, executive summary, trend findings, decision posture, recommendations, derived metric availability, HTML dashboard path, and memory persistence status.
 - Generated dashboard/report path, usually the resolved `index.html` returned by `generate_html_dashboard`.
+- Confirmation that the regenerated dashboard contains 7CM governed action controls and still passes `scripts/run_phase7_dashboard_runtime_interaction_validation.py --json`.
 - Confirmation that generated artifacts are not staged unless explicitly required by 7CZ.
 - Confirmation that no Phase 8 sizing/TCO/what-if advisory or EM Extract runtime behavior appears.
 

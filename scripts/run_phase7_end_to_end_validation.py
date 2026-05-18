@@ -114,16 +114,26 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
     CheckSpec(
         name="phase7_screen3_reanalysis_validation",
         category="screen3_reanalysis_control_plane",
-        description="Existing Screen 3 re-analysis control plane validation.",
+        description=(
+            "Existing Screen 3 re-analysis control plane validation. Deferred "
+            "from narrowed 7CM because Screen 3 runtime workflow certification "
+            "is reserved for 7CP."
+        ),
         command=py_command("scripts/run_phase7_screen3_reanalysis_validation.py", "--json"),
-        tags=("default", "fast", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_active_screen3_execution_validation",
         category="active_screen3_backend_execution",
-        description="Existing Phase 7CA-7CF active Screen 3 backend execution validation.",
+        description=(
+            "Existing Phase 7CA-7CF active Screen 3 backend execution validation. "
+            "Deferred from narrowed 7CM because Screen 3 runtime execution "
+            "certification is reserved for 7CP."
+        ),
         command=py_command("scripts/run_phase7_active_screen3_execution_validation.py", "--json"),
-        tags=("default", "fast", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
         timeout_seconds=420,
     ),
     CheckSpec(
@@ -135,12 +145,28 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
         tags=("default", "full", "subprocess"),
     ),
     CheckSpec(
-        name="phase7_screen1_workflow_validation",
-        category="screen1_parser_governance",
-        description="Existing Screen 1 parser governance workflow validation.",
-        command=py_command("scripts/run_phase7_screen1_workflow_validation.py", "--json"),
+        name="phase7_dashboard_runtime_interaction_validation",
+        category="dashboard_runtime_interaction",
+        description=(
+            "7CM index/source-selection runtime workflow validation. This "
+            "certifies only index/source-selection; Screen 1-6 runtime "
+            "workflows remain deferred for 7CN-7CT."
+        ),
+        command=py_command("scripts/run_phase7_dashboard_runtime_interaction_validation.py", "--json"),
         modes=("default", "full"),
         tags=("default", "full", "subprocess"),
+    ),
+    CheckSpec(
+        name="phase7_screen1_workflow_validation",
+        category="screen1_parser_governance",
+        description=(
+            "Existing Screen 1 parser governance workflow validation. Deferred "
+            "from 7CM default mode because 7CM certifies only index/source "
+            "selection; run in full mode for the 7CN screen-specific subphase."
+        ),
+        command=py_command("scripts/run_phase7_screen1_workflow_validation.py", "--json"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_screen2_review_validation",
@@ -148,8 +174,7 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
         description=(
             "Targeted existing Screen 2 boundary, model, bridge, and diagnostic "
             "exploration tests. The broader review-panel validator is reserved for "
-            "7CK-7CY remediation because it currently fails on pre-existing "
-            "dashboard <button> detection."
+            "7CO remediation because 7CM certifies only index/source selection."
         ),
         command=py_command(
             "-m",
@@ -159,32 +184,41 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
             "tests/test_phase7ar_screen2_governance_bridge.py",
             "tests/test_dashboard_screen2_diagnostic_exploration.py",
         ),
-        modes=("default", "full"),
-        tags=("default", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_screen4_workflow_validation",
         category="screen4_historical_review",
-        description="Existing Screen 4 historical review workflow validation.",
+        description=(
+            "Existing Screen 4 historical review workflow validation. Deferred "
+            "from 7CM default mode; run in full mode for the 7CQ screen-specific subphase."
+        ),
         command=py_command("scripts/run_phase7_screen4_workflow_validation.py", "--json"),
-        modes=("default", "full"),
-        tags=("default", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_screen5_workflow_validation",
         category="screen5_recommendation_action_outcome",
-        description="Existing Screen 5 recommendation/action/outcome workflow validation.",
+        description=(
+            "Existing Screen 5 recommendation/action/outcome workflow validation. "
+            "Deferred from 7CM default mode; run in full mode for the 7CR screen-specific subphase."
+        ),
         command=py_command("scripts/run_phase7_screen5_workflow_validation.py", "--json"),
-        modes=("default", "full"),
-        tags=("default", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_screen6_governance_validation",
         category="screen6_governance_control",
-        description="Existing Screen 6 governance control plane validation.",
+        description=(
+            "Existing Screen 6 governance control plane validation. Deferred "
+            "from 7CM default mode; run in full mode for the 7CS screen-specific subphase."
+        ),
         command=py_command("scripts/run_phase7_screen6_governance_validation.py", "--json"),
-        modes=("default", "full"),
-        tags=("default", "full", "subprocess"),
+        modes=("full",),
+        tags=("full", "subprocess"),
     ),
     CheckSpec(
         name="phase7_index_source_validation",

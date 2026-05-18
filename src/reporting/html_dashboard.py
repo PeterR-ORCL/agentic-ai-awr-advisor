@@ -78,6 +78,36 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedActionEffectivenessPattern",
     "selectedFleetGroup",
     "selectedComparisonBaseline",
+    "selectedSourceMode",
+    "selectedSourceContext",
+    "selectedSourcePath",
+    "sourceSelectionMethod",
+    "selectedLocalFolderFileCount",
+    "selectedLocalFolderOutFileCount",
+    "selectedLocalFolderSampleFiles",
+    "selectedLocalRelativePaths",
+    "selectedLocalTotalBytes",
+    "selectedLocalFileName",
+    "selectedLocalFileSize",
+    "selectedLocalFileType",
+    "selectedLocalFileExtension",
+    "selectedLocalFileValidationStatus",
+    "selectedRunReference",
+    "existingRunLookupStatus",
+    "existingRunLookupMessage",
+    "existingRunLookupCount",
+    "selectedLocalFolderCandidateCount",
+    "selectedLocalFolderAwrCandidateCount",
+    "selectedLocalFolderRejectedCount",
+    "selectedLocalFolderValidationStatus",
+    "selectedLocalFolderValidationMessages",
+    "awrSignatureValidation",
+    "objectStorageNamespace",
+    "objectStorageBucket",
+    "objectStorageObjectName",
+    "objectStorageRegion",
+    "objectStorageValidationStatus",
+    "objectStorageValidationMessage",
 )
 DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
     "data-dashboard-selectable",
@@ -88,6 +118,8 @@ DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
     "data-dashboard-target",
     "data-dashboard-filter-key",
     "data-dashboard-filter-value",
+    "data-dashboard-state-input",
+    "data-dashboard-state-key",
 )
 DASHBOARD_INTERACTIVITY_STORAGE_KEY = (
     "agenticAiAwrAdvisor.dashboardInteractivityState.v1"
@@ -773,7 +805,7 @@ def _final_dashboard_html_polish(html: str) -> str:
     )
     for pattern, replacement in regex_replacements:
         polished = re.sub(pattern, replacement, polished, flags=re.IGNORECASE)
-    return polished
+    return "\n".join(line.rstrip() for line in polished.splitlines()) + "\n"
 
 
 def _build_page_html(
@@ -917,6 +949,12 @@ def _build_dashboard_interactivity_javascript() -> str:
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
       const SELECTED_SUMMARY_SELECTOR = '[data-dashboard-selected-summary]';
       const FILTER_PLACEHOLDER_SELECTOR = '[data-dashboard-filter-key][data-dashboard-filter-value]';
+      const STATE_INPUT_SELECTOR = '[data-dashboard-state-input="true"][data-dashboard-state-key]';
+      const SOURCE_CONFIG_SELECTOR = '[data-source-config-mode]';
+      const SOURCE_PICKER_SELECTOR = '[data-phase7-source-picker]';
+      const EXISTING_RUN_LOOKUP_SELECTOR = '[data-phase7-existing-run-lookup-control="true"]';
+      const EXISTING_RUN_OPTIONS_SELECTOR = '[data-phase7-existing-run-options="true"]';
+      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
       const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
       const HTTP_SCHEME_PREFIX = 'http:' + '//';
       const HTTPS_SCHEME_PREFIX = 'https:' + '//';
@@ -989,8 +1027,26 @@ def _build_dashboard_interactivity_javascript() -> str:
         fleetGroup: 'selectedFleetGroup',
         fleet: 'selectedFleetGroup',
         comparisonBaseline: 'selectedComparisonBaseline',
-        baseline: 'selectedComparisonBaseline'
+        baseline: 'selectedComparisonBaseline',
+        'source-mode': 'selectedSourceMode',
+        sourceMode: 'selectedSourceMode',
+        source: 'selectedSourceMode',
+        sourceContext: 'selectedSourceContext'
       });
+      const PHASE7CM_SOURCE_MODE_REQUIRED_FIELDS = Object.freeze({
+        local_staged: ['sourceSelectionMethod'],
+        local_file: ['sourceSelectionMethod'],
+        existing_run: ['selectedRunReference', 'existingRunLookupStatus'],
+        object_storage: [
+          'objectStorageNamespace',
+          'objectStorageBucket',
+          'objectStorageObjectName',
+          'objectStorageRegion',
+          'objectStorageValidationStatus'
+        ]
+      });
+      const PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out']);
+      const PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out']);
       let dashboardInteractivityInitialized = false;
 
       function safeStateValue(value) {
@@ -1016,6 +1072,20 @@ def _build_dashboard_interactivity_javascript() -> str:
           const value = safeStateValue(input[key]);
           if (value) {
             state[key] = value;
+          }
+        });
+        return state;
+      }
+
+      function readDefaultDashboardState(root) {
+        const scope = root || document;
+        const state = {};
+        scope.querySelectorAll('[data-dashboard-default-state]').forEach(function (element) {
+          const rawValue = element.getAttribute('data-dashboard-default-state') || '{}';
+          try {
+            Object.assign(state, sanitizeDashboardState(JSON.parse(rawValue)));
+          } catch (error) {
+            return;
           }
         });
         return state;
@@ -1066,7 +1136,21 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function readDashboardState() {
-        return Object.assign({}, readLocalStorageState(), parseHashState(window.location.hash));
+        const defaultState = readDefaultDashboardState(document);
+        const explicitState = Object.assign(
+          {},
+          readLocalStorageState(),
+          parseHashState(window.location.hash)
+        );
+        const state = Object.assign({}, defaultState, explicitState);
+        if (
+          explicitState.selectedSourceMode &&
+          explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
+          !Object.prototype.hasOwnProperty.call(explicitState, 'selectedSourcePath')
+        ) {
+          delete state.selectedSourcePath;
+        }
+        return sanitizeDashboardState(state);
       }
 
       function serializeDashboardState(state) {
@@ -1168,6 +1252,73 @@ def _build_dashboard_interactivity_javascript() -> str:
         });
       }
 
+      function updateDashboardStateInputs(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        scope.querySelectorAll(STATE_INPUT_SELECTOR).forEach(function (element) {
+          const key = safeStateValue(element.getAttribute('data-dashboard-state-key'));
+          if (!isDashboardStateKey(key)) {
+            return;
+          }
+          const value = safeState[key] || '';
+          if (
+            (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') &&
+            element.value !== value
+          ) {
+            element.value = value;
+          } else if (
+            element.tagName !== 'INPUT' &&
+            element.tagName !== 'TEXTAREA' &&
+            element.tagName !== 'SELECT'
+          ) {
+            element.textContent = value || element.getAttribute('data-empty-label') || 'not selected';
+          }
+          element.setAttribute('data-dashboard-state-value', value);
+        });
+      }
+
+      function fileExtension(fileName) {
+        const name = safeStateValue(fileName).toLowerCase();
+        const dotIndex = name.lastIndexOf('.');
+        return dotIndex >= 0 ? name.slice(dotIndex + 1) : '';
+      }
+
+      function isAllowedLocalFileName(fileName) {
+        return PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS.indexOf(fileExtension(fileName)) >= 0;
+      }
+
+      function isAwrCandidateFileName(fileName) {
+        return PHASE7CM_AWR_CANDIDATE_EXTENSIONS.indexOf(fileExtension(fileName)) >= 0;
+      }
+
+      function updateSourcePickerSummary(picker, message, status) {
+        const summaryId = picker.getAttribute('data-picker-summary-target') || '';
+        const summary = summaryId ? document.getElementById(summaryId) : null;
+        if (!summary) {
+          return;
+        }
+        summary.setAttribute('data-picker-summary-status', status || 'updated');
+        summary.textContent = message;
+      }
+
+      function updateSourceConfigurationVisibility(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const selectedMode = safeState.selectedSourceMode || 'local_staged';
+        scope.querySelectorAll('.phase7cm-source-config-grid').forEach(function (grid) {
+          grid.setAttribute('data-active-source-mode', selectedMode);
+        });
+        scope.querySelectorAll('[data-phase7-current-runtime-pipeline], [data-phase7-current-source-context]').forEach(function (panel) {
+          panel.setAttribute('data-active-source-mode', selectedMode);
+        });
+        scope.querySelectorAll(SOURCE_CONFIG_SELECTOR).forEach(function (element) {
+          const configMode = safeStateValue(element.getAttribute('data-source-config-mode'));
+          const active = !configMode || configMode === selectedMode;
+          element.hidden = !active;
+          element.setAttribute('data-source-config-active', active ? 'true' : 'false');
+        });
+      }
+
       function updateSelectedSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -1192,6 +1343,337 @@ def _build_dashboard_interactivity_javascript() -> str:
         scope.querySelectorAll(SELECTED_SUMMARY_SELECTOR).forEach(function (element) {
           element.textContent = summaryText;
           element.setAttribute('data-dashboard-state-empty', parts.length ? 'false' : 'true');
+        });
+      }
+
+      function sourceModeLabel(mode) {
+        const labels = {
+          local_staged: 'Local folder / local staged AWR',
+          local_file: 'Local file',
+          existing_run: 'Existing run',
+          object_storage: 'Object Storage'
+        };
+        return labels[mode] || 'No source selected';
+      }
+
+      function sourceMetadataSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          if (safeState.sourceSelectionMethod === 'os_folder_picker') {
+            return (
+              'Folder picker metadata. Files: ' + (safeState.selectedLocalFolderFileCount || '0') +
+              '; AWR candidates: ' + (safeState.selectedLocalFolderAwrCandidateCount || '0') +
+              '; rejected: ' + (safeState.selectedLocalFolderRejectedCount || '0') +
+              '; samples: ' + (safeState.selectedLocalFolderSampleFiles || 'none')
+            );
+          }
+          return 'Backend-visible local/dev path: ' + (safeState.selectedSourcePath || 'missing');
+        }
+        if (mode === 'local_file') {
+          if (safeState.sourceSelectionMethod === 'os_file_picker') {
+            return (
+              'File picker metadata. File: ' + (safeState.selectedLocalFileName || 'missing') +
+              '; size: ' + (safeState.selectedLocalFileSize || '0') +
+              '; extension: ' + (safeState.selectedLocalFileExtension || 'unknown')
+            );
+          }
+          return 'Backend-visible local/dev file path: ' + (safeState.selectedSourcePath || 'missing');
+        }
+        if (mode === 'existing_run') {
+          return (
+            'Service-selected persisted run reference: ' + (safeState.selectedRunReference || 'missing') +
+            '; lookup status: ' + (safeState.existingRunLookupStatus || 'lookup required') +
+            '; available run count: ' + (safeState.existingRunLookupCount || '0') +
+            (safeState.existingRunLookupMessage ? '; message: ' + safeState.existingRunLookupMessage : '')
+          );
+        }
+        if (mode === 'object_storage') {
+          return (
+            'Object Storage metadata. Namespace: ' + (safeState.objectStorageNamespace || 'missing') +
+            '; bucket: ' + (safeState.objectStorageBucket || 'missing') +
+            '; object/prefix: ' + (safeState.objectStorageObjectName || 'missing') +
+            '; region: ' + (safeState.objectStorageRegion || 'missing') +
+            '; validation status: ' + (safeState.objectStorageValidationStatus || 'validation required') +
+            (safeState.objectStorageValidationMessage ? '; message: ' + safeState.objectStorageValidationMessage : '')
+          );
+        }
+        return 'Select Local folder, Local file, Existing run, or Object Storage.';
+      }
+
+      function sourceActiveLocationSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          if (safeState.sourceSelectionMethod === 'os_folder_picker') {
+            return (
+              'selected folder metadata; files: ' + (safeState.selectedLocalFolderFileCount || '0') +
+              '; AWR candidates: ' + (safeState.selectedLocalFolderAwrCandidateCount || '0')
+            );
+          }
+          return safeState.selectedSourcePath || 'data/input';
+        }
+        if (mode === 'local_file') {
+          return safeState.selectedLocalFileName || safeState.selectedSourcePath || 'no local file selected';
+        }
+        if (mode === 'existing_run') {
+          return safeState.selectedRunReference || 'no persisted run selected';
+        }
+        if (mode === 'object_storage') {
+          const bucket = safeState.objectStorageBucket || 'missing bucket';
+          const objectName = safeState.objectStorageObjectName || 'missing object/prefix';
+          return bucket + '/' + objectName;
+        }
+        return 'no source selected';
+      }
+
+      function sourcePathBasename(value) {
+        const text = safeStateValue(value);
+        if (!text) {
+          return '';
+        }
+        const parts = text.split(/[\\\\/]+/).filter(Boolean);
+        return parts.length ? parts[parts.length - 1] : text;
+      }
+
+      function sourcePipelineActiveSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          if (safeState.sourceSelectionMethod === 'os_folder_picker') {
+            return (
+              'Local staged AWR source; files: ' + (safeState.selectedLocalFolderFileCount || '0') +
+              '; candidates: ' + (safeState.selectedLocalFolderAwrCandidateCount || '0')
+            );
+          }
+          return 'Local staged AWR source; path: ' + (safeState.selectedSourcePath || 'data/input');
+        }
+        if (mode === 'local_file') {
+          return 'Local file source selected; file: ' +
+            (sourcePathBasename(safeState.selectedLocalFileName || safeState.selectedSourcePath) || 'not selected');
+        }
+        if (mode === 'existing_run') {
+          return 'Existing run selected; run: ' + (safeState.selectedRunReference || 'not selected');
+        }
+        if (mode === 'object_storage') {
+          const bucket = safeState.objectStorageBucket || 'missing bucket';
+          const objectBase = sourcePathBasename(safeState.objectStorageObjectName || '') || 'missing object/prefix';
+          return 'Object Storage: ' + bucket + ' / ... / ' + objectBase;
+        }
+        return 'No source selected.';
+      }
+
+      function sourcePipelineNodeSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          if (safeState.sourceSelectionMethod === 'os_folder_picker') {
+            return 'Local staged AWR source. Files: ' +
+              (safeState.selectedLocalFolderFileCount || '0') +
+              '; candidates: ' + (safeState.selectedLocalFolderAwrCandidateCount || '0') + '.';
+          }
+          return 'Local staged AWR source. Path: ' + (safeState.selectedSourcePath || 'data/input') + '.';
+        }
+        if (mode === 'local_file') {
+          return 'Local file source selected. File: ' +
+            (sourcePathBasename(safeState.selectedLocalFileName || safeState.selectedSourcePath) || 'not selected') + '.';
+        }
+        if (mode === 'existing_run') {
+          return 'Existing run selected. Run: ' + (safeState.selectedRunReference || 'not selected') + '.';
+        }
+        if (mode === 'object_storage') {
+          const objectBase = sourcePathBasename(safeState.objectStorageObjectName || '') || 'missing object/prefix';
+          return 'Object Storage source selected. Object: ' + objectBase + '.';
+        }
+        return 'Select a source for governed handoff.';
+      }
+
+      function sourceCandidateSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          return (
+            'Candidate AWR files: ' + (safeState.selectedLocalFolderAwrCandidateCount || '0') +
+            '; .out files: ' + (safeState.selectedLocalFolderOutFileCount || '0') +
+            '; samples: ' + (safeState.selectedLocalFolderSampleFiles || 'none')
+          );
+        }
+        if (mode === 'local_file') {
+          return 'File extension: ' + (safeState.selectedLocalFileExtension || 'not selected');
+        }
+        if (mode === 'existing_run') {
+          return 'Available run count: ' + (safeState.existingRunLookupCount || '0');
+        }
+        if (mode === 'object_storage') {
+          return (
+            'Namespace: ' + (safeState.objectStorageNamespace || 'missing') +
+            '; bucket: ' + (safeState.objectStorageBucket || 'missing') +
+            '; region: ' + (safeState.objectStorageRegion || 'missing')
+          );
+        }
+        return 'No source metadata selected.';
+      }
+
+      function sourceRejectedSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          return 'Rejected files: ' + (safeState.selectedLocalFolderRejectedCount || '0');
+        }
+        if (mode === 'local_file') {
+          return safeState.selectedLocalFileValidationStatus || 'File validation not complete.';
+        }
+        if (mode === 'existing_run') {
+          return safeState.existingRunLookupMessage || 'Load existing runs through the governed service.';
+        }
+        if (mode === 'object_storage') {
+          return safeState.objectStorageValidationMessage || 'Validate Object Storage Source through the governed service.';
+        }
+        return 'No validation result yet.';
+      }
+
+      function sourceValidationSummary(state) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'local_staged') {
+          return safeState.selectedLocalFolderValidationStatus ||
+            (safeState.sourceSelectionMethod === 'backend_path' ? 'backend path validation pending' : 'not selected');
+        }
+        if (mode === 'local_file') {
+          return safeState.selectedLocalFileValidationStatus || 'not selected';
+        }
+        if (mode === 'existing_run') {
+          return (safeState.existingRunLookupStatus || 'lookup required') +
+            (safeState.existingRunLookupMessage ? ': ' + safeState.existingRunLookupMessage : '');
+        }
+        if (mode === 'object_storage') {
+          return (safeState.objectStorageValidationStatus || 'validation required') +
+            (safeState.objectStorageValidationMessage ? ': ' + safeState.objectStorageValidationMessage : '');
+        }
+        return 'source selection required';
+      }
+
+      function sourceSubmitLabel(mode) {
+        const labels = {
+          local_staged: 'Submit Local Folder Source Handoff',
+          local_file: 'Submit Local File Source Handoff',
+          existing_run: 'Submit Existing Run Source Handoff',
+          object_storage: 'Submit Object Storage Source Handoff'
+        };
+        return labels[mode] || 'Submit Governed Source Handoff';
+      }
+
+      function sourceActionStateMessage(state, missing) {
+        const safeState = sanitizeDashboardState(state);
+        const mode = safeState.selectedSourceMode || '';
+        if (!mode) {
+          return 'Select a source to continue.';
+        }
+        if (!missing.length) {
+          if (mode === 'local_staged') {
+            return 'Ready to submit Local Folder source handoff.';
+          }
+          if (mode === 'local_file') {
+            return 'Ready to submit Local File source handoff.';
+          }
+          if (mode === 'existing_run') {
+            return 'Ready to submit Existing Run source handoff.';
+          }
+          if (mode === 'object_storage') {
+            return 'Ready to submit Object Storage source handoff.';
+          }
+          return 'Ready to submit governed source handoff.';
+        }
+        if (mode === 'local_staged') {
+          return 'Choose a folder or use backend path fallback. Missing: ' + missing.join(', ') + '.';
+        }
+        if (mode === 'local_file') {
+          return 'Choose a local AWR .out file. Missing: ' + missing.join(', ') + '.';
+        }
+        if (mode === 'existing_run') {
+          if (safeState.existingRunLookupStatus === 'unavailable') {
+            return 'Existing run lookup unavailable. The governed workflow service did not return DB-backed run options.';
+          }
+          return 'Load existing runs through the governed service and select a run reference. Missing: ' + missing.join(', ') + '.';
+        }
+        if (mode === 'object_storage') {
+          if (safeState.objectStorageValidationStatus === 'unavailable') {
+            return 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+          }
+          return 'Complete Object Storage metadata and validate configured defaults. Missing: ' + missing.join(', ') + '.';
+        }
+        return 'Source configuration incomplete. Missing: ' + missing.join(', ') + '.';
+      }
+
+      function updateSourceWorkflowSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const missing = sourceSelectionMissingFields(safeState);
+        const modeLabel = sourceModeLabel(safeState.selectedSourceMode || '');
+        const activeLocation = sourceActiveLocationSummary(safeState);
+        const pipelineActive = sourcePipelineActiveSummary(safeState);
+        const pipelineNode = sourcePipelineNodeSummary(safeState);
+        const validationSummary = sourceValidationSummary(safeState);
+        const actionState = sourceActionStateMessage(safeState, missing);
+        const values = {
+          active: modeLabel,
+          metadata: sourceMetadataSummary(safeState),
+          validation: validationSummary,
+          missing: missing.length
+            ? 'Missing required metadata: ' + missing.join(', ')
+            : 'Required source metadata is satisfied.',
+          handoff: missing.length
+            ? 'Screen 3 handoff disabled. Missing: ' + missing.join(', ')
+            : 'Screen 3 handoff ready. Submit governed request to receive request ID and audit record.',
+          action: actionState,
+          next_step: missing.length
+            ? 'Complete the missing metadata or validation before submitting.'
+            : 'Submit governed source handoff, review Request ID / Audit record, then open Screen 3.',
+          pipeline_mode: 'Current source mode: ' + modeLabel,
+          pipeline_active: 'Active source: ' + pipelineActive,
+          pipeline_validation: 'Current source validation: ' + validationSummary,
+          pipeline_handoff: 'Current handoff target: Screen 3',
+          pipeline_node_source: pipelineNode,
+          config_type: 'Current source type: ' + modeLabel,
+          config_location: 'Current source location: ' + activeLocation,
+          config_candidates: sourceCandidateSummary(safeState),
+          config_rejected: sourceRejectedSummary(safeState),
+          config_validation: 'Current source validation: ' + validationSummary,
+          config_handoff: 'Current handoff status: ' + actionState
+        };
+        Object.keys(values).forEach(function (key) {
+          scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+            element.setAttribute('data-phase7-source-summary-status', missing.length ? 'incomplete' : 'ready');
+            if (key.indexOf('pipeline_') === 0) {
+              element.setAttribute('title', sourceMetadataSummary(safeState));
+            }
+          });
+        });
+        const validationValues = {
+          local_folder: safeState.selectedSourceMode === 'local_staged'
+            ? sourceValidationSummary(safeState)
+            : 'Available when Local folder / local staged AWR is selected.',
+          local_file: safeState.selectedSourceMode === 'local_file'
+            ? sourceValidationSummary(safeState)
+            : 'Available when Local file is selected.',
+          existing_run: safeState.selectedSourceMode === 'existing_run'
+            ? sourceValidationSummary(safeState)
+            : 'Available after Load Existing Runs queries the governed service.',
+          object_storage: safeState.selectedSourceMode === 'object_storage'
+            ? sourceValidationSummary(safeState)
+            : 'Available after Validate Object Storage Source calls the governed service.',
+          service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
+          result: 'After submit, the result panel shows accepted/rejected status, Request ID, Audit record, queued reference, and Open Screen 3 as the next step.'
+        };
+        Object.keys(validationValues).forEach(function (key) {
+          scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
+            element.textContent = validationValues[key];
+            element.setAttribute('data-phase7-source-validation-status', missing.length ? 'incomplete' : 'ready');
+          });
+        });
+        scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
+          element.textContent = sourceSubmitLabel(safeState.selectedSourceMode || '');
         });
       }
 
@@ -1242,10 +1724,23 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function applyDashboardState(state, root) {
-        const safeState = sanitizeDashboardState(state);
+        const explicitState = sanitizeDashboardState(state);
+        const defaultState = readDefaultDashboardState(root || document);
+        const safeState = Object.assign({}, defaultState, explicitState);
+        if (
+          explicitState.selectedSourceMode &&
+          explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
+          !Object.prototype.hasOwnProperty.call(explicitState, 'selectedSourcePath')
+        ) {
+          delete safeState.selectedSourcePath;
+        }
         markSelectedElement(safeState, root);
         markReadOnlyFilterPlaceholders(safeState, root);
+        updateDashboardStateInputs(safeState, root);
+        updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
+        updateSourceWorkflowSummary(safeState, root);
+        updatePhase7ActionEnablement(safeState, root);
         preserveDashboardStateInNavigation(safeState, root);
         return safeState;
       }
@@ -1261,7 +1756,769 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         const nextState = readDashboardState();
         nextState[key] = value;
+        if (key === 'selectedSourceMode') {
+          nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
+          nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
+          nextState.selectedLocalFolderFileCount = '';
+          nextState.selectedLocalFolderOutFileCount = '';
+          nextState.selectedLocalFolderSampleFiles = '';
+          nextState.selectedLocalRelativePaths = '';
+          nextState.selectedLocalTotalBytes = '';
+          nextState.selectedLocalFolderCandidateCount = '';
+          nextState.selectedLocalFolderAwrCandidateCount = '';
+          nextState.selectedLocalFolderRejectedCount = '';
+          nextState.selectedLocalFolderValidationStatus = '';
+          nextState.selectedLocalFolderValidationMessages = '';
+          nextState.selectedLocalFileName = '';
+          nextState.selectedLocalFileSize = '';
+          nextState.selectedLocalFileType = '';
+          nextState.selectedLocalFileExtension = '';
+          nextState.selectedLocalFileValidationStatus = '';
+          nextState.awrSignatureValidation = '';
+          nextState.selectedRunReference = safeStateValue(element.getAttribute('data-source-default-run-reference'));
+          nextState.existingRunLookupStatus = '';
+          nextState.existingRunLookupMessage = '';
+          nextState.existingRunLookupCount = '';
+          nextState.objectStorageNamespace = safeStateValue(element.getAttribute('data-object-storage-namespace'));
+          nextState.objectStorageBucket = safeStateValue(element.getAttribute('data-object-storage-bucket'));
+          nextState.objectStorageObjectName = safeStateValue(element.getAttribute('data-object-storage-object-name'));
+          nextState.objectStorageRegion = safeStateValue(element.getAttribute('data-object-storage-region'));
+          nextState.objectStorageValidationStatus = '';
+          nextState.objectStorageValidationMessage = '';
+        }
         return writeDashboardState(nextState);
+      }
+
+      function handleDashboardStateInput(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const element = event.target.closest(STATE_INPUT_SELECTOR);
+        if (!element) {
+          return;
+        }
+        const key = safeStateValue(element.getAttribute('data-dashboard-state-key'));
+        if (!isDashboardStateKey(key)) {
+          return;
+        }
+        const nextState = readDashboardState();
+        nextState[key] = safeStateValue(element.value || '');
+        const configMode = safeStateValue(element.getAttribute('data-source-config-mode'));
+        if (configMode) {
+          nextState.selectedSourceMode = configMode;
+        }
+        if (key === 'selectedSourcePath' && nextState.selectedSourceMode) {
+          nextState.sourceSelectionMethod = 'backend_path';
+        }
+        if (key === 'selectedRunReference') {
+          nextState.selectedSourceMode = 'existing_run';
+          nextState.sourceSelectionMethod = 'existing_run_reference';
+        }
+        if (key.indexOf('objectStorage') === 0) {
+          nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionMethod = 'object_storage_metadata';
+          if (key !== 'objectStorageValidationStatus' && key !== 'objectStorageValidationMessage') {
+            nextState.objectStorageValidationStatus = 'pending';
+            nextState.objectStorageValidationMessage = 'Metadata changed; validate Object Storage source before submitting.';
+          }
+        }
+        writeDashboardState(nextState);
+      }
+
+      function handlePhase7SourcePickerChange(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const picker = event.target.closest(SOURCE_PICKER_SELECTOR);
+        if (!picker) {
+          return;
+        }
+        const pickerType = safeStateValue(picker.getAttribute('data-phase7-source-picker'));
+        const files = Array.prototype.slice.call(picker.files || []);
+        const nextState = readDashboardState();
+        if (pickerType === 'local_folder') {
+          const relativePaths = files.map(function (file) {
+            return safeStateValue(file.webkitRelativePath || file.name || '');
+          }).filter(Boolean);
+          const outFiles = relativePaths.filter(function (name) {
+            return fileExtension(name) === 'out';
+          });
+          const candidateFiles = relativePaths.filter(isAwrCandidateFileName);
+          const rejectedFiles = Math.max(0, files.length - candidateFiles.length);
+          const totalBytes = files.reduce(function (total, file) {
+            return total + (Number(file.size) || 0);
+          }, 0);
+          const validationStatus = !files.length
+            ? 'invalid'
+            : (candidateFiles.length ? 'warning-backend-validation-pending' : 'invalid');
+          const validationMessage = !files.length
+            ? 'No files selected.'
+            : (
+              candidateFiles.length
+                ? 'Candidate AWR files found by extension; content signature validation is backend-pending.'
+                : 'No .out candidate AWR files found. HTML AWR input is planned for a future parser/source adapter.'
+            );
+          nextState.selectedSourceMode = 'local_staged';
+          nextState.sourceSelectionMethod = 'os_folder_picker';
+          nextState.selectedLocalFolderFileCount = String(files.length);
+          nextState.selectedLocalFolderOutFileCount = String(outFiles.length);
+          nextState.selectedLocalFolderSampleFiles = candidateFiles.slice(0, 5).join(', ');
+          nextState.selectedLocalRelativePaths = relativePaths.slice(0, 8).join(', ');
+          nextState.selectedLocalTotalBytes = String(totalBytes);
+          nextState.selectedLocalFolderCandidateCount = String(candidateFiles.length);
+          nextState.selectedLocalFolderAwrCandidateCount = String(candidateFiles.length);
+          nextState.selectedLocalFolderRejectedCount = String(rejectedFiles);
+          nextState.selectedLocalFolderValidationStatus = validationStatus;
+          nextState.selectedLocalFolderValidationMessages = validationMessage;
+          nextState.awrSignatureValidation = candidateFiles.length
+            ? 'backend_validation_pending'
+            : 'failed';
+          writeDashboardState(nextState);
+          updateSourcePickerSummary(
+            picker,
+            files.length
+              ? 'Folder selected. ' + files.length + ' files available for governed validation. ' +
+                candidateFiles.length + ' AWR candidates found. Nothing has been submitted yet. ' +
+                'Folder selected by OS picker; backend validation pending; governed submit not yet performed. ' +
+                'Files: ' + files.length +
+                '. AWR candidates: ' + candidateFiles.length +
+                '. .out files: ' + outFiles.length +
+                '. Rejected by extension: ' + rejectedFiles +
+                '. Sample candidates: ' + (candidateFiles.slice(0, 3).join(', ') || 'none') +
+                '. AWR signature validation: backend validation pending.'
+              : 'No folder files selected yet.',
+            files.length && candidateFiles.length ? 'warning-backend-validation-pending' : 'invalid'
+          );
+          return;
+        }
+        if (pickerType === 'local_file') {
+          const file = files[0];
+          nextState.selectedSourceMode = 'local_file';
+          nextState.sourceSelectionMethod = 'os_file_picker';
+          if (file) {
+            const extension = fileExtension(file.name || '');
+            const extensionValid = isAllowedLocalFileName(file.name || '');
+            nextState.selectedLocalFileName = safeStateValue(file.name || '');
+            nextState.selectedLocalFileSize = String(Number(file.size) || 0);
+            nextState.selectedLocalFileType = safeStateValue(file.type || extension);
+            nextState.selectedLocalFileExtension = extension;
+            nextState.selectedLocalFileValidationStatus = extensionValid
+              ? 'warning-backend-validation-pending'
+              : 'invalid-extension';
+            nextState.awrSignatureValidation = extensionValid
+              ? 'backend_validation_pending'
+              : 'failed';
+          } else {
+            nextState.selectedLocalFileName = '';
+            nextState.selectedLocalFileSize = '';
+            nextState.selectedLocalFileType = '';
+            nextState.selectedLocalFileExtension = '';
+            nextState.selectedLocalFileValidationStatus = 'invalid';
+            nextState.awrSignatureValidation = 'failed';
+          }
+          writeDashboardState(nextState);
+          updateSourcePickerSummary(
+            picker,
+            file
+              ? 'File selected. Nothing has been submitted yet. Backend validation is pending until Submit Governed Source Handoff is clicked. File: ' + (file.name || 'unnamed') +
+                '. Size: ' + (Number(file.size) || 0) +
+                ' bytes. Type/extension: ' + (file.type || fileExtension(file.name || '') || 'unknown') +
+                '. Extension validation: ' + (isAllowedLocalFileName(file.name || '') ? 'valid' : 'invalid') +
+                '. AWR signature validation: backend validation pending.'
+              : 'No local file selected yet.',
+            file && isAllowedLocalFileName(file.name || '') ? 'warning-backend-validation-pending' : 'invalid-file'
+          );
+        }
+      }
+
+      const PHASE7_ACTION_SELECTOR = '[data-phase7-action-control="true"]';
+      const PHASE7_ACTION_ENDPOINT = (
+        window.PHASE7_DASHBOARD_ACTION_ENDPOINT ||
+        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/actions')
+      );
+      function derivePhase7Endpoint(pathSuffix) {
+        const baseEndpoint = String(PHASE7_ACTION_ENDPOINT || '').replace(/\\/phase7\\/dashboard\\/actions\\/?$/, '');
+        return baseEndpoint + pathSuffix;
+      }
+      const PHASE7_EXISTING_RUN_LOOKUP_ENDPOINT = (
+        window.PHASE7_DASHBOARD_EXISTING_RUN_LOOKUP_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/existing-runs')
+      );
+      const PHASE7_OBJECT_STORAGE_VALIDATE_ENDPOINT = (
+        window.PHASE7_DASHBOARD_OBJECT_STORAGE_VALIDATE_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/object-storage/validate')
+      );
+
+      function readActionPayload(element) {
+        const rawPayload = element.getAttribute('data-action-payload') || '{}';
+        try {
+          const parsed = JSON.parse(rawPayload);
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          return {};
+        }
+      }
+
+      function actionStatusElement(element) {
+        const panel = element.closest('[data-phase7-runtime-interaction-panel]');
+        if (!panel) {
+          return null;
+        }
+        return panel.querySelector('[data-phase7-action-status]');
+      }
+
+      function setActionStatus(element, status, message) {
+        const target = actionStatusElement(element);
+        if (!target) {
+          return;
+        }
+        target.setAttribute('data-phase7-action-status', status);
+        target.textContent = message;
+      }
+
+      function requiredSelectionKey(element) {
+        if (!element || !element.getAttribute) {
+          return '';
+        }
+        return safeStateValue(element.getAttribute('data-required-selection-key'));
+      }
+
+      function selectionValueForAction(element, state) {
+        const key = requiredSelectionKey(element);
+        if (!key || !isDashboardStateKey(key)) {
+          return '';
+        }
+        return safeStateValue((state || readDashboardState())[key]);
+      }
+
+      function sourceSelectionMissingFields(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const mode = safeState.selectedSourceMode || '';
+        const method = safeState.sourceSelectionMethod || (mode === 'local_staged' ? 'backend_path' : '');
+        const missing = [];
+        if (!mode) {
+          missing.push('selectedSourceMode');
+          return missing;
+        }
+        if (mode === 'local_staged') {
+          if (method === 'os_folder_picker') {
+            if (!safeState.selectedLocalFolderFileCount || Number(safeState.selectedLocalFolderFileCount) <= 0) {
+              missing.push('selectedLocalFolderFileCount');
+            }
+            if (!safeState.selectedLocalFolderAwrCandidateCount || Number(safeState.selectedLocalFolderAwrCandidateCount) <= 0) {
+              missing.push('selectedLocalFolderAwrCandidateCount');
+            }
+            if (safeState.selectedLocalFolderValidationStatus === 'invalid') {
+              missing.push('selectedLocalFolderValidationStatus');
+            }
+          } else if (!safeState.selectedSourcePath) {
+            missing.push('selectedSourcePath');
+          }
+          return missing;
+        }
+        if (mode === 'local_file') {
+          if (method === 'os_file_picker') {
+            if (!safeState.selectedLocalFileName) {
+              missing.push('selectedLocalFileName');
+            } else if (!isAllowedLocalFileName(safeState.selectedLocalFileName)) {
+              missing.push('allowedLocalFileExtension');
+            }
+            if (safeState.selectedLocalFileValidationStatus === 'invalid-extension' || safeState.selectedLocalFileValidationStatus === 'invalid') {
+              missing.push('selectedLocalFileValidationStatus');
+            }
+          } else if (!safeState.selectedSourcePath) {
+            missing.push('selectedSourcePath');
+          } else if (!isAllowedLocalFileName(safeState.selectedSourcePath)) {
+            missing.push('allowedLocalFileExtension');
+          }
+          return missing;
+        }
+        if (mode === 'existing_run') {
+          if (!safeState.selectedRunReference) {
+            missing.push('selectedRunReference');
+          }
+          if (safeState.existingRunLookupStatus !== 'valid') {
+            missing.push('existingRunLookupStatus');
+          }
+          return missing;
+        }
+        if (mode === 'object_storage') {
+          (PHASE7CM_SOURCE_MODE_REQUIRED_FIELDS[mode] || []).forEach(function (fieldName) {
+            if (!safeState[fieldName]) {
+              missing.push(fieldName);
+            }
+          });
+          if (safeState.objectStorageValidationStatus !== 'valid') {
+            missing.push('objectStorageValidationStatus');
+          }
+          return missing;
+        }
+        missing.push('supportedSourceMode');
+        return missing;
+      }
+
+      function isIndexSourceSelectionAction(element) {
+        return (
+          safeStateValue(element.getAttribute('data-screen-id')) === 'index_source_mode' &&
+          safeStateValue(element.getAttribute('data-action-type')) === 'source_selection_handoff'
+        );
+      }
+
+      function updatePhase7ActionEnablement(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        scope.querySelectorAll(PHASE7_ACTION_SELECTOR).forEach(function (element) {
+          const key = requiredSelectionKey(element);
+          const selectedValue = selectionValueForAction(element, safeState);
+          const missingSourceFields = isIndexSourceSelectionAction(element)
+            ? sourceSelectionMissingFields(safeState)
+            : [];
+          const enabled = (!key || Boolean(selectedValue)) && missingSourceFields.length === 0;
+          element.classList.toggle('is-disabled', !enabled);
+          element.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+          element.setAttribute(
+            'data-action-enabled-state',
+            enabled ? 'enabled-selection-valid' : 'disabled-missing-source-selection'
+          );
+          element.setAttribute('data-selected-context-value', selectedValue || '');
+          element.setAttribute('data-missing-source-fields', missingSourceFields.join(','));
+          const status = actionStatusElement(element);
+          if (status) {
+            const currentStatus = status.getAttribute('data-phase7-action-status') || '';
+            if (enabled && (!currentStatus || currentStatus === 'waiting' || currentStatus.indexOf('disabled') === 0)) {
+              setActionStatus(
+                element,
+                'ready',
+                sourceActionStateMessage(safeState, missingSourceFields) +
+                  ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+              );
+            } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
+              setActionStatus(
+                element,
+                'disabled-missing-source-selection',
+                sourceActionStateMessage(safeState, missingSourceFields)
+              );
+            }
+          }
+        });
+      }
+
+      function buildDashboardActionRequest(element) {
+        const payload = readActionPayload(element);
+        const screenId = safeStateValue(element.getAttribute('data-screen-id'));
+        const actionType = safeStateValue(element.getAttribute('data-action-type'));
+        const workflowType = safeStateValue(element.getAttribute('data-workflow-type'));
+        const targetType = safeStateValue(element.getAttribute('data-target-type'));
+        const targetId = safeStateValue(element.getAttribute('data-target-id'));
+        const requestedAt = new Date().toISOString();
+        const dashboardState = readDashboardState();
+        const selectedContextKey = requiredSelectionKey(element);
+        const selectedContextValue = selectionValueForAction(element, dashboardState);
+        const idempotencyKey = [
+          'phase7cm',
+          screenId,
+          actionType,
+          selectedContextValue || targetId,
+          requestedAt.slice(0, 19)
+        ].join(':');
+        return {
+          request_id: [
+            'PHASE7CM',
+            screenId,
+            actionType,
+            targetId,
+            requestedAt.replace(/[^0-9A-Za-z]/g, '')
+          ].join('-').slice(0, 160),
+          screen_id: screenId,
+          action_type: actionType,
+          workflow_type: workflowType,
+          actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
+          requested_at: requestedAt,
+          target_type: targetType,
+          target_id: selectedContextValue || targetId,
+          idempotency_key: idempotencyKey,
+          payload: Object.assign({}, payload, {
+            dashboard_state: dashboardState,
+            selected_context_key: selectedContextKey,
+            selected_context_value: selectedContextValue,
+            selectedSourceMode: dashboardState.selectedSourceMode || '',
+            source_mode: dashboardState.selectedSourceMode || '',
+            sourceSelectionMethod: dashboardState.sourceSelectionMethod || '',
+            source_selection_method: dashboardState.sourceSelectionMethod || '',
+            selectedSourcePath: dashboardState.selectedSourcePath || '',
+            backend_visible_path: dashboardState.selectedSourcePath || '',
+            selectedLocalFolderFileCount: dashboardState.selectedLocalFolderFileCount || '',
+            selectedLocalFolderOutFileCount: dashboardState.selectedLocalFolderOutFileCount || '',
+            selectedLocalFolderSampleFiles: dashboardState.selectedLocalFolderSampleFiles || '',
+            selectedLocalRelativePaths: dashboardState.selectedLocalRelativePaths || '',
+            selectedLocalTotalBytes: dashboardState.selectedLocalTotalBytes || '',
+            selectedLocalFolderCandidateCount: dashboardState.selectedLocalFolderCandidateCount || '',
+            selectedLocalFolderAwrCandidateCount: dashboardState.selectedLocalFolderAwrCandidateCount || '',
+            selectedLocalFolderRejectedCount: dashboardState.selectedLocalFolderRejectedCount || '',
+            selectedLocalFolderValidationStatus: dashboardState.selectedLocalFolderValidationStatus || '',
+            selectedLocalFolderValidationMessages: dashboardState.selectedLocalFolderValidationMessages || '',
+            selectedLocalFileName: dashboardState.selectedLocalFileName || '',
+            selectedLocalFileSize: dashboardState.selectedLocalFileSize || '',
+            selectedLocalFileType: dashboardState.selectedLocalFileType || '',
+            selectedLocalFileExtension: dashboardState.selectedLocalFileExtension || '',
+            selectedLocalFileValidationStatus: dashboardState.selectedLocalFileValidationStatus || '',
+            selectedRunReference: dashboardState.selectedRunReference || '',
+            existing_run_reference: dashboardState.selectedRunReference || '',
+            existingRunLookupStatus: dashboardState.existingRunLookupStatus || '',
+            existingRunLookupMessage: dashboardState.existingRunLookupMessage || '',
+            existingRunLookupCount: dashboardState.existingRunLookupCount || '',
+            objectStorageNamespace: dashboardState.objectStorageNamespace || '',
+            objectStorageBucket: dashboardState.objectStorageBucket || '',
+            objectStorageObjectName: dashboardState.objectStorageObjectName || '',
+            objectStorageRegion: dashboardState.objectStorageRegion || '',
+            objectStorageValidationStatus: dashboardState.objectStorageValidationStatus || '',
+            objectStorageValidationMessage: dashboardState.objectStorageValidationMessage || '',
+            object_storage_namespace: dashboardState.objectStorageNamespace || '',
+            object_storage_bucket: dashboardState.objectStorageBucket || '',
+            object_storage_object_name: dashboardState.objectStorageObjectName || '',
+            object_storage_region: dashboardState.objectStorageRegion || '',
+            picker_file_manifest: {
+              file_count: dashboardState.selectedLocalFolderFileCount || '',
+              candidate_file_count: dashboardState.selectedLocalFolderCandidateCount || '',
+              awr_candidate_count: dashboardState.selectedLocalFolderAwrCandidateCount || '',
+              rejected_file_count: dashboardState.selectedLocalFolderRejectedCount || '',
+              sample_files: dashboardState.selectedLocalFolderSampleFiles || '',
+              relative_paths: dashboardState.selectedLocalRelativePaths || '',
+              total_bytes: dashboardState.selectedLocalTotalBytes || '',
+              selected_file_name: dashboardState.selectedLocalFileName || '',
+              selected_file_size: dashboardState.selectedLocalFileSize || '',
+              selected_file_type: dashboardState.selectedLocalFileType || '',
+              selected_file_extension: dashboardState.selectedLocalFileExtension || ''
+            },
+            uploaded_file_manifest: {
+              content_uploaded: false,
+              upload_staging_required_for_oci: true
+            },
+            target_screen: 'screen3',
+            source_request_contract_version: '7CM.index_source_selection.v1',
+            awr_signature_validation: dashboardState.awrSignatureValidation || '',
+            browser_parsing_performed: false,
+            browser_file_read_attempted: false,
+            browser_file_upload_performed: false,
+            browser_object_storage_access_attempted: false,
+            em_extract_attempted: false,
+            generated_dashboard: true
+          }),
+          governance_mode: 'governed_request',
+          execution_mode: safeStateValue(element.getAttribute('data-execution-mode')) || 'request_record_only',
+          runtime_influence_granted: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          direct_truth_mutation_allowed: false,
+          run_analysis_coupling: false,
+          future_run_influence_metadata: {
+            loop: 'awr_parser_unknown_review_genai_assist_approval_materialization_runtime_eligibility_future_run',
+            source_screen_id: screenId,
+            requested_action_type: actionType,
+            requires_human_or_rule_approval: true,
+            requires_governed_materialization: true,
+            requires_runtime_eligibility: true,
+            future_runs_only: true,
+            auditable: true,
+            explainable: true,
+            reversible: true,
+            runtime_activation_granted: false,
+            runtime_influence_granted: false,
+            immediate_runtime_mutation: false,
+            phase4i_mutation_allowed: false,
+            parser_mutation_applied: false,
+            scoring_mutation_applied: false,
+            recommendation_truth_mutation_applied: false,
+            phase8_behavior: false
+          }
+        };
+      }
+
+      function invokePhase7Service(endpoint, payload) {
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          return Promise.reject(new Error('browser request bridge unavailable'));
+        }
+        return requestBridge(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            return { ok: response.ok, status: response.status, body: body };
+          });
+        });
+      }
+
+      function updateExistingRunOptions(runs, lookupStatus, lookupMessage) {
+        const options = Array.isArray(runs) ? runs : [];
+        const status = safeStateValue(lookupStatus || '');
+        const message = safeStateValue(lookupMessage || '');
+        document.querySelectorAll(EXISTING_RUN_OPTIONS_SELECTOR).forEach(function (select) {
+          while (select.firstChild) {
+            select.removeChild(select.firstChild);
+          }
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          if (options.length) {
+            placeholder.textContent = 'Select a service-returned run';
+          } else if (status === 'empty') {
+            placeholder.textContent = 'No prior runs found in governed persistence.';
+          } else if (status === 'unavailable') {
+            placeholder.textContent = 'Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs.';
+          } else if (status === 'pending') {
+            placeholder.textContent = 'Existing run lookup pending through governed service.';
+          } else {
+            placeholder.textContent = message || 'Run options load from governed service.';
+          }
+          select.appendChild(placeholder);
+          options.forEach(function (run) {
+            const reference = safeStateValue(
+              run.run_reference ||
+              run.selectedRunReference ||
+              run.run_history_id ||
+              run.analysis_run_id ||
+              ''
+            );
+            if (!reference) {
+              return;
+            }
+            const option = document.createElement('option');
+            option.value = reference;
+            option.textContent = [
+              reference,
+              safeStateValue(run.db_name || ''),
+              safeStateValue(run.source_file_name || ''),
+              safeStateValue(run.created_at || run.analysis_timestamp || '')
+            ].filter(Boolean).join(' | ');
+            select.appendChild(option);
+          });
+        });
+      }
+
+      function handleExistingRunLookupClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest(EXISTING_RUN_LOOKUP_SELECTOR);
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        const nextState = readDashboardState();
+        nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionMethod = 'existing_run_reference';
+          nextState.existingRunLookupStatus = 'pending';
+          nextState.existingRunLookupMessage = 'Querying governed workflow service for existing runs.';
+          nextState.selectedRunReference = '';
+          writeDashboardState(nextState);
+          updateExistingRunOptions(
+            [],
+            nextState.existingRunLookupStatus,
+            nextState.existingRunLookupMessage
+          );
+        invokePhase7Service(PHASE7_EXISTING_RUN_LOOKUP_ENDPOINT, {
+          screen_id: 'index_source_mode',
+          action_type: 'existing_run_lookup',
+          workflow_type: 'index_existing_run_lookup',
+          target_screen: 'screen3',
+          governance_mode: 'governed_request',
+          browser_db_query_attempted: false,
+          direct_truth_mutation_allowed: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          run_analysis_coupling: false
+        }).then(function (result) {
+          const body = result.body || {};
+          const runs = Array.isArray(body.runs) ? body.runs : [];
+          const state = readDashboardState();
+          state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionMethod = 'existing_run_reference';
+          state.existingRunLookupCount = String(runs.length);
+          if (result.ok && body.status === 'accepted' && runs.length) {
+            state.existingRunLookupStatus = 'runs_loaded';
+            state.existingRunLookupMessage = 'Select one of ' + runs.length + ' service-returned run options.';
+          } else {
+            state.existingRunLookupStatus = body.validation_status || 'unavailable';
+            if (state.existingRunLookupStatus === 'empty') {
+              state.existingRunLookupMessage = body.message || 'No prior runs found in governed persistence.';
+            } else if (state.existingRunLookupStatus === 'unavailable') {
+              state.existingRunLookupMessage = body.message ||
+                'Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs.';
+            } else {
+              state.existingRunLookupMessage = body.message || 'Existing run lookup did not return selectable runs.';
+            }
+          }
+          updateExistingRunOptions(runs, state.existingRunLookupStatus, state.existingRunLookupMessage);
+          writeDashboardState(state);
+        }).catch(function () {
+          const state = readDashboardState();
+          state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionMethod = 'existing_run_reference';
+          state.existingRunLookupStatus = 'unavailable';
+          state.existingRunLookupMessage = 'Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs. Start scripts/dashboard_workflow_service.py and retry.';
+          state.existingRunLookupCount = '0';
+          state.selectedRunReference = '';
+          writeDashboardState(state);
+          updateExistingRunOptions([], state.existingRunLookupStatus, state.existingRunLookupMessage);
+        });
+      }
+
+      function handleExistingRunOptionChange(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const select = event.target.closest(EXISTING_RUN_OPTIONS_SELECTOR);
+        if (!select) {
+          return;
+        }
+        const selectedValue = safeStateValue(select.value || '');
+        const nextState = readDashboardState();
+        nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionMethod = 'existing_run_reference';
+        nextState.selectedRunReference = selectedValue;
+        if (selectedValue) {
+          nextState.existingRunLookupStatus = 'valid';
+          nextState.existingRunLookupMessage = 'Existing run selected from governed service lookup.';
+        } else {
+          nextState.existingRunLookupStatus = 'runs_loaded';
+          nextState.existingRunLookupMessage = 'Select a service-returned run before submitting.';
+        }
+        writeDashboardState(nextState);
+      }
+
+      function handleObjectStorageValidationClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest(OBJECT_STORAGE_VALIDATE_SELECTOR);
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        const state = readDashboardState();
+        state.selectedSourceMode = 'object_storage';
+        state.sourceSelectionMethod = 'object_storage_metadata';
+        state.objectStorageValidationStatus = 'pending';
+        state.objectStorageValidationMessage = 'Submitting Object Storage metadata to governed backend validation.';
+        writeDashboardState(state);
+        invokePhase7Service(PHASE7_OBJECT_STORAGE_VALIDATE_ENDPOINT, {
+          screen_id: 'index_source_mode',
+          action_type: 'object_storage_source_validation',
+          workflow_type: 'index_object_storage_source_validation',
+          target_screen: 'screen3',
+          governance_mode: 'governed_request',
+          objectStorageNamespace: state.objectStorageNamespace || '',
+          objectStorageBucket: state.objectStorageBucket || '',
+          objectStorageObjectName: state.objectStorageObjectName || '',
+          objectStorageRegion: state.objectStorageRegion || '',
+          browser_object_storage_access_attempted: false,
+          direct_object_storage_execution_attempted: false,
+          direct_truth_mutation_allowed: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          run_analysis_coupling: false
+        }).then(function (result) {
+          const body = result.body || {};
+          const nextState = readDashboardState();
+          nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionMethod = 'object_storage_metadata';
+          nextState.objectStorageValidationStatus = result.ok && body.status === 'accepted'
+            ? (body.validation_status || 'valid')
+            : (body.validation_status || 'invalid');
+          nextState.objectStorageValidationMessage = body.message || 'Object Storage validation returned no message.';
+          writeDashboardState(nextState);
+        }).catch(function () {
+          const nextState = readDashboardState();
+          nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionMethod = 'object_storage_metadata';
+          nextState.objectStorageValidationStatus = 'unavailable';
+          nextState.objectStorageValidationMessage = 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+          writeDashboardState(nextState);
+        });
+      }
+
+      function submitDashboardAction(element) {
+        const selectedContextKey = requiredSelectionKey(element);
+        const dashboardState = readDashboardState();
+        const selectedContextValue = selectionValueForAction(element, dashboardState);
+        if (selectedContextKey && !selectedContextValue) {
+          setActionStatus(
+            element,
+            'disabled-no-selection',
+            'Disabled because no source selection exists. Select Local staged AWR, Local file, Existing run, or Object Storage before submitting.'
+          );
+          return;
+        }
+        const missingSourceFields = isIndexSourceSelectionAction(element)
+          ? sourceSelectionMissingFields(dashboardState)
+          : [];
+        if (missingSourceFields.length) {
+          setActionStatus(
+            element,
+            'disabled-missing-source-selection',
+            'Disabled because source configuration is incomplete: ' + missingSourceFields.join(', ') + '.'
+          );
+          return;
+        }
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          setActionStatus(
+            element,
+            'failed',
+            'Governed workflow service unavailable: browser request bridge is not available.'
+          );
+          return;
+        }
+        setActionStatus(element, 'pending', 'Submitting governed source-selection request...');
+        requestBridge(PHASE7_ACTION_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildDashboardActionRequest(element))
+        })
+          .then(function (response) {
+            return response.json().then(function (payload) {
+              return { ok: response.ok, payload: payload };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok || !result.payload || result.payload.status !== 'accepted') {
+              setActionStatus(
+                element,
+                'failed',
+                result.payload && result.payload.message
+                  ? result.payload.message
+                  : 'Governed source-selection request was rejected.'
+              );
+              return;
+            }
+            setActionStatus(
+              element,
+              'accepted',
+              'Success. Request ID: ' + result.payload.request_id +
+                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
+                '. Next step: open Screen 3.'
+            );
+          })
+          .catch(function () {
+            setActionStatus(
+              element,
+              'failed',
+              'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.'
+            );
+          });
+      }
+
+      function handlePhase7ActionClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const element = event.target.closest(PHASE7_ACTION_SELECTOR);
+        if (!element) {
+          return;
+        }
+        event.preventDefault();
+        submitDashboardAction(element);
       }
 
       function handleDashboardSelectableClick(event) {
@@ -1304,7 +2561,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         if (!dashboardInteractivityInitialized) {
           document.addEventListener('click', handleDashboardSelectableClick);
+          document.addEventListener('click', handlePhase7ActionClick);
+          document.addEventListener('click', handleExistingRunLookupClick);
+          document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);
+          document.addEventListener('input', handleDashboardStateInput);
+          document.addEventListener('change', handleDashboardStateInput);
+          document.addEventListener('change', handlePhase7SourcePickerChange);
+          document.addEventListener('change', handleExistingRunOptionChange);
           window.addEventListener('hashchange', function () {
             applyDashboardState(readDashboardState());
           });
@@ -1331,6 +2595,25 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateSelectedSummary: updateSelectedSummary,
         preserveDashboardStateInNavigation: preserveDashboardStateInNavigation,
         hrefWithDashboardState: hrefWithDashboardState
+      });
+
+      window.Phase7DashboardRuntimeInteractionBridge = Object.freeze({
+        version: '7CM',
+        scope: 'index_source_selection_runtime_workflow',
+        endpoint: PHASE7_ACTION_ENDPOINT,
+        existingRunLookupEndpoint: PHASE7_EXISTING_RUN_LOOKUP_ENDPOINT,
+        objectStorageValidateEndpoint: PHASE7_OBJECT_STORAGE_VALIDATE_ENDPOINT,
+        selector: PHASE7_ACTION_SELECTOR,
+        governanceMode: 'governed_request',
+        runtimeInfluenceGranted: false,
+        phase4iMutationAllowed: false,
+        phase8Behavior: false,
+        directTruthMutationAllowed: false,
+        runAnalysisCoupling: false,
+        buildDashboardActionRequest: buildDashboardActionRequest,
+        submitDashboardAction: submitDashboardAction,
+        handleExistingRunLookupClick: handleExistingRunLookupClick,
+        handleObjectStorageValidationClick: handleObjectStorageValidationClick
       });
 
       document.addEventListener('DOMContentLoaded', function () {
@@ -2157,13 +3440,14 @@ def _render_home_page(
         </p>
       </section>
 
+      {_render_phase7cm_index_source_intake_panel()}
       {_render_home_system_ux_sections()}
       {_render_index_source_mode_entry_preview()}
       {_render_index_source_status_panel()}
       {_render_index_object_storage_config_panel()}
       {_render_index_screen3_handoff_panel()}
 
-      <section class="card secondary compact-card">
+      <section class="card secondary compact-card ai-explanation-card">
         <div class="section-kicker">AI Explanation Layer</div>
         <h2>LLM / Explanation Provider</h2>
         <p class="chart-support-note">
@@ -2181,6 +3465,731 @@ def _render_home_page(
         </div>
       </section>
     </div>
+    """
+
+
+def _render_phase7cm_index_source_intake_panel() -> str:
+    """Render narrowed Phase 7CM source-selection runtime workflow."""
+
+    default_local_folder = "data/input"
+    default_object_namespace = "axxduehrw7lz"
+    default_object_bucket = "agentic-ai-awr-raw"
+    default_object_region = "us-phoenix-1"
+    default_object_name = "awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out"
+    default_state = json.dumps(
+        {
+            "selectedSourceMode": "local_staged",
+            "selectedSourcePath": default_local_folder,
+            "sourceSelectionMethod": "backend_path",
+        },
+        sort_keys=True,
+    )
+    source_cards = [
+        (
+            "local_staged",
+            "Local folder / Local staged AWR",
+            "Default local/dev source",
+            "Use AWR files staged under data/input.",
+            f"Default local/dev fallback: {default_local_folder}",
+            "governed-source-handoff-local-staged",
+            {
+                "data-source-default-path": default_local_folder,
+                "data-source-selection-method": "backend_path",
+                "data-source-default-run-reference": "",
+                "data-object-storage-namespace": "",
+                "data-object-storage-bucket": "",
+                "data-object-storage-object-name": "",
+                "data-object-storage-region": "",
+            },
+        ),
+        (
+            "local_file",
+            "Local file",
+            "Operator-selected file",
+            "Submit a governed request that identifies a local file context for backend-side validation.",
+            "Requires configured local file path",
+            "governed-source-handoff-local-file",
+            {
+                "data-source-default-path": "",
+                "data-source-selection-method": "os_file_picker",
+                "data-source-default-run-reference": "",
+                "data-object-storage-namespace": "",
+                "data-object-storage-bucket": "",
+                "data-object-storage-object-name": "",
+                "data-object-storage-region": "",
+            },
+        ),
+        (
+            "existing_run",
+            "Existing run",
+            "Prior run context",
+            "Submit a governed request that points Screen 3 toward an existing persisted run context.",
+            "Requires available run metadata",
+            "governed-source-handoff-existing-run",
+            {
+                "data-source-default-path": "",
+                "data-source-selection-method": "existing_run_reference",
+                "data-source-default-run-reference": "",
+                "data-object-storage-namespace": "",
+                "data-object-storage-bucket": "",
+                "data-object-storage-object-name": "",
+                "data-object-storage-region": "",
+            },
+        ),
+        (
+            "object_storage",
+            "Object Storage",
+            "Configuration-dependent source",
+            "Submit a governed request for backend-side Object Storage validation using configured environment values.",
+            "No browser-side Object Storage access",
+            "governed-source-handoff-object-storage",
+            {
+                "data-source-default-path": "",
+                "data-source-selection-method": "object_storage_metadata",
+                "data-source-default-run-reference": "",
+                "data-object-storage-namespace": default_object_namespace,
+                "data-object-storage-bucket": default_object_bucket,
+                "data-object-storage-object-name": default_object_name,
+                "data-object-storage-region": default_object_region,
+            },
+        ),
+    ]
+    cards_html = []
+    for source_id, title, kicker, description, readiness, action, defaults in source_cards:
+        default_attrs = " ".join(
+            f'{escape(name)}="{escape(value, quote=True)}"'
+            for name, value in defaults.items()
+        )
+        cards_html.append(
+            f"""
+              <article class="phase7cm-source-card"
+                   data-phase7-current-source-card="true"
+                   data-dashboard-selectable="true"
+                   data-dashboard-select-type="sourceMode"
+                   data-dashboard-select-key="selectedSourceMode"
+                   data-dashboard-select-id="{escape(source_id)}"
+                   data-dashboard-filter-key="selectedSourceMode"
+                   data-dashboard-filter-value="{escape(source_id)}"
+                   data-entity-type="source_mode"
+                   data-downstream-action="{escape(action)}"
+                   {default_attrs}
+                   data-selected="false"
+                   aria-selected="false"
+                   tabindex="0">
+                <span class="mini-pill neutral">{escape(kicker)}</span>
+                <strong>{escape(title)}</strong>
+                <p>{escape(description)}</p>
+                <p><strong>Readiness:</strong> {escape(readiness)}</p>
+                <p class="selection-workflow-card-note">
+                  Selection state: not selected. Entity type: source mode.
+                  Downstream action: enables governed source-selection handoff to Screen 3.
+                </p>
+              </article>
+            """
+        )
+
+    action_payload = json.dumps(
+        {
+            "screen_id": "index_source_mode",
+            "action_type": "source_selection_handoff",
+            "workflow_type": "index_source_selection_handoff",
+            "target_type": "source_selection",
+            "target_id": "index-source-selection",
+            "required_selection_key": "selectedSourceMode",
+            "required_selection_label": "source mode",
+            "governed_request": True,
+            "runtime_influence_granted": False,
+            "phase4i_mutation_allowed": False,
+            "phase8_behavior": False,
+            "direct_truth_mutation_allowed": False,
+            "run_analysis_coupling": False,
+            "target_screen": "screen3",
+            "sourceSelectionMethod": "dashboard_state",
+            "browser_parsing_performed": False,
+            "browser_file_read_attempted": False,
+            "browser_file_upload_performed": False,
+            "browser_object_storage_access_attempted": False,
+            "em_extract_attempted": False,
+        },
+        sort_keys=True,
+    )
+    return f"""
+      <section class="card prominent phase7cm-source-intake-panel phase7-governed-action-panel"
+               id="phase7cm-source-intake-panel"
+               data-phase="7CM"
+               data-phase7-index-source-selection="true"
+               data-phase7-runtime-interaction-panel="true"
+               data-dashboard-default-state="{escape(default_state, quote=True)}">
+        <div class="section-kicker">Governed Source Intake</div>
+        <h2>Source Intake / Source Selection</h2>
+        <p class="meta">
+          Choose the input source context, review source readiness, submit a
+          governed source-selection handoff, then open Screen 3 with the
+          resulting request ID and audit status. The default local development
+          staging reference is <strong>data/input</strong>; Object Storage is the
+          preferred OCI-ready source path.
+        </p>
+
+        <section class="evidence-pane" data-phase7-selection-workflow="true">
+          <h3>Selection Workflow</h3>
+          <ol>
+            <li>Step 1: Select source mode or source context.</li>
+            <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
+            <li>Step 3: Choose governed source-selection handoff.</li>
+            <li>Step 4: Submit governed source handoff request.</li>
+            <li>Step 5: Review result, Request ID, Audit record, and Open Screen 3.</li>
+          </ol>
+        </section>
+
+        <div class="phase7cm-source-card-grid">
+          {"".join(cards_html)}
+        </div>
+
+        <section class="evidence-pane phase7cm-source-config-panel"
+                 data-phase7-source-configuration="true">
+          <h3>Source Configuration</h3>
+          <p class="meta">
+            These fields define or confirm where the AWR input comes from. The
+            browser does not read local files, inspect folders, query the DB, or
+            access Object Storage. The values are submitted as governed request
+            metadata for backend-side validation. Local folder/file selection is
+            for local development or upload-style staging; durable source
+            handling is owned by the governed backend path.
+          </p>
+          <p class="meta">
+            The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter and is not accepted by this governed handoff.
+          </p>
+          <div class="phase7cm-source-config-grid">
+            <div class="phase7cm-source-config-field"
+                 data-source-config-mode="local_staged">
+              <span>Local folder OS picker</span>
+              <label class="phase7cm-picker-button" for="phase7cm-local-folder-picker">
+                Choose Folder
+              </label>
+              <input id="phase7cm-local-folder-picker"
+                     class="phase7cm-source-picker-input"
+                     type="file"
+                     webkitdirectory
+                     multiple
+                     data-phase7-source-picker="local_folder"
+                     data-picker-summary-target="phase7cm-local-folder-picker-summary">
+              <small id="phase7cm-local-folder-picker-summary"
+                     data-phase7-picker-summary="local_folder">
+                No folder selected yet. Your browser may label this as Upload.
+                At this step, files are only selected for the governed source
+                request. No AWR analysis, backend staging, or dashboard truth
+                mutation occurs until you click Submit Governed Source Handoff.
+                Browser provides selected files and relative names; backend
+                service validates/stages submitted metadata. In OCI, picker
+                metadata is treated as upload/staging input rather than a
+                durable local path.
+              </small>
+            </div>
+            <label class="phase7cm-source-config-field"
+                   data-source-config-mode="local_staged">
+              <span>Local folder path</span>
+              <input type="text"
+                     value="{escape(default_local_folder, quote=True)}"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="selectedSourcePath"
+                     data-source-config-mode="local_staged"
+                     data-phase7-source-path-field="local_staged"
+                     autocomplete="off">
+              <small>
+                Advanced: backend-visible path override. Current default local
+                development staging source. Path styles may be
+                relative, Mac/Linux absolute, or Windows, for example
+                data/input, /Users/&lt;user&gt;/Projects/.../data/input, or
+                C:\\path\\to\\awr\\input. Browser file/folder pickers do not
+                expose reliable full OS paths; this path is submitted only as
+                governed backend-visible metadata and is not a production OCI
+                source assumption.
+              </small>
+            </label>
+            <div class="phase7cm-source-config-field"
+                 data-source-config-mode="local_file">
+              <span>Local file OS picker</span>
+              <label class="phase7cm-picker-button" for="phase7cm-local-file-picker">
+                Choose File
+              </label>
+              <input id="phase7cm-local-file-picker"
+                     class="phase7cm-source-picker-input"
+                     type="file"
+                     accept=".out"
+                     data-phase7-source-picker="local_file"
+                     data-picker-summary-target="phase7cm-local-file-picker-summary">
+              <small id="phase7cm-local-file-picker-summary"
+                     data-phase7-picker-summary="local_file">
+                No local file selected yet. The browser captures file name,
+                size, and type metadata only; backend service validates the
+                governed request. The current verified local file input is .out
+                only. HTML AWR input is planned for a future parser/source
+                adapter. In OCI, local files must be uploaded/staged by the
+                governed backend path.
+              </small>
+            </div>
+            <label class="phase7cm-source-config-field"
+                   data-source-config-mode="local_file">
+              <span>Local file path</span>
+              <input type="text"
+                     placeholder="/path/to/report.out or C:\\path\\to\\report.out"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="selectedSourcePath"
+                     data-source-config-mode="local_file"
+                     data-phase7-source-path-field="local_file"
+                     autocomplete="off">
+              <small>
+                Advanced: backend-visible path override. The browser does not
+                read the file. The path is submitted as metadata for governed
+                backend validation.
+              </small>
+            </label>
+            <label class="phase7cm-source-config-field"
+                   data-source-config-mode="existing_run">
+              <span>Selected existing run reference</span>
+              <input type="text"
+                     placeholder="Select a service-returned run below"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="selectedRunReference"
+                     data-source-config-mode="existing_run"
+                     data-phase7-existing-run-field="true"
+                     readonly
+                     autocomplete="off">
+              <small>
+                The browser does not query persistence directly and this is not
+                a blind run-ID text box. Use the governed lookup below, select a
+                returned run, then submit the source handoff.
+              </small>
+            </label>
+            <div class="phase7cm-source-config-field"
+                 data-source-config-mode="existing_run">
+              <span>Governed existing run lookup</span>
+              <button type="button"
+                      class="phase7cm-service-button"
+                      data-phase7-existing-run-lookup-control="true"
+                      data-phase7-service-endpoint="existing_runs">
+                Load Existing Runs
+              </button>
+              <select id="phase7cm-existing-run-options"
+                      data-phase7-existing-run-options="true"
+                      aria-label="Service-returned existing run options">
+                <option value="">Run options load from governed service</option>
+              </select>
+              <small>
+                The local workflow service queries persistence on behalf of the
+                dashboard and returns selectable run options. If the DB is not
+                configured, the lookup reports unavailable and source handoff
+                remains disabled.
+              </small>
+            </div>
+            <label class="phase7cm-source-config-field phase7cm-object-storage-config-field"
+                   data-source-config-mode="object_storage">
+              <span>Object Storage namespace</span>
+              <input type="text"
+                     value="{escape(default_object_namespace, quote=True)}"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="objectStorageNamespace"
+                     data-source-config-mode="object_storage"
+                     autocomplete="off">
+              <small>Development validation default. No credentials are exposed.</small>
+            </label>
+            <label class="phase7cm-source-config-field phase7cm-object-storage-config-field"
+                   data-source-config-mode="object_storage">
+              <span>Object Storage bucket</span>
+              <input type="text"
+                     value="{escape(default_object_bucket, quote=True)}"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="objectStorageBucket"
+                     data-source-config-mode="object_storage"
+                     autocomplete="off">
+            </label>
+            <label class="phase7cm-source-config-field phase7cm-object-storage-config-field"
+                   data-source-config-mode="object_storage">
+              <span>Object name or prefix</span>
+              <input type="text"
+                     value="{escape(default_object_name, quote=True)}"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="objectStorageObjectName"
+                     data-source-config-mode="object_storage"
+                     autocomplete="off">
+            </label>
+            <label class="phase7cm-source-config-field phase7cm-object-storage-config-field"
+                   data-source-config-mode="object_storage">
+              <span>Object Storage region</span>
+              <input type="text"
+                     value="{escape(default_object_region, quote=True)}"
+                     data-dashboard-state-input="true"
+                     data-dashboard-state-key="objectStorageRegion"
+                     data-source-config-mode="object_storage"
+                     autocomplete="off">
+              <small>
+                Object Storage access happens only through governed backend
+                validation, never browser-side bucket reads. This is the
+                OCI-ready source-selection path.
+              </small>
+            </label>
+            <div class="phase7cm-source-config-field phase7cm-object-storage-config-field"
+                 data-source-config-mode="object_storage">
+              <span>Governed Object Storage validation</span>
+              <button type="button"
+                      class="phase7cm-service-button"
+                      data-phase7-object-storage-validation-control="true"
+                      data-phase7-service-endpoint="object_storage_validate">
+                Validate Object Storage Source
+              </button>
+              <small>
+                Submits namespace, bucket, object/prefix, and region metadata to
+                the local governed workflow service. The browser does not call
+                OCI APIs, expose credentials, list buckets, or read objects.
+              </small>
+            </div>
+          </div>
+        </section>
+
+        <section class="evidence-pane"
+                 data-phase7-current-selection-panel="true"
+                 data-phase7-active-source-configuration="true">
+          <h3>Active Source Configuration / Runtime Source State</h3>
+          <p class="meta">
+            <strong>Active Source Selection.</strong>
+            This is the operator-facing source workflow summary. It changes
+            with Local folder, Local file, Existing run, or Object Storage
+            selection and shows what is ready, missing, or invalid before the
+            governed Screen 3 handoff is submitted. The default local staging
+            reference below is informational only and is not the active source
+            once another source mode is selected.
+          </p>
+          <div class="phase7cm-source-summary-grid"
+               data-phase7-dynamic-source-summary="true">
+            <article class="phase7cm-source-summary-card">
+              <strong>Active Source</strong>
+              <p data-phase7-source-summary-card="active">Local folder / local staged AWR</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Source Metadata</strong>
+              <p data-phase7-source-summary-card="metadata">Backend-visible local/dev path: data/input</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Validation Status</strong>
+              <p data-phase7-source-summary-card="validation">backend path validation pending</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Required Metadata / Missing Fields</strong>
+              <p data-phase7-source-summary-card="missing">Select a source to see required metadata.</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Handoff Target</strong>
+              <p data-phase7-source-summary-card="handoff">Screen 3 handoff status appears here.</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Action State</strong>
+              <p data-phase7-source-summary-card="action">Select a source to continue.</p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Next Step</strong>
+              <p data-phase7-source-summary-card="next_step">Submit a governed source handoff, then open Screen 3.</p>
+            </article>
+          </div>
+          <p class="meta">
+            Source selection controls the request target only. It is browser-local
+            selection context until submitted through the governed workflow
+            service. It does not read files, call Object Storage, mutate parser
+            output, mutate Phase 4I, or activate runtime influence.
+          </p>
+        </section>
+
+        <section class="evidence-pane" data-phase7-runtime-source-validation="true">
+          <h3>Runtime Source Validation</h3>
+          <p class="meta">
+            This block separates picker/configuration status from governed
+            backend validation. OS picker selection alone is not staging and
+            does not create a governed request; the request/audit record is
+            created only after the source-specific submit action succeeds.
+          </p>
+          <div class="phase7cm-source-summary-grid"
+               data-phase7-runtime-source-validation-grid="true">
+            <article class="phase7cm-source-summary-card">
+              <strong>Local Folder Validation</strong>
+              <p data-phase7-source-validation-card="local_folder">
+                Local folder validation appears after Choose Folder or backend
+                path fallback metadata is available.
+              </p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Local File Validation</strong>
+              <p data-phase7-source-validation-card="local_file">
+                Local file validation appears after Choose File metadata is
+                available. The current verified parser path accepts .out only
+                unless parser tests prove additional text formats.
+              </p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Existing Run Lookup</strong>
+              <p data-phase7-source-validation-card="existing_run">
+                Load Existing Runs calls the governed service; the browser does
+                not query persistence directly.
+              </p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Object Storage Validation</strong>
+              <p data-phase7-source-validation-card="object_storage">
+                Validate Object Storage Source calls the governed service; the
+                browser does not call OCI or expose credentials.
+              </p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Service Availability</strong>
+              <p data-phase7-source-validation-card="service"
+                 data-phase7-service-availability-status="true">
+                Governed workflow service: local source-intake service
+                endpoint. Local development service:
+                scripts/dashboard_workflow_service.py.
+              </p>
+            </article>
+            <article class="phase7cm-source-summary-card">
+              <strong>Request / Audit Result</strong>
+              <p data-phase7-source-validation-card="result"
+                 data-phase7-submit-result-reference="true">
+                After submit, accepted/rejected status, Request ID, Audit
+                record, queued reference, and Open Screen 3 appear in the
+                result panel.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="evidence-pane" data-phase7-debug-state-panel="true">
+          <h3>Advanced Debug State</h3>
+          <p class="meta">
+            Raw browser/hash/localStorage keys are intentionally secondary and
+            collapsed. They are useful for audit/debugging, not the primary
+            source-selection workflow.
+          </p>
+          <details class="phase7-legacy-boundary-details phase7cm-debug-state-details"
+                   data-phase7-advanced-debug-state="true">
+            <summary>Advanced Debug State / Browser Selection State</summary>
+            <p data-dashboard-selected-summary
+               data-phase7-current-selection-summary="true"
+               data-dashboard-state-empty="true">
+              No source mode has been selected. Choose Local staged AWR, Local
+              file, Existing run, or Object Storage to enable the governed
+              source-selection handoff.
+            </p>
+          <dl class="phase7cm-source-metadata-summary"
+              data-phase7-source-metadata-summary="true">
+            <div>
+              <dt>selectedSourceMode</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedSourceMode"
+                  data-empty-label="local_staged">local_staged</dd>
+            </div>
+            <div>
+              <dt>selectedSourcePath</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedSourcePath"
+                  data-empty-label="data/input">data/input</dd>
+            </div>
+            <div>
+              <dt>source_selection_method</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="sourceSelectionMethod"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderFileCount</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderFileCount"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderOutFileCount</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderOutFileCount"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderCandidateCount</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderCandidateCount"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderAwrCandidateCount</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderAwrCandidateCount"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderRejectedCount</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderRejectedCount"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderValidationStatus</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderValidationStatus"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderSampleFiles</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderSampleFiles"
+                  data-empty-label="none selected">none selected</dd>
+            </div>
+            <div>
+              <dt>selectedLocalRelativePaths</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalRelativePaths"
+                  data-empty-label="none selected">none selected</dd>
+            </div>
+            <div>
+              <dt>selectedLocalTotalBytes</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalTotalBytes"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFileName</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFileName"
+                  data-empty-label="none selected">none selected</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFileSize</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFileSize"
+                  data-empty-label="0">0</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFileType</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFileType"
+                  data-empty-label="unknown">unknown</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFileExtension</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFileExtension"
+                  data-empty-label="unknown">unknown</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFileValidationStatus</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFileValidationStatus"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>awr_signature_validation</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="awrSignatureValidation"
+                  data-empty-label="backend validation pending">backend validation pending</dd>
+            </div>
+            <div>
+              <dt>selectedRunReference</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedRunReference"
+                  data-empty-label="none selected">none selected</dd>
+            </div>
+            <div>
+              <dt>existingRunLookupStatus</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="existingRunLookupStatus"
+                  data-empty-label="lookup required">lookup required</dd>
+            </div>
+            <div>
+              <dt>existingRunLookupMessage</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="existingRunLookupMessage"
+                  data-empty-label="load existing runs through governed service">load existing runs through governed service</dd>
+            </div>
+            <div>
+              <dt>objectStorageNamespace</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageNamespace"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>objectStorageBucket</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageBucket"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>objectStorageObjectName</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageObjectName"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>objectStorageRegion</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageRegion"
+                  data-empty-label="not selected">not selected</dd>
+            </div>
+            <div>
+              <dt>objectStorageValidationStatus</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageValidationStatus"
+                  data-empty-label="validation required">validation required</dd>
+            </div>
+            <div>
+              <dt>objectStorageValidationMessage</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="objectStorageValidationMessage"
+                  data-empty-label="validate Object Storage source through governed service">validate Object Storage source through governed service</dd>
+            </div>
+            <div>
+              <dt>selectedLocalFolderValidationMessages</dt>
+              <dd data-dashboard-state-input="true"
+                  data-dashboard-state-key="selectedLocalFolderValidationMessages"
+                  data-empty-label="none">none</dd>
+            </div>
+          </dl>
+          </details>
+        </section>
+
+        <a href="#phase7cm-source-intake-panel"
+           class="phase7-governed-action-control"
+           data-phase7-action-control="true"
+           data-screen-id="index_source_mode"
+           data-action-type="source_selection_handoff"
+           data-workflow-type="index_source_selection_handoff"
+           data-target-type="source_selection"
+           data-target-id="index-source-selection"
+           data-required-selection-key="selectedSourceMode"
+           data-execution-mode="request_record_only"
+           data-runtime-influence-granted="false"
+           data-phase4i-mutation-allowed="false"
+           data-phase8-behavior="false"
+           data-direct-truth-mutation-allowed="false"
+           data-run-analysis-coupling="false"
+           data-action-enabled-state="disabled-no-selection"
+           data-action-payload="{escape(action_payload, quote=True)}"
+           aria-disabled="true">
+          <strong data-phase7-source-submit-label="true">Submit Local Folder Source Handoff</strong>
+          <span>
+            Submits the selected source through the governed workflow service.
+            Disabled until the selected source and validation requirements are
+            satisfied.
+          </span>
+        </a>
+
+        <div class="phase7-governed-action-status"
+             data-phase7-action-result-panel="true"
+             data-phase7-action-status="waiting"
+             data-phase7-request-id-target="true"
+             data-phase7-audit-status-area="true">
+          Waiting for a valid source selection. After submit, this panel shows
+          success/failure, Request ID, Audit record, and the next step.
+        </div>
+
+        <p class="meta phase7cm-next-step-note">
+          Next step after an accepted request:
+          <a class="inline-nav-hint" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">Open Screen 3</a>
+          to continue governed re-analysis with the accepted source context.
+        </p>
+      </section>
     """
 
 
@@ -2210,16 +4219,20 @@ def _render_index_object_storage_config_panel() -> str:
     )
 
     return f"""
-      <!-- Phase 7BS Object Storage Configuration Status: metadata validation only. -->
-      <section class="card secondary index-object-storage-config-panel"
+      <!-- Phase 7BS Object Storage Configuration Status: metadata validation historical evidence. -->
+      <details class="card secondary index-object-storage-config-panel phase7-legacy-boundary-details"
                id="index-object-storage-config-panel"
                data-phase="7BS"
-               data-preview-only="true">
-        <div class="section-kicker">Phase 7BS</div>
+               data-preview-only="true"
+               data-phase7-legacy-context="true">
+        <summary>Historical Phase Boundary Evidence - Legacy 7BS Object Storage Configuration</summary>
+        <div class="section-kicker">Legacy 7BS Read-Only Context</div>
         <h2>Object Storage Configuration Status</h2>
         <p class="meta">
-          Object Storage configuration validation is metadata validation only.
-          No credential validation is performed. No object storage call is made.
+          Historical 7BS boundary evidence only. This collapsed legacy context
+          is not the current 7CM source-selection workflow. Object Storage
+          configuration validation is metadata validation only here. No
+          credential validation is performed. No object storage call is made.
           No bucket listing occurs. No object download occurs.
         </p>
         <div class="mini-pill-group index-object-storage-config-safety-labels">
@@ -2228,6 +4241,7 @@ def _render_index_object_storage_config_panel() -> str:
         <div class="index-object-storage-config-grid">
           <article class="index-object-storage-config-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Configuration Metadata</strong>
             <dl class="index-object-storage-config-flags">
@@ -2241,6 +4255,7 @@ def _render_index_object_storage_config_panel() -> str:
           </article>
           <article class="index-object-storage-config-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Validation Result</strong>
             <dl class="index-object-storage-config-flags">
@@ -2254,6 +4269,7 @@ def _render_index_object_storage_config_panel() -> str:
           </article>
           <article class="index-object-storage-config-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Access Boundary</strong>
             <dl class="index-object-storage-config-flags">
@@ -2269,14 +4285,15 @@ def _render_index_object_storage_config_panel() -> str:
         <div class="supportive-panel index-object-storage-config-boundary-note">
           <strong>Summary</strong>
           <p>
-            Configurations: {summary.configured_count}. Valid metadata:
+            Historical configuration metadata count: {summary.configured_count}. Valid metadata:
             {summary.valid_metadata_count}. Incomplete:
             {summary.incomplete_count}. Unsupported credential modes:
-            {summary.unsupported_credential_count}. Object Storage access
-            remains blocked until a future phase.
+            {summary.unsupported_credential_count}. Use the current 7CM
+            source-selection request above for operational source handoff;
+            this legacy evidence does not perform Object Storage access.
           </p>
         </div>
-      </section>
+      </details>
     """
 
 
@@ -2308,17 +4325,22 @@ def _render_index_screen3_handoff_panel() -> str:
     )
 
     return f"""
-      <!-- Phase 7BT Index to Screen 3 Handoff Preview: metadata-only. -->
-      <section class="card secondary index-screen3-handoff-panel"
+      <!-- Phase 7BT Index to Screen 3 Handoff Preview: metadata-only historical evidence. -->
+      <details class="card secondary index-screen3-handoff-panel phase7-legacy-boundary-details"
                id="index-screen3-handoff-panel"
                data-phase="7BT"
-               data-preview-only="true">
-        <div class="section-kicker">Phase 7BT</div>
+               data-preview-only="true"
+               data-phase7-legacy-context="true">
+        <summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 3 Handoff Preview</summary>
+        <div class="section-kicker">Legacy 7BT Read-Only Context</div>
         <h2>Index to Screen 3 Selection Handoff Preview</h2>
         <p class="meta">
-          Handoff is metadata-only in this phase. No handoff is performed. No
-          Screen 3 state is updated. No backend request is created. No source
-          access occurs.
+          Historical 7BT boundary evidence only. This collapsed legacy context
+          is not the current 7CM source-selection workflow. Use the current
+          7CM governed source-selection handoff panel above to submit active
+          governed request intake. In this legacy evidence only, handoff is
+          metadata-only, no Screen 3 state is updated, no backend request is
+          created, and no source access occurs.
         </p>
         <div class="mini-pill-group index-screen3-handoff-safety-labels">
           {safety_label_html}
@@ -2326,6 +4348,7 @@ def _render_index_screen3_handoff_panel() -> str:
         <div class="index-screen3-handoff-grid">
           <article class="index-screen3-handoff-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Handoff Candidate</strong>
             <dl class="index-screen3-handoff-flags">
@@ -2338,6 +4361,7 @@ def _render_index_screen3_handoff_panel() -> str:
           </article>
           <article class="index-screen3-handoff-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Safety State</strong>
             <dl class="index-screen3-handoff-flags">
@@ -2350,6 +4374,7 @@ def _render_index_screen3_handoff_panel() -> str:
           </article>
           <article class="index-screen3-handoff-card disabled-preview-only"
                    data-preview-only="true"
+                   data-phase7-legacy-context="true"
                    aria-disabled="true">
             <strong>Access Boundary</strong>
             <dl class="index-screen3-handoff-flags">
@@ -2364,12 +4389,13 @@ def _render_index_screen3_handoff_panel() -> str:
         <div class="supportive-panel index-screen3-handoff-boundary-note">
           <strong>Future next step</strong>
           <p>
-            Screen 3 selection handoff remains a future controlled workflow.
-            Active handoff, backend request creation, object storage access,
-            source intake, EM Extract, and Phase 8 sizing/TCO are not implemented.
+            This legacy 7BT panel records the prior metadata-only boundary. The
+            current 7CM handoff creates a governed request record through the
+            workflow bridge. EM Extract and Phase 8 sizing/TCO remain future
+            and are not implemented.
           </p>
         </div>
-      </section>
+      </details>
     """
 
 
@@ -2413,6 +4439,7 @@ def _render_index_source_status_panel() -> str:
             <article class="index-source-status-card disabled-preview-only"
                      data-source-mode="{escape(status.source_mode)}"
                      data-preview-only="true"
+                     data-phase7-legacy-context="true"
                      aria-disabled="true">
               <div class="index-source-status-card-header">
                 <strong>{escape(status.display_name)}</strong>
@@ -2435,17 +4462,20 @@ def _render_index_source_status_panel() -> str:
         )
 
     return f"""
-      <!-- Phase 7BR Source Status Panel: preview-only, no source access. -->
-      <section class="card secondary index-source-status-panel"
+      <!-- Phase 7BR Source Status Panel: preview-only historical evidence. -->
+      <details class="card secondary index-source-status-panel phase7-legacy-boundary-details"
                id="index-source-status-panel"
                data-phase="7BR"
-               data-preview-only="true">
-        <div class="section-kicker">Phase 7BR</div>
+               data-preview-only="true"
+               data-phase7-legacy-context="true">
+        <summary>Historical Phase Boundary Evidence - Legacy 7BR Source Status</summary>
+        <div class="section-kicker">Legacy 7BR Read-Only Context</div>
         <h2>Source Status</h2>
         <p class="meta">
-          Source status is not source access. No files are read. No object
-          storage calls are made. No DB lookup is made. No run_analysis.py call
-          is made. Execution and handoff remain unsupported in this phase.
+          Historical 7BR source-status evidence only. This collapsed legacy
+          context is not the current 7CM source-selection workflow. No files
+          are read. No object storage calls are made. No DB lookup is made.
+          No run_analysis.py call is made from this legacy panel.
         </p>
         <div class="mini-pill-group index-source-status-safety-labels">
           {safety_label_html}
@@ -2473,12 +4503,12 @@ def _render_index_source_status_panel() -> str:
           <strong>Boundary</strong>
           <p>
             Object storage configuration is metadata-only here and belongs to
-            future 7BS validation. No Screen 3 handoff is implemented until
-            future 7BT. future_em_extract remains a Phase 8 placeholder.
-            Phase 8 sizing/TCO is not implemented.
+            7BS validation history. Use the current 7CM source-selection
+            workflow above for governed source handoff. future_em_extract
+            remains a Phase 8 placeholder. Phase 8 sizing/TCO is not implemented.
           </p>
         </div>
-      </section>
+      </details>
     """
 
 
@@ -2526,6 +4556,7 @@ def _render_index_source_mode_entry_preview() -> str:
             <article class="index-source-mode-entry-card disabled-preview-only"
                      data-source-mode="{escape(entry.source_mode)}"
                      data-preview-only="true"
+                     data-phase7-legacy-context="true"
                      aria-disabled="true">
               <div>
                 <strong>{escape(entry.display_name)}</strong>
@@ -2545,7 +4576,8 @@ def _render_index_source_mode_entry_preview() -> str:
                       class="index-source-mode-entry-control preview-only"
                       aria-disabled="true"
                       data-disabled="true"
-                      data-preview-only="true">
+                      data-preview-only="true"
+                      data-phase7-legacy-context="true">
                 Preview only
               </div>
             </article>
@@ -2553,17 +4585,20 @@ def _render_index_source_mode_entry_preview() -> str:
         )
 
     return f"""
-      <!-- Phase 7BQ Index Source Mode Entry: preview-only, no execution. -->
-      <section class="card secondary index-source-mode-entry-panel"
+      <!-- Phase 7BQ Index Source Mode Entry: preview-only historical evidence. -->
+      <details class="card secondary index-source-mode-entry-panel phase7-legacy-boundary-details"
                id="index-source-mode-entry-panel"
                data-phase="7BQ"
-               data-preview-only="true">
-        <div class="section-kicker">Phase 7BQ</div>
+               data-preview-only="true"
+               data-phase7-legacy-context="true">
+        <summary>Historical Phase Boundary Evidence - Legacy 7BQ Source Mode Entry</summary>
+        <div class="section-kicker">Legacy 7BQ Read-Only Context</div>
         <h2>Source Mode Entry</h2>
         <p class="meta">
-          Index source mode entry is preview-only. Source selection is not execution.
-          No files are read. No object storage calls are made. No DB lookup is made.
-          No run_analysis.py call is made. No Screen 3 handoff is implemented.
+          Historical 7BQ source-mode preview evidence only. This collapsed
+          legacy context is not the current 7CM source-selection workflow. No
+          files are read. No object storage calls are made. No DB lookup is
+          made. No run_analysis.py call is made from this legacy panel.
         </p>
         <div class="mini-pill-group index-source-mode-entry-safety-labels">
           {safety_label_html}
@@ -2576,10 +4611,11 @@ def _render_index_source_mode_entry_preview() -> str:
           <p>
             future_em_extract is placeholder only. EM Extract implementation
             belongs to Phase 8. Phase 8 sizing/TCO is not implemented.
-            Handoff and execution remain disabled for all index entries.
+            Current 7CM source selection is handled by the operational panel
+            above; this legacy entry remains disabled/read-only.
           </p>
         </div>
-      </section>
+      </details>
     """
 
 
@@ -2587,16 +4623,24 @@ def _render_home_system_ux_sections() -> str:
     """Render static Screen 0 system explanation sections."""
 
     return """
-      <section class="card prominent pipeline-card">
+      <section class="card prominent pipeline-card phase7-dynamic-pipeline-card"
+               data-phase7-current-runtime-pipeline="true"
+               data-phase7-system-flow-dynamic="true">
         <div class="section-kicker">System Flow</div>
         <h2>AWR Intelligence Pipeline</h2>
         <p class="meta pipeline-intro">
-          Current mode: local AWR staging from <strong>data/input</strong>. The pipeline converts staged AWR files into deterministic diagnosis, governed memory, and dashboard evidence. Governed deterministic memory supports parser review, action/outcome tracking, feedback, approvals, and inactive knowledge artifacts without changing runtime decisions.
+          This panel follows the selected intake source mode. It shows the
+          current source mode, active source, source validation state, and
+          Screen 3 handoff target.<br>
+          Local development fallback:
+          <strong>data/input</strong>.
         </p>
 
         <div class="pipeline-mode-badge">
-          <span class="status-pill success">Current Mode: Local</span>
-          <span class="meta">Default source: data/input</span>
+          <span class="status-pill success" data-phase7-source-summary-card="pipeline_mode">Current source mode: Local folder / local staged AWR</span>
+          <span class="meta" data-phase7-source-summary-card="pipeline_active">Active source: data/input</span>
+          <span class="meta" data-phase7-source-summary-card="pipeline_validation">Current source validation: backend path validation pending</span>
+          <span class="meta" data-phase7-source-summary-card="pipeline_handoff">Current handoff target: Screen 3</span>
         </div>
 
         <div class="pipeline-lane">
@@ -2604,10 +4648,16 @@ def _render_home_system_ux_sections() -> str:
             <strong>Deterministic Runtime Pipeline</strong>
             <span>Authoritative truth generation</span>
           </div>
+          <p class="meta pipeline-boundary-note">
+            Source selection changes the governed handoff context only.
+            Deterministic parsing, scoring, decision, and recommendation remain
+            authoritative after the accepted backend workflow processes the
+            selected source.
+          </p>
           <div class="pipeline-flow runtime-flow" aria-label="Deterministic runtime pipeline">
             <div class="pipeline-node source-node">
               <span>Ingestion</span>
-              <small>Stages local AWR input and file inventory</small>
+              <small data-phase7-source-summary-card="pipeline_node_source">Local staged AWR source. Path: data/input.</small>
             </div>
 
             <div class="pipeline-node">
@@ -2642,7 +4692,7 @@ def _render_home_system_ux_sections() -> str:
           </div>
         </div>
 
-        <div class="pipeline-support-grid" aria-label="Phase 6 supporting visibility layers">
+        <div class="pipeline-support-grid" aria-label="Governed supporting visibility layers">
           <div class="pipeline-side-panel governed-memory-panel">
             <strong>Governed Memory</strong>
             <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing runtime decisions.</p>
@@ -2655,42 +4705,52 @@ def _render_home_system_ux_sections() -> str:
         </div>
       </section>
 
-      <section class="card secondary future-input-card">
-        <div class="section-kicker">Future Input Configuration</div>
-        <h2>AWR Source Configuration</h2>
+      <section class="card secondary future-input-card phase7-dynamic-source-context-card"
+               data-phase7-current-source-context="true"
+               data-phase7-source-configuration-reference="true">
+        <div class="section-kicker">Source Configuration</div>
+        <h2>Source Configuration Reference / Staging Context</h2>
         <p class="meta">
-          Current ingestion uses the local <strong>data/input</strong> staging directory. Future capability will allow users to choose where AWR files are staged before ingestion.
+          This panel reflects the currently selected source intake workflow.
+          Local development fallback: <strong>data/input</strong>. The browser
+          never reads local backend paths or Object Storage directly; selected
+          metadata is submitted through the governed workflow service.
         </p>
 
         <div class="future-input-layout">
           <div class="future-input-panel">
-            <h3>Source Type</h3>
-            <div class="source-option-row" aria-label="Future source type options">
-              <span class="source-option active">Local Path</span>
-              <span class="source-option">Object Storage</span>
-            </div>
+            <h3>Current Source Type</h3>
+            <p data-phase7-source-summary-card="config_type">Current source type: Local folder / local staged AWR</p>
           </div>
 
           <div class="future-input-panel">
-            <h3>File Path / Location</h3>
-            <input class="future-input-field" type="text" value="data/input" readonly aria-label="Future AWR input location">
-            <div class="meta input-note">
-              Future examples: /data/awr/ or object://bucket/path
-            </div>
+            <h3>Current Source Location</h3>
+            <p data-phase7-source-summary-card="config_location">Current source location: data/input</p>
           </div>
 
           <div class="future-input-panel">
-            <h3>Object Storage Positioning</h3>
-            <p>
-              Object storage is planned as a centralized staging source for AWR replay, audit, and historical analysis.
-            </p>
+            <h3>Current Source Metadata</h3>
+            <p data-phase7-source-summary-card="config_candidates">Candidate AWR files: 0; .out files: 0; samples: none</p>
+          </div>
+
+          <div class="future-input-panel">
+            <h3>Current Source Validation</h3>
+            <p data-phase7-source-summary-card="config_validation">Current source validation: backend path validation pending</p>
+          </div>
+
+          <div class="future-input-panel">
+            <h3>Current Handoff Status</h3>
+            <p data-phase7-source-summary-card="config_handoff">Current handoff status: Choose a folder or use backend path fallback.</p>
           </div>
         </div>
 
         <div class="supportive-panel future-note">
-          <strong>Phase-safe note</strong>
+          <strong>Runtime safety note</strong>
           <p>
-            This control is informational only in the current dashboard. It does not change ingestion behavior or backend configuration.
+            Object Storage is handled by governed backend validation, not
+            browser-side bucket access. Enterprise Manager extracts, sizing,
+            TCO, and what-if advisory remain outside this source-intake
+            workflow.
           </p>
         </div>
       </section>
@@ -2764,16 +4824,19 @@ def _render_home_system_ux_sections() -> str:
       </section>
 
       <section class="card secondary memory-explainer-card">
-        <div class="section-kicker">Phase 6</div>
+        <div class="section-kicker">Governed Memory</div>
         <h2>Governed Memory &amp; Semantic Recall</h2>
         <p class="meta">
-          Phase 6 captures governed deterministic memory such as runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts. Semantic recall operates outside the deterministic runtime truth path. Semantic recall provides optional reviewer-assist context only and cannot modify scoring, posture, recommendations, approvals, or dashboard truth.
+          Governed memory preserves analysis runs, recommendations, actions,
+          outcomes, feedback, parser unknowns, approvals, and knowledge
+          artifacts. Semantic recall provides optional reviewer-assist context
+          outside deterministic runtime truth generation.
         </p>
 
         <div class="memory-capability-grid">
           <div class="memory-capability">
             <strong>Run Tracking</strong>
-            <span>Stores each analysis run and Phase 4I output.</span>
+            <span>Stores each analysis run and authoritative output.</span>
           </div>
 
           <div class="memory-capability">
@@ -2798,12 +4861,15 @@ def _render_home_system_ux_sections() -> str:
 
           <div class="memory-capability">
             <strong>Parser Unknowns</strong>
-            <span>Captures unmapped parser signals for approval workflow.</span>
+            <span>Captures unmapped parser signals for governed review.</span>
           </div>
         </div>
 
         <p class="meta phase7-boundary-note">
-          Autonomous learning, adaptive runtime behavior, semantic runtime influence, and self-modifying governance remain deferred to future Phase 7 research.
+          Governed memory and semantic recall support review, traceability, and
+          learning workflows without directly changing deterministic scoring,
+          decision posture, recommendations, approvals, or dashboard truth.
+          Runtime influence remains gated, auditable, and denied by default.
         </p>
       </section>
     """
@@ -11768,6 +13834,22 @@ def _shared_page_styles() -> str:
       margin-top: 0;
       margin-bottom: 8px;
     }
+    .ai-explanation-card h2 {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .ai-explanation-card .chart-support-note {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .ai-explanation-card .info-box strong {
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .ai-explanation-card .info-box div {
+      font-size: 13px;
+      line-height: 1.45;
+    }
     .section-kicker {
       color: var(--accent);
       font-size: 12px;
@@ -13623,6 +15705,9 @@ def _shared_page_styles() -> str:
       display: inline-flex;
       align-items: center;
       opacity: 0.85;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .pipeline-flow {
@@ -13657,6 +15742,12 @@ def _shared_page_styles() -> str:
     .pipeline-lane-header span {
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .pipeline-boundary-note {
+      margin: 8px 0 0;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .pipeline-node {
@@ -13702,6 +15793,9 @@ def _shared_page_styles() -> str:
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .pipeline-node.source-node {
@@ -13769,6 +15863,311 @@ def _shared_page_styles() -> str:
       margin-top: 14px;
       padding-top: 12px;
       border-top: 1px solid rgba(159, 176, 199, 0.16);
+    }
+
+    .phase7-governed-action-panel {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(16, 28, 45, 0.74);
+    }
+
+    .phase7cm-source-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .phase7cm-source-card {
+      display: grid;
+      gap: 8px;
+      min-height: 124px;
+      padding: 14px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      background: rgba(11, 20, 34, 0.68);
+    }
+
+    .phase7cm-source-card:hover,
+    .phase7cm-source-card:focus,
+    .phase7cm-source-card.is-selected,
+    .phase7cm-source-card[data-selected="true"] {
+      border-color: rgba(90, 209, 255, 0.72);
+      outline: none;
+    }
+
+    .phase7cm-source-card strong {
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .phase7cm-source-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .phase7cm-source-config-panel {
+      margin: 14px 0;
+    }
+
+    .phase7cm-source-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 1180px) {
+      .phase7cm-source-config-grid[data-active-source-mode="object_storage"] {
+        grid-template-columns:
+          minmax(160px, 1fr)
+          minmax(180px, 1fr)
+          minmax(260px, 1.4fr)
+          minmax(150px, 0.8fr)
+          minmax(190px, 0.9fr);
+        align-items: start;
+      }
+
+      .phase7cm-object-storage-config-field {
+        min-width: 0;
+      }
+
+      .phase7cm-object-storage-config-field .phase7cm-service-button {
+        width: 100%;
+      }
+    }
+
+    .phase7cm-source-config-field {
+      display: grid;
+      gap: 7px;
+      padding: 12px;
+      border: 1px solid rgba(159, 176, 199, 0.20);
+      border-radius: 10px;
+      background: rgba(11, 20, 34, 0.58);
+    }
+
+    .phase7cm-source-config-field[hidden] {
+      display: none;
+    }
+
+    .phase7cm-source-config-field span {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .phase7cm-source-config-field input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--text);
+      background: rgba(8, 16, 28, 0.78);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .phase7cm-picker-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid rgba(90, 209, 255, 0.38);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(90, 209, 255, 0.12);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .phase7cm-picker-button:hover,
+    .phase7cm-picker-button:focus {
+      border-color: rgba(90, 209, 255, 0.72);
+    }
+
+    .phase7cm-service-button {
+      width: fit-content;
+      min-height: 36px;
+      border: 1px solid rgba(102, 187, 106, 0.38);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      background: rgba(102, 187, 106, 0.12);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .phase7cm-service-button:hover,
+    .phase7cm-service-button:focus {
+      border-color: rgba(102, 187, 106, 0.72);
+      outline: none;
+    }
+
+    .phase7cm-source-config-field select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--text);
+      background: rgba(8, 16, 28, 0.78);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .phase7cm-source-picker-input {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .phase7cm-source-config-field small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .phase7cm-source-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .phase7cm-source-summary-card {
+      border: 1px solid rgba(90, 209, 255, 0.20);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(11, 20, 34, 0.56);
+    }
+
+    .phase7cm-source-summary-card strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .phase7cm-source-summary-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .phase7cm-source-metadata-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 8px;
+      margin: 12px 0 0;
+    }
+
+    .phase7cm-source-metadata-summary div {
+      padding: 9px 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 8px;
+      background: rgba(11, 20, 34, 0.52);
+    }
+
+    .phase7cm-source-metadata-summary dt {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .phase7cm-source-metadata-summary dd {
+      margin: 4px 0 0;
+      color: var(--text);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .phase7-legacy-boundary-details summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 800;
+      list-style: none;
+    }
+
+    .phase7-legacy-boundary-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .phase7-governed-action-control {
+      display: grid;
+      gap: 8px;
+      min-height: 104px;
+      padding: 14px;
+      border: 1px solid rgba(90, 209, 255, 0.30);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text);
+      background: rgba(11, 20, 34, 0.72);
+    }
+
+    .phase7-governed-action-control:hover,
+    .phase7-governed-action-control:focus {
+      border-color: rgba(90, 209, 255, 0.72);
+      outline: none;
+    }
+
+    .phase7-governed-action-control strong {
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .phase7-governed-action-control span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .phase7-governed-action-status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.52);
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
+    .phase7-governed-action-status[data-phase7-action-status="accepted"] {
+      color: #effbef;
+      border-color: rgba(102, 187, 106, 0.42);
+    }
+
+    .phase7-governed-action-status[data-phase7-action-status="failed"] {
+      color: #fff4f4;
+      border-color: rgba(255, 107, 107, 0.42);
+    }
+
+    .phase7cm-next-step-note {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .future-input-layout {
@@ -14099,6 +16498,36 @@ def _shared_page_styles() -> str:
       margin-bottom: 10px;
     }
 
+    .phase7-dynamic-source-context-card h2 {
+      font-size: 18px;
+    }
+
+    .phase7-dynamic-source-context-card > .meta {
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .phase7-dynamic-source-context-card .future-input-panel h3 {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      line-height: 1.35;
+    }
+
+    .phase7-dynamic-source-context-card .future-note strong {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .phase7-dynamic-source-context-card .future-input-panel p,
+    .phase7-dynamic-source-context-card .future-note p {
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .source-option-row {
       display: flex;
       flex-wrap: wrap;
@@ -14177,7 +16606,7 @@ def _shared_page_styles() -> str:
 
     .agent-card p {
       margin: 0;
-      color: var(--muted);
+      color: var(--text);
       font-size: 13px;
     }
 
@@ -14822,6 +17251,34 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
     }}
     .ai-explanation-grid {{
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }}
+    .ai-explanation-card h2 {{
+      font-size: 18px;
+      line-height: 1.25;
+    }}
+    .ai-explanation-card .chart-support-note {{
+      font-size: 13px;
+      line-height: 1.45;
+    }}
+    .ai-explanation-card .info-box strong {{
+      font-size: 12px;
+      line-height: 1.35;
+    }}
+    .ai-explanation-card .info-box div {{
+      font-size: 13px;
+      line-height: 1.45;
+    }}
+    .card:has(.ai-explanation-grid) h2 {{
+      font-size: 18px;
+    }}
+    .card:has(.ai-explanation-grid) > .chart-support-note {{
+      font-size: 12px;
+      line-height: 1.45;
+    }}
+    .ai-explanation-grid .info-box strong,
+    .ai-explanation-grid .info-box div {{
+      font-size: 12px;
+      line-height: 1.45;
     }}
     .ai-explanation-grid .info-box:nth-child(5) {{
       grid-column: 1 / -1;

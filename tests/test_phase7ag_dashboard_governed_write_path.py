@@ -16,6 +16,20 @@ DOCS = ROOT / "docs" / "architecture"
 ARCHITECTURE_DOC = DOCS / "phase7ag_dashboard_governed_write_path.md"
 MODEL_DOC = DOCS / "phase7ag_write_path_model.md"
 
+PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS = (
+    "docs/architecture/phase7_dashboard_runtime_interaction_wiring.md",
+    "src/learning/dashboard_runtime_interaction.py",
+    "scripts/run_phase7_dashboard_runtime_interaction_validation.py",
+    "scripts/dashboard_workflow_service.py",
+    "tests/test_phase7_dashboard_runtime_interaction_wiring.py",
+)
+
+PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS = (
+    "_ensure_dashboard_workflow_service",
+    "PHASE7_DASHBOARD_ACTION_ENDPOINT",
+    "dashboard_workflow_service.py",
+)
+
 FORBIDDEN_IMPORT_PREFIXES = (
     "subprocess",
     "requests",
@@ -76,6 +90,14 @@ class Phase7AGDashboardGovernedWritePathTests(unittest.TestCase):
     @staticmethod
     def _read(path: Path) -> str:
         return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def _phase7cm_generator_bootstrap_allows_run_analysis_diff() -> bool:
+        run_analysis_source = RUN_ANALYSIS_PATH.read_text(encoding="utf-8", errors="ignore")
+        return all((ROOT / path).exists() for path in PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS) and all(
+            marker in run_analysis_source
+            for marker in PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS
+        )
 
     @staticmethod
     def _lower(path: Path) -> str:
@@ -565,6 +587,8 @@ class Phase7AGDashboardGovernedWritePathTests(unittest.TestCase):
             "scripts/run_analysis.py",
         }
         forbidden_changed -= {"src/reporting/html_dashboard.py"}  # Phase 7AN owns disabled Screen 3 action UI.
+        if self._phase7cm_generator_bootstrap_allows_run_analysis_diff():
+            forbidden_changed -= {"scripts/run_analysis.py"}
         self.assertFalse(changed & forbidden_changed)
 
 

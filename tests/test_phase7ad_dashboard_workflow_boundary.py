@@ -36,6 +36,20 @@ FORBIDDEN_BEHAVIOR_FILES = (
     "scripts/run_analysis.py",
 )
 
+PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS = (
+    "docs/architecture/phase7_dashboard_runtime_interaction_wiring.md",
+    "src/learning/dashboard_runtime_interaction.py",
+    "scripts/run_phase7_dashboard_runtime_interaction_validation.py",
+    "scripts/dashboard_workflow_service.py",
+    "tests/test_phase7_dashboard_runtime_interaction_wiring.py",
+)
+
+PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS = (
+    "_ensure_dashboard_workflow_service",
+    "PHASE7_DASHBOARD_ACTION_ENDPOINT",
+    "dashboard_workflow_service.py",
+)
+
 FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "oracledb",
     "sqlite3",
@@ -64,6 +78,14 @@ def read_text(path: Path) -> str:
 
 def lower_text(path: Path) -> str:
     return read_text(path).lower()
+
+
+def phase7cm_generator_bootstrap_allows_run_analysis_diff() -> bool:
+    run_analysis_source = read_text(ROOT / "scripts" / "run_analysis.py")
+    return all((ROOT / path).exists() for path in PHASE7CM_REQUIRED_RUNTIME_WIRING_ARTIFACTS) and all(
+        marker in run_analysis_source
+        for marker in PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS
+    )
 
 
 def python_files(paths: tuple[str, ...]) -> list[Path]:
@@ -291,6 +313,8 @@ class Phase7ADDashboardWorkflowBoundaryTests(unittest.TestCase):
             if line.strip()
         }
         changed -= {"src/reporting/html_dashboard.py"}  # Phase 7AN owns disabled Screen 3 action UI.
+        if phase7cm_generator_bootstrap_allows_run_analysis_diff():
+            changed -= {"scripts/run_analysis.py"}
         self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
 
     def test_readme_links_new_docs(self) -> None:

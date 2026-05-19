@@ -251,7 +251,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
             "index_source_selection_runtime_workflow",
             self.payload["scope"],
         )
-        self.assertIn("7CN Screen 1", self.payload["deferred_screens"][0])
+        self.assertIn("7CO Screen 2", self.payload["deferred_screens"][0])
         self.assertIn("7CT cross-screen", self.payload["deferred_screens"][-1])
 
     def test_index_source_card_selection_state_keys_are_supported(self) -> None:

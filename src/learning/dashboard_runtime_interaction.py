@@ -156,6 +156,8 @@ class DashboardRuntimeActionRequest:
             )
         if self.screen_id == "index_source_mode" and self.action_type == "source_selection_handoff":
             _validate_index_source_selection_payload(self.payload)
+        if self.screen_id == "screen_1":
+            _validate_screen1_parser_governance_payload(self)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -485,6 +487,128 @@ def validate_object_storage_source(
         "phase4i_mutated": False,
         "phase8_behavior": False,
     }
+
+
+SCREEN1_PARSER_GOVERNANCE_TARGETS: dict[str, tuple[str, ...]] = {
+    "parser_unknown_review": ("parser_unknown_signal",),
+    "parser_unknown_approve": ("parser_unknown_signal",),
+    "parser_unknown_reject": ("parser_unknown_signal",),
+    "parser_unknown_classify": ("parser_unknown_signal",),
+    "parser_unknown_route": ("parser_unknown_signal",),
+    "parser_mapping_approval_intent": (
+        "parser_mapping_candidate",
+        "parser_governance_item",
+    ),
+    "knowledge_artifact_review": ("knowledge_artifact",),
+    "knowledge_artifact_approve": ("knowledge_artifact",),
+    "knowledge_artifact_reject": ("knowledge_artifact",),
+}
+
+
+SCREEN1_GOVERNANCE_STATUSES = (
+    "queued_request",
+    "review_requested",
+    "classification_requested",
+    "route_requested",
+    "approval_requested",
+    "rejection_requested",
+    "mapping_intent_requested",
+)
+
+
+def _validate_screen1_parser_governance_payload(
+    request: DashboardRuntimeActionRequest,
+) -> None:
+    payload = request.payload
+    allowed_targets = SCREEN1_PARSER_GOVERNANCE_TARGETS.get(request.action_type)
+    if not allowed_targets:
+        raise DashboardRuntimeInteractionError(
+            f"action_type {request.action_type!r} is not a Screen 1 parser governance action"
+        )
+    if request.target_type not in allowed_targets:
+        raise DashboardRuntimeInteractionError(
+            f"target_type for {request.action_type} must be one of {', '.join(allowed_targets)}"
+        )
+    _require_text(request.actor_id, "actor_id")
+    _require_text(request.target_id, "target_id")
+    if request.target_id in {"dashboard-target", "screen1-parser-governance"}:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 parser governance requests require a selected target id"
+        )
+    _require_text(
+        payload.get("reviewer_actor_id") or payload.get("actor_id") or request.actor_id,
+        "payload.reviewer_actor_id",
+    )
+    _require_supported(
+        str(payload.get("governance_status") or ""),
+        SCREEN1_GOVERNANCE_STATUSES,
+        "payload.governance_status",
+    )
+    _require_text(payload.get("governance_intent"), "payload.governance_intent")
+    selected_value = str(
+        payload.get("selected_context_value")
+        or payload.get("screen1_selected_target_id")
+        or ""
+    ).strip()
+    if not selected_value:
+        raise DashboardRuntimeInteractionError(
+            "payload.selected_context_value must identify the selected Screen 1 target"
+        )
+    if request.action_type.startswith("parser_unknown_"):
+        _require_text(
+            payload.get("selectedUnknownSignal") or selected_value,
+            "payload.selectedUnknownSignal",
+        )
+    if request.action_type == "parser_mapping_approval_intent":
+        _require_text(
+            payload.get("selectedGovernanceItem") or payload.get("selectedUnknownSignal") or selected_value,
+            "payload.selectedGovernanceItem",
+        )
+    if request.action_type.startswith("knowledge_artifact_"):
+        _require_text(
+            payload.get("selectedArtifact") or selected_value,
+            "payload.selectedArtifact",
+        )
+    forbidden_true_fields = (
+        "parser_output_mutation_requested",
+        "parser_output_mutation_allowed",
+        "direct_parser_mutation_allowed",
+        "parser_mapping_created",
+        "parser_candidate_created",
+        "parser_backlog_item_created",
+        "classification_persisted",
+        "artifact_approved",
+        "artifact_rejected",
+        "artifact_revision_persisted",
+        "materialization_created",
+        "phase4i_mutation_requested",
+        "phase4i_mutation_allowed",
+        "runtime_activation_requested",
+        "runtime_activation_granted",
+        "runtime_influence_granted",
+        "future_run_influence_granted",
+        "future_run_influence_active",
+        "browser_db_query_attempted",
+        "browser_object_storage_access_attempted",
+        "browser_file_read_attempted",
+        "run_analysis_coupling",
+        "phase8_behavior",
+        "em_extract_attempted",
+    )
+    for field_name in forbidden_true_fields:
+        if payload.get(field_name) is True:
+            raise DashboardRuntimeInteractionError(
+                f"payload.{field_name} must remain false for Screen 1 parser governance"
+            )
+    if payload.get("future_run_influence_gated") is False:
+        raise DashboardRuntimeInteractionError(
+            "payload.future_run_influence_gated must remain true"
+        )
+    if str(payload.get("target_screen") or "").strip() not in {"", "screen_1"}:
+        raise DashboardRuntimeInteractionError(
+            "payload.target_screen must remain screen_1 for Screen 1 parser governance"
+        )
+    _reject_source_secret_fields(payload)
 
 
 def build_request_id(
@@ -838,6 +962,8 @@ def _validate_index_source_selection_payload(payload: dict[str, Any]) -> None:
 
 def _source_summary_for_request(request: DashboardRuntimeActionRequest) -> dict[str, Any]:
     if request.screen_id != "index_source_mode" or request.action_type != "source_selection_handoff":
+        if request.screen_id == "screen_1":
+            return _screen1_governance_summary_for_request(request)
         return {}
     payload = request.payload
     mode = str(
@@ -897,6 +1023,31 @@ def _source_summary_for_request(request: DashboardRuntimeActionRequest) -> dict[
     summary["validation_status"] = _source_validation_status(payload)
     summary["validation_messages"] = _source_validation_messages(payload)
     return summary
+
+
+def _screen1_governance_summary_for_request(
+    request: DashboardRuntimeActionRequest,
+) -> dict[str, Any]:
+    payload = request.payload
+    return {
+        "screen_id": request.screen_id,
+        "action_type": request.action_type,
+        "workflow_type": request.workflow_type,
+        "target_type": request.target_type,
+        "target_id": request.target_id,
+        "selected_context_key": payload.get("selected_context_key"),
+        "selected_context_value": payload.get("selected_context_value"),
+        "selectedUnknownSignal": payload.get("selectedUnknownSignal"),
+        "selectedGovernanceItem": payload.get("selectedGovernanceItem"),
+        "selectedKnowledgeRequest": payload.get("selectedKnowledgeRequest"),
+        "selectedArtifact": payload.get("selectedArtifact"),
+        "governance_intent": payload.get("governance_intent"),
+        "governance_status": payload.get("governance_status"),
+        "future_run_influence_gated": payload.get("future_run_influence_gated"),
+        "runtime_activation_granted": False,
+        "phase4i_mutation_allowed": False,
+        "parser_output_mutation_allowed": False,
+    }
 
 
 def _reject_source_secret_fields(payload: dict[str, Any]) -> None:

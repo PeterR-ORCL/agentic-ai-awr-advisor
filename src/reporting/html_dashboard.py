@@ -70,6 +70,17 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedGovernanceItem",
     "selectedKnowledgeRequest",
     "selectedArtifact",
+    "selectedAwrFieldCandidate",
+    "selectedParserBacklogItem",
+    "screen1GovernanceDecision",
+    "screen1GovernanceReviewer",
+    "screen1GovernanceRationale",
+    "screen1FieldMappingDecision",
+    "screen1FieldMappingReviewer",
+    "screen1FieldMappingRationale",
+    "screen1BacklogDecision",
+    "screen1BacklogReviewer",
+    "screen1BacklogRationale",
     "selectedSemanticItem",
     "selectedLearningCandidate",
     "selectedLearningCandidateStatus",
@@ -904,9 +915,10 @@ def _render_dashboard_interactivity_boundary_comment() -> str:
     return f"""  <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
-    Browser-side selection state only. Read-only. Exploratory only.
-    Read-only selection state. Exploratory only. No backend writes.
-    No API calls. URL hash/localStorage state is not authoritative truth.
+    Browser-side selection state is not authoritative truth.
+    Browser actions may submit governed workflow requests through the workflow service.
+    Browser actions do not directly mutate parser output, governance truth,
+    Phase 4I, diagnostics, scoring, recommendations, or runtime eligibility.
     Does not change diagnostic truth. Does not change historical truth.
     Does not change recommendation truth. Does not change parser output.
     Does not change governance state. Does not change candidate status.
@@ -931,9 +943,11 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       // Dashboard Interactivity Foundation (Phase 7H.1).
       // Cross-Screen Selection Propagation (Phase 7H.8).
-      // Browser-side selection state only. Read-only. Exploratory only.
+      // Browser-side selection state is not authoritative truth.
       // URL hash/localStorage state is not authoritative truth.
-      // No backend writes. No API calls. No network calls.
+      // Browser actions may submit governed workflow requests through the workflow service.
+      // Browser actions do not directly mutate parser output, governance truth,
+      // Phase 4I, diagnostics, scoring, recommendations, or runtime eligibility.
       // Does not change diagnostic truth. Does not change historical truth.
       // Does not change recommendation truth. Does not change parser output.
       // Does not change governance state. Does not change candidate status.
@@ -1327,8 +1341,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           .map(function (key) { return key + ': ' + safeState[key]; });
         const safetyText = (
           'Cross-Screen Selection Propagation. ' +
-          'Browser-side selection state only. Read-only. Exploratory only. ' +
-          'No backend writes. No API calls. ' +
+          'Browser-side selection state is not authoritative truth. ' +
+          'Governed workflow requests may be submitted through the workflow service. ' +
           'URL hash/localStorage state is not authoritative truth. ' +
           'Does not change diagnostic truth. Does not change historical truth. ' +
           'Does not change recommendation truth. Does not change parser output. ' +
@@ -1605,6 +1619,618 @@ def _build_dashboard_interactivity_javascript() -> str:
         return 'Source configuration incomplete. Missing: ' + missing.join(', ') + '.';
       }
 
+      function isScreen1ParserGovernanceAction(element) {
+        const screenId = safeStateValue(element.getAttribute('data-screen-id'));
+        const actionType = safeStateValue(element.getAttribute('data-action-type'));
+        return (
+          screenId === 'screen_1' &&
+          (
+            actionType.indexOf('parser_') === 0 ||
+            actionType.indexOf('knowledge_artifact_') === 0
+          )
+        );
+      }
+
+      function screen1SelectedTargetId(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        return (
+          safeState.selectedUnknownSignal ||
+          safeState.selectedGovernanceItem ||
+          safeState.selectedArtifact ||
+          safeState.selectedKnowledgeRequest ||
+          safeState.selectedParserDiagnostic ||
+          safeState.selectedParserSection ||
+          ''
+        );
+      }
+
+      function screen1SelectedTargetType(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (safeState.selectedUnknownSignal) {
+          return 'Parser unknown signal';
+        }
+        if (safeState.selectedGovernanceItem) {
+          return 'Parser governance item';
+        }
+        if (safeState.selectedArtifact) {
+          return 'Knowledge artifact';
+        }
+        if (safeState.selectedKnowledgeRequest) {
+          return 'Knowledge request';
+        }
+        if (safeState.selectedParserDiagnostic) {
+          return 'Parser diagnostic';
+        }
+        if (safeState.selectedParserSection) {
+          return 'Parser section';
+        }
+        return 'No Screen 1 target selected';
+      }
+
+      function screen1EvidenceSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (safeState.selectedUnknownSignal) {
+          return 'Selected parser unknown context is available for governed review. Classification, routing, and mapping requests are queued only.';
+        }
+        if (safeState.selectedGovernanceItem) {
+          return 'Selected parser governance row is available for a governed mapping approval intent. Parser mappings are not applied directly.';
+        }
+        if (safeState.selectedArtifact) {
+          return 'Selected knowledge artifact is available for governed artifact review. Artifact approval does not activate runtime influence.';
+        }
+        if (safeState.selectedKnowledgeRequest) {
+          return 'Selected knowledge request is review context only. Use governed artifact review only after a concrete artifact is selected.';
+        }
+        if (safeState.selectedParserDiagnostic || safeState.selectedParserSection) {
+          return 'Selected parser context is evidence for review only. Choose an unknown signal or governance item before submitting a governed request.';
+        }
+        return 'Select a parser unknown signal, governance item, or knowledge artifact target from Screen 1 context.';
+      }
+
+      function screen1ActionMessage(element, state, missing) {
+        const actionType = safeStateValue(element.getAttribute('data-action-type'));
+        const selectedTarget = screen1SelectedTargetId(state);
+        if (missing.length) {
+          return 'Select the required Screen 1 target before submitting. Missing: ' + missing.join(', ') + '.';
+        }
+        if (actionType === 'parser_unknown_review') {
+          return 'Ready to submit governed parser unknown review request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_classify') {
+          return 'Ready to submit governed parser unknown classification request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_route') {
+          return 'Ready to submit governed parser unknown routing request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_approve') {
+          return 'Ready to submit governed parser unknown approval request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_reject') {
+          return 'Ready to submit governed parser unknown rejection request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_mapping_approval_intent') {
+          return 'Ready to submit governed parser mapping approval intent for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_review') {
+          return 'Ready to submit governed knowledge artifact review request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_approve') {
+          return 'Ready to submit governed knowledge artifact approval request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_reject') {
+          return 'Ready to submit governed knowledge artifact rejection request for ' + selectedTarget + '.';
+        }
+        return 'Ready to submit governed Screen 1 parser governance request for ' + selectedTarget + '.';
+      }
+
+      function screen1MissingFields(element, state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const key = requiredSelectionKey(element);
+        const missing = [];
+        if (key && !safeState[key]) {
+          missing.push(key);
+        }
+        if (!screen1SelectedTargetId(safeState)) {
+          missing.push('selectedScreen1GovernanceTarget');
+        }
+        return missing;
+      }
+
+      function updateScreen1ParserGovernanceSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const selectedTarget = screen1SelectedTargetId(safeState);
+        const targetType = screen1SelectedTargetType(safeState);
+        const values = {
+          active_target: selectedTarget || 'Select a parser unknown signal, governance item, or knowledge artifact.',
+          target_type: targetType,
+          evidence: screen1EvidenceSummary(safeState),
+          governance_action: selectedTarget
+            ? 'Choose a governed action below. The request is queued for audit/review only.'
+            : 'Select a target before choosing a governed action.',
+          governance_status: selectedTarget
+            ? 'Ready for governed request submission.'
+            : 'Missing governed review target.',
+          safety_status: 'Future-run influence is gated, auditable, and not active by default. Parser output, Phase 4I, diagnostic truth, scoring, and recommendation truth are not mutated.',
+          request_result: 'After submit, this panel shows accepted/rejected status, request ID, and audit record.'
+        };
+        Object.keys(values).forEach(function (key) {
+          scope.querySelectorAll('[data-screen1-governance-card="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+            element.setAttribute('data-screen1-governance-status', selectedTarget ? 'target-selected' : 'missing-target');
+          });
+        });
+      }
+
+      function screen1FieldDecisionConfig(decision) {
+        const normalizedDecision = safeStateValue(decision);
+        if (normalizedDecision === 'Approve field mapping') {
+          return {
+            actionType: 'awr_field_mapping_approve',
+            workflowType: 'screen1_awr_field_mapping_approve',
+            governanceIntent: 'approve governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_approval_requested',
+            nextStep: 'Pending governed parser mapping materialization/runtime eligibility.'
+          };
+        }
+        if (normalizedDecision === 'Reject field mapping') {
+          return {
+            actionType: 'awr_field_mapping_reject',
+            workflowType: 'screen1_awr_field_mapping_reject',
+            governanceIntent: 'reject governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_rejection_requested',
+            nextStep: 'Candidate closed/rejected for governed review.'
+          };
+        }
+        if (normalizedDecision === 'Edit mapping request') {
+          return {
+            actionType: 'awr_field_mapping_revision_request',
+            workflowType: 'screen1_awr_field_mapping_revision_request',
+            governanceIntent: 'request governed AWR field mapping revision',
+            governanceStatus: 'field_mapping_revision_requested',
+            nextStep: 'Mapping revision required.'
+          };
+        }
+        if (normalizedDecision === 'Defer / keep in backlog') {
+          return {
+            actionType: 'awr_field_mapping_defer',
+            workflowType: 'screen1_awr_field_mapping_defer',
+            governanceIntent: 'defer governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_defer_requested',
+            nextStep: 'Candidate remains in backlog.'
+          };
+        }
+        if (normalizedDecision === 'Mark not useful / ignore') {
+          return {
+            actionType: 'awr_field_mapping_ignore',
+            workflowType: 'screen1_awr_field_mapping_ignore',
+            governanceIntent: 'mark governed AWR field mapping candidate not useful',
+            governanceStatus: 'field_mapping_ignore_requested',
+            nextStep: 'Candidate marked not useful for governed review.'
+          };
+        }
+        return {
+          actionType: 'awr_field_mapping_review',
+          workflowType: 'screen1_awr_field_mapping_review',
+          governanceIntent: 'review governed AWR field mapping candidate',
+          governanceStatus: 'field_review_requested',
+          nextStep: 'Queued for governed review. No runtime behavior changed.'
+        };
+      }
+
+      function screen1BacklogDecisionConfig(decision) {
+        const normalizedDecision = safeStateValue(decision);
+        if (normalizedDecision === 'Reject / close') {
+          return {
+            actionType: 'parser_unknown_reject',
+            workflowType: 'screen1_parser_unknown_reject',
+            governanceIntent: 'reject or close parser signal backlog item',
+            governanceStatus: 'rejection_requested',
+            nextStep: 'Queued for governed review. No runtime behavior changed.'
+          };
+        }
+        if (normalizedDecision === 'Defer / keep in backlog') {
+          return {
+            actionType: 'parser_unknown_route',
+            workflowType: 'screen1_parser_unknown_route',
+            governanceIntent: 'defer parser signal in governed backlog',
+            governanceStatus: 'route_requested',
+            nextStep: 'Queued for governed review. No runtime behavior changed.'
+          };
+        }
+        return {
+          actionType: 'parser_unknown_review',
+          workflowType: 'screen1_parser_unknown_review',
+          governanceIntent: 'review parser signal backlog decision',
+          governanceStatus: 'review_requested',
+          nextStep: 'Queued for governed review. No runtime behavior changed.'
+        };
+      }
+
+      function screen1FieldPanelState(panel) {
+        const state = readDashboardState();
+        const decision = panel ? panel.querySelector('[data-screen1-field-decision]') : null;
+        const reviewer = panel ? panel.querySelector('[data-screen1-field-reviewer]') : null;
+        const rationale = panel ? panel.querySelector('[data-screen1-field-rationale]') : null;
+        const selectedId = safeStateValue(state.selectedAwrFieldCandidate || '');
+        const selectedItem = selectedId && panel
+          ? panel.querySelector('[data-screen1-field-candidate-id="' + selectedId + '"]')
+          : null;
+        return {
+          targetId: selectedId,
+          selected: Boolean(selectedItem),
+          selectedItem: selectedItem,
+          decision: decision ? safeStateValue(decision.value || '') : '',
+          reviewer: reviewer ? safeStateValue(reviewer.value || '') : '',
+          rationale: rationale ? safeStateValue(rationale.value || '') : ''
+        };
+      }
+
+      function screen1BacklogPanelState(panel) {
+        const state = readDashboardState();
+        const decision = panel ? panel.querySelector('[data-screen1-backlog-decision]') : null;
+        const reviewer = panel ? panel.querySelector('[data-screen1-backlog-reviewer]') : null;
+        const rationale = panel ? panel.querySelector('[data-screen1-backlog-rationale]') : null;
+        const targetId = 'optional-io-section-absence';
+        const selected = state.selectedParserBacklogItem === targetId;
+        return {
+          targetId: targetId,
+          selected: selected,
+          decision: decision ? safeStateValue(decision.value || '') : '',
+          reviewer: reviewer ? safeStateValue(reviewer.value || '') : '',
+          rationale: rationale ? safeStateValue(rationale.value || '') : ''
+        };
+      }
+
+      function missingScreen1Requirements(formState, itemLabel) {
+        const missing = [];
+        if (!formState.selected) {
+          missing.push(itemLabel);
+        }
+        if (!formState.decision) {
+          missing.push('choose decision');
+        }
+        if (!formState.reviewer) {
+          missing.push('enter reviewer');
+        }
+        if (!formState.rationale) {
+          missing.push('enter rationale');
+        }
+        return missing;
+      }
+
+      function updateScreen1FieldReviewWorkflow(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen1-field-review="true"]').forEach(function (panel) {
+          const formState = screen1FieldPanelState(panel);
+          panel.querySelectorAll('[data-screen1-field-candidate]').forEach(function (item) {
+            const isSelected = formState.selected &&
+              safeStateValue(item.getAttribute('data-screen1-field-candidate-id')) === formState.targetId;
+            item.classList.toggle('is-selected', isSelected);
+            item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            item.setAttribute('data-selected', isSelected ? 'true' : 'false');
+          });
+          panel.querySelectorAll('[data-screen1-selected-field-status]').forEach(function (element) {
+            if (!formState.selected || !formState.selectedItem) {
+              element.textContent = 'Select a field candidate to review.';
+              return;
+            }
+            const fieldName = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-name'));
+            const section = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-section'));
+            const proposed = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-proposed'));
+            element.textContent = 'Selected candidate field: ' + fieldName + '. Source section: ' + section +
+              '. Proposed mapping: ' + proposed + '.';
+          });
+          const missing = missingScreen1Requirements(formState, 'select field');
+          const ready = missing.length === 0;
+          panel.querySelectorAll('[data-screen1-field-requirements]').forEach(function (element) {
+            element.textContent = ready
+              ? 'Ready: field, decision, reviewer, and rationale are complete.'
+              : 'Required: ' + missing.join(', ') + '.';
+          });
+          panel.querySelectorAll('[data-screen1-field-submit]').forEach(function (button) {
+            button.disabled = !ready;
+            button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            button.setAttribute('data-action-enabled-state', ready ? 'enabled-form-valid' : 'disabled-missing-required-fields');
+          });
+        });
+      }
+
+      function updateScreen1BacklogWorkflow(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen1-backlog-review="true"]').forEach(function (panel) {
+          const formState = screen1BacklogPanelState(panel);
+          panel.querySelectorAll('[data-screen1-backlog-item]').forEach(function (item) {
+            item.classList.toggle('is-selected', formState.selected);
+            item.setAttribute('aria-selected', formState.selected ? 'true' : 'false');
+            item.setAttribute('data-selected', formState.selected ? 'true' : 'false');
+          });
+          panel.querySelectorAll('[data-screen1-selected-backlog-status]').forEach(function (element) {
+            element.textContent = formState.selected
+              ? 'Selected backlog item: Optional IO section absence. Count: 24 persisted review records. Current run unknowns: 0.'
+              : 'Select the backlog item to review.';
+          });
+          const missing = missingScreen1Requirements(formState, 'select backlog item');
+          const ready = missing.length === 0;
+          panel.querySelectorAll('[data-screen1-backlog-requirements]').forEach(function (element) {
+            element.textContent = ready
+              ? 'Ready: backlog item, decision, reviewer, and rationale are complete.'
+              : 'Required: ' + missing.join(', ') + '.';
+          });
+          panel.querySelectorAll('[data-screen1-backlog-submit]').forEach(function (button) {
+            button.disabled = !ready;
+            button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            button.setAttribute('data-action-enabled-state', ready ? 'enabled-form-valid' : 'disabled-missing-required-fields');
+          });
+        });
+      }
+
+      function updateScreen1GovernanceReviewWorkflow(root) {
+        updateScreen1FieldReviewWorkflow(root);
+        updateScreen1BacklogWorkflow(root);
+      }
+
+      function handleScreen1GovernanceReviewItemClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const fieldItem = event.target.closest('[data-screen1-field-candidate]');
+        if (fieldItem) {
+          event.preventDefault();
+          const targetId = safeStateValue(fieldItem.getAttribute('data-screen1-field-candidate-id'));
+          if (!targetId) {
+            return;
+          }
+          const nextState = readDashboardState();
+          nextState.selectedAwrFieldCandidate = targetId;
+          writeDashboardState(nextState);
+          updateScreen1GovernanceReviewWorkflow(document);
+          return;
+        }
+        const backlogItem = event.target.closest('[data-screen1-backlog-item]');
+        if (backlogItem) {
+          event.preventDefault();
+          const nextState = readDashboardState();
+          nextState.selectedParserBacklogItem = 'optional-io-section-absence';
+          nextState.selectedUnknownSignal = 'optional-io-section-absence';
+          writeDashboardState(nextState);
+          updateScreen1GovernanceReviewWorkflow(document);
+        }
+      }
+
+      function handleScreen1GovernanceFormInput(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const field = event.target.closest(
+          '[data-screen1-field-decision], [data-screen1-field-reviewer], [data-screen1-field-rationale], ' +
+          '[data-screen1-backlog-decision], [data-screen1-backlog-reviewer], [data-screen1-backlog-rationale]'
+        );
+        if (!field) {
+          return;
+        }
+        const panel = field.closest('[data-screen1-field-review="true"], [data-screen1-backlog-review="true"]') || document;
+        updateScreen1GovernanceReviewWorkflow(panel);
+      }
+
+      function screen1DisplayMessage(message) {
+        return safeStateValue(message)
+          .replace(/Phase 7CM validation/g, 'governed validation')
+          .replace(/Phase 7 validation/g, 'governed validation');
+      }
+
+      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message) {
+        if (!panel) {
+          return;
+        }
+        const values = {
+          status: screen1DisplayMessage(status || message || 'Waiting for submission.'),
+          request_id: requestId || 'Not issued',
+          audit_id: auditReference || 'Not issued',
+          decision: decision || 'Not submitted',
+          runtime_influence: 'Not active',
+          next_step: nextStep || 'Select a decision and submit a governed request.'
+        };
+        Object.keys(values).forEach(function (key) {
+          panel.querySelectorAll('[data-screen1-governance-result="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+          });
+        });
+      }
+
+      function buildScreen1GovernanceReviewRequest(panel) {
+        const isFieldPanel = Boolean(panel && panel.matches('[data-screen1-field-review="true"]'));
+        const formState = isFieldPanel ? screen1FieldPanelState(panel) : screen1BacklogPanelState(panel);
+        const config = isFieldPanel
+          ? screen1FieldDecisionConfig(formState.decision)
+          : screen1BacklogDecisionConfig(formState.decision);
+        const requestedAt = new Date().toISOString();
+        const targetId = formState.targetId || (isFieldPanel ? 'missing-field-candidate' : 'optional-io-section-absence');
+        const selectedItem = formState.selectedItem || null;
+        const candidateFieldName = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-name'))
+          : '';
+        const sourceSection = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-section'))
+          : '';
+        const proposedMapping = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-proposed'))
+          : '';
+        return {
+          screen_id: 'screen_1',
+          action_type: config.actionType,
+          workflow_type: config.workflowType,
+          actor_id: formState.reviewer,
+          requested_at: requestedAt,
+          target_type: isFieldPanel ? 'parser_mapping_candidate' : 'parser_unknown_signal',
+          target_id: targetId,
+          governance_mode: 'governed_request',
+          execution_mode: 'request_record_only',
+          runtime_influence_granted: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          direct_truth_mutation_allowed: false,
+          run_analysis_coupling: false,
+          payload: {
+            reviewer_actor_id: formState.reviewer,
+            governance_intent: config.governanceIntent,
+            governance_status: config.governanceStatus,
+            selected_context_key: isFieldPanel ? 'selectedAwrFieldCandidate' : 'selectedParserBacklogItem',
+            selected_context_value: targetId,
+            selectedUnknownSignal: isFieldPanel ? '' : targetId,
+            selectedGovernanceItem: isFieldPanel ? targetId : '',
+            selectedAwrFieldCandidate: isFieldPanel ? targetId : '',
+            selectedParserBacklogItem: isFieldPanel ? '' : targetId,
+            target_screen: 'screen_1',
+            submitted_decision: formState.decision,
+            reviewer_rationale: formState.rationale,
+            review_item_label: isFieldPanel
+              ? (candidateFieldName || 'AWR field mapping candidate')
+              : 'Optional IO section absence',
+            candidate_field_name: candidateFieldName,
+            source_awr_section: sourceSection,
+            proposed_normalized_field_name: proposedMapping,
+            persisted_review_record_count: isFieldPanel ? 0 : 24,
+            current_run_unknown_count: isFieldPanel ? null : 0,
+            runtime_influence_state: 'not_active',
+            future_run_influence_gated: true,
+            future_run_influence_granted: false,
+            future_run_influence_active: false,
+            runtime_activation_requested: false,
+            runtime_activation_granted: false,
+            parser_output_mutation_requested: false,
+            parser_output_mutation_allowed: false,
+            direct_parser_mutation_allowed: false,
+            parser_mapping_created: false,
+            parser_candidate_created: false,
+            parser_backlog_item_created: false,
+            classification_persisted: false,
+            artifact_approved: false,
+            artifact_rejected: false,
+            artifact_revision_persisted: false,
+            materialization_created: false,
+            phase4i_mutation_requested: false,
+            phase4i_mutation_allowed: false,
+            phase8_behavior: false,
+            em_extract_attempted: false,
+            browser_db_query_attempted: false,
+            browser_object_storage_access_attempted: false,
+            browser_file_read_attempted: false,
+            browser_parsing_performed: false,
+            run_analysis_coupling: false
+          },
+          future_run_influence_metadata: {
+            requires_governed_materialization: true,
+            requires_runtime_eligibility: true,
+            future_runs_only: true,
+            runtime_activation_granted: false,
+            runtime_influence_granted: false,
+            immediate_runtime_mutation: false,
+            parser_mutation_applied: false,
+            scoring_mutation_applied: false,
+            recommendation_truth_mutation_applied: false
+          }
+        };
+      }
+
+      function handleScreen1GovernanceSubmitClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const button = event.target.closest('[data-screen1-field-submit], [data-screen1-backlog-submit]');
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        const panel = button.closest('[data-screen1-field-review="true"], [data-screen1-backlog-review="true"]');
+        const isFieldPanel = Boolean(panel && panel.matches('[data-screen1-field-review="true"]'));
+        const formState = isFieldPanel ? screen1FieldPanelState(panel) : screen1BacklogPanelState(panel);
+        const config = isFieldPanel
+          ? screen1FieldDecisionConfig(formState.decision)
+          : screen1BacklogDecisionConfig(formState.decision);
+        if (button.disabled || !formState.selected || !formState.decision || !formState.reviewer || !formState.rationale) {
+          setScreen1GovernanceReviewResult(
+            panel,
+            'Missing required fields.',
+            '',
+            '',
+            formState.decision,
+            isFieldPanel
+              ? 'Select the field candidate, decision, reviewer, and rationale before submitting.'
+              : 'Select the backlog item, decision, reviewer, and rationale before submitting.',
+            ''
+          );
+          return;
+        }
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          setScreen1GovernanceReviewResult(
+            panel,
+            'Service unavailable.',
+            '',
+            '',
+            formState.decision,
+            'Start the governed workflow service and retry.',
+            ''
+          );
+          return;
+        }
+        setScreen1GovernanceReviewResult(
+          panel,
+          'Submitting governed review request.',
+          '',
+          '',
+          formState.decision,
+          'Waiting for governed workflow service response.',
+          ''
+        );
+        requestBridge(PHASE7_ACTION_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildScreen1GovernanceReviewRequest(panel))
+        })
+          .then(function (response) {
+            return response.json().then(function (payload) {
+              return { ok: response.ok, payload: payload };
+            });
+          })
+          .then(function (result) {
+            const payload = result.payload || {};
+            if (!result.ok || payload.status !== 'accepted') {
+              setScreen1GovernanceReviewResult(
+                panel,
+                'Rejected: ' + screen1DisplayMessage(payload.message || 'Governed review request was rejected.'),
+                payload.request_id || '',
+                payload.audit_reference || '',
+                formState.decision,
+                'Review the rejected reason and adjust the request.',
+                payload.message || ''
+              );
+              return;
+            }
+            setScreen1GovernanceReviewResult(
+              panel,
+              'Accepted',
+              payload.request_id || '',
+              payload.audit_reference || '',
+              formState.decision,
+              config.nextStep,
+              payload.message || ''
+            );
+          })
+          .catch(function () {
+            setScreen1GovernanceReviewResult(
+              panel,
+              'Service unavailable.',
+              '',
+              '',
+              formState.decision,
+              'Start scripts/dashboard_workflow_service.py and retry.',
+              ''
+            );
+          });
+      }
+
       function updateSourceWorkflowSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -1675,6 +2301,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
           element.textContent = sourceSubmitLabel(safeState.selectedSourceMode || '');
         });
+        updateScreen1ParserGovernanceSummary(safeState, scope);
       }
 
       function isStaticDashboardHref(rawHref) {
@@ -1740,6 +2367,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
+        updateScreen1GovernanceReviewWorkflow(root);
         updatePhase7ActionEnablement(safeState, root);
         preserveDashboardStateInNavigation(safeState, root);
         return safeState;
@@ -1960,6 +2588,13 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function actionStatusElement(element) {
+        const actionCard = element.closest('.screen1-governance-action-card');
+        if (actionCard) {
+          const cardTarget = actionCard.querySelector('[data-phase7-action-status]');
+          if (cardTarget) {
+            return cardTarget;
+          }
+        }
         const panel = element.closest('[data-phase7-runtime-interaction-panel]');
         if (!panel) {
           return null;
@@ -2073,15 +2708,20 @@ def _build_dashboard_interactivity_javascript() -> str:
           const missingSourceFields = isIndexSourceSelectionAction(element)
             ? sourceSelectionMissingFields(safeState)
             : [];
-          const enabled = (!key || Boolean(selectedValue)) && missingSourceFields.length === 0;
+          const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
+            ? screen1MissingFields(element, safeState)
+            : [];
+          const actionMissingFields = missingSourceFields.concat(missingScreen1Fields);
+          const enabled = (!key || Boolean(selectedValue)) && actionMissingFields.length === 0;
           element.classList.toggle('is-disabled', !enabled);
           element.setAttribute('aria-disabled', enabled ? 'false' : 'true');
           element.setAttribute(
             'data-action-enabled-state',
-            enabled ? 'enabled-selection-valid' : 'disabled-missing-source-selection'
+            enabled ? 'enabled-selection-valid' : 'disabled-missing-required-selection'
           );
           element.setAttribute('data-selected-context-value', selectedValue || '');
           element.setAttribute('data-missing-source-fields', missingSourceFields.join(','));
+          element.setAttribute('data-missing-screen1-fields', missingScreen1Fields.join(','));
           const status = actionStatusElement(element);
           if (status) {
             const currentStatus = status.getAttribute('data-phase7-action-status') || '';
@@ -2089,14 +2729,19 @@ def _build_dashboard_interactivity_javascript() -> str:
               setActionStatus(
                 element,
                 'ready',
-                sourceActionStateMessage(safeState, missingSourceFields) +
-                  ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                isScreen1ParserGovernanceAction(element)
+                  ? screen1ActionMessage(element, safeState, missingScreen1Fields) +
+                    ' Nothing has been mutated; governed request/audit record is created only after submit.'
+                  : sourceActionStateMessage(safeState, missingSourceFields) +
+                    ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
               );
             } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
               setActionStatus(
                 element,
-                'disabled-missing-source-selection',
-                sourceActionStateMessage(safeState, missingSourceFields)
+                'disabled-missing-required-selection',
+                isScreen1ParserGovernanceAction(element)
+                  ? screen1ActionMessage(element, safeState, missingScreen1Fields)
+                  : sourceActionStateMessage(safeState, missingSourceFields)
               );
             }
           }
@@ -2114,8 +2759,11 @@ def _build_dashboard_interactivity_javascript() -> str:
         const dashboardState = readDashboardState();
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
+        const isScreen1Action = isScreen1ParserGovernanceAction(element);
+        const requestPrefix = isScreen1Action ? 'PHASE7CN' : 'PHASE7CM';
+        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : 'phase7cm';
         const idempotencyKey = [
-          'phase7cm',
+          idempotencyPrefix,
           screenId,
           actionType,
           selectedContextValue || targetId,
@@ -2123,7 +2771,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         ].join(':');
         return {
           request_id: [
-            'PHASE7CM',
+            requestPrefix,
             screenId,
             actionType,
             targetId,
@@ -2194,10 +2842,48 @@ def _build_dashboard_interactivity_javascript() -> str:
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
-            target_screen: 'screen3',
-            source_request_contract_version: '7CM.index_source_selection.v1',
+            target_screen: isScreen1Action ? 'screen_1' : 'screen3',
+            source_request_contract_version: isScreen1Action ? '' : '7CM.index_source_selection.v1',
+            screen1_parser_governance_contract_version: isScreen1Action
+              ? '7CN.screen1_parser_governance.v1'
+              : '',
+            screen1_selected_target_type: isScreen1Action
+              ? screen1SelectedTargetType(dashboardState)
+              : '',
+            screen1_selected_target_id: isScreen1Action ? selectedContextValue : '',
+            selectedUnknownSignal: dashboardState.selectedUnknownSignal || '',
+            selectedGovernanceItem: dashboardState.selectedGovernanceItem || '',
+            selectedKnowledgeRequest: dashboardState.selectedKnowledgeRequest || '',
+            selectedArtifact: dashboardState.selectedArtifact || '',
+            selectedParserSection: dashboardState.selectedParserSection || '',
+            selectedParserDiagnostic: dashboardState.selectedParserDiagnostic || '',
+            reviewer_actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
+            governance_intent: payload.governance_intent || (
+              isScreen1Action ? 'screen1_parser_governance_review' : ''
+            ),
+            governance_status: payload.governance_status || (
+              isScreen1Action ? 'review_requested' : ''
+            ),
+            future_run_influence_gated: true,
+            future_run_influence_granted: false,
+            future_run_influence_active: false,
+            runtime_activation_requested: false,
+            runtime_activation_granted: false,
+            parser_output_mutation_requested: false,
+            parser_output_mutation_allowed: false,
+            direct_parser_mutation_allowed: false,
+            parser_mapping_created: false,
+            parser_candidate_created: false,
+            parser_backlog_item_created: false,
+            classification_persisted: false,
+            artifact_approved: false,
+            artifact_rejected: false,
+            artifact_revision_persisted: false,
+            materialization_created: false,
+            phase4i_mutation_requested: false,
             awr_signature_validation: dashboardState.awrSignatureValidation || '',
             browser_parsing_performed: false,
+            browser_db_query_attempted: false,
             browser_file_read_attempted: false,
             browser_file_upload_performed: false,
             browser_object_storage_access_attempted: false,
@@ -2443,6 +3129,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         const dashboardState = readDashboardState();
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         if (selectedContextKey && !selectedContextValue) {
+          if (isScreen1ParserGovernanceAction(element)) {
+            setActionStatus(
+              element,
+              'disabled-no-selection',
+              screen1ActionMessage(element, dashboardState, [selectedContextKey])
+            );
+            return;
+          }
           setActionStatus(
             element,
             'disabled-no-selection',
@@ -2461,6 +3155,17 @@ def _build_dashboard_interactivity_javascript() -> str:
           );
           return;
         }
+        const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
+          ? screen1MissingFields(element, dashboardState)
+          : [];
+        if (missingScreen1Fields.length) {
+          setActionStatus(
+            element,
+            'disabled-missing-screen1-target',
+            screen1ActionMessage(element, dashboardState, missingScreen1Fields)
+          );
+          return;
+        }
         const requestBridge = window['fetch'];
         if (typeof requestBridge !== 'function') {
           setActionStatus(
@@ -2470,7 +3175,13 @@ def _build_dashboard_interactivity_javascript() -> str:
           );
           return;
         }
-        setActionStatus(element, 'pending', 'Submitting governed source-selection request...');
+        setActionStatus(
+          element,
+          'pending',
+          isScreen1ParserGovernanceAction(element)
+            ? 'Submitting governed Screen 1 parser governance request...'
+            : 'Submitting governed source-selection request...'
+        );
         requestBridge(PHASE7_ACTION_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2488,7 +3199,7 @@ def _build_dashboard_interactivity_javascript() -> str:
                 'failed',
                 result.payload && result.payload.message
                   ? result.payload.message
-                  : 'Governed source-selection request was rejected.'
+                  : 'Governed workflow request was rejected.'
               );
               return;
             }
@@ -2497,7 +3208,9 @@ def _build_dashboard_interactivity_javascript() -> str:
               'accepted',
               'Success. Request ID: ' + result.payload.request_id +
                 '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
-                '. Next step: open Screen 3.'
+                (isScreen1ParserGovernanceAction(element)
+                  ? '. Parser governance request is queued for governed review; runtime influence remains gated.'
+                  : '. Next step: open Screen 3.')
             );
           })
           .catch(function () {
@@ -2561,10 +3274,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         if (!dashboardInteractivityInitialized) {
           document.addEventListener('click', handleDashboardSelectableClick);
+          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
+          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
           document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleExistingRunLookupClick);
           document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);
+          document.addEventListener('input', handleScreen1GovernanceFormInput);
+          document.addEventListener('change', handleScreen1GovernanceFormInput);
           document.addEventListener('input', handleDashboardStateInput);
           document.addEventListener('change', handleDashboardStateInput);
           document.addEventListener('change', handlePhase7SourcePickerChange);
@@ -2850,6 +3567,9 @@ def _build_parser_governance_payload() -> dict[str, Any]:
     payload: dict[str, Any] = {
         "available": False,
         "items": [],
+        "field_mapping_candidates": [],
+        "knowledge_requests": [],
+        "knowledge_artifacts": [],
         "error": None,
     }
     try:
@@ -2890,6 +3610,134 @@ def _build_parser_governance_payload() -> dict[str, Any]:
                         }
                     )
                 payload["items"] = items
+                cursor.execute(
+                    """
+                    SELECT
+                      m.MAPPING_CANDIDATE_ID,
+                      m.UNKNOWN_SIGNAL_ID,
+                      m.PROPOSED_SECTION_TYPE,
+                      m.PROPOSED_DOMAIN,
+                      m.PROPOSED_METRIC_NAME,
+                      m.PROPOSED_MAPPING_JSON,
+                      m.APPROVAL_STATUS,
+                      u.SECTION_NAME,
+                      u.RAW_SAMPLE_TEXT,
+                      u.SOURCE_FILE_NAME,
+                      u.FREQUENCY_COUNT,
+                      u.REVIEW_STATUS
+                    FROM AWR_PARSER_MAPPING_CANDIDATE m
+                    JOIN AWR_UNKNOWN_SIGNAL_HISTORY u
+                      ON u.UNKNOWN_SIGNAL_ID = m.UNKNOWN_SIGNAL_ID
+                    ORDER BY m.MAPPING_CANDIDATE_ID ASC
+                    """
+                )
+                field_candidates = []
+                for row in cursor.fetchall():
+                    mapping_context = _memory_json_context(row[5])
+                    proposed_metric = row[4] or mapping_context.get("metric_name")
+                    source_section = row[7] or row[2] or mapping_context.get("section")
+                    proposed_field = (
+                        mapping_context.get("normalized_field_name")
+                        or mapping_context.get("target_field")
+                        or mapping_context.get("field_name")
+                        or proposed_metric
+                    )
+                    candidate_name = (
+                        mapping_context.get("candidate_field_name")
+                        or mapping_context.get("source_field")
+                        or proposed_metric
+                        or source_section
+                    )
+                    if not _has_display_value(candidate_name):
+                        continue
+                    field_candidates.append(
+                        {
+                            "candidate_id": row[0],
+                            "unknown_signal_id": row[1],
+                            "candidate_field_name": candidate_name,
+                            "source_awr_section": source_section,
+                            "sample_value": (
+                                mapping_context.get("sample_value")
+                                or mapping_context.get("example_value")
+                                or str(row[8] or "")[:140]
+                            ),
+                            "source_file": row[9],
+                            "report_count": row[10] or 1,
+                            "occurrence_count": row[10] or 1,
+                            "proposed_normalized_field_name": proposed_field,
+                            "proposed_parser_target": mapping_context.get("parser_target")
+                            or row[3]
+                            or row[2],
+                            "proposed_data_type": mapping_context.get("data_type")
+                            or mapping_context.get("type")
+                            or "Review required",
+                            "confidence_status": row[6] or row[11] or "Review needed",
+                            "recommended_action": "Review governed parser mapping candidate",
+                        }
+                    )
+                payload["field_mapping_candidates"] = field_candidates
+                cursor.execute(
+                    """
+                    SELECT
+                      REQUEST_ID,
+                      SOURCE_TYPE,
+                      SOURCE_ID,
+                      CANDIDATE_CLASSIFICATION,
+                      CANDIDATE_SUMMARY,
+                      APPROVAL_STATUS,
+                      APPROVED_BY,
+                      APPROVED_AT,
+                      CREATED_AT
+                    FROM AWR_KNOWLEDGE_UPDATE_REQUEST
+                    ORDER BY CREATED_AT DESC NULLS LAST
+                    FETCH FIRST 5 ROWS ONLY
+                    """
+                )
+                payload["knowledge_requests"] = [
+                    {
+                        "request_id": row[0],
+                        "source_type": row[1],
+                        "source_id": row[2],
+                        "candidate_classification": row[3],
+                        "candidate_summary": row[4],
+                        "approval_status": row[5],
+                        "approved_by": row[6],
+                        "approved_at": row[7],
+                        "created_at": row[8],
+                    }
+                    for row in cursor.fetchall()
+                ]
+                cursor.execute(
+                    """
+                    SELECT
+                      ARTIFACT_ID,
+                      REQUEST_ID,
+                      SOURCE_TYPE,
+                      SOURCE_ID,
+                      ARTIFACT_TYPE,
+                      ARTIFACT_CLASSIFICATION,
+                      ARTIFACT_SUMMARY,
+                      ACTIVATION_STATUS,
+                      CREATED_AT
+                    FROM AWR_KNOWLEDGE_ARTIFACT
+                    ORDER BY CREATED_AT DESC NULLS LAST
+                    FETCH FIRST 5 ROWS ONLY
+                    """
+                )
+                payload["knowledge_artifacts"] = [
+                    {
+                        "artifact_id": row[0],
+                        "request_id": row[1],
+                        "source_type": row[2],
+                        "source_id": row[3],
+                        "artifact_type": row[4],
+                        "artifact_classification": row[5],
+                        "artifact_summary": row[6],
+                        "activation_status": row[7],
+                        "created_at": row[8],
+                    }
+                    for row in cursor.fetchall()
+                ]
         finally:
             connection.close()
         payload["available"] = True
@@ -4883,27 +5731,1240 @@ def _render_screen_1_page(
 ) -> str:
     return f"""
     <div class="grid">
-      <!-- Screen 1 = intake / parse confidence / adaptation. -->
-      {_render_ingestion_screen(screen_model, parser_review_payload, report_data)}
-      {_render_screen1_governance_parser_exploration(
+      {_render_screen1_run_intake_report_section(screen_model)}
+      {_render_screen1_full_report_table_section(screen_model)}
+      {_render_screen1_parser_health_primary_section(
+          screen_model,
+          parser_review_payload or {},
+          report_data or {},
+      )}
+      {_render_screen1_parser_review_unknown_signals_section(
+          parser_review_payload or {},
+          report_data or {},
+          screen_model,
+      )}
+      {_render_screen1_parser_governance_runtime_workflow(
           screen_model,
           parser_review_payload or {},
           parser_governance_payload or {},
           report_data or {},
       )}
-      {_render_screen1_parser_unknown_review_preview_panel(
+      {_render_screen1_field_mapping_candidates_section(parser_governance_payload or {})}
+      {_render_screen1_knowledge_artifact_context_section(parser_governance_payload or {})}
+      {_render_screen1_historical_governance_evidence(
           screen_model,
           parser_review_payload or {},
-          report_data or {},
-      )}
-      {_render_screen1_knowledge_artifact_review_preview_panel(
-          screen_model,
           parser_governance_payload or {},
           report_data or {},
       )}
-      {_render_parser_review_section(parser_review_payload or {})}
-      {_render_parser_governance_review_section(parser_governance_payload or {})}
     </div>
+    """
+
+
+def _render_screen1_run_intake_report_section(screen_model: dict[str, Any]) -> str:
+    """Render the visible Screen 1 run/intake report as primary content."""
+
+    header = _to_dict(screen_model.get("header"))
+    intake_summary = _to_dict(screen_model.get("intake_summary"))
+    environment_context = _to_dict(screen_model.get("environment_context"))
+    db_ingestion = _to_dict(screen_model.get("db_ingestion"))
+    db_summary = _to_dict(db_ingestion.get("summary"))
+    selected_database_dbid = _join_compact_values(
+        [
+            environment_context.get("source_database"),
+            environment_context.get("dbid"),
+        ]
+    )
+
+    return f"""
+      <section class="card primary screen1-run-intake-report"
+               id="screen1-run-intake-report"
+               data-screen1-run-intake-report="true">
+        <div class="section-kicker">INGESTION</div>
+        <h2>Run / Intake Report</h2>
+        <div class="subgrid">
+          <section class="evidence-pane">
+            <h3>Run Summary</h3>
+            {_render_info_grid(
+                [
+                    ("Run Label / Generated Time", header.get("run_label")),
+                    ("Source Mode", header.get("source_mode")),
+                    ("Total Files", intake_summary.get("total_files")),
+                    ("Processed", intake_summary.get("processed")),
+                    ("Succeeded", intake_summary.get("succeeded")),
+                    ("Failed", intake_summary.get("failed")),
+                    ("Skipped", intake_summary.get("skipped")),
+                    ("Manifest / Dataset Status", intake_summary.get("manifest_status")),
+                ],
+                extra_class="intake-summary-grid",
+            )}
+          </section>
+          <section class="evidence-pane">
+            <h3>DB Load / Reuse</h3>
+            {_render_info_grid(
+                [
+                    ("DB Connectivity", db_summary.get("db_connectivity")),
+                    ("DB Load Mode", db_summary.get("db_load_mode")),
+                    ("Already Loaded", _db_ingestion_summary_value(db_summary, "already_loaded")),
+                    ("Newly Loaded", _db_ingestion_summary_value(db_summary, "newly_loaded")),
+                    ("Reused AWR IDs", _db_ingestion_summary_value(db_summary, "reused_awr_ids")),
+                    (
+                        "Feature Vectors Existing",
+                        _db_ingestion_summary_value(db_summary, "feature_vectors_existing"),
+                    ),
+                    (
+                        "Feature Vectors Created/Updated",
+                        _db_ingestion_summary_value(
+                            db_summary,
+                            "feature_vectors_created_updated",
+                        ),
+                    ),
+                    ("DB Similarity Ready", db_summary.get("db_similarity_ready")),
+                ],
+                extra_class="intake-summary-grid",
+            )}
+          </section>
+          <section class="evidence-pane">
+            <h3>Selected Scope</h3>
+            {_render_info_grid(
+                [
+                    ("Selected Database / DBID", selected_database_dbid),
+                    ("Host", environment_context.get("hostname")),
+                    ("Snapshot Start", environment_context.get("snapshot_start")),
+                    ("Snapshot End", environment_context.get("snapshot_end")),
+                    ("Last Snapshot", environment_context.get("last_snapshot")),
+                    (
+                        "Current Selected Scope",
+                        environment_context.get("selected_scope_topology")
+                        or environment_context.get("topology_detected"),
+                    ),
+                ],
+                extra_class="intake-summary-grid",
+            )}
+          </section>
+        </div>
+      </section>
+    """
+
+
+def _render_screen1_parser_health_primary_section(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    """Render compact parser health and parse-confidence context for operators."""
+
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    validation_notes = _to_dict(screen_model.get("validation_notes"))
+    validation_notes_html = _render_validation_note_summary(
+        validation_notes,
+        report_data,
+        screen_model,
+    )
+    return f"""
+      <section class="card secondary screen1-parser-health-panel" id="screen1-parser-health">
+        <div class="section-kicker">PARSER HEALTH</div>
+        <h2>Parse Confidence</h2>
+        <div class="subgrid">
+          <section class="half evidence-pane">
+            <h3>Runtime Parser Status</h3>
+            <div class="stack">
+              {_render_context_summary(
+                  {
+                      "summary": parse_confidence.get("adaptation_summary"),
+                      "items": [],
+                  },
+                  "items",
+                  "No parse confidence summary is available.",
+              )}
+              {_render_info_grid(
+                  [
+                      (
+                          "Parse Completeness Score",
+                          parse_confidence.get("parse_completeness_score"),
+                      ),
+                      ("Warnings", parse_confidence.get("warnings_count")),
+                      ("Sections Detected", parse_confidence.get("sections_detected")),
+                      ("Sections Missing", parse_confidence.get("sections_missing")),
+                      ("Runtime Parser Unknowns", parse_confidence.get("unknowns_captured")),
+                      (
+                          "Alias / Fallback Matching",
+                          parse_confidence.get("alias_fallback_matching"),
+                      ),
+                  ]
+              )}
+              <div class="meta context-note">
+                {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
+              </div>
+            </div>
+          </section>
+          <section class="half evidence-pane">
+            <h3>Validation Notes</h3>
+            {validation_notes_html}
+          </section>
+        </div>
+      </section>
+    """
+
+
+def _render_screen1_historical_governance_evidence(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    """Render legacy Screen 1 parser/governance evidence behind one closed section."""
+
+    return f"""
+      <details class="card secondary screen1-historical-evidence phase7-legacy-boundary-details"
+               id="screen1-historical-governance-evidence">
+        <summary>Historical / Debug Evidence</summary>
+        <p class="meta">
+          Historical read-only parser review and parser governance
+          visibility records are kept here for audit/debug context. They are not
+          the current parser governance workflow.
+        </p>
+        <div class="stack">
+          {_render_screen1_governance_parser_exploration(
+              screen_model,
+              parser_review_payload,
+              parser_governance_payload,
+              report_data,
+          )}
+          {_render_screen1_parser_unknown_review_preview_panel(
+              screen_model,
+              parser_review_payload,
+              report_data,
+          )}
+          {_render_screen1_knowledge_artifact_review_preview_panel(
+              screen_model,
+              parser_governance_payload,
+              report_data,
+          )}
+          {_render_parser_governance_review_section(parser_governance_payload)}
+        </div>
+      </details>
+    """
+
+
+def _render_screen1_full_report_table_section(screen_model: dict[str, Any]) -> str:
+    report_rows = screen_model.get("report_rows") or []
+    total_rows = len(report_rows)
+    return f"""
+      <section class="card secondary screen1-full-report-table"
+               id="screen1-full-report-table"
+               data-screen1-full-report-table="true">
+        <div class="section-kicker">REPORTS</div>
+        <h2>Full File / Report Table</h2>
+        <p class="meta">
+          Complete file-level intake table for all {_display_value(total_rows)}
+          report rows. This is operational intake evidence, not historical/debug
+          evidence.
+        </p>
+        {_render_screen1_full_report_table_compact(report_rows)}
+      </section>
+    """
+
+
+def _render_screen1_full_report_table_compact(report_rows: list[dict[str, Any]]) -> str:
+    """Render all Screen 1 report rows with compact merged operational columns."""
+
+    if not report_rows:
+        return _render_empty_item("No report rows are available.")
+
+    header_html = "".join(
+        f"<th>{escape(label)}</th>"
+        for label in [
+            "File Name",
+            "Parse / DB",
+            "AWR / Vector",
+            "DB / DBID",
+            "Host / Instance",
+            "Snapshot Window",
+            "Parser Notes",
+        ]
+    )
+    row_html = []
+    for row in report_rows:
+        row_dict = _to_dict(row)
+        parse_status = _display_value(row_dict.get("parse_status"))
+        db_status = (
+            _display_value(row_dict.get("db_status"))
+            if _has_display_value(row_dict.get("db_status"))
+            else "Not Checked"
+        )
+        vector_status = (
+            _display_value(row_dict.get("vector_status"))
+            if _has_display_value(row_dict.get("vector_status"))
+            else "Not Checked"
+        )
+        similarity = (
+            _display_value(row_dict.get("similarity_eligible"))
+            if _has_display_value(row_dict.get("similarity_eligible"))
+            else "Not Checked"
+        )
+        db_dbid = _join_compact_values(
+            [row_dict.get("db_name"), row_dict.get("dbid")]
+        ) or "Not Checked"
+        host_instance = _join_compact_values(
+            [row_dict.get("host_name"), row_dict.get("instance_name")]
+        ) or "Not Checked"
+        snapshot_window = _join_compact_values(
+            [row_dict.get("snapshot_begin"), row_dict.get("snapshot_end")]
+        ) or "Not Checked"
+        awr_id = (
+            _display_value(row_dict.get("awr_id"))
+            if _has_display_value(row_dict.get("awr_id"))
+            else "Not Checked"
+        )
+        parser_note = _normalize_screen1_validation_note_message(
+            _display_value(row_dict.get("parser_notes") or row_dict.get("validation_notes"))
+        )
+        row_html.append(
+            f"""
+            <tr data-screen1-full-report-row="true">
+              <td class="screen1-report-file">{escape(_display_value(row_dict.get("file_name")))}</td>
+              <td>
+                <div class="screen1-status-stack">
+                  <span class="status-pill {_status_pill_class(parse_status)}">{escape(parse_status)}</span>
+                  <span class="status-pill {_status_pill_class(db_status)}">{escape(db_status)}</span>
+                </div>
+              </td>
+              <td>
+                <strong>AWR ID:</strong> {escape(awr_id)}
+                <br><strong>Vector:</strong> {escape(vector_status)}
+                <br><strong>Similarity:</strong> {escape(similarity)}
+              </td>
+              <td>{escape(db_dbid)}</td>
+              <td>{escape(host_instance)}</td>
+              <td>{escape(snapshot_window)}</td>
+              <td class="screen1-report-parser-notes">{escape(parser_note)}</td>
+            </tr>
+            """
+        )
+    colgroup = """
+          <colgroup>
+            <col style="width: 18%">
+            <col style="width: 11%">
+            <col style="width: 14%">
+            <col style="width: 11%">
+            <col style="width: 11%">
+            <col style="width: 17%">
+            <col style="width: 18%">
+          </colgroup>
+    """
+    return (
+        '<div class="data-table-wrap screen1-full-report-table-wrap">'
+        '<table class="data-table screen1-full-report-table-compact" '
+        'data-screen1-full-report-table-compact="true">'
+        + colgroup
+        + "<thead><tr>"
+        + header_html
+        + "</tr></thead><tbody>"
+        + "".join(row_html)
+        + "</tbody></table></div>"
+    )
+
+
+def _render_screen1_parser_review_unknown_signals_section(
+    parser_review_payload: dict[str, Any],
+    report_data: dict[str, Any],
+    screen_model: dict[str, Any],
+) -> str:
+    """Render parser review and unknown-signal context as operational content."""
+
+    summary = _to_dict(parser_review_payload.get("summary"))
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    current_run_unknowns = _display_value(parse_confidence.get("unknowns_captured") or 0)
+    total = _display_value(summary.get("TOTAL") or summary.get("total") or 0)
+    new_count = _display_value(summary.get("NEW") or summary.get("new") or 0)
+    classified_count = _display_value(
+        summary.get("CLASSIFIED") or summary.get("classified") or 0
+    )
+    reviewed_count = _display_value(
+        summary.get("REVIEWED") or summary.get("reviewed") or 0
+    )
+    ignored_count = _display_value(summary.get("IGNORED") or summary.get("ignored") or 0)
+    patterns = [_to_dict(pattern) for pattern in _screen1_list(parser_review_payload.get("pattern_summary"))]
+    if patterns:
+        pattern_rows = []
+        for pattern in patterns[:5]:
+            section_name = _display_value(pattern.get("section_name"))
+            unknown_type = _display_value(pattern.get("unknown_type"))
+            count = _display_value(pattern.get("count"))
+            status = _display_value(
+                pattern.get("review_status")
+                or pattern.get("classification")
+                or pattern.get("status")
+                or "Review backlog"
+            )
+            pattern_rows.append(
+                f"""
+                <tr>
+                  <td>{escape(section_name)}</td>
+                  <td>{escape(unknown_type)}</td>
+                  <td>{escape(count)}</td>
+                  <td>{escape(status)}</td>
+                </tr>
+                """
+            )
+        pattern_table = (
+            '<div class="data-table-wrap">'
+            '<table class="data-table screen1-parser-review-summary-table">'
+            "<thead><tr>"
+            "<th>Signal / Section</th>"
+            "<th>Signal Type</th>"
+            "<th>Count</th>"
+            "<th>Review Status</th>"
+            "</tr></thead><tbody>"
+            + "".join(pattern_rows)
+            + "</tbody></table></div>"
+        )
+    else:
+        pattern_table = _render_empty_item("No persisted parser review signals are available.")
+
+    return f"""
+      <section class="card secondary screen1-parser-review-unknown-signals"
+               id="screen1-parser-review-unknown-signals"
+               data-screen1-parser-review-unknown-signals="true">
+        <div class="section-kicker">PARSER REVIEW</div>
+        <h2>Unknown Signals</h2>
+        <p class="meta">
+          Operational parser-review context distinguishes current runtime unknowns
+          from persisted review backlog records.
+        </p>
+        <div class="subgrid">
+          <section class="evidence-pane">
+            <h3>Review Backlog Summary</h3>
+            {_render_info_grid(
+                [
+                    ("Current Run Unknowns", current_run_unknowns),
+                    ("Persisted Review Records", total),
+                    ("New", new_count),
+                    ("Classified", classified_count),
+                    ("Reviewed", reviewed_count),
+                    ("Ignored", ignored_count),
+                ],
+                extra_class="intake-summary-grid",
+            )}
+            <div class="meta context-note">
+              {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
+            </div>
+          </section>
+          <section class="evidence-pane">
+            <h3>Grouped Unknown Signals</h3>
+            {pattern_table}
+          </section>
+        </div>
+      </section>
+    """
+
+
+def _render_screen1_intake_details_section(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    header = _to_dict(screen_model.get("header"))
+    intake_summary = _to_dict(screen_model.get("intake_summary"))
+    environment_context = _to_dict(screen_model.get("environment_context"))
+    environment_scope_note = screen_model.get("environment_scope_note")
+    db_ingestion = _to_dict(screen_model.get("db_ingestion"))
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    report_rows = screen_model.get("report_rows") or []
+    validation_notes = _to_dict(screen_model.get("validation_notes"))
+    validation_notes_html = _render_validation_note_summary(
+        validation_notes,
+        report_data,
+        screen_model,
+    )
+    intake_validation_note_text = _validation_note_dynamic_text(
+        validation_notes.get("notes") or validation_notes.get("items") or [],
+        _group_validation_notes(validation_notes.get("notes") or validation_notes.get("items") or []),
+        report_data,
+        screen_model,
+    )
+    return f"""
+      <details class="screen1-operator-details" id="screen1-intake-details">
+        <summary>Detailed Run Evidence</summary>
+        <div class="stack">
+          {_render_ingestion_header_card(
+              {
+                  **header,
+                  "total_files": intake_summary.get("total_files"),
+                  "succeeded": intake_summary.get("succeeded"),
+                  "skipped": intake_summary.get("skipped"),
+              }
+          )}
+          <section class="card secondary">
+            <div class="section-kicker">Files, Scope & Parse Completeness</div>
+            <h2>Intake Details</h2>
+            <div class="subgrid">
+              <section class="evidence-pane">
+                <h3>Analysis Information</h3>
+                {
+                    f'<div class="meta context-note">{escape(_display_value(environment_scope_note))}</div>'
+                    if _has_display_value(environment_scope_note)
+                    else ""
+                }
+                {_render_info_grid(_analysis_information_items(environment_context))}
+                <div class="meta context-note">
+                  Current selected scope reflects the active diagnostic target. Historical and file-level topology hints may include broader signals observed across the full AWR set.
+                </div>
+              </section>
+              <section class="evidence-pane">
+                <h3>Intake Summary</h3>
+                {_render_info_grid(
+                    [
+                        ("Total Files", intake_summary.get("total_files")),
+                        ("Processed", intake_summary.get("processed")),
+                        ("Succeeded", intake_summary.get("succeeded")),
+                        ("Failed", intake_summary.get("failed")),
+                        ("Skipped", intake_summary.get("skipped")),
+                        ("Manifest / Dataset Status", intake_summary.get("manifest_status")),
+                    ],
+                    extra_class="intake-summary-grid",
+                )}
+              </section>
+              <section class="evidence-pane">
+                <h3>DB Ingestion / Reuse</h3>
+                {_render_db_ingestion_summary(db_ingestion)}
+              </section>
+              <section class="half evidence-pane">
+                <h3>Parse Confidence / Adaptation</h3>
+                <div class="stack">
+                  {_render_context_summary(
+                      {
+                          "summary": parse_confidence.get("adaptation_summary"),
+                          "items": [],
+                      },
+                      "items",
+                      "No parse confidence summary is available.",
+                  )}
+                  {_render_info_grid(
+                      [
+                          (
+                              "Parse Completeness Score",
+                              parse_confidence.get("parse_completeness_score"),
+                          ),
+                          ("Warnings", parse_confidence.get("warnings_count")),
+                          ("Sections Detected", parse_confidence.get("sections_detected")),
+                          ("Sections Missing", parse_confidence.get("sections_missing")),
+                          ("Runtime Parser Unknowns", parse_confidence.get("unknowns_captured")),
+                          (
+                              "Alias / Fallback Matching",
+                              parse_confidence.get("alias_fallback_matching"),
+                          ),
+                          (
+                              "File-Level Topology Hints",
+                              ", ".join(
+                                  parse_confidence.get("version_platform_topology_hints") or []
+                              ),
+                          ),
+                      ]
+                  )}
+                  <div class="meta context-note">
+                    {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
+                  </div>
+                </div>
+              </section>
+              <section class="half evidence-pane">
+                <h3>Validation Notes</h3>
+                {validation_notes_html}
+              </section>
+              <section class="evidence-pane">
+                <h3>Intake Notes</h3>
+                <div class="supportive-panel">
+                  <div class="meta">
+                    Summary of processed files, parsing completeness, validation notes, and selected scope.
+                  </div>
+                  <div class="narrative">{escape(intake_validation_note_text)}</div>
+                </div>
+              </section>
+              <section class="evidence-pane">
+                <h3>File / Report Table</h3>
+                {_render_ingestion_table(report_rows)}
+              </section>
+            </div>
+          </section>
+        </div>
+      </details>
+    """
+
+
+def _render_screen1_parser_governance_runtime_workflow(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    """Render the operator-facing Screen 1 parser governance workflow."""
+
+    del parser_review_payload, parser_governance_payload, report_data
+    example_files = _screen1_optional_io_example_files(screen_model)
+    example_files_html = "".join(
+        f"<li>{escape(file_name)}</li>" for file_name in example_files[:3]
+    )
+    if not example_files_html:
+        example_files_html = "<li>No example files available in the current export.</li>"
+    return f"""
+      <section class="card prominent screen1-parser-governance-review"
+               id="screen1-parser-governance-review"
+               data-screen1-backlog-review="true">
+        <div class="section-kicker">GOVERNANCE</div>
+        <h2>Parser Governance Backlog Review</h2>
+        <p class="meta">
+          Review persisted parser signals and submit a governed backlog review request.
+        </p>
+
+        <div class="screen1-operator-workflow">
+          <article class="screen1-review-item"
+                   role="button"
+                   tabindex="0"
+                   data-screen1-backlog-item="true"
+                   data-dashboard-selectable="true"
+                   data-dashboard-select-type="unknown-signal"
+                   data-dashboard-select-key="selectedParserBacklogItem"
+                   data-dashboard-select-id="optional-io-section-absence"
+                   data-dashboard-filter-key="selectedParserBacklogItem"
+                   data-dashboard-filter-value="optional-io-section-absence"
+                   aria-selected="false">
+            <div class="screen1-review-item-header">
+              <strong>Optional IO section absence</strong>
+              <span>Review needed</span>
+            </div>
+            <div class="screen1-review-item-metrics">
+              <span>Count: 24 persisted review records</span>
+              <span>Current run unknowns: 0</span>
+            </div>
+            <p>
+              <strong>Meaning:</strong>
+              This is not a new runtime parser failure. It is a persisted parser governance backlog item.
+            </p>
+            <p>
+              <strong>Why it matters:</strong>
+              The parser repeatedly observed an expected optional IO section missing from the AWR reports.
+              Decide whether this is normal for this source profile, a parser expectation gap,
+              a source/report gap, or not applicable.
+            </p>
+            <div class="screen1-example-files">
+              <strong>Example files</strong>
+              <ul>{example_files_html}</ul>
+            </div>
+          </article>
+
+          <section class="screen1-selected-review-item">
+            <h3>Selected Backlog Item</h3>
+            <p data-screen1-selected-backlog-status>Select the backlog item to review.</p>
+            <dl class="screen1-review-facts">
+              <div>
+                <dt>Selected item</dt>
+                <dd>Optional IO section absence</dd>
+              </div>
+              <div>
+                <dt>Count</dt>
+                <dd>24 persisted review records</dd>
+              </div>
+              <div>
+                <dt>Current run unknowns</dt>
+                <dd>0</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>Review needed</dd>
+              </div>
+            </dl>
+            <p class="screen1-review-question">
+              How should this persisted parser signal be handled going forward?
+            </p>
+          </section>
+
+          <section class="screen1-decision-form">
+            <h3>Decision</h3>
+            <label>
+              <span>Decision</span>
+              <select data-screen1-backlog-decision>
+                <option value="">Select a decision</option>
+                <option>Expected source profile</option>
+                <option>Parser expectation gap</option>
+                <option>Source/report gap</option>
+                <option>Not applicable / false positive</option>
+                <option>Defer / keep in backlog</option>
+                <option>Reject / close</option>
+              </select>
+            </label>
+            <label>
+              <span>Reviewer</span>
+              <input type="text"
+                     data-screen1-backlog-reviewer
+                     autocomplete="name"
+                     placeholder="Reviewer name or ID">
+            </label>
+            <label>
+              <span>Rationale</span>
+              <textarea data-screen1-backlog-rationale
+                        rows="4"
+                        placeholder="Explain the decision for governed review."></textarea>
+            </label>
+            <p class="screen1-submit-requirements" data-screen1-backlog-requirements>
+              Required: select backlog item, choose decision, enter reviewer, enter rationale.
+            </p>
+            <button type="button"
+                    class="screen1-governance-submit"
+                    data-screen1-backlog-submit
+                    disabled
+                    aria-disabled="true">
+              Submit Governed Backlog Review Request
+            </button>
+          </section>
+
+          <section class="screen1-request-result"
+                   data-screen1-governance-result-panel="true">
+            <h3>Request / Audit Result</h3>
+            <dl class="screen1-review-facts">
+              <div>
+                <dt>Status</dt>
+                <dd data-screen1-governance-result="status">Waiting for submission.</dd>
+              </div>
+              <div>
+                <dt>Request ID</dt>
+                <dd data-screen1-governance-result="request_id">Not issued</dd>
+              </div>
+              <div>
+                <dt>Audit ID</dt>
+                <dd data-screen1-governance-result="audit_id">Not issued</dd>
+              </div>
+              <div>
+                <dt>Submitted decision</dt>
+                <dd data-screen1-governance-result="decision">Not submitted</dd>
+              </div>
+              <div>
+                <dt>Runtime influence</dt>
+                <dd data-screen1-governance-result="runtime_influence">Not active</dd>
+              </div>
+              <div>
+                <dt>Next step</dt>
+                <dd data-screen1-governance-result="next_step">Select a decision and submit a governed request.</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="screen1-governance-boundary">
+          <h3>Governance Boundary</h3>
+          <p>
+            Review requests are queued and audited. Parser behavior, runtime decisions,
+            scoring, recommendations, approvals, and dashboard truth remain unchanged
+            unless a separate governed materialization and runtime eligibility process
+            later allows future-run influence.
+          </p>
+        </section>
+      </section>
+    """
+
+
+def _render_screen1_field_mapping_candidates_section(
+    parser_governance_payload: dict[str, Any],
+) -> str:
+    field_candidates = _screen1_awr_field_mapping_candidates(parser_governance_payload)
+    field_empty_state = (
+        "No new AWR field mapping candidates are available for review."
+        if not field_candidates
+        else (
+            f"{len(field_candidates)} parser mapping candidate "
+            f"{_pluralize_record(len(field_candidates))} detected for later field review."
+        )
+    )
+    return f"""
+
+      <section class="card secondary screen1-field-mapping-empty-state"
+               id="screen1-field-mapping-candidates"
+               data-screen1-field-review-empty="true">
+        <div class="section-kicker">PARSER MAPPING</div>
+        <h2>New AWR Field Mapping Candidates</h2>
+        <p class="meta">
+          Field approval will appear here when governed parser mapping candidate records exist.
+        </p>
+        <div class="screen1-empty-state">
+          <strong>{escape(field_empty_state)}</strong>
+          <p>
+            Field approval will appear here when governed parser mapping candidate records exist.
+          </p>
+        </div>
+      </section>
+    """
+
+
+def _render_screen1_knowledge_artifact_context_section(
+    parser_governance_payload: dict[str, Any],
+) -> str:
+    artifacts = _screen1_list(parser_governance_payload.get("knowledge_artifacts"))
+    requests = _screen1_list(parser_governance_payload.get("knowledge_requests"))
+    if not artifacts and not requests:
+        context_html = """
+          <div class="screen1-empty-state">
+            <strong>Knowledge artifact data is not available in this static export.</strong>
+            <p>
+              Knowledge artifacts are secondary reviewer-assist context. They do
+              not change parser behavior, runtime eligibility, scoring,
+              recommendations, or dashboard truth.
+            </p>
+          </div>
+        """
+    else:
+        first_artifact = _to_dict(artifacts[0]) if artifacts else {}
+        first_request = _to_dict(requests[0]) if requests else {}
+        context_html = _render_info_grid(
+            [
+                ("Knowledge Artifacts", len(artifacts)),
+                ("Knowledge Requests", len(requests)),
+                (
+                    "Primary Artifact",
+                    first_artifact.get("artifact_summary")
+                    or first_artifact.get("summary")
+                    or first_artifact.get("artifact_type"),
+                ),
+                (
+                    "Artifact Status",
+                    first_artifact.get("activation_status")
+                    or first_artifact.get("status"),
+                ),
+                (
+                    "Latest Request",
+                    first_request.get("candidate_summary")
+                    or first_request.get("summary")
+                    or first_request.get("approval_status"),
+                ),
+            ],
+            extra_class="intake-summary-grid",
+        )
+    return f"""
+      <section class="card secondary screen1-knowledge-artifact-context"
+               id="screen1-knowledge-artifact-context"
+               data-screen1-knowledge-artifact-context="true">
+        <div class="section-kicker">KNOWLEDGE CONTEXT</div>
+        <h2>Artifact Context</h2>
+        <p class="meta">
+          Secondary governed-memory context for review only. Parser governance
+          backlog review remains the active Screen 1 workflow.
+        </p>
+        {context_html}
+      </section>
+    """
+
+
+def _screen1_optional_io_example_files(screen_model: dict[str, Any]) -> list[str]:
+    validation_notes = _to_dict(screen_model.get("validation_notes"))
+    raw_notes = validation_notes.get("notes") or validation_notes.get("items") or []
+    examples: list[str] = []
+    for group in _group_validation_notes(raw_notes):
+        if "optional-section absence" not in str(group.get("message") or "").lower():
+            continue
+        for file_name in group.get("examples") or []:
+            if _has_display_value(file_name) and str(file_name) not in examples:
+                examples.append(str(file_name))
+            if len(examples) >= 3:
+                return examples
+    for raw_row in screen_model.get("report_rows") or []:
+        row = _to_dict(raw_row)
+        file_name = row.get("file_name") or row.get("source_file") or row.get("report_name")
+        if _has_display_value(file_name) and str(file_name) not in examples:
+            examples.append(str(file_name))
+        if len(examples) >= 3:
+            return examples
+    return examples
+
+
+def _screen1_awr_field_mapping_candidates(
+    parser_governance_payload: dict[str, Any],
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for raw_candidate in _screen1_list(parser_governance_payload.get("field_mapping_candidates")):
+        candidate = _to_dict(raw_candidate)
+        if not candidate:
+            continue
+        if not _has_display_value(
+            candidate.get("candidate_field_name")
+            or candidate.get("proposed_metric_name")
+            or candidate.get("proposed_normalized_field_name")
+        ):
+            continue
+        candidates.append(candidate)
+    return candidates
+
+
+def _screen1_parser_governance_workflow_model(
+    screen_model: dict[str, Any],
+    parser_review_payload: dict[str, Any],
+    parser_governance_payload: dict[str, Any],
+    exploration: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    summary = _to_dict(parser_review_payload.get("summary"))
+    runtime_unknowns = _count_for_display(parse_confidence.get("unknowns_captured"))
+    persisted_total = _count_for_display(summary.get("TOTAL"))
+    if persisted_total == 0:
+        persisted_total = max(
+            len(exploration.get("unknown_signals", [])),
+            len(exploration.get("governance_items", [])),
+        )
+    status_counts = {
+        "NEW": _count_for_display(summary.get("NEW")),
+        "CLASSIFIED": _count_for_display(summary.get("CLASSIFIED")),
+        "REVIEWED": _count_for_display(summary.get("REVIEWED")),
+        "DEFERRED": _count_for_display(summary.get("DEFERRED")),
+        "IGNORED": _count_for_display(summary.get("IGNORED")),
+    }
+    artifact_count = len(exploration.get("artifacts", []))
+    targets = _screen1_review_queue_targets(
+        exploration,
+        runtime_unknowns=runtime_unknowns,
+        persisted_total=persisted_total,
+        status_counts=status_counts,
+        artifact_count=artifact_count,
+    )
+    status_text = _parser_review_status_count_phrase(status_counts)
+    return {
+        "runtime_unknowns": runtime_unknowns,
+        "unknown_count": len(exploration.get("unknown_signals", [])),
+        "backlog_count": len(exploration.get("governance_items", [])),
+        "artifact_count": artifact_count,
+        "review_targets": targets,
+        "intake_summary": (
+            f"Current run parser unknowns: {runtime_unknowns}. "
+            f"Persisted review backlog: {persisted_total}{status_text}."
+        ),
+        "parser_health": (
+            "No runtime parser unknowns were detected in the current run."
+            if runtime_unknowns == 0
+            else f"{runtime_unknowns} runtime parser {_pluralize_unknown(runtime_unknowns)} detected."
+        ),
+        "queue_summary": (
+            f"{len(targets)} grouped review target {_pluralize_record(len(targets))} available. "
+            "Repeated optional-section absence is treated as a source-profile/parser-expectation review candidate, not an automatic parser failure."
+        ),
+    }
+
+
+def _screen1_review_queue_targets(
+    exploration: dict[str, list[dict[str, Any]]],
+    *,
+    runtime_unknowns: int,
+    persisted_total: int,
+    status_counts: dict[str, int],
+    artifact_count: int,
+) -> list[dict[str, Any]]:
+    targets: list[dict[str, Any]] = []
+    unknowns = exploration.get("unknown_signals", [])
+    governance_items = exploration.get("governance_items", [])
+    artifacts = exploration.get("artifacts", [])
+    if unknowns:
+        first = unknowns[0]
+        targets.append(
+            {
+                "label": "Current run parser unknowns",
+                "state_key": "selectedUnknownSignal",
+                "select_type": "unknown-signal",
+                "value": first.get("value") or "current-run-parser-unknowns",
+                "status": (
+                    f"{runtime_unknowns} runtime unknowns; "
+                    f"{persisted_total} persisted review records{_parser_review_status_count_phrase(status_counts)}"
+                ),
+                "impact": (
+                    "Repeated optional-section absence detected. Candidate for source-profile/parser-expectation review."
+                    if _screen1_items_include_optional_absence(unknowns)
+                    else "Parser signal group needs governed review before any future-run influence is considered."
+                ),
+                "recommended_action": "Review, classify, or route the grouped parser unknowns.",
+            }
+        )
+    if governance_items:
+        first = governance_items[0]
+        targets.append(
+            {
+                "label": "Persisted review backlog",
+                "state_key": "selectedGovernanceItem",
+                "select_type": "governance-item",
+                "value": first.get("value") or "persisted-review-backlog",
+                "status": f"{len(governance_items)} persisted governance {_pluralize_record(len(governance_items))}.",
+                "impact": (
+                    "Backlog records may remain open even when the current runtime unknown count is zero."
+                ),
+                "recommended_action": "Review or request parser mapping approval intent.",
+            }
+        )
+    if artifacts:
+        first = artifacts[0]
+        targets.append(
+            {
+                "label": "Knowledge artifacts",
+                "state_key": "selectedArtifact",
+                "select_type": "artifact",
+                "value": first.get("value") or "knowledge-artifacts",
+                "status": f"{artifact_count} artifact {_pluralize_record(artifact_count)} available for review.",
+                "impact": "Reviewer-assist context only; not deterministic parser evidence.",
+                "recommended_action": "Review artifact context before requesting approval or rejection.",
+            }
+        )
+    if not targets:
+        targets.append(
+            {
+                "label": "No active parser governance targets",
+                "state_key": "",
+                "select_type": "empty",
+                "value": "",
+                "status": "No current runtime unknowns, persisted review backlog items, or knowledge artifacts were found.",
+                "impact": "No governed parser review request can be submitted until a target exists.",
+                "recommended_action": "Continue monitoring parser health and intake validation notes.",
+                "disabled": True,
+            }
+        )
+    return targets
+
+
+def _screen1_items_include_optional_absence(items: list[dict[str, Any]]) -> bool:
+    combined = " ".join(
+        f"{item.get('label', '')} {item.get('display_value', '')} {item.get('note', '')}".lower()
+        for item in items
+    )
+    return (
+        ("optional" in combined and ("io" in combined or "section" in combined))
+        or ("io" in combined and "missing_expected_section" in combined)
+    )
+
+
+def _render_screen1_review_queue_card(target: dict[str, Any]) -> str:
+    disabled = bool(target.get("disabled"))
+    selectable_attrs = ""
+    if not disabled:
+        selectable_attrs = (
+            ' data-dashboard-selectable="true"'
+            f' data-dashboard-select-type="{escape(_display_value(target.get("select_type")), quote=True)}"'
+            f' data-dashboard-select-key="{escape(_display_value(target.get("state_key")), quote=True)}"'
+            f' data-dashboard-select-id="{escape(_display_value(target.get("value")), quote=True)}"'
+            f' data-dashboard-filter-key="{escape(_display_value(target.get("state_key")), quote=True)}"'
+            f' data-dashboard-filter-value="{escape(_display_value(target.get("value")), quote=True)}"'
+            ' data-selected="false" aria-selected="false" tabindex="0"'
+        )
+    return f"""
+            <article class="screen1-review-target-card"{selectable_attrs}>
+              <strong>{escape(_display_value(target.get("label")))}</strong>
+              <p><span>Status:</span> {escape(_display_value(target.get("status")))}</p>
+              <p><span>Impact:</span> {escape(_display_value(target.get("impact")))}</p>
+              <p><span>Recommended action:</span> {escape(_display_value(target.get("recommended_action")))}</p>
+            </article>
+    """
+
+
+def _render_screen1_review_drilldown(
+    exploration: dict[str, list[dict[str, Any]]],
+) -> str:
+    groups = [
+        ("Current run parser unknown details", exploration.get("unknown_signals", [])),
+        ("Persisted review item details", exploration.get("governance_items", [])),
+        ("Knowledge artifact details", exploration.get("artifacts", [])),
+    ]
+    rendered_groups = []
+    for title, items in groups:
+        if not items:
+            continue
+        cards = "".join(_render_screen1_selector_card(item) for item in items[:12])
+        overflow = (
+            '<p class="meta">Additional records are kept in historical evidence below.</p>'
+            if len(items) > 12
+            else ""
+        )
+        rendered_groups.append(
+            f"""
+              <section class="screen1-drilldown-group">
+                <h4>{escape(title)}</h4>
+                <div class="screen1-selector-grid">{cards}</div>
+                {overflow}
+              </section>
+            """
+        )
+    if not rendered_groups:
+        return ""
+    return f"""
+          <details class="screen1-drilldown-details">
+            <summary>Show grouped item details</summary>
+            <div class="stack">
+              {"".join(rendered_groups)}
+            </div>
+          </details>
+    """
+
+
+def _screen1_parser_governance_actions(
+    *,
+    has_unknowns: bool,
+    has_artifacts: bool,
+) -> list[tuple[str, str, str, str, str, str, str, str]]:
+    actions: list[tuple[str, str, str, str, str, str, str, str]] = []
+    if has_unknowns:
+        actions.extend(
+            [
+                (
+                    "Review Parser Unknown",
+                    "Queue a governed parser unknown review request.",
+                    "parser_unknown_review",
+                    "screen1_parser_unknown_review",
+                    "parser_unknown_signal",
+                    "selectedUnknownSignal",
+                    "review parser unknown signal",
+                    "review_requested",
+                ),
+                (
+                    "Classify Parser Unknown",
+                    "Queue a classification intent for governed review.",
+                    "parser_unknown_classify",
+                    "screen1_parser_unknown_classify",
+                    "parser_unknown_signal",
+                    "selectedUnknownSignal",
+                    "classify parser unknown signal",
+                    "classification_requested",
+                ),
+                (
+                    "Route Parser Unknown",
+                    "Queue a routing request for parser governance triage.",
+                    "parser_unknown_route",
+                    "screen1_parser_unknown_route",
+                    "parser_unknown_signal",
+                    "selectedUnknownSignal",
+                    "route parser unknown signal",
+                    "route_requested",
+                ),
+                (
+                    "Request Mapping Approval Intent",
+                    "Queue a mapping approval intent without materializing parser behavior.",
+                    "parser_mapping_approval_intent",
+                    "screen1_parser_mapping_approval_intent",
+                    "parser_mapping_candidate",
+                    "selectedGovernanceItem",
+                    "request parser mapping approval intent",
+                    "mapping_intent_requested",
+                ),
+            ]
+        )
+    if has_artifacts:
+        actions.extend(
+            [
+                (
+                    "Review Knowledge Artifact",
+                    "Queue a governed artifact review request.",
+                    "knowledge_artifact_review",
+                    "screen1_knowledge_artifact_review",
+                    "knowledge_artifact",
+                    "selectedArtifact",
+                    "review knowledge artifact",
+                    "review_requested",
+                ),
+                (
+                    "Approve Knowledge Artifact",
+                    "Queue a governed artifact approval request; runtime influence remains gated.",
+                    "knowledge_artifact_approve",
+                    "screen1_knowledge_artifact_approve",
+                    "knowledge_artifact",
+                    "selectedArtifact",
+                    "approve knowledge artifact",
+                    "approval_requested",
+                ),
+                (
+                    "Reject Knowledge Artifact",
+                    "Queue a governed artifact rejection request.",
+                    "knowledge_artifact_reject",
+                    "screen1_knowledge_artifact_reject",
+                    "knowledge_artifact",
+                    "selectedArtifact",
+                    "reject knowledge artifact",
+                    "rejection_requested",
+                ),
+            ]
+        )
+    return actions
+
+
+def _render_screen1_parser_governance_action_control(
+    label: str,
+    description: str,
+    action_type: str,
+    workflow_type: str,
+    target_type: str,
+    required_selection_key: str,
+    governance_intent: str,
+    governance_status: str,
+) -> str:
+    payload = json.dumps(
+        {
+            "screen_id": "screen_1",
+            "action_type": action_type,
+            "workflow_type": workflow_type,
+            "target_type": target_type,
+            "target_id": "screen1-selected-target",
+            "required_selection_key": required_selection_key,
+            "governed_request": True,
+            "governance_intent": governance_intent,
+            "governance_status": governance_status,
+            "target_screen": "screen_1",
+            "runtime_influence_granted": False,
+            "future_run_influence_gated": True,
+            "future_run_influence_granted": False,
+            "future_run_influence_active": False,
+            "runtime_activation_granted": False,
+            "parser_output_mutation_requested": False,
+            "parser_output_mutation_allowed": False,
+            "direct_parser_mutation_allowed": False,
+            "parser_mapping_created": False,
+            "parser_candidate_created": False,
+            "parser_backlog_item_created": False,
+            "classification_persisted": False,
+            "artifact_approved": False,
+            "artifact_rejected": False,
+            "artifact_revision_persisted": False,
+            "materialization_created": False,
+            "phase4i_mutation_allowed": False,
+            "phase4i_mutation_requested": False,
+            "phase8_behavior": False,
+            "em_extract_attempted": False,
+            "browser_db_query_attempted": False,
+            "browser_object_storage_access_attempted": False,
+            "browser_file_read_attempted": False,
+            "browser_parsing_performed": False,
+            "run_analysis_coupling": False,
+        },
+        sort_keys=True,
+    )
+    return f"""
+              <section class="screen1-governance-action-card">
+                <a href="#screen1-parser-governance-runtime-workflow"
+                   class="screen1-governed-action-control"
+                   data-phase7-action-control="true"
+                   data-screen-id="screen_1"
+                   data-action-type="{escape(action_type, quote=True)}"
+                   data-workflow-type="{escape(workflow_type, quote=True)}"
+                   data-target-type="{escape(target_type, quote=True)}"
+                   data-target-id="screen1-selected-target"
+                   data-required-selection-key="{escape(required_selection_key, quote=True)}"
+                   data-execution-mode="request_record_only"
+                   data-runtime-influence-granted="false"
+                   data-phase4i-mutation-allowed="false"
+                   data-phase8-behavior="false"
+                   data-direct-truth-mutation-allowed="false"
+                   data-run-analysis-coupling="false"
+                   data-action-enabled-state="disabled-no-selection"
+                   data-action-payload="{escape(payload, quote=True)}"
+                   aria-disabled="true">
+                  <strong>{escape(label)}</strong>
+                  <span>{escape(description)}</span>
+                </a>
+                <div class="screen1-action-status"
+                     data-phase7-action-result-panel="true"
+                     data-phase7-action-status="waiting"
+                     data-phase7-request-id-target="true"
+                     data-phase7-audit-status-area="true">
+                  Select the required Screen 1 target before submitting.
+                </div>
+              </section>
     """
 
 
@@ -14204,6 +16265,279 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen1-parser-governance-runtime {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(16, 28, 45, 0.74);
+    }
+    .screen1-parser-governance-review {
+      border-color: rgba(90, 209, 255, 0.38);
+      background: rgba(16, 28, 45, 0.78);
+    }
+    .screen1-operator-workflow {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .screen1-review-item,
+    .screen1-selected-review-item,
+    .screen1-decision-form,
+    .screen1-request-result {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(11, 20, 34, 0.68);
+      color: var(--text);
+    }
+    .screen1-review-item {
+      cursor: pointer;
+    }
+    .screen1-review-item.is-selected,
+    .screen1-review-item[data-selected="true"],
+    .screen1-review-item:hover,
+    .screen1-review-item:focus {
+      border-color: rgba(90, 209, 255, 0.72);
+      box-shadow: 0 0 0 2px rgba(90, 209, 255, 0.16);
+      outline: none;
+    }
+    .screen1-review-item-header,
+    .screen1-review-item-metrics {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .screen1-review-item-header strong,
+    .screen1-selected-review-item h3,
+    .screen1-decision-form h3,
+    .screen1-request-result h3,
+    .screen1-governance-boundary h3,
+    .screen1-example-files strong {
+      margin: 0;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-review-item-header span,
+    .screen1-review-item-metrics span {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .screen1-review-item p,
+    .screen1-selected-review-item p,
+    .screen1-request-result dd,
+    .screen1-governance-boundary p,
+    .screen1-empty-state p {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .screen1-example-files ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen1-review-facts {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen1-review-facts div {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.75fr) minmax(0, 1.25fr);
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.14);
+      padding-bottom: 8px;
+    }
+    .screen1-review-facts div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .screen1-review-facts dt {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .screen1-review-facts dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen1-review-question {
+      border-top: 1px solid rgba(159, 176, 199, 0.18);
+      padding-top: 10px;
+      font-weight: 800;
+    }
+    .screen1-decision-form label {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+    .screen1-decision-form label span {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-decision-form select,
+    .screen1-decision-form input,
+    .screen1-decision-form textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text);
+      background: rgba(7, 15, 26, 0.86);
+      font: inherit;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+    .screen1-submit-requirements {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen1-governance-submit {
+      justify-self: start;
+      border: 1px solid rgba(102, 187, 106, 0.55);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      background: rgba(102, 187, 106, 0.18);
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .screen1-governance-submit:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(159, 176, 199, 0.08);
+    }
+    .screen1-governance-boundary {
+      margin-top: 12px;
+      border: 1px solid rgba(255, 205, 86, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(64, 51, 24, 0.14);
+    }
+    .screen1-field-mapping-empty-state {
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(16, 28, 45, 0.68);
+    }
+    .screen1-empty-state {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(159, 176, 199, 0.2);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(11, 20, 34, 0.62);
+    }
+    .screen1-empty-state strong {
+      color: var(--text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .screen1-workflow-grid,
+    .screen1-review-queue-grid,
+    .screen1-action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .screen1-workflow-step,
+    .screen1-review-target-card,
+    .screen1-governance-action-card {
+      display: grid;
+      gap: 8px;
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      background: rgba(11, 20, 34, 0.68);
+      color: inherit;
+      min-width: 0;
+    }
+    .screen1-review-target-card {
+      cursor: pointer;
+    }
+    .screen1-review-target-card.is-selected,
+    .screen1-review-target-card[data-selected="true"],
+    .screen1-review-target-card:hover,
+    .screen1-review-target-card:focus {
+      border-color: rgba(90, 209, 255, 0.62);
+      background: rgba(90, 209, 255, 0.12);
+      outline: none;
+    }
+    .screen1-workflow-step strong,
+    .screen1-review-target-card strong,
+    .screen1-governance-action-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen1-workflow-step p,
+    .screen1-review-target-card p,
+    .screen1-governance-action-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .screen1-review-target-card p span {
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .screen1-drilldown-details,
+    .screen1-historical-evidence {
+      margin-top: 12px;
+      border: 1px dashed rgba(159, 176, 199, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(11, 20, 34, 0.38);
+    }
+    .screen1-drilldown-details summary,
+    .screen1-historical-evidence summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-drilldown-group h4 {
+      margin: 12px 0 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .screen1-governance-boundary {
+      border-color: rgba(255, 205, 86, 0.36);
+      background: rgba(64, 51, 24, 0.18);
+    }
+    .screen1-governance-boundary p,
+    .empty-state-note {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
     .screen2-diagnostic-exploration {
       border-color: rgba(90, 209, 255, 0.32);
     }
@@ -15636,6 +17970,46 @@ def _shared_page_styles() -> str:
       letter-spacing: 0.05em;
       background: rgba(11, 21, 35, 0.7);
     }
+    .screen1-full-report-table-wrap {
+      overflow-x: visible;
+    }
+    .screen1-full-report-table-compact {
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+    .screen1-full-report-table-compact th,
+    .screen1-full-report-table-compact td {
+      padding: 8px 9px;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .screen1-full-report-table-compact th {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+    .screen1-status-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
+    }
+    .screen1-full-report-table-compact .status-pill {
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.02em;
+    }
+    .screen1-report-file,
+    .screen1-report-parser-notes {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .chart-panel, .violin-chart-card {
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -16112,7 +18486,8 @@ def _shared_page_styles() -> str:
       display: none;
     }
 
-    .phase7-governed-action-control {
+    .phase7-governed-action-control,
+    .screen1-governed-action-control {
       display: grid;
       gap: 8px;
       min-height: 104px;
@@ -16125,23 +18500,28 @@ def _shared_page_styles() -> str:
     }
 
     .phase7-governed-action-control:hover,
-    .phase7-governed-action-control:focus {
+    .phase7-governed-action-control:focus,
+    .screen1-governed-action-control:hover,
+    .screen1-governed-action-control:focus {
       border-color: rgba(90, 209, 255, 0.72);
       outline: none;
     }
 
-    .phase7-governed-action-control strong {
+    .phase7-governed-action-control strong,
+    .screen1-governed-action-control strong {
       color: var(--accent);
       font-size: 14px;
     }
 
-    .phase7-governed-action-control span {
+    .phase7-governed-action-control span,
+    .screen1-governed-action-control span {
       color: var(--muted);
       font-size: 13px;
       line-height: 1.4;
     }
 
-    .phase7-governed-action-status {
+    .phase7-governed-action-status,
+    .screen1-action-status {
       margin-top: 12px;
       padding: 10px 12px;
       border: 1px solid rgba(159, 176, 199, 0.18);
@@ -16154,12 +18534,14 @@ def _shared_page_styles() -> str:
       overflow-wrap: anywhere;
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="accepted"] {
+    .phase7-governed-action-status[data-phase7-action-status="accepted"],
+    .screen1-action-status[data-phase7-action-status="accepted"] {
       color: #effbef;
       border-color: rgba(102, 187, 106, 0.42);
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="failed"] {
+    .phase7-governed-action-status[data-phase7-action-status="failed"],
+    .screen1-action-status[data-phase7-action-status="failed"] {
       color: #fff4f4;
       border-color: rgba(255, 107, 107, 0.42);
     }
@@ -16708,6 +19090,7 @@ def _shared_page_styles() -> str:
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
+      .screen1-operator-workflow,
       .screen2-selector-grid,
       .screen2-review-action-grid,
       .screen3-selector-grid,
@@ -17360,6 +19743,46 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
       text-transform: uppercase;
       letter-spacing: 0.05em;
       background: rgba(11, 21, 35, 0.7);
+    }}
+    .screen1-full-report-table-wrap {{
+      overflow-x: visible;
+    }}
+    .screen1-full-report-table-compact {{
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+    }}
+    .screen1-full-report-table-compact th,
+    .screen1-full-report-table-compact td {{
+      padding: 8px 9px;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }}
+    .screen1-full-report-table-compact th {{
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }}
+    .screen1-status-stack {{
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
+    }}
+    .screen1-full-report-table-compact .status-pill {{
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.02em;
+    }}
+    .screen1-report-file,
+    .screen1-report-parser-notes {{
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }}
     .data-table tr:last-child td {{
       border-bottom: none;
@@ -18276,6 +20699,7 @@ def _group_validation_notes(notes: list[Any]) -> list[dict[str, Any]]:
         if not item_text:
             continue
         file_name, message = _split_validation_note(item_text)
+        message = _normalize_screen1_validation_note_message(message)
         normalized_key = re.sub(r"[^a-z0-9]+", " ", message.lower()).strip()
         if not normalized_key:
             normalized_key = "validation note"
@@ -18295,6 +20719,17 @@ def _group_validation_notes(notes: list[Any]) -> list[dict[str, Any]]:
             if len(group["examples"]) < 3:
                 group["examples"].append(file_name)
     return sorted(groups.values(), key=lambda group: (-int(group["count"]), group["message"]))
+
+
+def _normalize_screen1_validation_note_message(message: str) -> str:
+    normalized = str(message or "").strip()
+    lower = normalized.lower()
+    if "optional" in lower and "io" in lower and "not present" in lower:
+        return (
+            "Repeated optional-section absence detected. "
+            "Candidate for source-profile/parser-expectation review."
+        )
+    return normalized
 
 
 def _split_validation_note(note_text: str) -> tuple[str | None, str]:
@@ -18417,13 +20852,13 @@ def _runtime_parser_unknowns_note(
         status_phrase = _parser_review_status_count_phrase(status_counts)
         base_text = (
             "No runtime parser unknowns were detected in the current ingestion run. "
-            f"Phase 6 memory currently tracks {persisted_total} persisted unknown-signal "
+            f"Governed review memory currently tracks {persisted_total} persisted unknown-signal "
             f"{_pluralize_record(persisted_total)} for review{status_phrase}."
         )
     else:
         base_text = (
             f"The current ingestion run detected {runtime_unknowns} runtime parser "
-            f"{_pluralize_unknown(runtime_unknowns)}. Phase 6 memory currently tracks "
+            f"{_pluralize_unknown(runtime_unknowns)}. Governed review memory currently tracks "
             f"{persisted_total} persisted unknown-signal {_pluralize_record(persisted_total)} "
             "for review."
         )
@@ -18433,7 +20868,7 @@ def _runtime_parser_unknowns_note(
         screen_model,
         required_terms=[
             "runtime parser unknown",
-            "Phase 6 memory",
+            "Governed review memory",
             "persisted unknown-signal records",
         ],
         protected_values=[
@@ -20612,6 +23047,9 @@ def _render_ingestion_table(report_rows: list[dict[str, Any]]) -> str:
             if _has_display_value(row.get("vector_status"))
             else "Not Checked"
         )
+        parser_note = _normalize_screen1_validation_note_message(
+            _display_value(row.get("parser_notes") or row.get("validation_notes"))
+        )
         row_html.append(
             f"""
             <tr>
@@ -20628,7 +23066,7 @@ def _render_ingestion_table(report_rows: list[dict[str, Any]]) -> str:
               <td>{escape(_display_value(row.get("snapshot_begin")))}</td>
               <td>{escape(_display_value(row.get("snapshot_end")))}</td>
               <td>{escape(_display_value(row.get("topology_hints")))}</td>
-              <td>{escape(_display_value(row.get("parser_notes") or row.get("validation_notes")))}</td>
+              <td>{escape(parser_note)}</td>
             </tr>
             """
         )

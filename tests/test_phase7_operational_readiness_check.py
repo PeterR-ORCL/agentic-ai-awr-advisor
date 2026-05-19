@@ -277,7 +277,27 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
 
         def fake_run_command(spec, *, env_update=None):
             del env_update
-            self.assertEqual("index_source_selection_runtime_workflow", spec.id)
+            self.assertIn(
+                spec.id,
+                {
+                    "index_source_selection_runtime_workflow",
+                    "screen1_parser_governance_runtime_workflow",
+                },
+            )
+            if spec.id == "screen1_parser_governance_runtime_workflow":
+                return {
+                    "status": "passed",
+                    "reason": "command completed successfully",
+                    "returncode": 0,
+                    "command": "python scripts/run_phase7_screen1_parser_governance_workflow_validation.py --json",
+                    "stdout_tail": json.dumps(
+                        {
+                            "screen1_parser_governance_ready": True,
+                            "blocker_active": False,
+                        }
+                    ),
+                    "stderr_tail": "",
+                }
             return {
                 "status": "passed",
                 "reason": "command completed successfully",
@@ -295,11 +315,13 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
 
         with mock.patch.object(module, "run_command", side_effect=fake_run_command):
             index_requirement = module.evaluate_index_source_selection_runtime_requirement()
+            screen1_requirement = module.evaluate_screen1_parser_governance_runtime_requirement()
 
         requirements = {
             req["id"]: req
             for req in [
                 index_requirement,
+                screen1_requirement,
                 module.evaluate_dashboard_runtime_interaction_requirement(),
                 *module.evaluate_deferred_dashboard_runtime_workflow_requirements(),
             ]
@@ -319,8 +341,12 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
             requirements["dashboard_runtime_interaction_wiring"]["status"],
         )
         self.assertEqual(
-            "pending",
+            "satisfied",
             requirements["screen1_parser_governance_runtime_workflow"]["status"],
+        )
+        self.assertEqual(
+            "pending",
+            requirements["screen2_diagnostic_review_runtime_workflow"]["status"],
         )
 
     def test_index_source_selection_blocker_is_active_when_validator_fails(self) -> None:
@@ -353,15 +379,23 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         self.assertIn("DASHBOARD_RUNTIME_INTERACTION_NOT_WIRED", blockers)
         self.assertEqual("blocked", requirement["status"])
 
-    def test_screen_operational_validators_are_deferred_after_narrowed_7cm(self) -> None:
+    def test_screen_operational_validators_are_deferred_after_7cn(self) -> None:
         module = readiness_module()
 
         with mock.patch.object(module, "run_command") as run_command:
+            run_command.return_value = {
+                "status": "passed",
+                "reason": "command completed successfully",
+                "returncode": 0,
+                "command": "python scripts/run_phase7_screen1_parser_governance_workflow_validation.py --json",
+                "stdout_tail": "",
+                "stderr_tail": "",
+            }
             requirements = module.evaluate_screen_and_operational_wiring(
                 SimpleNamespace(final_certification=True)
             )
             executed_ids = {call.args[0].id for call in run_command.call_args_list}
-            self.assertNotIn("screen1_operational_wiring", executed_ids)
+            self.assertIn("screen1_operational_wiring", executed_ids)
             self.assertNotIn("screen2_operational_wiring", executed_ids)
             self.assertNotIn("screen3_active_backend_execution", executed_ids)
             self.assertNotIn("screen4_operational_wiring", executed_ids)
@@ -372,7 +406,7 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         requirements_by_id = {req["id"]: req for req in requirements}
         self.assertNotIn("SCREEN2_BROAD_VALIDATOR_FAILURE", blockers)
         self.assertEqual("pending", requirements_by_id["screen2_operational_wiring"]["status"])
-        self.assertEqual("pending", requirements_by_id["screen1_operational_wiring"]["status"])
+        self.assertEqual("satisfied", requirements_by_id["screen1_operational_wiring"]["status"])
 
     def test_list_requirements_does_not_execute_live_checks(self) -> None:
         self.assertEqual(0, self.list_result.returncode, self.list_result.stderr)

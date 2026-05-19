@@ -544,6 +544,279 @@
       border-color: rgba(90, 209, 255, 0.62);
       background: rgba(90, 209, 255, 0.12);
     }
+    .screen1-parser-governance-runtime {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: rgba(16, 28, 45, 0.74);
+    }
+    .screen1-parser-governance-review {
+      border-color: rgba(90, 209, 255, 0.38);
+      background: rgba(16, 28, 45, 0.78);
+    }
+    .screen1-operator-workflow {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .screen1-review-item,
+    .screen1-selected-review-item,
+    .screen1-decision-form,
+    .screen1-request-result {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(11, 20, 34, 0.68);
+      color: var(--text);
+    }
+    .screen1-review-item {
+      cursor: pointer;
+    }
+    .screen1-review-item.is-selected,
+    .screen1-review-item[data-selected="true"],
+    .screen1-review-item:hover,
+    .screen1-review-item:focus {
+      border-color: rgba(90, 209, 255, 0.72);
+      box-shadow: 0 0 0 2px rgba(90, 209, 255, 0.16);
+      outline: none;
+    }
+    .screen1-review-item-header,
+    .screen1-review-item-metrics {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .screen1-review-item-header strong,
+    .screen1-selected-review-item h3,
+    .screen1-decision-form h3,
+    .screen1-request-result h3,
+    .screen1-governance-boundary h3,
+    .screen1-example-files strong {
+      margin: 0;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-review-item-header span,
+    .screen1-review-item-metrics span {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .screen1-review-item p,
+    .screen1-selected-review-item p,
+    .screen1-request-result dd,
+    .screen1-governance-boundary p,
+    .screen1-empty-state p {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .screen1-example-files ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen1-review-facts {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen1-review-facts div {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.75fr) minmax(0, 1.25fr);
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.14);
+      padding-bottom: 8px;
+    }
+    .screen1-review-facts div:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .screen1-review-facts dt {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .screen1-review-facts dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen1-review-question {
+      border-top: 1px solid rgba(159, 176, 199, 0.18);
+      padding-top: 10px;
+      font-weight: 800;
+    }
+    .screen1-decision-form label {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+    .screen1-decision-form label span {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-decision-form select,
+    .screen1-decision-form input,
+    .screen1-decision-form textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text);
+      background: rgba(7, 15, 26, 0.86);
+      font: inherit;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+    .screen1-submit-requirements {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen1-governance-submit {
+      justify-self: start;
+      border: 1px solid rgba(102, 187, 106, 0.55);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      background: rgba(102, 187, 106, 0.18);
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .screen1-governance-submit:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(159, 176, 199, 0.08);
+    }
+    .screen1-governance-boundary {
+      margin-top: 12px;
+      border: 1px solid rgba(255, 205, 86, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(64, 51, 24, 0.14);
+    }
+    .screen1-field-mapping-empty-state {
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(16, 28, 45, 0.68);
+    }
+    .screen1-empty-state {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(159, 176, 199, 0.2);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(11, 20, 34, 0.62);
+    }
+    .screen1-empty-state strong {
+      color: var(--text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .screen1-workflow-grid,
+    .screen1-review-queue-grid,
+    .screen1-action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .screen1-workflow-step,
+    .screen1-review-target-card,
+    .screen1-governance-action-card {
+      display: grid;
+      gap: 8px;
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      background: rgba(11, 20, 34, 0.68);
+      color: inherit;
+      min-width: 0;
+    }
+    .screen1-review-target-card {
+      cursor: pointer;
+    }
+    .screen1-review-target-card.is-selected,
+    .screen1-review-target-card[data-selected="true"],
+    .screen1-review-target-card:hover,
+    .screen1-review-target-card:focus {
+      border-color: rgba(90, 209, 255, 0.62);
+      background: rgba(90, 209, 255, 0.12);
+      outline: none;
+    }
+    .screen1-workflow-step strong,
+    .screen1-review-target-card strong,
+    .screen1-governance-action-card strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen1-workflow-step p,
+    .screen1-review-target-card p,
+    .screen1-governance-action-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .screen1-review-target-card p span {
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .screen1-drilldown-details,
+    .screen1-historical-evidence {
+      margin-top: 12px;
+      border: 1px dashed rgba(159, 176, 199, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(11, 20, 34, 0.38);
+    }
+    .screen1-drilldown-details summary,
+    .screen1-historical-evidence summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen1-drilldown-group h4 {
+      margin: 12px 0 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .screen1-governance-boundary {
+      border-color: rgba(255, 205, 86, 0.36);
+      background: rgba(64, 51, 24, 0.18);
+    }
+    .screen1-governance-boundary p,
+    .empty-state-note {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
     .screen2-diagnostic-exploration {
       border-color: rgba(90, 209, 255, 0.32);
     }
@@ -1976,6 +2249,46 @@
       letter-spacing: 0.05em;
       background: rgba(11, 21, 35, 0.7);
     }
+    .screen1-full-report-table-wrap {
+      overflow-x: visible;
+    }
+    .screen1-full-report-table-compact {
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+    .screen1-full-report-table-compact th,
+    .screen1-full-report-table-compact td {
+      padding: 8px 9px;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .screen1-full-report-table-compact th {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+    .screen1-status-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
+    }
+    .screen1-full-report-table-compact .status-pill {
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.02em;
+    }
+    .screen1-report-file,
+    .screen1-report-parser-notes {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .chart-panel, .violin-chart-card {
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -2452,7 +2765,8 @@
       display: none;
     }
 
-    .phase7-governed-action-control {
+    .phase7-governed-action-control,
+    .screen1-governed-action-control {
       display: grid;
       gap: 8px;
       min-height: 104px;
@@ -2465,23 +2779,28 @@
     }
 
     .phase7-governed-action-control:hover,
-    .phase7-governed-action-control:focus {
+    .phase7-governed-action-control:focus,
+    .screen1-governed-action-control:hover,
+    .screen1-governed-action-control:focus {
       border-color: rgba(90, 209, 255, 0.72);
       outline: none;
     }
 
-    .phase7-governed-action-control strong {
+    .phase7-governed-action-control strong,
+    .screen1-governed-action-control strong {
       color: var(--accent);
       font-size: 14px;
     }
 
-    .phase7-governed-action-control span {
+    .phase7-governed-action-control span,
+    .screen1-governed-action-control span {
       color: var(--muted);
       font-size: 13px;
       line-height: 1.4;
     }
 
-    .phase7-governed-action-status {
+    .phase7-governed-action-status,
+    .screen1-action-status {
       margin-top: 12px;
       padding: 10px 12px;
       border: 1px solid rgba(159, 176, 199, 0.18);
@@ -2494,12 +2813,14 @@
       overflow-wrap: anywhere;
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="accepted"] {
+    .phase7-governed-action-status[data-phase7-action-status="accepted"],
+    .screen1-action-status[data-phase7-action-status="accepted"] {
       color: #effbef;
       border-color: rgba(102, 187, 106, 0.42);
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="failed"] {
+    .phase7-governed-action-status[data-phase7-action-status="failed"],
+    .screen1-action-status[data-phase7-action-status="failed"] {
       color: #fff4f4;
       border-color: rgba(255, 107, 107, 0.42);
     }
@@ -3048,6 +3369,7 @@
       .pipeline-support-grid,
       .semantic-assist-scope-list,
       .screen1-selector-grid,
+      .screen1-operator-workflow,
       .screen2-selector-grid,
       .screen2-review-action-grid,
       .screen3-selector-grid,
@@ -3137,9 +3459,10 @@
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
-    Browser-side selection state only. Read-only. Exploratory only.
-    Read-only selection state. Exploratory only. No backend writes.
-    No API calls. URL hash/localStorage state is not authoritative truth.
+    Browser-side selection state is not authoritative truth.
+    Browser actions may submit governed workflow requests through the workflow service.
+    Browser actions do not directly mutate parser output, governance truth,
+    Phase 4I, diagnostics, scoring, recommendations, or runtime eligibility.
     Does not change diagnostic truth. Does not change historical truth.
     Does not change recommendation truth. Does not change parser output.
     Does not change governance state. Does not change candidate status.
@@ -3147,7 +3470,7 @@
     Does not activate learning candidates. No approval controls. No runtime activation.
     Semantic context remains reviewer-assist only.
     Learning candidates remain proposal/review context only.
-    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedSystem, selectedSnapshot, selectedDomain, selectedSeverity, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage.
+    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedSystem, selectedSnapshot, selectedDomain, selectedSeverity, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage.
     Future selectable metadata hooks: data-dashboard-selectable, data-dashboard-select-type, data-dashboard-select-key, data-dashboard-select-id, data-dashboard-select-domain, data-dashboard-target, data-dashboard-filter-key, data-dashboard-filter-value, data-dashboard-state-input, data-dashboard-state-key.
   -->
   <div class="container">
@@ -3167,7 +3490,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 18, 2026, 1:28 PM</div>
+        <div class="hero-meta">Generated: May 18, 2026, 8:00 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link active" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_analysis.html" data-dashboard-propagate-state="true">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Fleet</a></nav>
@@ -4769,7 +5092,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 18, 2026, 1:28 PM</div>
+    <div class="footer">Generated at May 18, 2026, 8:00 PM</div>
   </div>
 
   <script>
@@ -4778,9 +5101,11 @@
 
       // Dashboard Interactivity Foundation (Phase 7H.1).
       // Cross-Screen Selection Propagation (Phase 7H.8).
-      // Browser-side selection state only. Read-only. Exploratory only.
+      // Browser-side selection state is not authoritative truth.
       // URL hash/localStorage state is not authoritative truth.
-      // No backend writes. No API calls. No network calls.
+      // Browser actions may submit governed workflow requests through the workflow service.
+      // Browser actions do not directly mutate parser output, governance truth,
+      // Phase 4I, diagnostics, scoring, recommendations, or runtime eligibility.
       // Does not change diagnostic truth. Does not change historical truth.
       // Does not change recommendation truth. Does not change parser output.
       // Does not change governance state. Does not change candidate status.
@@ -4790,7 +5115,7 @@
       // No approval controls. No runtime activation.
       const DASHBOARD_FOUNDATION_LABEL = 'Dashboard Interactivity Foundation';
       const DASHBOARD_PROPAGATION_LABEL = 'Cross-Screen Selection Propagation';
-      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedSystem", "selectedSnapshot", "selectedDomain", "selectedSeverity", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage"]);
+      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedSystem", "selectedSnapshot", "selectedDomain", "selectedSeverity", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage"]);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = "agenticAiAwrAdvisor.dashboardInteractivityState.v1";
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
@@ -5174,8 +5499,8 @@
           .map(function (key) { return key + ': ' + safeState[key]; });
         const safetyText = (
           'Cross-Screen Selection Propagation. ' +
-          'Browser-side selection state only. Read-only. Exploratory only. ' +
-          'No backend writes. No API calls. ' +
+          'Browser-side selection state is not authoritative truth. ' +
+          'Governed workflow requests may be submitted through the workflow service. ' +
           'URL hash/localStorage state is not authoritative truth. ' +
           'Does not change diagnostic truth. Does not change historical truth. ' +
           'Does not change recommendation truth. Does not change parser output. ' +
@@ -5452,6 +5777,618 @@
         return 'Source configuration incomplete. Missing: ' + missing.join(', ') + '.';
       }
 
+      function isScreen1ParserGovernanceAction(element) {
+        const screenId = safeStateValue(element.getAttribute('data-screen-id'));
+        const actionType = safeStateValue(element.getAttribute('data-action-type'));
+        return (
+          screenId === 'screen_1' &&
+          (
+            actionType.indexOf('parser_') === 0 ||
+            actionType.indexOf('knowledge_artifact_') === 0
+          )
+        );
+      }
+
+      function screen1SelectedTargetId(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        return (
+          safeState.selectedUnknownSignal ||
+          safeState.selectedGovernanceItem ||
+          safeState.selectedArtifact ||
+          safeState.selectedKnowledgeRequest ||
+          safeState.selectedParserDiagnostic ||
+          safeState.selectedParserSection ||
+          ''
+        );
+      }
+
+      function screen1SelectedTargetType(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (safeState.selectedUnknownSignal) {
+          return 'Parser unknown signal';
+        }
+        if (safeState.selectedGovernanceItem) {
+          return 'Parser governance item';
+        }
+        if (safeState.selectedArtifact) {
+          return 'Knowledge artifact';
+        }
+        if (safeState.selectedKnowledgeRequest) {
+          return 'Knowledge request';
+        }
+        if (safeState.selectedParserDiagnostic) {
+          return 'Parser diagnostic';
+        }
+        if (safeState.selectedParserSection) {
+          return 'Parser section';
+        }
+        return 'No Screen 1 target selected';
+      }
+
+      function screen1EvidenceSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (safeState.selectedUnknownSignal) {
+          return 'Selected parser unknown context is available for governed review. Classification, routing, and mapping requests are queued only.';
+        }
+        if (safeState.selectedGovernanceItem) {
+          return 'Selected parser governance row is available for a governed mapping approval intent. Parser mappings are not applied directly.';
+        }
+        if (safeState.selectedArtifact) {
+          return 'Selected knowledge artifact is available for governed artifact review. Artifact approval does not activate runtime influence.';
+        }
+        if (safeState.selectedKnowledgeRequest) {
+          return 'Selected knowledge request is review context only. Use governed artifact review only after a concrete artifact is selected.';
+        }
+        if (safeState.selectedParserDiagnostic || safeState.selectedParserSection) {
+          return 'Selected parser context is evidence for review only. Choose an unknown signal or governance item before submitting a governed request.';
+        }
+        return 'Select a parser unknown signal, governance item, or knowledge artifact target from Screen 1 context.';
+      }
+
+      function screen1ActionMessage(element, state, missing) {
+        const actionType = safeStateValue(element.getAttribute('data-action-type'));
+        const selectedTarget = screen1SelectedTargetId(state);
+        if (missing.length) {
+          return 'Select the required Screen 1 target before submitting. Missing: ' + missing.join(', ') + '.';
+        }
+        if (actionType === 'parser_unknown_review') {
+          return 'Ready to submit governed parser unknown review request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_classify') {
+          return 'Ready to submit governed parser unknown classification request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_route') {
+          return 'Ready to submit governed parser unknown routing request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_approve') {
+          return 'Ready to submit governed parser unknown approval request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_unknown_reject') {
+          return 'Ready to submit governed parser unknown rejection request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'parser_mapping_approval_intent') {
+          return 'Ready to submit governed parser mapping approval intent for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_review') {
+          return 'Ready to submit governed knowledge artifact review request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_approve') {
+          return 'Ready to submit governed knowledge artifact approval request for ' + selectedTarget + '.';
+        }
+        if (actionType === 'knowledge_artifact_reject') {
+          return 'Ready to submit governed knowledge artifact rejection request for ' + selectedTarget + '.';
+        }
+        return 'Ready to submit governed Screen 1 parser governance request for ' + selectedTarget + '.';
+      }
+
+      function screen1MissingFields(element, state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const key = requiredSelectionKey(element);
+        const missing = [];
+        if (key && !safeState[key]) {
+          missing.push(key);
+        }
+        if (!screen1SelectedTargetId(safeState)) {
+          missing.push('selectedScreen1GovernanceTarget');
+        }
+        return missing;
+      }
+
+      function updateScreen1ParserGovernanceSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
+        const selectedTarget = screen1SelectedTargetId(safeState);
+        const targetType = screen1SelectedTargetType(safeState);
+        const values = {
+          active_target: selectedTarget || 'Select a parser unknown signal, governance item, or knowledge artifact.',
+          target_type: targetType,
+          evidence: screen1EvidenceSummary(safeState),
+          governance_action: selectedTarget
+            ? 'Choose a governed action below. The request is queued for audit/review only.'
+            : 'Select a target before choosing a governed action.',
+          governance_status: selectedTarget
+            ? 'Ready for governed request submission.'
+            : 'Missing governed review target.',
+          safety_status: 'Future-run influence is gated, auditable, and not active by default. Parser output, Phase 4I, diagnostic truth, scoring, and recommendation truth are not mutated.',
+          request_result: 'After submit, this panel shows accepted/rejected status, request ID, and audit record.'
+        };
+        Object.keys(values).forEach(function (key) {
+          scope.querySelectorAll('[data-screen1-governance-card="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+            element.setAttribute('data-screen1-governance-status', selectedTarget ? 'target-selected' : 'missing-target');
+          });
+        });
+      }
+
+      function screen1FieldDecisionConfig(decision) {
+        const normalizedDecision = safeStateValue(decision);
+        if (normalizedDecision === 'Approve field mapping') {
+          return {
+            actionType: 'awr_field_mapping_approve',
+            workflowType: 'screen1_awr_field_mapping_approve',
+            governanceIntent: 'approve governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_approval_requested',
+            nextStep: 'Pending governed parser mapping materialization/runtime eligibility.'
+          };
+        }
+        if (normalizedDecision === 'Reject field mapping') {
+          return {
+            actionType: 'awr_field_mapping_reject',
+            workflowType: 'screen1_awr_field_mapping_reject',
+            governanceIntent: 'reject governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_rejection_requested',
+            nextStep: 'Candidate closed/rejected for governed review.'
+          };
+        }
+        if (normalizedDecision === 'Edit mapping request') {
+          return {
+            actionType: 'awr_field_mapping_revision_request',
+            workflowType: 'screen1_awr_field_mapping_revision_request',
+            governanceIntent: 'request governed AWR field mapping revision',
+            governanceStatus: 'field_mapping_revision_requested',
+            nextStep: 'Mapping revision required.'
+          };
+        }
+        if (normalizedDecision === 'Defer / keep in backlog') {
+          return {
+            actionType: 'awr_field_mapping_defer',
+            workflowType: 'screen1_awr_field_mapping_defer',
+            governanceIntent: 'defer governed AWR field mapping candidate',
+            governanceStatus: 'field_mapping_defer_requested',
+            nextStep: 'Candidate remains in backlog.'
+          };
+        }
+        if (normalizedDecision === 'Mark not useful / ignore') {
+          return {
+            actionType: 'awr_field_mapping_ignore',
+            workflowType: 'screen1_awr_field_mapping_ignore',
+            governanceIntent: 'mark governed AWR field mapping candidate not useful',
+            governanceStatus: 'field_mapping_ignore_requested',
+            nextStep: 'Candidate marked not useful for governed review.'
+          };
+        }
+        return {
+          actionType: 'awr_field_mapping_review',
+          workflowType: 'screen1_awr_field_mapping_review',
+          governanceIntent: 'review governed AWR field mapping candidate',
+          governanceStatus: 'field_review_requested',
+          nextStep: 'Queued for governed review. No runtime behavior changed.'
+        };
+      }
+
+      function screen1BacklogDecisionConfig(decision) {
+        const normalizedDecision = safeStateValue(decision);
+        if (normalizedDecision === 'Reject / close') {
+          return {
+            actionType: 'parser_unknown_reject',
+            workflowType: 'screen1_parser_unknown_reject',
+            governanceIntent: 'reject or close parser signal backlog item',
+            governanceStatus: 'rejection_requested',
+            nextStep: 'Queued for governed review. No runtime behavior changed.'
+          };
+        }
+        if (normalizedDecision === 'Defer / keep in backlog') {
+          return {
+            actionType: 'parser_unknown_route',
+            workflowType: 'screen1_parser_unknown_route',
+            governanceIntent: 'defer parser signal in governed backlog',
+            governanceStatus: 'route_requested',
+            nextStep: 'Queued for governed review. No runtime behavior changed.'
+          };
+        }
+        return {
+          actionType: 'parser_unknown_review',
+          workflowType: 'screen1_parser_unknown_review',
+          governanceIntent: 'review parser signal backlog decision',
+          governanceStatus: 'review_requested',
+          nextStep: 'Queued for governed review. No runtime behavior changed.'
+        };
+      }
+
+      function screen1FieldPanelState(panel) {
+        const state = readDashboardState();
+        const decision = panel ? panel.querySelector('[data-screen1-field-decision]') : null;
+        const reviewer = panel ? panel.querySelector('[data-screen1-field-reviewer]') : null;
+        const rationale = panel ? panel.querySelector('[data-screen1-field-rationale]') : null;
+        const selectedId = safeStateValue(state.selectedAwrFieldCandidate || '');
+        const selectedItem = selectedId && panel
+          ? panel.querySelector('[data-screen1-field-candidate-id="' + selectedId + '"]')
+          : null;
+        return {
+          targetId: selectedId,
+          selected: Boolean(selectedItem),
+          selectedItem: selectedItem,
+          decision: decision ? safeStateValue(decision.value || '') : '',
+          reviewer: reviewer ? safeStateValue(reviewer.value || '') : '',
+          rationale: rationale ? safeStateValue(rationale.value || '') : ''
+        };
+      }
+
+      function screen1BacklogPanelState(panel) {
+        const state = readDashboardState();
+        const decision = panel ? panel.querySelector('[data-screen1-backlog-decision]') : null;
+        const reviewer = panel ? panel.querySelector('[data-screen1-backlog-reviewer]') : null;
+        const rationale = panel ? panel.querySelector('[data-screen1-backlog-rationale]') : null;
+        const targetId = 'optional-io-section-absence';
+        const selected = state.selectedParserBacklogItem === targetId;
+        return {
+          targetId: targetId,
+          selected: selected,
+          decision: decision ? safeStateValue(decision.value || '') : '',
+          reviewer: reviewer ? safeStateValue(reviewer.value || '') : '',
+          rationale: rationale ? safeStateValue(rationale.value || '') : ''
+        };
+      }
+
+      function missingScreen1Requirements(formState, itemLabel) {
+        const missing = [];
+        if (!formState.selected) {
+          missing.push(itemLabel);
+        }
+        if (!formState.decision) {
+          missing.push('choose decision');
+        }
+        if (!formState.reviewer) {
+          missing.push('enter reviewer');
+        }
+        if (!formState.rationale) {
+          missing.push('enter rationale');
+        }
+        return missing;
+      }
+
+      function updateScreen1FieldReviewWorkflow(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen1-field-review="true"]').forEach(function (panel) {
+          const formState = screen1FieldPanelState(panel);
+          panel.querySelectorAll('[data-screen1-field-candidate]').forEach(function (item) {
+            const isSelected = formState.selected &&
+              safeStateValue(item.getAttribute('data-screen1-field-candidate-id')) === formState.targetId;
+            item.classList.toggle('is-selected', isSelected);
+            item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            item.setAttribute('data-selected', isSelected ? 'true' : 'false');
+          });
+          panel.querySelectorAll('[data-screen1-selected-field-status]').forEach(function (element) {
+            if (!formState.selected || !formState.selectedItem) {
+              element.textContent = 'Select a field candidate to review.';
+              return;
+            }
+            const fieldName = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-name'));
+            const section = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-section'));
+            const proposed = safeStateValue(formState.selectedItem.getAttribute('data-screen1-field-proposed'));
+            element.textContent = 'Selected candidate field: ' + fieldName + '. Source section: ' + section +
+              '. Proposed mapping: ' + proposed + '.';
+          });
+          const missing = missingScreen1Requirements(formState, 'select field');
+          const ready = missing.length === 0;
+          panel.querySelectorAll('[data-screen1-field-requirements]').forEach(function (element) {
+            element.textContent = ready
+              ? 'Ready: field, decision, reviewer, and rationale are complete.'
+              : 'Required: ' + missing.join(', ') + '.';
+          });
+          panel.querySelectorAll('[data-screen1-field-submit]').forEach(function (button) {
+            button.disabled = !ready;
+            button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            button.setAttribute('data-action-enabled-state', ready ? 'enabled-form-valid' : 'disabled-missing-required-fields');
+          });
+        });
+      }
+
+      function updateScreen1BacklogWorkflow(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen1-backlog-review="true"]').forEach(function (panel) {
+          const formState = screen1BacklogPanelState(panel);
+          panel.querySelectorAll('[data-screen1-backlog-item]').forEach(function (item) {
+            item.classList.toggle('is-selected', formState.selected);
+            item.setAttribute('aria-selected', formState.selected ? 'true' : 'false');
+            item.setAttribute('data-selected', formState.selected ? 'true' : 'false');
+          });
+          panel.querySelectorAll('[data-screen1-selected-backlog-status]').forEach(function (element) {
+            element.textContent = formState.selected
+              ? 'Selected backlog item: Optional IO section absence. Count: 24 persisted review records. Current run unknowns: 0.'
+              : 'Select the backlog item to review.';
+          });
+          const missing = missingScreen1Requirements(formState, 'select backlog item');
+          const ready = missing.length === 0;
+          panel.querySelectorAll('[data-screen1-backlog-requirements]').forEach(function (element) {
+            element.textContent = ready
+              ? 'Ready: backlog item, decision, reviewer, and rationale are complete.'
+              : 'Required: ' + missing.join(', ') + '.';
+          });
+          panel.querySelectorAll('[data-screen1-backlog-submit]').forEach(function (button) {
+            button.disabled = !ready;
+            button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            button.setAttribute('data-action-enabled-state', ready ? 'enabled-form-valid' : 'disabled-missing-required-fields');
+          });
+        });
+      }
+
+      function updateScreen1GovernanceReviewWorkflow(root) {
+        updateScreen1FieldReviewWorkflow(root);
+        updateScreen1BacklogWorkflow(root);
+      }
+
+      function handleScreen1GovernanceReviewItemClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const fieldItem = event.target.closest('[data-screen1-field-candidate]');
+        if (fieldItem) {
+          event.preventDefault();
+          const targetId = safeStateValue(fieldItem.getAttribute('data-screen1-field-candidate-id'));
+          if (!targetId) {
+            return;
+          }
+          const nextState = readDashboardState();
+          nextState.selectedAwrFieldCandidate = targetId;
+          writeDashboardState(nextState);
+          updateScreen1GovernanceReviewWorkflow(document);
+          return;
+        }
+        const backlogItem = event.target.closest('[data-screen1-backlog-item]');
+        if (backlogItem) {
+          event.preventDefault();
+          const nextState = readDashboardState();
+          nextState.selectedParserBacklogItem = 'optional-io-section-absence';
+          nextState.selectedUnknownSignal = 'optional-io-section-absence';
+          writeDashboardState(nextState);
+          updateScreen1GovernanceReviewWorkflow(document);
+        }
+      }
+
+      function handleScreen1GovernanceFormInput(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const field = event.target.closest(
+          '[data-screen1-field-decision], [data-screen1-field-reviewer], [data-screen1-field-rationale], ' +
+          '[data-screen1-backlog-decision], [data-screen1-backlog-reviewer], [data-screen1-backlog-rationale]'
+        );
+        if (!field) {
+          return;
+        }
+        const panel = field.closest('[data-screen1-field-review="true"], [data-screen1-backlog-review="true"]') || document;
+        updateScreen1GovernanceReviewWorkflow(panel);
+      }
+
+      function screen1DisplayMessage(message) {
+        return safeStateValue(message)
+          .replace(/Phase 7CM validation/g, 'governed validation')
+          .replace(/Phase 7 validation/g, 'governed validation');
+      }
+
+      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message) {
+        if (!panel) {
+          return;
+        }
+        const values = {
+          status: screen1DisplayMessage(status || message || 'Waiting for submission.'),
+          request_id: requestId || 'Not issued',
+          audit_id: auditReference || 'Not issued',
+          decision: decision || 'Not submitted',
+          runtime_influence: 'Not active',
+          next_step: nextStep || 'Select a decision and submit a governed request.'
+        };
+        Object.keys(values).forEach(function (key) {
+          panel.querySelectorAll('[data-screen1-governance-result="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+          });
+        });
+      }
+
+      function buildScreen1GovernanceReviewRequest(panel) {
+        const isFieldPanel = Boolean(panel && panel.matches('[data-screen1-field-review="true"]'));
+        const formState = isFieldPanel ? screen1FieldPanelState(panel) : screen1BacklogPanelState(panel);
+        const config = isFieldPanel
+          ? screen1FieldDecisionConfig(formState.decision)
+          : screen1BacklogDecisionConfig(formState.decision);
+        const requestedAt = new Date().toISOString();
+        const targetId = formState.targetId || (isFieldPanel ? 'missing-field-candidate' : 'optional-io-section-absence');
+        const selectedItem = formState.selectedItem || null;
+        const candidateFieldName = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-name'))
+          : '';
+        const sourceSection = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-section'))
+          : '';
+        const proposedMapping = selectedItem
+          ? safeStateValue(selectedItem.getAttribute('data-screen1-field-proposed'))
+          : '';
+        return {
+          screen_id: 'screen_1',
+          action_type: config.actionType,
+          workflow_type: config.workflowType,
+          actor_id: formState.reviewer,
+          requested_at: requestedAt,
+          target_type: isFieldPanel ? 'parser_mapping_candidate' : 'parser_unknown_signal',
+          target_id: targetId,
+          governance_mode: 'governed_request',
+          execution_mode: 'request_record_only',
+          runtime_influence_granted: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          direct_truth_mutation_allowed: false,
+          run_analysis_coupling: false,
+          payload: {
+            reviewer_actor_id: formState.reviewer,
+            governance_intent: config.governanceIntent,
+            governance_status: config.governanceStatus,
+            selected_context_key: isFieldPanel ? 'selectedAwrFieldCandidate' : 'selectedParserBacklogItem',
+            selected_context_value: targetId,
+            selectedUnknownSignal: isFieldPanel ? '' : targetId,
+            selectedGovernanceItem: isFieldPanel ? targetId : '',
+            selectedAwrFieldCandidate: isFieldPanel ? targetId : '',
+            selectedParserBacklogItem: isFieldPanel ? '' : targetId,
+            target_screen: 'screen_1',
+            submitted_decision: formState.decision,
+            reviewer_rationale: formState.rationale,
+            review_item_label: isFieldPanel
+              ? (candidateFieldName || 'AWR field mapping candidate')
+              : 'Optional IO section absence',
+            candidate_field_name: candidateFieldName,
+            source_awr_section: sourceSection,
+            proposed_normalized_field_name: proposedMapping,
+            persisted_review_record_count: isFieldPanel ? 0 : 24,
+            current_run_unknown_count: isFieldPanel ? null : 0,
+            runtime_influence_state: 'not_active',
+            future_run_influence_gated: true,
+            future_run_influence_granted: false,
+            future_run_influence_active: false,
+            runtime_activation_requested: false,
+            runtime_activation_granted: false,
+            parser_output_mutation_requested: false,
+            parser_output_mutation_allowed: false,
+            direct_parser_mutation_allowed: false,
+            parser_mapping_created: false,
+            parser_candidate_created: false,
+            parser_backlog_item_created: false,
+            classification_persisted: false,
+            artifact_approved: false,
+            artifact_rejected: false,
+            artifact_revision_persisted: false,
+            materialization_created: false,
+            phase4i_mutation_requested: false,
+            phase4i_mutation_allowed: false,
+            phase8_behavior: false,
+            em_extract_attempted: false,
+            browser_db_query_attempted: false,
+            browser_object_storage_access_attempted: false,
+            browser_file_read_attempted: false,
+            browser_parsing_performed: false,
+            run_analysis_coupling: false
+          },
+          future_run_influence_metadata: {
+            requires_governed_materialization: true,
+            requires_runtime_eligibility: true,
+            future_runs_only: true,
+            runtime_activation_granted: false,
+            runtime_influence_granted: false,
+            immediate_runtime_mutation: false,
+            parser_mutation_applied: false,
+            scoring_mutation_applied: false,
+            recommendation_truth_mutation_applied: false
+          }
+        };
+      }
+
+      function handleScreen1GovernanceSubmitClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const button = event.target.closest('[data-screen1-field-submit], [data-screen1-backlog-submit]');
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        const panel = button.closest('[data-screen1-field-review="true"], [data-screen1-backlog-review="true"]');
+        const isFieldPanel = Boolean(panel && panel.matches('[data-screen1-field-review="true"]'));
+        const formState = isFieldPanel ? screen1FieldPanelState(panel) : screen1BacklogPanelState(panel);
+        const config = isFieldPanel
+          ? screen1FieldDecisionConfig(formState.decision)
+          : screen1BacklogDecisionConfig(formState.decision);
+        if (button.disabled || !formState.selected || !formState.decision || !formState.reviewer || !formState.rationale) {
+          setScreen1GovernanceReviewResult(
+            panel,
+            'Missing required fields.',
+            '',
+            '',
+            formState.decision,
+            isFieldPanel
+              ? 'Select the field candidate, decision, reviewer, and rationale before submitting.'
+              : 'Select the backlog item, decision, reviewer, and rationale before submitting.',
+            ''
+          );
+          return;
+        }
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          setScreen1GovernanceReviewResult(
+            panel,
+            'Service unavailable.',
+            '',
+            '',
+            formState.decision,
+            'Start the governed workflow service and retry.',
+            ''
+          );
+          return;
+        }
+        setScreen1GovernanceReviewResult(
+          panel,
+          'Submitting governed review request.',
+          '',
+          '',
+          formState.decision,
+          'Waiting for governed workflow service response.',
+          ''
+        );
+        requestBridge(PHASE7_ACTION_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildScreen1GovernanceReviewRequest(panel))
+        })
+          .then(function (response) {
+            return response.json().then(function (payload) {
+              return { ok: response.ok, payload: payload };
+            });
+          })
+          .then(function (result) {
+            const payload = result.payload || {};
+            if (!result.ok || payload.status !== 'accepted') {
+              setScreen1GovernanceReviewResult(
+                panel,
+                'Rejected: ' + screen1DisplayMessage(payload.message || 'Governed review request was rejected.'),
+                payload.request_id || '',
+                payload.audit_reference || '',
+                formState.decision,
+                'Review the rejected reason and adjust the request.',
+                payload.message || ''
+              );
+              return;
+            }
+            setScreen1GovernanceReviewResult(
+              panel,
+              'Accepted',
+              payload.request_id || '',
+              payload.audit_reference || '',
+              formState.decision,
+              config.nextStep,
+              payload.message || ''
+            );
+          })
+          .catch(function () {
+            setScreen1GovernanceReviewResult(
+              panel,
+              'Service unavailable.',
+              '',
+              '',
+              formState.decision,
+              'Start scripts/dashboard_workflow_service.py and retry.',
+              ''
+            );
+          });
+      }
+
       function updateSourceWorkflowSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -5522,6 +6459,7 @@
         scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
           element.textContent = sourceSubmitLabel(safeState.selectedSourceMode || '');
         });
+        updateScreen1ParserGovernanceSummary(safeState, scope);
       }
 
       function isStaticDashboardHref(rawHref) {
@@ -5587,6 +6525,7 @@
         updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
+        updateScreen1GovernanceReviewWorkflow(root);
         updatePhase7ActionEnablement(safeState, root);
         preserveDashboardStateInNavigation(safeState, root);
         return safeState;
@@ -5807,6 +6746,13 @@
       }
 
       function actionStatusElement(element) {
+        const actionCard = element.closest('.screen1-governance-action-card');
+        if (actionCard) {
+          const cardTarget = actionCard.querySelector('[data-phase7-action-status]');
+          if (cardTarget) {
+            return cardTarget;
+          }
+        }
         const panel = element.closest('[data-phase7-runtime-interaction-panel]');
         if (!panel) {
           return null;
@@ -5920,15 +6866,20 @@
           const missingSourceFields = isIndexSourceSelectionAction(element)
             ? sourceSelectionMissingFields(safeState)
             : [];
-          const enabled = (!key || Boolean(selectedValue)) && missingSourceFields.length === 0;
+          const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
+            ? screen1MissingFields(element, safeState)
+            : [];
+          const actionMissingFields = missingSourceFields.concat(missingScreen1Fields);
+          const enabled = (!key || Boolean(selectedValue)) && actionMissingFields.length === 0;
           element.classList.toggle('is-disabled', !enabled);
           element.setAttribute('aria-disabled', enabled ? 'false' : 'true');
           element.setAttribute(
             'data-action-enabled-state',
-            enabled ? 'enabled-selection-valid' : 'disabled-missing-source-selection'
+            enabled ? 'enabled-selection-valid' : 'disabled-missing-required-selection'
           );
           element.setAttribute('data-selected-context-value', selectedValue || '');
           element.setAttribute('data-missing-source-fields', missingSourceFields.join(','));
+          element.setAttribute('data-missing-screen1-fields', missingScreen1Fields.join(','));
           const status = actionStatusElement(element);
           if (status) {
             const currentStatus = status.getAttribute('data-phase7-action-status') || '';
@@ -5936,14 +6887,19 @@
               setActionStatus(
                 element,
                 'ready',
-                sourceActionStateMessage(safeState, missingSourceFields) +
-                  ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                isScreen1ParserGovernanceAction(element)
+                  ? screen1ActionMessage(element, safeState, missingScreen1Fields) +
+                    ' Nothing has been mutated; governed request/audit record is created only after submit.'
+                  : sourceActionStateMessage(safeState, missingSourceFields) +
+                    ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
               );
             } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
               setActionStatus(
                 element,
-                'disabled-missing-source-selection',
-                sourceActionStateMessage(safeState, missingSourceFields)
+                'disabled-missing-required-selection',
+                isScreen1ParserGovernanceAction(element)
+                  ? screen1ActionMessage(element, safeState, missingScreen1Fields)
+                  : sourceActionStateMessage(safeState, missingSourceFields)
               );
             }
           }
@@ -5961,8 +6917,11 @@
         const dashboardState = readDashboardState();
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
+        const isScreen1Action = isScreen1ParserGovernanceAction(element);
+        const requestPrefix = isScreen1Action ? 'PHASE7CN' : 'PHASE7CM';
+        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : 'phase7cm';
         const idempotencyKey = [
-          'phase7cm',
+          idempotencyPrefix,
           screenId,
           actionType,
           selectedContextValue || targetId,
@@ -5970,7 +6929,7 @@
         ].join(':');
         return {
           request_id: [
-            'PHASE7CM',
+            requestPrefix,
             screenId,
             actionType,
             targetId,
@@ -6041,10 +7000,48 @@
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
-            target_screen: 'screen3',
-            source_request_contract_version: '7CM.index_source_selection.v1',
+            target_screen: isScreen1Action ? 'screen_1' : 'screen3',
+            source_request_contract_version: isScreen1Action ? '' : '7CM.index_source_selection.v1',
+            screen1_parser_governance_contract_version: isScreen1Action
+              ? '7CN.screen1_parser_governance.v1'
+              : '',
+            screen1_selected_target_type: isScreen1Action
+              ? screen1SelectedTargetType(dashboardState)
+              : '',
+            screen1_selected_target_id: isScreen1Action ? selectedContextValue : '',
+            selectedUnknownSignal: dashboardState.selectedUnknownSignal || '',
+            selectedGovernanceItem: dashboardState.selectedGovernanceItem || '',
+            selectedKnowledgeRequest: dashboardState.selectedKnowledgeRequest || '',
+            selectedArtifact: dashboardState.selectedArtifact || '',
+            selectedParserSection: dashboardState.selectedParserSection || '',
+            selectedParserDiagnostic: dashboardState.selectedParserDiagnostic || '',
+            reviewer_actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
+            governance_intent: payload.governance_intent || (
+              isScreen1Action ? 'screen1_parser_governance_review' : ''
+            ),
+            governance_status: payload.governance_status || (
+              isScreen1Action ? 'review_requested' : ''
+            ),
+            future_run_influence_gated: true,
+            future_run_influence_granted: false,
+            future_run_influence_active: false,
+            runtime_activation_requested: false,
+            runtime_activation_granted: false,
+            parser_output_mutation_requested: false,
+            parser_output_mutation_allowed: false,
+            direct_parser_mutation_allowed: false,
+            parser_mapping_created: false,
+            parser_candidate_created: false,
+            parser_backlog_item_created: false,
+            classification_persisted: false,
+            artifact_approved: false,
+            artifact_rejected: false,
+            artifact_revision_persisted: false,
+            materialization_created: false,
+            phase4i_mutation_requested: false,
             awr_signature_validation: dashboardState.awrSignatureValidation || '',
             browser_parsing_performed: false,
+            browser_db_query_attempted: false,
             browser_file_read_attempted: false,
             browser_file_upload_performed: false,
             browser_object_storage_access_attempted: false,
@@ -6290,6 +7287,14 @@
         const dashboardState = readDashboardState();
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         if (selectedContextKey && !selectedContextValue) {
+          if (isScreen1ParserGovernanceAction(element)) {
+            setActionStatus(
+              element,
+              'disabled-no-selection',
+              screen1ActionMessage(element, dashboardState, [selectedContextKey])
+            );
+            return;
+          }
           setActionStatus(
             element,
             'disabled-no-selection',
@@ -6308,6 +7313,17 @@
           );
           return;
         }
+        const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
+          ? screen1MissingFields(element, dashboardState)
+          : [];
+        if (missingScreen1Fields.length) {
+          setActionStatus(
+            element,
+            'disabled-missing-screen1-target',
+            screen1ActionMessage(element, dashboardState, missingScreen1Fields)
+          );
+          return;
+        }
         const requestBridge = window['fetch'];
         if (typeof requestBridge !== 'function') {
           setActionStatus(
@@ -6317,7 +7333,13 @@
           );
           return;
         }
-        setActionStatus(element, 'pending', 'Submitting governed source-selection request...');
+        setActionStatus(
+          element,
+          'pending',
+          isScreen1ParserGovernanceAction(element)
+            ? 'Submitting governed Screen 1 parser governance request...'
+            : 'Submitting governed source-selection request...'
+        );
         requestBridge(PHASE7_ACTION_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6335,7 +7357,7 @@
                 'failed',
                 result.payload && result.payload.message
                   ? result.payload.message
-                  : 'Governed source-selection request was rejected.'
+                  : 'Governed workflow request was rejected.'
               );
               return;
             }
@@ -6344,7 +7366,9 @@
               'accepted',
               'Success. Request ID: ' + result.payload.request_id +
                 '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
-                '. Next step: open Screen 3.'
+                (isScreen1ParserGovernanceAction(element)
+                  ? '. Parser governance request is queued for governed review; runtime influence remains gated.'
+                  : '. Next step: open Screen 3.')
             );
           })
           .catch(function () {
@@ -6408,10 +7432,14 @@
         }
         if (!dashboardInteractivityInitialized) {
           document.addEventListener('click', handleDashboardSelectableClick);
+          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
+          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
           document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleExistingRunLookupClick);
           document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);
+          document.addEventListener('input', handleScreen1GovernanceFormInput);
+          document.addEventListener('change', handleScreen1GovernanceFormInput);
           document.addEventListener('input', handleDashboardStateInput);
           document.addEventListener('change', handleDashboardStateInput);
           document.addEventListener('change', handlePhase7SourcePickerChange);

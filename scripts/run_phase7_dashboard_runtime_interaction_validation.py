@@ -399,7 +399,7 @@ def validate_dashboard_runtime_interaction(
         "scope": "index_source_selection_runtime_workflow",
         "scope_note": (
             "7CM certifies only the index/source-selection runtime workflow. "
-            "Screen 1-6 runtime workflows remain pending for 7CN-7CS and "
+            "Screen 2-6 runtime workflows remain pending for 7CO-7CS and "
             "cross-screen integration remains pending for 7CT."
         ),
         "dashboard_runtime_interaction_ready": source_ready,
@@ -426,7 +426,6 @@ def validate_dashboard_runtime_interaction(
         "service_bridge": service_smoke,
         "deferred_screen_workflow_blocker_id": SELECTION_BLOCKER_ID,
         "deferred_screens": [
-            "7CN Screen 1 parser governance runtime workflow",
             "7CO Screen 2 diagnostic review runtime workflow",
             "7CP Screen 3 active re-analysis runtime workflow",
             "7CQ Screen 4 historical review runtime workflow",
@@ -435,7 +434,6 @@ def validate_dashboard_runtime_interaction(
             "7CT cross-screen runtime workflow integration",
         ],
         "remaining_deferred_screens": [
-            "7CN Screen 1 parser governance runtime workflow",
             "7CO Screen 2 diagnostic review runtime workflow",
             "7CP Screen 3 active re-analysis runtime workflow",
             "7CQ Screen 4 historical review runtime workflow",
@@ -867,7 +865,7 @@ def index_service_smoke_payloads() -> list[dict[str, Any]]:
 
 
 def service_smoke_payloads() -> list[dict[str, Any]]:
-    """Return reusable future screen payloads for 7CN-7CS contract tests."""
+    """Return reusable future screen payloads for 7CO-7CS contract tests."""
 
     base = {
         "actor_id": "ACTOR-7CM-VALIDATION",

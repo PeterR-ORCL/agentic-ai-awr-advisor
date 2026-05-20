@@ -93,7 +93,7 @@ class DashboardInteractivityPhase7HAcceptanceTests(unittest.TestCase):
         required_markers = (
             "Dashboard Interactivity Foundation",
             "Screen 3 Control Center",
-            "Screen 2 Diagnostic Exploration",
+            "Interactive Evidence Focus",
             "Screen 4 Historical Review Exploration",
             "Screen 5 Recommendation/Action Exploration",
             "Screen 1 Governance / Parser Exploration",
@@ -126,8 +126,17 @@ class DashboardInteractivityPhase7HAcceptanceTests(unittest.TestCase):
 
     def test_no_backend_or_api_write_behavior(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH).lower()
-        forbidden_patterns = (
+        governed_markers = (
             "fetch(",
+            "/phase7/dashboard/actions",
+            "/phase7/dashboard/existing-runs",
+            "/phase7/dashboard/object-storage/validate",
+            "/phase7/dashboard/screen2/explanation",
+        )
+        for marker in governed_markers:
+            with self.subTest(governed_marker=marker):
+                self.assertIn(marker, source)
+        forbidden_patterns = (
             "xmlhttprequest",
             'method="post"',
             "method='post'",

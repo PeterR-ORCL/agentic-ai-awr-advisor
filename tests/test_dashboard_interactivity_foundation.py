@@ -62,9 +62,9 @@ class DashboardInteractivityFoundationTests(unittest.TestCase):
 
         required_markers = (
             "Dashboard Interactivity Foundation",
-            "Read-only selection state",
-            "Exploratory only",
-            "No backend writes",
+            "Browser-side selection state is not authoritative truth",
+            "Browser actions may submit governed workflow requests through the workflow service",
+            "Does not change diagnostic truth",
         )
         for marker in required_markers:
             with self.subTest(marker=marker):
@@ -78,6 +78,14 @@ class DashboardInteractivityFoundationTests(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertIn(attribute, combined)
 
+    def test_screen2_review_note_state_is_not_exposed(self) -> None:
+        dashboard = dashboard_module()
+        script = dashboard._build_dashboard_interactivity_javascript()
+
+        self.assertNotIn("screen2ReviewNote", dashboard.DASHBOARD_INTERACTIVITY_STATE_KEYS)
+        self.assertNotIn("screen2ReviewNote", script)
+        self.assertNotIn("safeStateFreeTextValue", script)
+
     def test_rendered_output_contains_read_only_safety_wording(self) -> None:
         dashboard = dashboard_module()
         rendered = dashboard._build_page_html(
@@ -89,10 +97,8 @@ class DashboardInteractivityFoundationTests(unittest.TestCase):
         )
 
         required_phrases = (
-            "Read-only selection state",
-            "Exploratory only",
-            "No backend writes",
-            "No API calls",
+            "Browser-side selection state is not authoritative truth",
+            "Browser actions may submit governed workflow requests through the workflow service",
             "Does not change diagnostic truth",
             "Does not change historical truth",
             "Does not change recommendation truth",
@@ -130,7 +136,6 @@ class DashboardInteractivityFoundationTests(unittest.TestCase):
                 self.assertNotIn(control, rendered)
 
         forbidden_runtime_writes = (
-            "fetch(",
             "xmlhttprequest",
             "sendbeacon",
             "form.submit",
@@ -243,17 +248,13 @@ class DashboardInteractivityFoundationTests(unittest.TestCase):
         text = read_text(doc_path).lower()
 
         required_phrases = (
-            "read-only",
-            "exploratory only",
-            "no backend writes",
-            "no approval controls",
-            "no write controls",
+            "browser actions may submit governed workflow requests through the workflow service",
+            "browser actions do not directly mutate parser output",
             "does not change diagnostic truth",
             "does not change historical truth",
             "does not change recommendation truth",
             "cross-screen selection propagation is browser-side only",
             "url hash/localstorage state is not authoritative truth",
-            "no api calls",
             "learning candidates remain review/proposal context only",
             "semantic context remains reviewer-assist only",
         )

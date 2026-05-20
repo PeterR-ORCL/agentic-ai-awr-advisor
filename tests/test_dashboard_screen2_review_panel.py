@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from pathlib import Path
 import py_compile
 import unittest
@@ -9,6 +10,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs" / "architecture"
 HTML_DASHBOARD_PATH = ROOT / "src" / "reporting" / "html_dashboard.py"
+GENERATED_SCREEN2_PATH = ROOT / "awr_dashboard" / "screen_2_analysis.html"
 PANEL_DOC = DOCS / "phase7as_screen2_review_panel.md"
 PREVIEW_DOC = DOCS / "phase7as_screen2_review_request_preview.md"
 
@@ -25,62 +27,88 @@ class DashboardScreen2ReviewPanelTests(unittest.TestCase):
     def test_dashboard_source_compiles(self) -> None:
         py_compile.compile(str(HTML_DASHBOARD_PATH), doraise=True)
 
-    def test_screen2_review_panel_exists_with_preview_controls(self) -> None:
+    def test_screen2_evidence_focus_panel_exists_without_submit_controls(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen2()
         combined = source + "\n" + rendered
 
         required = (
-            "Screen 2 Diagnostic Review / Approval Panel",
-            "Confirm Evidence",
-            "Dispute Evidence",
-            "Mark Insufficient Evidence",
-            "Request Parser Review",
-            "Request Scoring Review",
-            "Request Recommendation Review",
-            "Request Learning Candidate",
-            "Add Reviewer Note",
+            "Focused Diagnostic Meaning",
+            "Selected Focus Summary",
+            "screen2-focus-summary-compact",
+            "Evidence focus only",
+            "For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.",
+            "Deterministic output remains authoritative",
+            "LLM-style wording may explain",
+            "Generate Focused Explanation",
+            "No workflow request, audit record, governance record",
+            "/phase7/dashboard/screen2/explanation",
+            "screen2-focused-explanation-panel",
+            "screen2-focused-explanation-list",
+            "screen2-focused-explanation-item",
+            "Use Domain to choose the high-level diagnostic lens.",
+            "Active domain lens",
+            "Active explanation focus",
+            "Focus type",
+            "PHASE7_SCREEN2_EXPLANATION_PROVIDER_MODE",
+            "provider_mode: providerMode",
+            "The selected CPU signal shows CPU pressure",
+            "The selected I/O signal shows User I/O Pressure",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, combined)
 
-    def test_controls_are_disabled_preview_only(self) -> None:
+        forbidden = (
+            "Submit Governed Diagnostic Review Request",
+            "Review disposition",
+            "Reviewer note / rationale",
+            "request_governed_diagnostic_review",
+            'data-action-type="diagnostic_review"',
+        )
+        for phrase in forbidden:
+            with self.subTest(forbidden=phrase):
+                self.assertNotIn(phrase, rendered)
+
+    def test_evidence_focus_panel_is_not_submit_form(self) -> None:
         rendered = self.render_screen2()
 
-        self.assertIn('aria-disabled="true"', rendered)
-        self.assertIn('data-preview-only="true"', rendered)
-        self.assertIn("Review action disabled in this phase", rendered)
-        self.assertIn("Preview only", rendered)
-        self.assertIn("Review is not mutation", rendered)
+        self.assertIn("Overall deterministic result", rendered)
+        self.assertIn("Evidence focus only", rendered)
+        self.assertIn("Deterministic diagnosis, scoring, recommendations", rendered)
+        self.assertIn(
+            "Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.",
+            rendered,
+        )
+        self.assertIn("Calls the local dashboard explanation service for wording only", rendered)
+        self.assertIn(
+            "Generate Focused Explanation refreshes explanatory wording only when the operator explicitly requests it.",
+            rendered,
+        )
+        self.assertIn("Diagnosis, score, confidence, and recommendation changes require deterministic analysis", rendered)
+        self.assertNotIn('aria-disabled="true"', rendered)
+        self.assertNotIn("Reviewer required before submit.", rendered)
+        self.assertNotIn("No reviewer note entered.", rendered)
 
     def test_required_safety_labels_exist(self) -> None:
         rendered = self.render_screen2()
 
         for phrase in (
-            "Does not change diagnostic truth",
-            "Does not change primary issue",
-            "Does not change severity",
-            "Does not change confidence",
-            "Does not change score",
-            "Does not change parser output",
-            "Does not change recommendation truth",
-            "Does not mutate Phase 4I",
-            "No backend write",
-            "No governed write path invoked",
-            "No candidate created automatically",
-            "Deterministic runtime remains authoritative",
+            "The deterministic diagnosis, score, confidence, recommendation",
+            "Deterministic diagnosis, scoring, recommendations",
+            "runtime eligibility, future-run behavior",
+            "governed service behavior remain unchanged",
+            "DB/governance/audit state remain unchanged",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_no_unsafe_backend_calls_or_submit_controls(self) -> None:
-        source = read_text(HTML_DASHBOARD_PATH).lower()
+    def test_no_unsafe_backend_calls_or_raw_submit_controls(self) -> None:
+        source = inspect.getsource(dashboard_module()._render_screen2_review_panel).lower()
         rendered = self.render_screen2().lower()
         combined = source + "\n" + rendered
 
         forbidden = (
-            "fetch(",
             "xmlhttprequest",
             'method="post"',
             'action="/"',
@@ -91,58 +119,91 @@ class DashboardScreen2ReviewPanelTests(unittest.TestCase):
             "write_review",
             "type=\"submit\"",
             "<form",
-            "<button",
+            "submit governed",
         )
         for phrase in forbidden:
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, combined)
 
-    def test_shared_dashboard_preview_controls_are_governed_without_raw_buttons(self) -> None:
-        source = read_text(HTML_DASHBOARD_PATH).lower()
+    def test_screen2_evidence_focus_has_no_governed_submit_control(self) -> None:
+        source = inspect.getsource(dashboard_module()._render_screen2_review_panel).lower()
         rendered = self.render_screen2().lower()
         combined = source + "\n" + rendered
 
-        self.assertNotIn("<button", combined)
-        self.assertIn('role="button"', source)
-        self.assertIn('data-preview-only="true"', source)
-        self.assertIn('data-disabled="true"', source)
-        self.assertIn('aria-disabled="true"', source)
+        self.assertIn("generate focused explanation", combined)
+        self.assertIn('data-screen2-generate-explanation="true"', combined)
+        self.assertNotIn('role="button"', rendered)
+        self.assertNotIn('data-phase7-action-control="true"', rendered)
+        self.assertNotIn('data-action-type="diagnostic_review"', rendered)
+        self.assertNotIn('aria-disabled="true"', source)
 
-    def test_review_target_summary_exists_without_submission_claim(self) -> None:
+    def test_review_target_summary_exists_as_explanation_focus(self) -> None:
         rendered = self.render_screen2()
+        source = read_text(HTML_DASHBOARD_PATH)
 
-        self.assertIn("Review Target Summary", rendered)
-        self.assertIn("Review target summary section", rendered)
-        self.assertIn("selected diagnostic/evidence context", rendered)
+        self.assertIn("Selected Focus Summary", rendered)
+        self.assertIn("Overall deterministic result", rendered)
+        self.assertIn("Active domain lens", rendered)
+        self.assertIn("Active evidence group", rendered)
+        self.assertIn("Active metric / wait / SQL", rendered)
+        self.assertIn("Active diagnostic section", rendered)
+        self.assertIn("Active explanation focus", rendered)
+        self.assertIn("Focus type", rendered)
+        self.assertIn("screen2-focus-summary-compact", rendered)
+        self.assertIn("Deterministic context", rendered)
         self.assertIn("selectedDomain", rendered)
         self.assertIn("selectedEvidenceGroup", rendered)
         self.assertIn("selectedMetricGroup", rendered)
         self.assertIn("selectedWaitEventGroup", rendered)
         self.assertIn("selectedSqlSignal", rendered)
         self.assertIn("selectedDiagnosticSection", rendered)
-        self.assertIn("safe empty state", rendered.lower())
-        self.assertIn("does not imply submission occurred", rendered)
+        self.assertIn("Only local explanation focus can change on this screen.", rendered)
+        self.assertIn("Only the local evidence focus and explanation wording change.", source)
         self.assertNotIn("review submitted", rendered.lower())
         self.assertNotIn("submitted successfully", rendered.lower())
 
-    def test_review_request_preview_exists(self) -> None:
+    def test_generated_focus_summary_outcome_rows_use_aligned_pills(self) -> None:
+        generated = read_text(GENERATED_SCREEN2_PATH)
+        source = read_text(HTML_DASHBOARD_PATH)
+        combined = generated + "\n" + source
+
+        self.assertIn(
+            '<div class="screen2-outcome-row"><dt>Decision posture</dt><dd data-screen2-focus="decision_posture"><span class="status-pill warning">TUNE FIRST</span></dd></div>',
+            generated,
+        )
+        self.assertIn(
+            '<div class="screen2-outcome-row"><dt>Severity</dt><dd data-screen2-focus="severity"><span class="status-pill success">OK</span></dd></div>',
+            generated,
+        )
+        self.assertIn(
+            '<div class="screen2-outcome-row"><dt>Confidence</dt><dd data-screen2-focus="confidence"><span class="confidence-pill low">LOW</span></dd></div>',
+            generated,
+        )
+        self.assertIn(".screen2-selected-evidence-card .screen2-outcome-row", combined)
+        self.assertIn("align-items: center;", combined)
+        self.assertIn(".screen2-selected-evidence-card .screen2-outcome-row .status-pill", combined)
+        self.assertIn(".screen2-selected-evidence-card .screen2-outcome-row .confidence-pill", combined)
+        self.assertIn("min-width: 72px", combined)
+
+    def test_review_request_status_absent(self) -> None:
         rendered = self.render_screen2().lower()
+        panel = rendered[rendered.index('id="screen2-evidence-focus-panel"') :]
 
         for phrase in (
-            "review request preview",
-            "target type",
-            "review decision",
-            "actor required",
-            "audit required",
-            "governed write path required",
-            "governance bridge required",
-            "candidate intent possible",
-            "write_performed=false",
-            "runtime_influence=false",
-            "phase4i_mutation_requested=false",
+            "request / audit result",
+            "review disposition",
+            "reviewer required",
+            "reviewer note / rationale",
+            "accepted/rejected status",
+            "request id",
+            "technical audit record",
         ):
             with self.subTest(phrase=phrase):
-                self.assertIn(phrase, rendered)
+                self.assertNotIn(phrase, panel)
+
+        self.assertIn("focus type", panel)
+        self.assertNotIn("Current AWR / Run Context", rendered)
+        self.assertNotIn("static export", rendered)
 
     def test_docs_exist_and_contain_required_boundaries(self) -> None:
         self.assertTrue(PANEL_DOC.is_file(), PANEL_DOC)
@@ -150,11 +211,11 @@ class DashboardScreen2ReviewPanelTests(unittest.TestCase):
 
         text = (read_text(PANEL_DOC) + "\n" + read_text(PREVIEW_DOC)).lower()
         for phrase in (
-            "no review execution",
+            "non-submitting screen 2 evidence-focus workflow",
             "no diagnostic truth mutation",
-            "no governed write path invoked",
+            "no direct diagnostic truth mutation",
             "no candidate created automatically",
-            "all controls are disabled/preview-only",
+            "deterministic runtime remains authoritative",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, text)

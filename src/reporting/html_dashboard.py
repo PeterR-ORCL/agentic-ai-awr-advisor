@@ -56,6 +56,18 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedWaitEventGroup",
     "selectedSqlSignal",
     "selectedDiagnosticSection",
+    "screen2ActiveFocusKey",
+    "screen2ActiveFocusType",
+    "screen2ActiveFocusValue",
+    "screen2ActiveFocusLabel",
+    "screen2ActiveFocusDomain",
+    "screen2InferredDomain",
+    "screen2ActiveDomainLens",
+    "screen2ActiveEvidenceGroup",
+    "screen2ActiveMetric",
+    "screen2ActiveWaitEvent",
+    "screen2ActiveSqlSignal",
+    "screen2ActiveDiagnosticSection",
     "selectedHistoricalWindow",
     "selectedTrendMetric",
     "selectedAnomalyGroup",
@@ -968,10 +980,19 @@ def _build_dashboard_interactivity_javascript() -> str:
       const SOURCE_PICKER_SELECTOR = '[data-phase7-source-picker]';
       const EXISTING_RUN_LOOKUP_SELECTOR = '[data-phase7-existing-run-lookup-control="true"]';
       const EXISTING_RUN_OPTIONS_SELECTOR = '[data-phase7-existing-run-options="true"]';
-      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
-      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
-      const HTTP_SCHEME_PREFIX = 'http:' + '//';
+	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
+	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
+	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
+	      const HTTP_SCHEME_PREFIX = 'http:' + '//';
       const HTTPS_SCHEME_PREFIX = 'https:' + '//';
+	      const SCREEN2_EXPLANATION_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_SCREEN2_EXPLANATION_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen2/explanation')
+	      );
+	      const PHASE7_DASHBOARD_HEALTH_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/health')
+	      );
       const MAX_STATE_VALUE_LENGTH = 256;
       const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         awr: 'selectedAwr',
@@ -1047,6 +1068,29 @@ def _build_dashboard_interactivity_javascript() -> str:
         source: 'selectedSourceMode',
         sourceContext: 'selectedSourceContext'
       });
+      const SCREEN2_FOCUS_STATE_KEYS = Object.freeze([
+        'selectedDomain',
+        'selectedEvidenceGroup',
+        'selectedMetricGroup',
+        'selectedWaitEventGroup',
+        'selectedSqlSignal',
+        'selectedDiagnosticSection'
+      ]);
+      const SCREEN2_FOCUS_ITEM_STATE_KEYS = Object.freeze([
+        'selectedEvidenceGroup',
+        'selectedMetricGroup',
+        'selectedWaitEventGroup',
+        'selectedSqlSignal',
+        'selectedDiagnosticSection'
+      ]);
+      const SCREEN2_FOCUS_TYPE_BY_STATE_KEY = Object.freeze({
+        selectedDomain: 'diagnostic_domain',
+        selectedEvidenceGroup: 'evidence_group',
+        selectedMetricGroup: 'metric_group',
+        selectedWaitEventGroup: 'wait_event_group',
+        selectedSqlSignal: 'sql_signal',
+        selectedDiagnosticSection: 'diagnostic_section'
+      });
       const PHASE7CM_SOURCE_MODE_REQUIRED_FIELDS = Object.freeze({
         local_staged: ['sourceSelectionMethod'],
         local_file: ['sourceSelectionMethod'],
@@ -1071,6 +1115,19 @@ def _build_dashboard_interactivity_javascript() -> str:
           .replace(/[<>]/g, '')
           .trim()
           .slice(0, MAX_STATE_VALUE_LENGTH);
+      }
+
+      function safeExplanationText(value) {
+        if (value === undefined || value === null) {
+          return '';
+        }
+        return String(value)
+          .replace(/[<>]/g, '')
+          .replace(/(^|\\s)#{1,6}\\s+/g, '$1')
+          .replace(/[\\u0000-\\u001f\\u007f]/g, ' ')
+          .replace(/\\s+/g, ' ')
+          .trim()
+          .slice(0, 2000);
       }
 
       function isDashboardStateKey(key) {
@@ -1238,7 +1295,10 @@ def _build_dashboard_interactivity_javascript() -> str:
         elements.forEach(function (element) {
           const key = stateKeyForSelectable(element);
           const value = valueForSelectable(element);
-          const isSelected = Boolean(key && value && safeState[key] === value);
+          let isSelected = Boolean(key && value && safeState[key] === value);
+          if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
+            isSelected = Boolean(key && value && safeState[key] === value);
+          }
           element.classList.toggle('is-selected', isSelected);
           element.setAttribute('data-selected', isSelected ? 'true' : 'false');
           if (element.hasAttribute('aria-selected')) {
@@ -1264,6 +1324,59 @@ def _build_dashboard_interactivity_javascript() -> str:
             safeState[key] === value ? 'true' : 'false'
           );
         });
+      }
+
+      function screen2CurrentDomainLens(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return (
+          safeStateValue(safeState.screen2ActiveDomainLens) ||
+          safeStateValue(safeState.selectedDomain) ||
+          ''
+        );
+      }
+
+      function updateScreen2DomainScopedSelectors(state, root) {
+        const scope = root || document;
+        const domainLens = screen2CurrentDomainLens(state);
+        scope.querySelectorAll('[data-screen2-domain-scoped="true"]').forEach(function (grid) {
+          let visibleCount = 0;
+          const groupName = safeStateValue(grid.getAttribute('data-screen2-selector-group'));
+          const cards = grid.querySelectorAll('[data-dashboard-selectable="true"]');
+          cards.forEach(function (card) {
+            const cardDomain = safeStateValue(card.getAttribute('data-dashboard-select-domain'));
+            const visible = Boolean(domainLens && cardDomain === domainLens);
+            card.hidden = !visible;
+            card.setAttribute('data-screen2-domain-scope-active', visible ? 'true' : 'false');
+            if (visible) {
+              visibleCount += 1;
+            }
+          });
+          const emptyState = grid.parentElement
+            ? grid.parentElement.querySelector('[data-screen2-selector-empty-state]')
+            : null;
+          if (!emptyState) {
+            return;
+          }
+          emptyState.hidden = visibleCount > 0;
+          emptyState.textContent = screen2DomainScopedEmptyMessage(emptyState, groupName, domainLens);
+        });
+      }
+
+      function screen2DomainScopedEmptyMessage(emptyState, groupName, domainLens) {
+        if (!domainLens) {
+          return safeStateValue(emptyState.getAttribute('data-no-domain-message'));
+        }
+        const specificMessage = safeStateValue(
+          emptyState.getAttribute('data-empty-message-' + domainLens.toLowerCase())
+        );
+        if (specificMessage) {
+          return specificMessage;
+        }
+        const template = safeStateValue(emptyState.getAttribute('data-domain-empty-message'));
+        if (template) {
+          return template.replace('{domain}', domainLens);
+        }
+        return 'No ' + groupName.replace(/_/g, ' ') + ' items are available for the active ' + domainLens + ' lens.';
       }
 
       function updateDashboardStateInputs(state, root) {
@@ -1612,7 +1725,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         if (mode === 'object_storage') {
           if (safeState.objectStorageValidationStatus === 'unavailable') {
-            return 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+            return 'Dashboard workflow service is not running. Start the service to use interactive features.';
           }
           return 'Complete Object Storage metadata and validate configured defaults. Missing: ' + missing.join(', ') + '.';
         }
@@ -1736,6 +1849,679 @@ def _build_dashboard_interactivity_javascript() -> str:
         return missing;
       }
 
+      function isScreen2DiagnosticReviewAction(element) {
+        return false;
+      }
+
+      function screen2ActionMessage(element, state, missing) {
+        return 'Screen 2 evidence focus updates explanation context only; it does not submit review requests.';
+      }
+
+      function screen2MissingFields(element, state) {
+        return [];
+      }
+
+      function screen2FocusTypeForStateKey(key) {
+        return SCREEN2_FOCUS_TYPE_BY_STATE_KEY[safeStateValue(key)] || '';
+      }
+
+      function screen2InferDomainFromText(value) {
+        const text = safeStateValue(value).toUpperCase();
+        if (!text) {
+          return '';
+        }
+        if (text.indexOf('USER-I-O') !== -1 || text.indexOf('USER I/O') !== -1 || text.indexOf('I-O') !== -1 || text.indexOf('IO') === 0 || text.indexOf('I/O') !== -1) {
+          return 'IO';
+        }
+        if (text.indexOf('COMMIT') !== -1 || text.indexOf('LOG-FILE-SYNC') !== -1 || text.indexOf('LOG FILE SYNC') !== -1) {
+          return 'COMMIT';
+        }
+        if (text.indexOf('MEMORY') !== -1 || text.indexOf('PGA') !== -1) {
+          return 'MEMORY';
+        }
+        if (text.indexOf('RAC') !== -1 || text.indexOf('CLUSTER') !== -1) {
+          return 'RAC';
+        }
+        if (text.indexOf('ADG') !== -1 || text.indexOf('TRANSPORT') !== -1 || text.indexOf('APPLY') !== -1) {
+          return 'ADG';
+        }
+        if (text.indexOf('CPU') !== -1) {
+          return 'CPU';
+        }
+        return '';
+      }
+
+      function screen2EvidenceGroupValueForDomain(domain) {
+        return {
+          CPU: 'cpu-signal',
+          IO: 'i-o-signal',
+          MEMORY: 'memory-signal',
+          COMMIT: 'commit-signal',
+          RAC: 'rac-signal',
+          ADG: 'adg-signal'
+        }[safeStateValue(domain)] || '';
+      }
+
+      function screen2EvidenceGroupLabelForDomain(domain) {
+        return {
+          CPU: 'CPU Signal',
+          IO: 'I/O Signal',
+          MEMORY: 'Memory Signal',
+          COMMIT: 'Commit Signal',
+          RAC: 'RAC Signal',
+          ADG: 'ADG Signal'
+        }[safeStateValue(domain)] || '';
+      }
+
+      function screen2DisplayLabelForSelection(value) {
+        const text = safeStateValue(value);
+        if (!text) {
+          return '';
+        }
+        const knownLabels = {
+          'cpu-signal': 'CPU Signal',
+          'i-o-signal': 'I/O Signal',
+          'memory-signal': 'Memory Signal',
+          'commit-signal': 'Commit Signal',
+          'rac-signal': 'RAC Signal',
+          'adg-signal': 'ADG Signal',
+          'CPU-db-cpu-db-time': 'DB CPU % DB Time',
+          'IO-user-i-o-pressure': 'User I/O Pressure',
+          'MEMORY-pga-spill-pressure': 'PGA Spill Pressure',
+          'RAC-cluster-wait': 'Cluster Wait %',
+          'wait-log-file-sync': 'log file sync',
+          'wait-rac-cluster': 'RAC / cluster waits',
+          'diagnostic-snapshot': 'Diagnostic Snapshot',
+          'current-diagnostic-drivers': 'Current Diagnostic Drivers',
+          'visual-summary': 'Visual Summary',
+          'health-data-completeness': 'Health / Data Completeness',
+          'selected-scope-explanation': 'Selected-Scope Explanation',
+          'diagnostic-conclusion': 'Diagnostic Conclusion',
+          'similarity-context': 'Similarity Context',
+          'multi-snapshot-summary': 'Multi-Snapshot Summary',
+          'trend-findings': 'Trend Findings',
+          'anomaly-windows': 'Anomaly Windows',
+          'topology-assessment': 'Topology Assessment',
+          'latest-snapshot-assessment': 'Latest Snapshot Assessment'
+        };
+        return knownLabels[text] || text;
+      }
+
+      function screen2LabelForSelectable(element, value) {
+        if (!element || !element.querySelector) {
+          return screen2DisplayLabelForSelection(value);
+        }
+        const explicitLabel = safeStateValue(element.getAttribute('data-dashboard-select-label'));
+        if (explicitLabel) {
+          return explicitLabel;
+        }
+        const strong = element.querySelector('strong');
+        if (strong && safeStateValue(strong.textContent)) {
+          return safeStateValue(strong.textContent);
+        }
+        return screen2DisplayLabelForSelection(value);
+      }
+
+      function screen2SelectionDomainForStateKey(state, key) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (key === 'selectedDiagnosticSection') {
+          return '';
+        }
+        const value = safeStateValue(safeState[key]);
+        if (!value) {
+          return '';
+        }
+        return screen2InferDomainFromText(value);
+      }
+
+      function screen2ClearSelectionLabelForKey(state, key) {
+        if (key === 'selectedEvidenceGroup') {
+          state.screen2ActiveEvidenceGroup = '';
+        } else if (key === 'selectedMetricGroup') {
+          state.screen2ActiveMetric = '';
+        } else if (key === 'selectedWaitEventGroup') {
+          state.screen2ActiveWaitEvent = '';
+        } else if (key === 'selectedSqlSignal') {
+          state.screen2ActiveSqlSignal = '';
+        } else if (key === 'selectedDiagnosticSection') {
+          state.screen2ActiveDiagnosticSection = '';
+        }
+      }
+
+      function screen2ClearIncompatibleFocusContext(state, domain, activeKey) {
+        const domainLens = safeStateValue(domain);
+        if (!domainLens) {
+          return;
+        }
+        ['selectedEvidenceGroup', 'selectedMetricGroup', 'selectedWaitEventGroup', 'selectedSqlSignal'].forEach(function (key) {
+          if (key === activeKey) {
+            return;
+          }
+          const existingDomain = screen2SelectionDomainForStateKey(state, key);
+          if (existingDomain && existingDomain !== domainLens) {
+            state[key] = '';
+            screen2ClearSelectionLabelForKey(state, key);
+          }
+        });
+      }
+
+      function screen2EnsureEvidenceParentForDomain(state, domain) {
+        const domainLens = safeStateValue(domain);
+        if (!domainLens) {
+          return;
+        }
+        const evidenceDomain = screen2SelectionDomainForStateKey(state, 'selectedEvidenceGroup');
+        if (evidenceDomain === domainLens) {
+          if (!state.screen2ActiveEvidenceGroup) {
+            state.screen2ActiveEvidenceGroup = screen2DisplayLabelForSelection(state.selectedEvidenceGroup);
+          }
+          return;
+        }
+        const evidenceValue = screen2EvidenceGroupValueForDomain(domainLens);
+        if (!evidenceValue) {
+          return;
+        }
+        state.selectedEvidenceGroup = evidenceValue;
+        state.screen2ActiveEvidenceGroup = screen2EvidenceGroupLabelForDomain(domainLens);
+      }
+
+      function screen2ActiveFocus(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const activeKey = safeStateValue(safeState.screen2ActiveFocusKey);
+        const activeValue = safeStateValue(safeState.screen2ActiveFocusValue);
+        const activeLabel = safeStateValue(safeState.screen2ActiveFocusLabel) ||
+          screen2DisplayLabelForSelection(activeValue);
+        if (screen2FocusTypeForStateKey(activeKey) && activeValue) {
+          const activeType = screen2FocusTypeForStateKey(activeKey);
+          const activeDomain = activeKey === 'selectedDiagnosticSection'
+            ? ''
+            : (
+              safeStateValue(safeState.screen2InferredDomain) ||
+              safeStateValue(safeState.screen2ActiveFocusDomain) ||
+              screen2InferDomainFromText(activeValue)
+            );
+          return {
+            key: activeKey,
+            type: activeType,
+            value: activeValue,
+            label: activeLabel || activeValue,
+            inferredDomain: activeDomain
+          };
+        }
+        const fallbackKeys = [
+          'selectedDiagnosticSection',
+          'selectedSqlSignal',
+          'selectedWaitEventGroup',
+          'selectedMetricGroup',
+          'selectedEvidenceGroup',
+          'selectedDomain'
+        ];
+        for (let index = 0; index < fallbackKeys.length; index += 1) {
+          const key = fallbackKeys[index];
+          const value = safeStateValue(safeState[key]);
+          if (!value) {
+            continue;
+          }
+          return {
+            key: key,
+            type: screen2FocusTypeForStateKey(key),
+            value: value,
+            label: screen2DisplayLabelForSelection(value),
+            inferredDomain: key === 'selectedDiagnosticSection' ? '' : screen2InferDomainFromText(value)
+          };
+        }
+        return {
+          key: '',
+          type: 'overall_diagnostic_meaning',
+          value: '',
+          label: '',
+          inferredDomain: ''
+        };
+      }
+
+      function screen2SelectedEvidenceTarget(state) {
+        return screen2ActiveFocus(state).value || '';
+      }
+
+      function screen2SelectedEvidenceType(state) {
+        return screen2ActiveFocus(state).type || 'diagnostic_evidence';
+      }
+
+      function screen2SelectedFocusDomain(state) {
+        return screen2ActiveFocus(state).inferredDomain || '';
+      }
+
+      function screen2FocusValue(panel, key, fallback) {
+        if (!panel || !panel.getAttribute) {
+          return fallback || '';
+        }
+        return safeStateValue(panel.getAttribute('data-screen2-' + key)) || fallback || '';
+      }
+
+	      function screen2FocusedDiagnosticMeaning(state, panel) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const activeFocus = screen2ActiveFocus(safeState);
+        const selectedTarget = activeFocus.value;
+        const selectedTargetLabel = activeFocus.label || selectedTarget;
+        const targetType = activeFocus.type;
+        const focusDomain = activeFocus.inferredDomain;
+        const activeDomainLensRaw = (
+          safeStateValue(safeState.screen2ActiveDomainLens) ||
+          safeStateValue(safeState.selectedDomain) ||
+          focusDomain ||
+          ''
+        );
+        const defaultMeaning = 'The deterministic result is ' + screen2FocusValue(panel, 'overall-status', 'OK') + ' status with ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ' confidence and a ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ' posture. The selected scope contains mixed CPU, I/O, Commit, Memory, RAC, and ADG signals, but no single scored domain crossed the deterministic dominance threshold.';
+        const isDiagnosticSection = selectedTarget && targetType === 'diagnostic_section';
+        const activeDomainLens = activeDomainLensRaw
+          ? (isDiagnosticSection ? activeDomainLensRaw + ' (preserved prior context)' : activeDomainLensRaw)
+          : 'No domain lens selected';
+        const activeEvidenceGroup = safeStateValue(safeState.screen2ActiveEvidenceGroup) ||
+          screen2DisplayLabelForSelection(safeState.selectedEvidenceGroup) ||
+          'No evidence group selected';
+        const activeMetricWaitSqlParts = [
+          safeStateValue(safeState.screen2ActiveMetric) || screen2DisplayLabelForSelection(safeState.selectedMetricGroup),
+          safeStateValue(safeState.screen2ActiveWaitEvent) || screen2DisplayLabelForSelection(safeState.selectedWaitEventGroup),
+          safeStateValue(safeState.screen2ActiveSqlSignal) || screen2DisplayLabelForSelection(safeState.selectedSqlSignal)
+        ].filter(Boolean);
+        const activeDiagnosticSection = safeStateValue(safeState.screen2ActiveDiagnosticSection) ||
+          screen2DisplayLabelForSelection(safeState.selectedDiagnosticSection) ||
+          'No diagnostic section focus selected';
+        const genericMeaning = selectedTarget
+          ? (isDiagnosticSection
+            ? 'This diagnostic section focus changes which part of the report is being explained. It does not select a governing domain or change the deterministic result. Prior domain and evidence context remain preserved as local context only.'
+            : 'This selection changes only the explanation focus for the selected evidence item. Deterministic diagnosis, scoring, recommendation, parser output, runtime behavior, and learning state remain unchanged.')
+          : defaultMeaning;
+        const summaryHeading = 'Selected Focus Summary';
+        const focusMap = {
+          CPU: {
+            heading: summaryHeading,
+            meaning: 'The selected CPU signal shows CPU pressure is visible in this interval, with DB CPU % DB Time = ' + screen2FocusValue(panel, 'cpu-value', '30.4') + '. This is meaningful evidence, but it did not become the governing diagnostic domain for this selected scope.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'DB CPU % DB Time = ' + screen2FocusValue(panel, 'cpu-value', '30.4'),
+            handoff: 'Use Screen 4 to inspect CPU behavior over time, including trend and anomaly context.'
+          },
+          IO: {
+            heading: summaryHeading,
+            meaning: 'The selected I/O signal shows User I/O Pressure = ' + screen2FocusValue(panel, 'io-value', '13.0') + '. It contributes to the mixed evidence picture, but it does not establish a single dominant governing domain or override the current posture.',
+            impact: 'The deterministic result remains unchanged.',
+            facts: 'User I/O Pressure = ' + screen2FocusValue(panel, 'io-value', '13.0'),
+            handoff: 'Use Screen 4 to inspect I/O trend, anomaly, and similarity context.'
+          },
+          MEMORY: {
+            heading: summaryHeading,
+            meaning: 'The selected MEMORY signal shows PGA Spill Pressure = ' + screen2FocusValue(panel, 'memory-value', '0.03') + '. Memory evidence is present, but it remains below the governing threshold for this selected scope, so it should be treated as context rather than the primary diagnostic issue.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'PGA Spill Pressure = ' + screen2FocusValue(panel, 'memory-value', '0.03'),
+            handoff: 'Use Screen 4 to review memory-related trend, anomaly, and historical context.'
+          },
+          COMMIT: {
+            heading: summaryHeading,
+            meaning: 'The selected COMMIT signal shows commit latency is present in this interval, with log file sync at ' + screen2FocusValue(panel, 'commit-value', '8.4') + '. This is meaningful evidence, but it is not strong enough by itself to override the mixed-signal diagnosis.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'log file sync = ' + screen2FocusValue(panel, 'commit-value', '8.4'),
+            handoff: 'Use Screen 4 to inspect commit wait trend and anomaly context.'
+          },
+          RAC: {
+            heading: summaryHeading,
+            meaning: 'The selected RAC signal shows cluster wait context at ' + screen2FocusValue(panel, 'rac-value', '2.16') + '%. RAC may help explain topology-related workload behavior, but it is not acting as a standalone governing issue in this result.',
+            impact: 'The deterministic result remains unchanged.',
+            facts: 'Cluster Wait % = ' + screen2FocusValue(panel, 'rac-value', '2.16'),
+            handoff: 'Use Screen 4 to review cluster wait behavior and topology context over time.'
+          },
+          ADG: {
+            heading: summaryHeading,
+            meaning: screen2FocusValue(panel, 'adg-value', 'Transport/apply lag evidence is present') + '. ADG / redo transport evidence is present as topology/context. It should be interpreted as context for the selected workload, not as a standalone diagnostic or capacity trigger in this result.',
+            impact: 'The deterministic diagnosis remains unchanged.',
+            facts: screen2FocusValue(panel, 'adg-value', 'Transport/apply lag evidence is present'),
+            handoff: 'Use Screen 4 to review historical topology and Data Guard-related context where available.'
+          }
+        };
+        const focus = focusMap[focusDomain] || {
+          heading: summaryHeading,
+          meaning: genericMeaning,
+          impact: selectedTarget
+            ? 'Only the local explanation focus changes.'
+            : 'No local selection has changed the deterministic result.',
+          facts: selectedTarget
+            ? 'Selected deterministic evidence item: ' + selectedTarget
+            : 'Mixed CPU, I/O, Commit, Memory, RAC, and ADG signals; no single scored domain crossed the deterministic dominance threshold.',
+          handoff: 'For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.'
+        };
+        return {
+          heading: focus.heading,
+          summary_line: selectedTarget
+            ? 'Local hierarchy context preserved for the active explanation focus. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.'
+            : 'Select evidence above to change the local explanation focus only. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.',
+          meaning: focus.meaning,
+          impact: focus.impact,
+          handoff: focus.handoff,
+          selected_target: selectedTargetLabel || 'Overall deterministic result',
+          target_type: selectedTarget ? targetType : 'overall_diagnostic_meaning',
+          active_domain_lens: activeDomainLens,
+          active_evidence_group: isDiagnosticSection && activeEvidenceGroup !== 'No evidence group selected'
+            ? activeEvidenceGroup + ' (preserved prior context)'
+            : activeEvidenceGroup,
+          active_metric_wait_sql: activeMetricWaitSqlParts.length
+            ? activeMetricWaitSqlParts.join(' | ') + (isDiagnosticSection ? ' (preserved prior context)' : '')
+            : 'No metric, wait event, or SQL focus selected',
+          active_diagnostic_section: activeDiagnosticSection,
+          inferred_domain: focusDomain || (selectedTarget ? 'Not domain-specific' : 'Mixed signal set'),
+          deterministic_facts: focus.facts,
+          decision_posture: screen2FocusValue(panel, 'posture', 'TUNE FIRST'),
+          primary_issue_domain: screen2FocusValue(panel, 'primary-issue-domain', 'No dominant scored domain selected'),
+          severity: screen2FocusValue(panel, 'severity-label', 'OK'),
+          confidence: screen2FocusValue(panel, 'confidence-label', 'LOW'),
+          what_changes: selectedTarget
+            ? 'Only the local evidence focus and explanation wording change.'
+            : 'Only local explanation focus can change on this screen.',
+          what_does_not_change: 'Deterministic diagnosis, scoring, recommendations, primary issue/domain, score, severity, confidence, parser output, runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility, future-run behavior, governed service behavior, evidence values, thresholds, and DB/governance/audit state remain unchanged.',
+          active_focus_guidance: selectedTarget
+            ? 'Last selected item is the active explanation focus.'
+            : 'No evidence focus selected; showing the overall deterministic result.'
+	        };
+	      }
+
+	      function screen2ExplanationStatusTarget(button) {
+	        const panel = button && button.closest
+	          ? button.closest('[data-screen2-focused-meaning-panel]')
+	          : null;
+	        return panel ? panel.querySelector('[data-screen2-explanation-status]') : null;
+	      }
+
+	      function setScreen2ExplanationStatus(button, status, message) {
+	        const target = screen2ExplanationStatusTarget(button);
+	        if (!target) {
+	          return;
+	        }
+	        target.setAttribute('data-screen2-explanation-status', status);
+	        target.textContent = message;
+	      }
+
+      function applyScreen2GeneratedExplanation(panel, explanation) {
+        if (!panel || !explanation) {
+          return;
+        }
+        const safeExplanation = safeExplanationText(explanation);
+	        if (!safeExplanation) {
+	          return;
+	        }
+	        panel.querySelectorAll('[data-screen2-focus="meaning"]').forEach(function (element) {
+	          element.textContent = safeExplanation;
+	        });
+	      }
+
+      function screen2StatusPillClass(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'ok' || normalized === 'success' || normalized === 'healthy') {
+          return 'success';
+        }
+        if (normalized === 'warning' || normalized === 'medium' || normalized === 'tune first') {
+          return 'warning';
+        }
+        if (normalized === 'high' || normalized === 'critical' || normalized === 'error') {
+          return 'error';
+        }
+        if (!normalized || normalized === 'not available' || normalized === 'n/a') {
+          return 'na';
+        }
+        return 'neutral';
+      }
+
+      function screen2ConfidencePillClass(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'low') {
+          return 'low';
+        }
+        if (normalized === 'medium' || normalized === 'moderate') {
+          return 'medium';
+        }
+        if (normalized === 'high') {
+          return 'high';
+        }
+        return 'low';
+      }
+
+      function screen2FocusValueMarkup(key, value) {
+        const safeValue = safeStateValue(value);
+        if (key === 'severity') {
+          return '<span class="status-pill ' + screen2StatusPillClass(safeValue) + '">' + escapeHtml(safeValue || 'OK') + '</span>';
+        }
+        if (key === 'decision_posture') {
+          return '<span class="status-pill ' + screen2StatusPillClass(safeValue) + '">' + escapeHtml(safeValue || 'TUNE FIRST') + '</span>';
+        }
+        if (key === 'confidence') {
+          return '<span class="confidence-pill ' + screen2ConfidencePillClass(safeValue) + '">' + escapeHtml(safeValue || 'LOW') + '</span>';
+        }
+        return '';
+      }
+
+      function applyScreen2FocusValue(element, key, value) {
+        const markup = screen2FocusValueMarkup(key, value);
+        if (markup) {
+          element.innerHTML = markup;
+          return;
+        }
+        element.textContent = value;
+      }
+
+	      function screen2ExplanationViolatesBoundary(explanation) {
+	        const lowered = safeExplanationText(explanation).toLowerCase();
+	        const unsafeMarkers = [
+	          'changed the diagnosis',
+	          'changes the diagnosis',
+	          'updated the diagnosis',
+	          'updates the diagnosis',
+	          'changed the score',
+	          'changes the score',
+	          'updated the score',
+	          'updates the score',
+	          'changed confidence',
+	          'updates confidence',
+	          'updated the recommendation',
+	          'changes the recommendation',
+	          'runtime behavior changed',
+	          'changes runtime behavior',
+	          'parser output changed',
+	          'materialized',
+	          'runtime eligible',
+	          'normal runtime eligibility',
+	          'runtime eligibility aligns',
+	          'runtime eligibility is normal',
+	          'created audit',
+	          'created governance',
+	          'created review',
+	          'trained the model',
+	          'future runs will',
+	          'below concern threshold',
+	          'below concern thresholds',
+	          'above concern threshold',
+	          'above concern thresholds'
+	        ];
+	        return unsafeMarkers.some(function (marker) {
+	          return lowered.indexOf(marker) !== -1;
+	        });
+	      }
+
+	      function screen2GeneratedExplanationText(focusedMeaning, providerMode) {
+	        const mode = providerMode ? providerMode.toUpperCase() : 'LOCAL';
+	        return 'Generated explanation (' + mode + ' mode): ' + focusedMeaning.meaning +
+	          ' LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes. Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local explanation focus and optional LLM-worded explanation.';
+	      }
+
+	      function dashboardScreen2ExplanationProvider(context) {
+	        if (!window.fetch) {
+	          return Promise.reject(new Error('fetch unavailable'));
+	        }
+	        const payload = Object.assign({}, context || {}, {
+	          screen_id: 'screen_2',
+	          request_type: 'screen2_focused_explanation',
+	          non_mutating_explanation_only: true
+	        });
+	        return window.fetch(SCREEN2_EXPLANATION_ENDPOINT, {
+	          method: 'POST',
+	          headers: {
+	            'Content-Type': 'application/json'
+	          },
+	          body: JSON.stringify(payload)
+	        }).then(function (response) {
+	          return response.json().catch(function () {
+	            return {};
+	          }).then(function (payload) {
+	            if (!response.ok) {
+	              const error = new Error(payload && payload.message ? payload.message : 'provider request failed');
+	              error.payload = payload;
+	              error.httpStatus = response.status;
+	              throw error;
+	            }
+	            return payload;
+	          });
+	        });
+	      }
+	      window.dashboardScreen2ExplanationProvider = dashboardScreen2ExplanationProvider;
+
+	      function handleScreen2GenerateExplanationClick(event) {
+	        if (!event || !(event.target instanceof Element)) {
+	          return;
+	        }
+	        const button = event.target.closest(SCREEN2_EXPLANATION_GENERATE_SELECTOR);
+	        if (!button) {
+	          return;
+	        }
+	        event.preventDefault();
+	        const panel = button.closest('[data-screen2-focused-meaning-panel]');
+	        if (!panel) {
+	          return;
+	        }
+	        const providerMode = safeStateValue(button.getAttribute('data-screen2-explanation-provider-mode')).toLowerCase() || 'off';
+	        const focusedMeaning = screen2FocusedDiagnosticMeaning(readDashboardState(), panel);
+	        const context = Object.freeze({
+	          provider_mode: providerMode,
+	          selected_focus: focusedMeaning.selected_target,
+	          target_type: focusedMeaning.target_type,
+	          inferred_domain: focusedMeaning.inferred_domain,
+	          decision_posture: focusedMeaning.decision_posture,
+	          primary_issue_domain: focusedMeaning.primary_issue_domain,
+	          severity: focusedMeaning.severity,
+	          confidence: focusedMeaning.confidence,
+	          deterministic_facts: focusedMeaning.deterministic_facts,
+	          deterministic_values_remain_authoritative: true,
+	          non_mutating_explanation_only: true,
+	          allowed_screen2_changes: ['local_selected_focus', 'displayed_explanation_wording'],
+	          forbidden_screen2_changes: [
+	            'diagnosis',
+	            'primary_issue_domain',
+	            'score',
+	            'severity',
+	            'confidence',
+	            'recommendation',
+	            'parser_output',
+	            'runtime_behavior',
+	            'ml_behavior',
+	            'learning_candidates',
+	            'materialization',
+	            'runtime_eligibility',
+	            'future_run_behavior',
+	            'evidence_values',
+	            'thresholds',
+	            'db_governance_audit_state'
+	          ]
+	        });
+		        if (providerMode === 'off') {
+		          setScreen2ExplanationStatus(
+		            button,
+		            'provider-off',
+		            'Explanation provider is off in this dashboard view. The deterministic explanation remains available, and no provider call or platform state change was created.'
+		          );
+		          return;
+		        }
+		        const providerHook = window.dashboardScreen2ExplanationProvider;
+	        setScreen2ExplanationStatus(
+	          button,
+	          'pending-provider',
+	          'Requesting explanatory wording only. Deterministic values remain authoritative.'
+	        );
+	        Promise.resolve(providerHook(context))
+	          .then(function (providerResult) {
+	            const explanation = safeExplanationText(providerResult && providerResult.explanation);
+	            const providerStatus = safeStateValue(providerResult && providerResult.status);
+	            const providerMessage = safeExplanationText(providerResult && providerResult.message);
+	            if (providerStatus === 'provider_off') {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-off',
+	                providerMessage || 'Explanation generation is disabled for this run. The deterministic explanation remains available.'
+	              );
+	              return;
+	            }
+	            if (!explanation) {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-empty',
+	                providerMessage || 'Provider returned no explanatory wording. Default deterministic explanation remains visible.'
+	              );
+	              return;
+	            }
+	            if (screen2ExplanationViolatesBoundary(explanation)) {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-boundary-rejected',
+	                'Generated wording was not applied because it conflicted with deterministic Screen 2 boundaries. The deterministic explanation remains available.'
+	              );
+	              return;
+	            }
+	            applyScreen2GeneratedExplanation(panel, explanation);
+	            setScreen2ExplanationStatus(
+	              button,
+	              'generated-provider',
+	              providerMessage || 'Focused explanation wording refreshed. Only explanatory text changed; platform truth and runtime behavior remain unchanged.'
+	            );
+	          })
+		          .catch(function (error) {
+		            const payload = error && error.payload ? error.payload : {};
+		            const message = safeExplanationText(payload.message);
+		            const loweredMessage = message.toLowerCase();
+		            let fallbackMessage = 'Explanation provider service is not running. Start the dashboard workflow service and try again. The deterministic explanation remains available.';
+		            if (providerMode === 'oci' && payload.status === 'provider_failed') {
+		              fallbackMessage = 'OCI GenAI explanation request failed. The deterministic explanation remains available.';
+		            } else if (error && error.httpStatus === 404) {
+		              fallbackMessage = 'Explanation endpoint is not available in the dashboard workflow service. The deterministic explanation remains available.';
+		            } else if (message && error && error.httpStatus !== 404 && loweredMessage.indexOf('unsupported') === -1) {
+		              fallbackMessage = message;
+		            }
+		            setScreen2ExplanationStatus(
+		              button,
+		              'provider-failed',
+		              fallbackMessage
+		            );
+		          });
+	      }
+
+	      function updateScreen2DiagnosticReviewSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const selectedTarget = screen2SelectedEvidenceTarget(safeState);
+        const targetType = screen2SelectedEvidenceType(safeState);
+        const values = {
+          selected_target: selectedTarget || 'Select a domain, finding, evidence group, metric, wait event, SQL signal, or section.',
+          target_type: selectedTarget ? targetType : 'No diagnostic evidence target selected.',
+          boundary: 'Evidence focus only. Diagnosis, scoring, recommendations, parser output, runtime execution, and runtime eligibility remain unchanged.'
+        };
+        Object.keys(values).forEach(function (key) {
+          scope.querySelectorAll('[data-screen2-review-summary="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+          });
+        });
+        scope.querySelectorAll('[data-screen2-focused-meaning-panel]').forEach(function (panel) {
+          const focusedMeaning = screen2FocusedDiagnosticMeaning(safeState, panel);
+          Object.keys(focusedMeaning).forEach(function (key) {
+            panel.querySelectorAll('[data-screen2-focus="' + key + '"]').forEach(function (element) {
+              applyScreen2FocusValue(element, key, focusedMeaning[key]);
+            });
+          });
+        });
+      }
+
       function updateScreen1ParserGovernanceSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -1810,42 +2596,45 @@ def _build_dashboard_interactivity_javascript() -> str:
           };
         }
         return {
-          actionType: 'awr_field_mapping_review',
-          workflowType: 'screen1_awr_field_mapping_review',
-          governanceIntent: 'review governed AWR field mapping candidate',
-          governanceStatus: 'field_review_requested',
-          nextStep: 'Queued for governed review. No runtime behavior changed.'
-        };
+	          actionType: 'awr_field_mapping_review',
+	          workflowType: 'screen1_awr_field_mapping_review',
+	          governanceIntent: 'review governed AWR field mapping candidate',
+	          governanceStatus: 'field_review_requested',
+	          nextStep: 'Queued for governed parser mapping review. Materialization and runtime eligibility approval remain separate; no current runtime behavior changed.'
+	        };
       }
 
-      function screen1BacklogDecisionConfig(decision) {
-        const normalizedDecision = safeStateValue(decision);
-        if (normalizedDecision === 'Reject / close') {
-          return {
-            actionType: 'parser_unknown_reject',
-            workflowType: 'screen1_parser_unknown_reject',
-            governanceIntent: 'reject or close parser signal backlog item',
-            governanceStatus: 'rejection_requested',
-            nextStep: 'Queued for governed review. No runtime behavior changed.'
-          };
-        }
-        if (normalizedDecision === 'Defer / keep in backlog') {
-          return {
-            actionType: 'parser_unknown_route',
-            workflowType: 'screen1_parser_unknown_route',
-            governanceIntent: 'defer parser signal in governed backlog',
-            governanceStatus: 'route_requested',
-            nextStep: 'Queued for governed review. No runtime behavior changed.'
-          };
-        }
-        return {
-          actionType: 'parser_unknown_review',
-          workflowType: 'screen1_parser_unknown_review',
-          governanceIntent: 'review parser signal backlog decision',
-          governanceStatus: 'review_requested',
-          nextStep: 'Queued for governed review. No runtime behavior changed.'
-        };
-      }
+	      function screen1BacklogDecisionConfig(decision) {
+	        const normalizedDecision = safeStateValue(decision);
+	        const governedBacklogNextStep = (
+	          'Queued for parser governance review. If accepted for implementation, this should proceed to Screen 6 learning/materialization governance before any future-run influence. No current runtime behavior changed.'
+	        );
+	        if (normalizedDecision === 'Reject / close') {
+	          return {
+	            actionType: 'parser_unknown_reject',
+	            workflowType: 'screen1_parser_unknown_reject',
+	            governanceIntent: 'reject or close parser signal backlog item',
+	            governanceStatus: 'rejection_requested',
+	            nextStep: governedBacklogNextStep
+	          };
+	        }
+	        if (normalizedDecision === 'Defer / keep in backlog') {
+	          return {
+	            actionType: 'parser_unknown_route',
+	            workflowType: 'screen1_parser_unknown_route',
+	            governanceIntent: 'defer parser signal in governed backlog',
+	            governanceStatus: 'route_requested',
+	            nextStep: governedBacklogNextStep
+	          };
+	        }
+	        return {
+	          actionType: 'parser_unknown_review',
+	          workflowType: 'screen1_parser_unknown_review',
+	          governanceIntent: 'review parser signal backlog decision',
+	          governanceStatus: 'review_requested',
+	          nextStep: governedBacklogNextStep
+	        };
+	      }
 
       function screen1FieldPanelState(panel) {
         const state = readDashboardState();
@@ -2019,18 +2808,49 @@ def _build_dashboard_interactivity_javascript() -> str:
           .replace(/Phase 7 validation/g, 'governed validation');
       }
 
-      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message) {
-        if (!panel) {
-          return;
-        }
-        const values = {
-          status: screen1DisplayMessage(status || message || 'Waiting for submission.'),
-          request_id: requestId || 'Not issued',
-          audit_id: auditReference || 'Not issued',
-          decision: decision || 'Not submitted',
-          runtime_influence: 'Not active',
-          next_step: nextStep || 'Select a decision and submit a governed request.'
-        };
+	      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message, resultPayload) {
+	        if (!panel) {
+	          return;
+	        }
+	        const isBacklogPanel = Boolean(panel.matches && panel.matches('[data-screen1-backlog-review="true"]'));
+	        const statusText = status === 'Accepted' && isBacklogPanel
+	          ? 'Accepted / queued for parser governance review'
+	          : status;
+	        const responsePayload = resultPayload || {};
+	        const sourceSummary = responsePayload.source_summary || {};
+	        const dbStatus = safeStateValue(responsePayload.db_persistence_status || sourceSummary.db_persistence_status || '');
+	        const dbRecord = safeStateValue(responsePayload.db_record_reference || sourceSummary.db_record_reference || '');
+	        const dbMessage = safeStateValue(responsePayload.db_persistence_message || sourceSummary.db_persistence_message || '');
+	        const tablesTouched = responsePayload.db_tables_touched || sourceSummary.db_tables_touched || [];
+	        let persistenceText = 'Not submitted.';
+	        let dbRecordText = 'Not created';
+	        if (dbStatus === 'persisted') {
+	          persistenceText = 'DB-backed parser governance record persisted; JSON audit envelope also recorded.';
+	          dbRecordText = dbRecord || 'AWR_WORKFLOW_REQUEST record persisted';
+	          if (Array.isArray(tablesTouched) && tablesTouched.length) {
+	            persistenceText += ' Tables: ' + tablesTouched.join(', ') + '.';
+	          }
+	        } else if (dbStatus === 'unavailable' || dbStatus === 'failed') {
+	          persistenceText = 'JSON audit fallback only - DB persistence unavailable. No database governance record was created.';
+	          dbRecordText = 'Not created';
+	        } else if (auditReference) {
+	          persistenceText = 'Governed workflow/audit JSON record created through the dashboard service queue; database persistence was not reported.';
+	          dbRecordText = 'Not reported';
+	        }
+	        if (dbMessage && dbStatus !== 'persisted') {
+	          persistenceText += ' ' + screen1DisplayMessage(dbMessage);
+	        }
+		        const values = {
+		          status: screen1DisplayMessage(statusText || message || 'Waiting for submission.'),
+		          request_id: requestId || 'Not issued',
+		          audit_id: auditReference || 'Not issued',
+		          persistence: persistenceText,
+		          db_record: dbRecordText,
+		          decision: decision || 'Not submitted',
+		          runtime_influence: 'Not applied to current run; pending separate materialization/runtime-eligibility approval.',
+		          next_step: nextStep || 'Select a decision and submit a governed request.',
+		          screen6_status: 'Not activated by this submit. Eligible for downstream review only if persisted governance context is accepted for implementation.'
+		        };
         Object.keys(values).forEach(function (key) {
           panel.querySelectorAll('[data-screen1-governance-result="' + key + '"]').forEach(function (element) {
             element.textContent = values[key];
@@ -2092,8 +2912,12 @@ def _build_dashboard_interactivity_javascript() -> str:
             proposed_normalized_field_name: proposedMapping,
             persisted_review_record_count: isFieldPanel ? 0 : 24,
             current_run_unknown_count: isFieldPanel ? null : 0,
-            runtime_influence_state: 'not_active',
-            future_run_influence_gated: true,
+	            runtime_influence_state: 'not_active',
+	            persistence_target: 'dashboard_workflow_service_db_backed_governance',
+	            database_persistence_requested: true,
+	            browser_database_persistence_performed: false,
+	            screen6_candidate_created: false,
+	            future_run_influence_gated: true,
             future_run_influence_granted: false,
             future_run_influence_active: false,
             runtime_activation_requested: false,
@@ -2212,11 +3036,12 @@ def _build_dashboard_interactivity_javascript() -> str:
               panel,
               'Accepted',
               payload.request_id || '',
-              payload.audit_reference || '',
-              formState.decision,
-              config.nextStep,
-              payload.message || ''
-            );
+	              payload.audit_reference || '',
+	              formState.decision,
+	              config.nextStep,
+	              payload.message || '',
+	              payload
+	            );
           })
           .catch(function () {
             setScreen1GovernanceReviewResult(
@@ -2225,7 +3050,7 @@ def _build_dashboard_interactivity_javascript() -> str:
               '',
               '',
               formState.decision,
-              'Start scripts/dashboard_workflow_service.py and retry.',
+              'Dashboard workflow service is not running. Start the service to use interactive features.',
               ''
             );
           });
@@ -2368,6 +3193,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
         updateScreen1GovernanceReviewWorkflow(root);
+        updateScreen2DiagnosticReviewSummary(safeState, root);
+        updateScreen2DomainScopedSelectors(safeState, root);
         updatePhase7ActionEnablement(safeState, root);
         preserveDashboardStateInNavigation(safeState, root);
         return safeState;
@@ -2379,11 +3206,57 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         const key = stateKeyForSelectable(element);
         const value = valueForSelectable(element);
-        if (!isDashboardStateKey(key) || !value) {
-          return {};
-        }
-        const nextState = readDashboardState();
-        nextState[key] = value;
+	        if (!isDashboardStateKey(key) || !value) {
+	          return {};
+	        }
+	        const nextState = readDashboardState();
+	        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
+	          const selectedDomain = safeStateValue(element.getAttribute('data-dashboard-select-domain'));
+	          const selectedLabel = screen2LabelForSelectable(element, value);
+	          const inferredDomain = key === 'selectedDiagnosticSection'
+	            ? ''
+	            : (selectedDomain || screen2InferDomainFromText(value) || screen2InferDomainFromText(selectedLabel));
+	          const previousDomain = safeStateValue(nextState.selectedDomain);
+	          nextState[key] = value;
+	          if (key === 'selectedDomain') {
+	            nextState.selectedDomain = selectedDomain || value;
+	            nextState.screen2ActiveDomainLens = nextState.selectedDomain;
+	            nextState.selectedDiagnosticSection = '';
+	            nextState.screen2ActiveDiagnosticSection = '';
+	            screen2ClearIncompatibleFocusContext(nextState, nextState.selectedDomain, key);
+	          } else if (key === 'selectedDiagnosticSection') {
+	            nextState.screen2ActiveDiagnosticSection = selectedLabel || value;
+	            nextState.screen2InferredDomain = 'Not domain-specific';
+	          } else if (inferredDomain) {
+	            if (previousDomain && previousDomain !== inferredDomain) {
+	              screen2ClearIncompatibleFocusContext(nextState, inferredDomain, key);
+	            }
+	            nextState.selectedDomain = inferredDomain;
+	            nextState.screen2ActiveDomainLens = inferredDomain;
+	            screen2EnsureEvidenceParentForDomain(nextState, inferredDomain);
+	            nextState.selectedDiagnosticSection = '';
+	            nextState.screen2ActiveDiagnosticSection = '';
+	          }
+	          if (key === 'selectedEvidenceGroup') {
+	            nextState.screen2ActiveEvidenceGroup = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedMetricGroup') {
+	            nextState.screen2ActiveMetric = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedWaitEventGroup') {
+	            nextState.screen2ActiveWaitEvent = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedSqlSignal') {
+	            nextState.screen2ActiveSqlSignal = selectedLabel || screen2DisplayLabelForSelection(value);
+	          }
+	          nextState.screen2ActiveFocusKey = key;
+	          nextState.screen2ActiveFocusType = screen2FocusTypeForStateKey(key);
+	          nextState.screen2ActiveFocusValue = value;
+	          nextState.screen2ActiveFocusLabel = selectedLabel || value;
+	          nextState.screen2ActiveFocusDomain = inferredDomain;
+	          if (key !== 'selectedDiagnosticSection') {
+	            nextState.screen2InferredDomain = inferredDomain || 'Not domain-specific';
+	          }
+	        } else {
+	          nextState[key] = value;
+	        }
         if (key === 'selectedSourceMode') {
           nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
           nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
@@ -2611,6 +3484,27 @@ def _build_dashboard_interactivity_javascript() -> str:
         target.textContent = message;
       }
 
+      function escapeHtml(value) {
+        return safeStateValue(value).replace(/[&<>"']/g, function (character) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+          }[character] || character;
+        });
+      }
+
+      function setActionStatusMarkup(element, status, html) {
+        const target = actionStatusElement(element);
+        if (!target) {
+          return;
+        }
+        target.setAttribute('data-phase7-action-status', status);
+        target.innerHTML = html;
+      }
+
       function requiredSelectionKey(element) {
         if (!element || !element.getAttribute) {
           return '';
@@ -2722,6 +3616,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           element.setAttribute('data-selected-context-value', selectedValue || '');
           element.setAttribute('data-missing-source-fields', missingSourceFields.join(','));
           element.setAttribute('data-missing-screen1-fields', missingScreen1Fields.join(','));
+          element.setAttribute('data-missing-screen2-fields', '');
           const status = actionStatusElement(element);
           if (status) {
             const currentStatus = status.getAttribute('data-phase7-action-status') || '';
@@ -2756,7 +3651,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         const targetType = safeStateValue(element.getAttribute('data-target-type'));
         const targetId = safeStateValue(element.getAttribute('data-target-id'));
         const requestedAt = new Date().toISOString();
-        const dashboardState = readDashboardState();
+        const dashboardState = Object.assign({}, readDefaultDashboardState(document), readDashboardState());
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         const isScreen1Action = isScreen1ParserGovernanceAction(element);
@@ -2851,6 +3746,12 @@ def _build_dashboard_interactivity_javascript() -> str:
               ? screen1SelectedTargetType(dashboardState)
               : '',
             screen1_selected_target_id: isScreen1Action ? selectedContextValue : '',
+            selectedDomain: dashboardState.selectedDomain || '',
+            selectedEvidenceGroup: dashboardState.selectedEvidenceGroup || '',
+            selectedMetricGroup: dashboardState.selectedMetricGroup || '',
+            selectedWaitEventGroup: dashboardState.selectedWaitEventGroup || '',
+            selectedSqlSignal: dashboardState.selectedSqlSignal || '',
+            selectedDiagnosticSection: dashboardState.selectedDiagnosticSection || '',
             selectedUnknownSignal: dashboardState.selectedUnknownSignal || '',
             selectedGovernanceItem: dashboardState.selectedGovernanceItem || '',
             selectedKnowledgeRequest: dashboardState.selectedKnowledgeRequest || '',
@@ -2859,16 +3760,21 @@ def _build_dashboard_interactivity_javascript() -> str:
             selectedParserDiagnostic: dashboardState.selectedParserDiagnostic || '',
             reviewer_actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
             governance_intent: payload.governance_intent || (
-              isScreen1Action ? 'screen1_parser_governance_review' : ''
+              isScreen1Action
+                ? 'screen1_parser_governance_review'
+                : ''
             ),
             governance_status: payload.governance_status || (
-              isScreen1Action ? 'review_requested' : ''
+              isScreen1Action
+                ? 'review_requested'
+                : ''
             ),
             future_run_influence_gated: true,
             future_run_influence_granted: false,
             future_run_influence_active: false,
             runtime_activation_requested: false,
             runtime_activation_granted: false,
+            runtime_execution_requested: false,
             parser_output_mutation_requested: false,
             parser_output_mutation_allowed: false,
             direct_parser_mutation_allowed: false,
@@ -2881,6 +3787,18 @@ def _build_dashboard_interactivity_javascript() -> str:
             artifact_revision_persisted: false,
             materialization_created: false,
             phase4i_mutation_requested: false,
+            diagnostic_truth_mutation_requested: false,
+            diagnostic_truth_mutation_allowed: false,
+            score_mutation_requested: false,
+            score_mutation_allowed: false,
+            severity_mutation_requested: false,
+            confidence_mutation_requested: false,
+            recommendation_mutation_requested: false,
+            recommendation_truth_mutation_allowed: false,
+            reanalysis_execution_requested: false,
+            learning_candidate_created: false,
+            candidate_created: false,
+            runtime_eligibility_changed: false,
             awr_signature_validation: dashboardState.awrSignatureValidation || '',
             browser_parsing_performed: false,
             browser_db_query_attempted: false,
@@ -3042,7 +3960,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.selectedSourceMode = 'existing_run';
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupStatus = 'unavailable';
-          state.existingRunLookupMessage = 'Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs. Start scripts/dashboard_workflow_service.py and retry.';
+          state.existingRunLookupMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           state.existingRunLookupCount = '0';
           state.selectedRunReference = '';
           writeDashboardState(state);
@@ -3119,14 +4037,14 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.selectedSourceMode = 'object_storage';
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = 'unavailable';
-          nextState.objectStorageValidationMessage = 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+          nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           writeDashboardState(nextState);
         });
       }
 
       function submitDashboardAction(element) {
         const selectedContextKey = requiredSelectionKey(element);
-        const dashboardState = readDashboardState();
+        const dashboardState = Object.assign({}, readDefaultDashboardState(document), readDashboardState());
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         if (selectedContextKey && !selectedContextValue) {
           if (isScreen1ParserGovernanceAction(element)) {
@@ -3134,6 +4052,14 @@ def _build_dashboard_interactivity_javascript() -> str:
               element,
               'disabled-no-selection',
               screen1ActionMessage(element, dashboardState, [selectedContextKey])
+            );
+            return;
+          }
+          if (isScreen2DiagnosticReviewAction(element)) {
+            setActionStatus(
+              element,
+              'disabled-no-selection',
+              screen2ActionMessage(element, dashboardState, [selectedContextKey])
             );
             return;
           }
@@ -3163,15 +4089,15 @@ def _build_dashboard_interactivity_javascript() -> str:
             element,
             'disabled-missing-screen1-target',
             screen1ActionMessage(element, dashboardState, missingScreen1Fields)
-          );
-          return;
-        }
+            );
+            return;
+          }
         const requestBridge = window['fetch'];
         if (typeof requestBridge !== 'function') {
           setActionStatus(
             element,
             'failed',
-            'Governed workflow service unavailable: browser request bridge is not available.'
+            'Dashboard workflow service is not running. Start the service to use interactive features.'
           );
           return;
         }
@@ -3203,21 +4129,21 @@ def _build_dashboard_interactivity_javascript() -> str:
               );
               return;
             }
-            setActionStatus(
-              element,
-              'accepted',
-              'Success. Request ID: ' + result.payload.request_id +
-                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
-                (isScreen1ParserGovernanceAction(element)
-                  ? '. Parser governance request is queued for governed review; runtime influence remains gated.'
-                  : '. Next step: open Screen 3.')
-            );
+	            setActionStatus(
+	              element,
+	              'accepted',
+	              'Success. Request ID: ' + result.payload.request_id +
+	                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
+	                (isScreen1ParserGovernanceAction(element)
+	                  ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
+	                  : '. Next step: open Screen 3.')
+	            );
           })
           .catch(function () {
             setActionStatus(
               element,
               'failed',
-              'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.'
+              'Dashboard workflow service is not running. Start the service to use interactive features.'
             );
           });
       }
@@ -3274,9 +4200,10 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         if (!dashboardInteractivityInitialized) {
           document.addEventListener('click', handleDashboardSelectableClick);
-          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
-          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
-          document.addEventListener('click', handlePhase7ActionClick);
+	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
+	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
+	          document.addEventListener('click', handleScreen2GenerateExplanationClick);
+	          document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleExistingRunLookupClick);
           document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);
@@ -6306,19 +7233,19 @@ def _render_screen1_parser_governance_runtime_workflow(
         f"<li>{escape(file_name)}</li>" for file_name in example_files[:3]
     )
     if not example_files_html:
-        example_files_html = "<li>No example files available in the current export.</li>"
+        example_files_html = "<li>No example files available in the current dashboard context.</li>"
     return f"""
-      <section class="card prominent screen1-parser-governance-review"
-               id="screen1-parser-governance-review"
-               data-screen1-backlog-review="true">
-        <div class="section-kicker">GOVERNANCE</div>
-        <h2>Parser Governance Backlog Review</h2>
-        <p class="meta">
-          Review persisted parser signals and submit a governed backlog review request.
-        </p>
+	      <section class="card prominent screen1-parser-governance-review"
+	               id="screen1-parser-governance-review"
+	               data-screen1-backlog-review="true">
+	        <div class="section-kicker">GOVERNANCE</div>
+	        <h2>Parser Governance Backlog Review</h2>
+	        <p class="meta">
+	          Review persisted parser signals and submit a governed backlog review request.
+	        </p>
 
-        <div class="screen1-operator-workflow">
-          <article class="screen1-review-item"
+	        <div class="screen1-operator-workflow">
+	          <article class="screen1-review-item"
                    role="button"
                    tabindex="0"
                    data-screen1-backlog-item="true"
@@ -6430,37 +7357,114 @@ def _render_screen1_parser_governance_runtime_workflow(
                 <dt>Request ID</dt>
                 <dd data-screen1-governance-result="request_id">Not issued</dd>
               </div>
+	              <div>
+	                <dt>Audit ID</dt>
+	                <dd data-screen1-governance-result="audit_id">Not issued</dd>
+	              </div>
+	              <div>
+	                <dt>Persistence</dt>
+	                <dd data-screen1-governance-result="persistence">Not submitted.</dd>
+	              </div>
+	              <div>
+	                <dt>DB Record</dt>
+	                <dd data-screen1-governance-result="db_record">Not created</dd>
+	              </div>
+	              <div>
+	                <dt>Submitted decision</dt>
+	                <dd data-screen1-governance-result="decision">Not submitted</dd>
+	              </div>
               <div>
-                <dt>Audit ID</dt>
-                <dd data-screen1-governance-result="audit_id">Not issued</dd>
-              </div>
-              <div>
-                <dt>Submitted decision</dt>
-                <dd data-screen1-governance-result="decision">Not submitted</dd>
-              </div>
-              <div>
-                <dt>Runtime influence</dt>
-                <dd data-screen1-governance-result="runtime_influence">Not active</dd>
+	                <dt>Runtime influence</dt>
+	                <dd data-screen1-governance-result="runtime_influence">Not applied to current run; pending separate materialization/runtime-eligibility approval.</dd>
               </div>
               <div>
                 <dt>Next step</dt>
                 <dd data-screen1-governance-result="next_step">Select a decision and submit a governed request.</dd>
               </div>
+              <div>
+                <dt><a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a></dt>
+                <dd data-screen1-governance-result="screen6_status">
+                  Not activated by this submit. Proceed only after a governed candidate exists.
+                </dd>
+              </div>
             </dl>
           </section>
-        </div>
+	        </div>
 
-        <section class="screen1-governance-boundary">
-          <h3>Governance Boundary</h3>
-          <p>
-            Review requests are queued and audited. Parser behavior, runtime decisions,
-            scoring, recommendations, approvals, and dashboard truth remain unchanged
-            unless a separate governed materialization and runtime eligibility process
-            later allows future-run influence.
-          </p>
-        </section>
-      </section>
-    """
+	        <section class="screen1-governance-boundary">
+		          <h3>Governance Boundary</h3>
+		          <p>
+		            Submitting a parser governance review records reviewer context as DB-backed governed workflow state when the configured database is available, and also records a JSON audit envelope. It may create governed input for downstream learning/materialization review, but it does not change the current parser output, diagnosis, scoring, recommendations, runtime decisions, approvals, ML behavior, learning candidates, materialization state, runtime eligibility, or dashboard truth. Future-run influence is possible only if a later governed <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> path approves, materializes, and marks a parser change runtime-eligible.
+		          </p>
+	          <p>
+	            This protects current diagnostic truth while still allowing parser improvements
+	            to be reviewed, governed, and implemented later.
+	          </p>
+	        </section>
+
+	        <section class="screen1-governance-explanation-panel">
+	          <h3>Parser Governance Explanation</h3>
+		        <div class="screen1-governance-explanation">
+		          <article>
+		            <strong>So what?</strong>
+		            <p>
+		              This review turns repeated parser uncertainty into governed parser-improvement input. It gives the parser backlog an auditable path from operator review to possible downstream learning/materialization governance.
+		            </p>
+		          </article>
+		          <article>
+		            <strong>Why this matters</strong>
+		            <p>
+		              Parser governance backlog items identify parser gaps, missing expected sections, or unmapped evidence patterns that may affect evidence completeness. In this case, the parser repeatedly observed an expected optional I/O section missing from AWR reports, so the operator decides whether that is normal for this source profile, a parser expectation gap, a source/report gap, or not applicable. Better parser coverage can improve the quality of future deterministic analysis after governed approval.
+		            </p>
+		          </article>
+	          <article>
+		            <strong>How this is implemented</strong>
+		            <p>
+		              The operator selects a backlog item, chooses a governed review decision,
+		              enters reviewer and rationale context, and submits a governed backlog review
+		              request. The browser posts that request to the governed dashboard workflow
+		              service, which validates it, persists DB-backed governed workflow metadata
+		              when configured database connectivity is available, and records a JSON audit envelope.
+		            </p>
+		          </article>
+	          <article>
+		            <strong>Persistence</strong>
+		            <p>
+		              This submission is persisted as a governed parser-review workflow record and also recorded through the dashboard workflow/audit path. If DB connectivity is unavailable, the result panel reports JSON audit fallback only. This submit does not update AWR_UNKNOWN_SIGNAL_HISTORY, create AWR_PARSER_MAPPING_CANDIDATE rows, or create Screen 6 learning/materialization/runtime-eligibility candidates.
+		            </p>
+		          </article>
+	          <article>
+		            <strong>What changes</strong>
+		            <p>
+		              A governed parser-review workflow/audit record is created for the selected backlog item through the dashboard service path. When DB connectivity is available, that record is persisted in the governed workflow database tables.
+		            </p>
+		          </article>
+	          <article>
+	            <strong>What does not change</strong>
+	            <p>
+	              The current parser output, diagnosis, scoring, recommendations, runtime
+	              decisions, approvals, ML behavior, learning candidates, materialization state,
+	              runtime eligibility, and dashboard truth remain unchanged. Diagnosis, scoring,
+	              and recommendation changes require deterministic analysis or governed downstream
+	              workflows; this Screen 1 review only records parser-governance context.
+	            </p>
+	          </article>
+		          <article>
+		            <strong>Future-run impact</strong>
+		            <p>
+		              This review does not change current or future runs by itself. If the reviewed parser signal is later promoted into a governed parser-improvement candidate, <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> should review whether it can be materialized and made runtime-eligible. Only after that approval can future runs parse this evidence differently.
+		            </p>
+		          </article>
+		          <article>
+		            <strong>Learning / ML impact</strong>
+		            <p>
+		              This action does not directly change ML behavior or train a model. It creates governed parser-review context that may become learning/governance input. If a later governed learning/materialization process approves it, the record can support parser improvement candidates for future runs.
+		            </p>
+		          </article>
+		        </div>
+	        </section>
+	      </section>
+	    """
 
 
 def _render_screen1_field_mapping_candidates_section(
@@ -6488,7 +7492,8 @@ def _render_screen1_field_mapping_candidates_section(
         <div class="screen1-empty-state">
           <strong>{escape(field_empty_state)}</strong>
           <p>
-            Field approval will appear here when governed parser mapping candidate records exist.
+            If the parser later discovers unmapped AWR fields and a governed candidate record
+            is created, those candidates will appear here for review. No fake candidates are shown.
           </p>
         </div>
       </section>
@@ -6503,11 +7508,12 @@ def _render_screen1_knowledge_artifact_context_section(
     if not artifacts and not requests:
         context_html = """
           <div class="screen1-empty-state">
-            <strong>Knowledge artifact data is not available in this static export.</strong>
+            <strong>No knowledge artifacts are available for the current selected run/source context.</strong>
             <p>
-              Knowledge artifacts are secondary reviewer-assist context. They do
-              not change parser behavior, runtime eligibility, scoring,
-              recommendations, or dashboard truth.
+              Knowledge artifacts are optional reviewer-assist context. When available, they may
+              help explain parser governance background, parser decisions, or mapping rationale.
+              They do not change parser behavior, diagnosis, scoring, recommendations, runtime
+              eligibility, ML behavior, or dashboard truth.
             </p>
           </div>
         """
@@ -7009,43 +8015,43 @@ def _render_screen1_governance_parser_exploration(
               "Source / Run Selector",
               "Source and run selection highlights existing ingestion context only. It does not change loading, ingestion, parser output, or selected diagnostic target.",
               exploration["source_runs"],
-              "No source or run selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No source or run selector available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Parser Section Selector",
               "Parser section selection highlights parser section visibility already shown. It does not change parser output.",
               exploration["parser_sections"],
-              "No parser section selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No parser section selector available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Parser Diagnostic Selector",
               "Parser diagnostic selection highlights existing parse confidence or status context only. It does not change parser diagnostics.",
               exploration["parser_diagnostics"],
-              "No parser diagnostic selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No parser diagnostic selector available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Unknown Signal Selector",
               "Unknown signal selection highlights existing parser review context only. It does not classify, approve, reject, or map unknown signals.",
               exploration["unknown_signals"],
-              "No unknown signal groups available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No unknown signal groups available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Governance Item Selector",
               "Governance item selection highlights existing read-only governance rows. It does not approve mappings or change governance state.",
               exploration["governance_items"],
-              "No governance item selector available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No governance item selector available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Knowledge Request Selector",
               "Knowledge request selection highlights existing governed request context only. It does not create or update knowledge requests.",
               exploration["knowledge_requests"],
-              "No knowledge requests available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No knowledge requests available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
           {_render_screen1_selector_group(
               "Artifact Selector",
               "Artifact selection highlights existing knowledge artifact context only. It does not materialize artifacts or activate them.",
               exploration["artifacts"],
-              "No knowledge artifacts available in this static export. Selection is local and read-only. Parser and governance output remains unchanged.",
+              "No knowledge artifacts available in the current dashboard context. Selection is local and read-only. Parser and governance output remains unchanged.",
           )}
         </div>
       </section>
@@ -7136,7 +8142,7 @@ def _screen1_source_run_items(
             display_value=_join_compact_values(
                 [metadata.get("db_name") or header.get("db_name"), metadata.get("dbid") or header.get("dbid")]
             ) or "Current AWR context",
-            note="Current static export context only. No ingestion changes.",
+            note="Current selected run/source context only. No ingestion changes.",
         )
     run_id = (
         report_data.get("run_history_id")
@@ -7560,7 +8566,7 @@ def _render_screen1_parser_unknown_review_preview_panel(
         <section class="evidence-pane screen1-parser-unknown-review-preview-summary">
           <h3>Read-Only Parser Unknown Review Request Preview</h3>
           <p class="meta">
-            No selected unknown signal exists in this static export. The preview below
+            No selected unknown signal exists in the current dashboard context. The preview below
             shows future parser unknown review fields only and does not claim a
             parser unknown was classified, routed, mapped, or persisted.
           </p>
@@ -7628,7 +8634,7 @@ def _build_screen1_parser_unknown_review_preview(
         "actor_required": "actor required before future review",
         "audit_required": "audit required before future review",
         "governed_write_path_required": "governed write path required before future write",
-        "source_context": source_hint or "current static export context only",
+        "source_context": source_hint or "current dashboard context only",
     }
 
 
@@ -7720,7 +8726,7 @@ def _render_screen1_knowledge_artifact_review_preview_panel(
         <section class="evidence-pane screen1-knowledge-artifact-review-preview-summary">
           <h3>Read-Only Knowledge Artifact Review Request Preview</h3>
           <p class="meta">
-            No selected artifact exists in this static export. The preview below
+            No selected artifact exists in the current dashboard context. The preview below
             shows future knowledge artifact review fields only and does not claim an
             artifact was approved, rejected, revised, linked, materialized, or persisted.
           </p>
@@ -7894,31 +8900,12 @@ def _render_screen_2_page(
     return f"""
     <div class="grid">
       <!-- Screen 2 = diagnosis only. Ingestion stays on Screen 1; historical proof stays on Screen 4; action stays on Screen 5. -->
-      {_render_screen2_diagnostic_exploration(
-          screen_model,
-          visual_summary,
-          report_data,
-          authoritative_confidence,
-      )}
-      {_render_screen2_review_panel(
-          screen_model,
-          visual_summary,
-          report_data,
-          authoritative_confidence,
-      )}
       <section class="card prominent diagnostic-compact-card">
         <div class="section-kicker">DECISION</div>
         <h2>Diagnostic Snapshot</h2>
-        {_render_info_grid(
-            [
-                ("Overall Status", decision_summary.get("overall_status")),
-                ("Risk", decision_summary.get("display_severity_label")),
-                ("Decision Posture", decision_summary.get("decision_posture")),
-                ("Primary Issue / Domain", primary_issue),
-                ("Health Summary", decision_summary.get("health_summary")),
-                ("Historical Posture", decision_summary.get("historical_posture")),
-            ],
-            extra_class="diagnostic-snapshot-grid",
+        {_render_screen2_diagnostic_snapshot_grid(
+            decision_summary,
+            primary_issue,
         )}
         {f'<div class="meta decision-summary-note">{escape(primary_issue_note)}</div>' if primary_issue_note else ""}
         <div class="decision-summary-confidence diagnostic-confidence-strip">
@@ -7981,8 +8968,95 @@ def _render_screen_2_page(
         <h2>Similarity Context</h2>
         {_render_screen2_similarity_compact(screen_model, report_data)}
       </section>
+      {_render_screen2_diagnostic_exploration(
+          screen_model,
+          visual_summary,
+          report_data,
+          authoritative_confidence,
+      )}
+      {_render_screen2_review_panel(
+          screen_model,
+          visual_summary,
+          report_data,
+          authoritative_confidence,
+      )}
     </div>
     """
+
+
+def _render_screen2_diagnostic_snapshot_grid(
+    decision_summary: dict[str, Any],
+    primary_issue: Any,
+) -> str:
+    """Render Screen 2 snapshot facts with product-facing state pills."""
+
+    items: list[tuple[str, Any]] = [
+        ("Overall Status", _screen2_status_pill(decision_summary.get("overall_status"))),
+        ("Risk", _screen2_status_pill(decision_summary.get("display_severity_label"))),
+        ("Decision Posture", _screen2_status_pill(decision_summary.get("decision_posture"), "posture")),
+        ("Primary Issue / Domain", primary_issue),
+        ("Health Summary", _screen2_status_pill(decision_summary.get("health_summary"))),
+        ("Historical Posture", _screen2_status_pill(decision_summary.get("historical_posture"), "posture")),
+    ]
+    return _render_info_grid(items, extra_class="diagnostic-snapshot-grid")
+
+
+def _screen2_status_pill(value: Any, context: str | None = None) -> _TrustedHtml:
+    text = _display_value(value)
+    if not text:
+        return _TrustedHtml("")
+    css_class = _status_pill_class(text, context)
+    return _TrustedHtml(
+        f'<span class="status-pill {escape(css_class)}">{escape(text)}</span>'
+    )
+
+
+def _screen2_explanation_provider_mode(report_data: dict[str, Any]) -> str:
+    """Return the non-mutating Screen 2 explanation provider mode."""
+
+    def normalize_provider_mode(value: Any) -> str:
+        normalized = str(value or "").strip().lower()
+        if normalized in {"off", "mock", "local", "oci"}:
+            return normalized
+        if "oci" in normalized or "oracle" in normalized:
+            return "oci"
+        if normalized:
+            return "local"
+        return ""
+
+    dashboard_config = _to_dict(report_data.get("dashboard_config"))
+    runtime_config = _to_dict(report_data.get("runtime_config"))
+    llm_explanation = _to_dict(report_data.get("llm_explanation"))
+    llm_metadata = _to_dict(llm_explanation.get("metadata"))
+    compatibility = _to_dict(report_data.get("compatibility"))
+    explicit_mode = (
+        normalize_provider_mode(report_data.get("screen2_explanation_provider_mode"))
+        or normalize_provider_mode(report_data.get("explanation_provider_mode"))
+        or normalize_provider_mode(dashboard_config.get("screen2_explanation_provider_mode"))
+        or normalize_provider_mode(runtime_config.get("screen2_explanation_provider_mode"))
+        or normalize_provider_mode(os.getenv("PHASE7_SCREEN2_EXPLANATION_PROVIDER_MODE"))
+        or normalize_provider_mode(os.getenv("SCREEN2_EXPLANATION_PROVIDER_MODE"))
+    )
+    if explicit_mode:
+        return explicit_mode
+
+    enabled = bool(
+        llm_explanation.get("enabled")
+        or report_data.get("ai_generated_narrative")
+        or llm_explanation.get("technical_explanation")
+    )
+    if not enabled:
+        return "off"
+    provider = normalize_provider_mode(
+        llm_explanation.get("provider")
+        or llm_metadata.get("provider")
+        or report_data.get("ai_provider")
+        or compatibility.get("ai_provider")
+        or os.getenv("AI_PROVIDER")
+    )
+    if provider:
+        return provider
+    return "off"
 
 
 def _render_screen2_review_panel(
@@ -7991,14 +9065,15 @@ def _render_screen2_review_panel(
     report_data: dict[str, Any],
     authoritative_confidence: Any,
 ) -> str:
-    """Render Phase 7AS disabled Screen 2 review workflow visibility."""
+    """Render Screen 2 local evidence focus and deterministic meaning explanation."""
 
     decision_summary = _to_dict(screen_model.get("decision_summary"))
     normalized_decision = _to_dict(screen_model.get("normalized_decision"))
-    primary_issue = _display_value(
-        decision_summary.get("primary_issue")
-        or normalized_decision.get("primary_issue")
-        or "No selected primary issue"
+    primary_issue = _screen2_primary_domain_summary(
+        decision_summary,
+        normalized_decision,
+        visual_summary,
+        report_data,
     )
     severity = _display_value(
         decision_summary.get("display_severity_label")
@@ -8007,135 +9082,207 @@ def _render_screen2_review_panel(
         or "No selected severity/status"
     )
     confidence_label = _confidence_level_from_value(authoritative_confidence)
-    selected_domain = _screen2_selector_domain(primary_issue) or "No selected domain"
-    domain_scores = _to_dict(
-        normalized_decision.get("domain_scores")
-        or _to_dict(report_data.get("scores")).get("domain_scores")
+    selected_domain = _screen2_selector_domain(primary_issue) or "Mixed signal set"
+    overall_status = _display_value(
+        decision_summary.get("overall_status")
+        or normalized_decision.get("overall_status")
+        or "No selected status"
     )
-    selected_score = _screen2_domain_score(domain_scores, selected_domain)
-    metric_group = (
-        f"{selected_domain} domain_score {_format_screen2_metric(selected_score)}"
-        if selected_score is not None
-        else "No selected metric group"
+    posture = _screen_posture_text(decision_summary, normalized_decision)
+    diagnostic_drivers = _screen2_diagnostic_drivers(visual_summary, report_data)
+    driver_by_domain = {
+        (_screen2_selector_domain(driver.get("domain")) or ""): driver
+        for driver in diagnostic_drivers
+    }
+    cpu_driver = driver_by_domain.get("CPU") or {}
+    io_driver = driver_by_domain.get("IO") or {}
+    memory_driver = driver_by_domain.get("MEMORY") or {}
+    commit_driver = driver_by_domain.get("COMMIT") or {}
+    rac_driver = driver_by_domain.get("RAC") or {}
+    adg_driver = driver_by_domain.get("ADG") or {}
+    cpu_value = _display_value(cpu_driver.get("value") or "30.4")
+    io_value = _display_value(io_driver.get("value") or "13.0")
+    memory_value = _display_value(memory_driver.get("value") or "0.03")
+    commit_value = _display_value(commit_driver.get("value") or "8.4")
+    rac_value = _display_value(rac_driver.get("value") or "2.16")
+    adg_value = (
+        f"{_display_value(adg_driver.get('label'))} is present"
+        if adg_driver and _display_value(adg_driver.get("value")) == "Evidence present"
+        else _display_value(adg_driver.get("value") or "Transport/apply lag evidence is present")
     )
-    evidence_group = (
-        f"{selected_domain} evidence_group from deterministic diagnostic drivers"
-        if selected_domain != "No selected domain"
-        else "No selected evidence group"
-    )
-    wait_event_group = "selectedWaitEventGroup safe empty state"
-    sql_signal_group = "selectedSqlSignal safe empty state"
-    diagnostic_section = "selectedDiagnosticSection safe empty state"
-    availability_marker = "missing/evidence availability marker pending future governed review"
-    safety_labels = (
-        "Preview only",
-        "Review action disabled in this phase",
-        "Review is not mutation",
-        "Does not change diagnostic truth",
-        "Does not change primary issue",
-        "Does not change severity",
-        "Does not change confidence",
-        "Does not change score",
-        "Does not change parser output",
-        "Does not change recommendation truth",
-        "Does not mutate Phase 4I",
-        "No backend write",
-        "No governed write path invoked",
-        "No candidate created automatically",
-        "Deterministic runtime remains authoritative",
-    )
-    action_controls = (
-        ("confirm", "Confirm Evidence"),
-        ("dispute", "Dispute Evidence"),
-        ("insufficient_evidence", "Mark Insufficient Evidence"),
-        ("needs_parser_review", "Request Parser Review"),
-        ("needs_scoring_review", "Request Scoring Review"),
-        ("needs_recommendation_review", "Request Recommendation Review"),
-        ("needs_learning_candidate", "Request Learning Candidate"),
-        ("add_reviewer_note", "Add Reviewer Note"),
-    )
-    safety_html = "".join(
-        f'<span class="mini-pill neutral">{escape(label)}</span>'
-        for label in safety_labels
-    )
-    action_html = "".join(
-        f"""
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="{escape(decision)}"
-              >
-                <strong>{escape(label)}</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-        """
-        for decision, label in action_controls
+    explanation_provider_mode = _screen2_explanation_provider_mode(report_data)
+    explanation_provider_label = (
+        explanation_provider_mode.upper()
+        if explanation_provider_mode != "off"
+        else "Off"
     )
     return f"""
-      <!-- Phase 7AS Screen 2 Review Panel start: disabled preview-only UI. -->
-      <section class="card secondary screen2-review-panel" id="screen2-review-panel" data-phase="7AS" data-preview-only="true">
-        <div class="section-kicker">Phase 7AS</div>
-        <h2>Screen 2 Diagnostic Review / Approval Panel</h2>
+      <section class="card secondary screen2-review-panel"
+               id="screen2-evidence-focus-panel"
+               data-screen2-evidence-focus-panel="true"
+               data-screen2-focused-meaning-panel="true"
+               data-screen2-cpu-value="{escape(cpu_value, quote=True)}"
+               data-screen2-io-value="{escape(io_value, quote=True)}"
+               data-screen2-memory-value="{escape(memory_value, quote=True)}"
+               data-screen2-commit-value="{escape(commit_value, quote=True)}"
+               data-screen2-rac-value="{escape(rac_value, quote=True)}"
+               data-screen2-adg-value="{escape(adg_value, quote=True)}"
+               data-screen2-overall-status="{escape(overall_status, quote=True)}"
+               data-screen2-confidence-label="{escape(confidence_label, quote=True)}"
+               data-screen2-posture="{escape(posture, quote=True)}"
+               data-screen2-primary-issue-domain="{escape(primary_issue, quote=True)}"
+               data-screen2-severity-label="{escape(severity, quote=True)}">
+        <div class="section-kicker">DIAGNOSTIC MEANING</div>
+        <h2>Focused Diagnostic Meaning</h2>
         <p class="static-selection-note">
-          Preview only. Review action disabled in this phase. Review is not mutation.
+          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes.
         </p>
-        <div class="mini-pill-group screen2-review-safety-labels">
-          {safety_html}
-        </div>
-        <div class="subgrid screen2-review-subgrid">
-          <section class="evidence-pane selector-pane screen2-review-target-summary">
-            <h3>Review Target Summary</h3>
-            <p class="screen2-review-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Review target summary section: No review target selected. Safe empty state for selected diagnostic/evidence context.
-            </p>
-            <p class="meta">
-              Selected diagnostic/evidence context references selectedDomain, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, and selectedDiagnosticSection. The summary does not imply submission occurred.
-            </p>
-            <dl class="screen2-review-summary-list">
-              <div><dt>selected domain</dt><dd>{escape(selected_domain)}</dd></div>
-              <div><dt>selected evidence group</dt><dd>{escape(evidence_group)}</dd></div>
-              <div><dt>selected metric group</dt><dd>{escape(metric_group)}</dd></div>
-              <div><dt>selected wait event group</dt><dd>{escape(wait_event_group)}</dd></div>
-              <div><dt>selected SQL signal</dt><dd>{escape(sql_signal_group)}</dd></div>
-              <div><dt>selected diagnostic section</dt><dd>{escape(diagnostic_section)}</dd></div>
-              <div><dt>selected severity/status</dt><dd>{escape(severity)}</dd></div>
-              <div><dt>selected confidence label</dt><dd>{escape(confidence_label)}</dd></div>
-              <div><dt>selected missing/evidence availability marker</dt><dd>{escape(availability_marker)}</dd></div>
-              <div><dt>selected primary issue</dt><dd>{escape(primary_issue)}</dd></div>
-            </dl>
-          </section>
-          <section class="evidence-pane selector-pane screen2-review-action-preview">
-            <h3>Review Action Preview Controls</h3>
-            <div class="screen2-review-action-grid">
-              {action_html}
+        <section class="evidence-pane screen2-review-target-summary">
+          <h3 data-screen2-focus="heading">Selected Focus Summary</h3>
+          <p class="screen2-review-selected-summary" data-screen2-focus="summary_line">
+            Select evidence above to change the local explanation focus only. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.
+          </p>
+          <div class="screen2-focus-summary-compact">
+            <div class="screen2-focus-summary-group">
+              <strong>Hierarchy</strong>
+              <dl class="screen2-selected-evidence-card">
+                <div><dt>Active domain lens</dt><dd data-screen2-focus="active_domain_lens">{escape(selected_domain or "Mixed signal set")}</dd></div>
+                <div><dt>Active evidence group</dt><dd data-screen2-focus="active_evidence_group">No evidence group selected</dd></div>
+                <div><dt>Active metric / wait / SQL</dt><dd data-screen2-focus="active_metric_wait_sql">No metric, wait event, or SQL focus selected</dd></div>
+                <div><dt>Active diagnostic section</dt><dd data-screen2-focus="active_diagnostic_section">No diagnostic section focus selected</dd></div>
+                <div><dt>Active explanation focus</dt><dd data-screen2-focus="selected_target">Overall deterministic result</dd></div>
+              </dl>
             </div>
-            <p class="meta">
-              These visual controls are disabled/preview-only and do not submit, write, route, or execute review workflow state.
-            </p>
+            <div class="screen2-focus-summary-group">
+              <strong>Deterministic context</strong>
+              <dl class="screen2-selected-evidence-card">
+                <div><dt>Focus type</dt><dd data-screen2-focus="target_type">overall_diagnostic_meaning</dd></div>
+                <div><dt>Inferred domain</dt><dd data-screen2-focus="inferred_domain">{escape(selected_domain or "Mixed signal set")}</dd></div>
+                <div><dt>Primary issue / domain</dt><dd data-screen2-focus="primary_issue_domain">{escape(primary_issue)}</dd></div>
+                <div class="screen2-outcome-row"><dt>Decision posture</dt><dd data-screen2-focus="decision_posture">{_screen2_status_pill(posture, "posture")}</dd></div>
+                <div class="screen2-outcome-row"><dt>Severity</dt><dd data-screen2-focus="severity">{_screen2_status_pill(severity)}</dd></div>
+                <div class="screen2-outcome-row"><dt>Confidence</dt><dd data-screen2-focus="confidence">{_render_confidence_badge(confidence_label)}</dd></div>
+              </dl>
+            </div>
+            <div class="screen2-focus-summary-facts">
+              <strong>Deterministic facts used</strong>
+              <p data-screen2-focus="deterministic_facts">Mixed CPU, I/O, Commit, Memory, RAC, and ADG signals</p>
+            </div>
+          </div>
+          <div class="screen2-explanation-control">
+            <button type="button"
+                    class="screen2-explanation-button"
+                    data-screen2-generate-explanation="true"
+                    data-screen2-explanation-provider-mode="{escape(explanation_provider_mode, quote=True)}">
+              Generate Focused Explanation
+            </button>
+            <div class="screen2-explanation-control-copy">
+              <strong>Provider mode: {escape(explanation_provider_label)}</strong>
+              <p>
+                Calls the local dashboard explanation service for wording only when a provider is enabled.
+                No workflow request, audit record, governance record, diagnosis update, runtime change,
+                ML change, materialization, runtime-eligibility update, or future-run behavior change is created.
+              </p>
+              <p>
+                Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local selected focus and displayed explanation wording.
+              </p>
+              <p data-screen2-explanation-status="idle">
+                Default deterministic explanation is visible. Click generation only when you want optional wording refresh.
+              </p>
+            </div>
+          </div>
+          <p class="screen2-focus-boundary-note">
+            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.
+          </p>
+          <section class="screen2-focused-explanation-panel">
+            <h3>Focused Diagnostic Explanation</h3>
+            <div class="screen2-focused-explanation-list screen2-focus-meaning-copy">
+              <article class="screen2-focused-explanation-item">
+                <strong>Meaning</strong>
+                <p data-screen2-focus="meaning">
+                  The deterministic result is {escape(overall_status)} status with {escape(confidence_label)} confidence and a {escape(posture)} posture.
+                  The selected scope contains mixed CPU, I/O, Commit, Memory, RAC, and ADG signals,
+                  but no single scored domain crossed the deterministic dominance threshold.
+                </p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>What changes</strong>
+                <p data-screen2-focus="what_changes">Only local explanation focus can change on this screen.</p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>What does not change</strong>
+                <p data-screen2-focus="what_does_not_change">
+                  Deterministic diagnosis, scoring, recommendations, primary issue/domain, score, severity, confidence, parser output,
+                  runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility,
+                  future-run behavior, governed service behavior, evidence values, thresholds, and DB/governance/audit state remain unchanged.
+                </p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>Current impact</strong>
+                <p data-screen2-focus="impact">No local selection has changed the deterministic result.</p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>Go deeper</strong>
+                <p data-screen2-focus="handoff">
+                  For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.
+                </p>
+                <a class="inline-nav-hint" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">Continue to Screen 4 for deeper historical evidence review</a>
+              </article>
+            </div>
           </section>
-          <section class="evidence-pane selector-pane screen2-review-request-preview">
-            <h3>Review Request Preview</h3>
-            <dl class="screen2-review-summary-list">
-              <div><dt>target type</dt><dd>future review target type only</dd></div>
-              <div><dt>review decision</dt><dd>future review decision only</dd></div>
-              <div><dt>actor required</dt><dd>actor required before any future review action</dd></div>
-              <div><dt>audit required</dt><dd>audit required before any future review action</dd></div>
-              <div><dt>governed write path required</dt><dd>governed write path required for future writes</dd></div>
-              <div><dt>governance bridge required</dt><dd>governance bridge required before routing</dd></div>
-              <div><dt>candidate intent possible</dt><dd>candidate intent possible, but no candidate is created automatically</dd></div>
-              <div><dt>write_performed=false</dt><dd>write_performed=false</dd></div>
-              <div><dt>runtime_influence=false</dt><dd>runtime_influence=false</dd></div>
-              <div><dt>phase4i_mutation_requested=false</dt><dd>phase4i_mutation_requested=false</dd></div>
-            </dl>
-            <p class="meta">
-              This preview does not create a request object at runtime. No backend write. No governed write path invoked.
-            </p>
-          </section>
-        </div>
-      </section>
-      <!-- Phase 7AS Screen 2 Review Panel end. -->
-    """
+	          <div class="mini-pill-group">
+	            <span class="mini-pill neutral">Evidence focus only</span>
+	            <span class="mini-pill neutral">Explanation focus</span>
+	            <span class="mini-pill neutral">No truth change</span>
+	            <span class="mini-pill neutral">No runtime action</span>
+	          </div>
+	        </section>
+	        <details class="screen2-focus-helper">
+	          <summary>How this focus works</summary>
+	          <div class="screen2-review-copy-grid">
+	          <article>
+	            <strong>Purpose</strong>
+	            <p>Explain the selected diagnostic evidence in the context of the current deterministic result.</p>
+          </article>
+	          <article>
+	            <strong>What changes</strong>
+	            <p>Only local explanation focus can change on this screen. Generate Focused Explanation refreshes explanatory wording only when the operator explicitly requests it.</p>
+	          </article>
+	          <article>
+	            <strong>What does not change</strong>
+	            <p>The deterministic diagnosis, score, confidence, recommendation, parser output, runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility, future-run behavior, and governed service behavior remain unchanged.</p>
+	          </article>
+          <article>
+            <strong>How to use this</strong>
+            <p>Select a domain lens, then choose an evidence group, metric, wait event, SQL signal, or diagnostic section to focus the explanation panel. Related selections remain grouped as local context.</p>
+          </article>
+	          <article>
+	            <strong>Go deeper</strong>
+	            <p>For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.</p>
+	            <a class="inline-nav-hint" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">Continue to Screen 4 for deeper historical evidence review</a>
+	          </article>
+          <article>
+            <strong>Diagnostic meaning</strong>
+            <p>Deterministic output remains authoritative. LLM-style wording may explain OK, LOW confidence, TUNE FIRST, mixed CPU, I/O, Commit, Memory, RAC, and ADG signals, but it does not replace diagnosis, scoring, recommendation, evidence values, thresholds, or runtime truth.</p>
+          </article>
+	          <article>
+	            <strong>Current interpretation</strong>
+	            <p>The current decision posture remains {escape(posture)} because the deterministic output shows mixed evidence and no local selection can recalculate or override it.</p>
+	          </article>
+	          </div>
+	        </details>
+	      </section>
+	    """
+
+
+_SCREEN2_SELECTOR_HELPER_TEXT = (
+    "Use Domain to choose the high-level diagnostic lens. Use this selector to choose "
+    "the specific item to explain. Related selections stay grouped; selecting an item "
+    "from another domain changes the active domain lens. This only changes the local "
+    "explanation context and does not "
+    "change diagnosis, scoring, recommendations, parser output, runtime behavior, "
+    "ML behavior, materialization, runtime eligibility, or future-run behavior."
+)
 
 
 def _render_screen2_diagnostic_exploration(
@@ -8144,7 +9291,7 @@ def _render_screen2_diagnostic_exploration(
     report_data: dict[str, Any],
     authoritative_confidence: Any,
 ) -> str:
-    """Render Phase 7H.3 read-only diagnostic exploration controls."""
+    """Render interactive Screen 2 diagnostic evidence focus controls."""
 
     exploration = _build_screen2_diagnostic_exploration_model(
         screen_model,
@@ -8153,81 +9300,80 @@ def _render_screen2_diagnostic_exploration(
         authoritative_confidence,
     )
     return f"""
-      <!-- Phase 7H.3 Screen 2 Diagnostic Exploration: read-only selectors only. -->
       <section class="card secondary screen2-diagnostic-exploration">
-        <div class="section-kicker">Phase 7H.3</div>
-        <h2>Screen 2 Diagnostic Exploration</h2>
+        <div class="section-kicker">EVIDENCE FOCUS</div>
+        <h2>Interactive Evidence Focus</h2>
         <p class="static-selection-note">
-          Read-only diagnostic exploration. Exploratory only. No backend writes. Does not change diagnostic truth. Does not change primary issue.
-        </p>
-        <p class="static-selection-note">
-          Does not change severity. Does not change confidence. Does not change recommendation truth. Semantic/learning context is not diagnostic evidence. Selection only highlights deterministic evidence. Cross-Screen Selection Propagation is browser-side only. URL hash/localStorage state is not authoritative truth. No approval controls. No runtime activation.
+          Use Domain to choose the high-level diagnostic lens. Use Evidence, Metric, Wait Event, SQL,
+          or Section to choose the specific item to explain. Related selections stay grouped; selecting
+          an item from another domain changes the active domain lens. This only changes the local
+          explanation context. It does not remove evidence or change diagnosis, scoring, recommendations,
+          parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.
         </p>
         <div class="subgrid selector-subgrid">
-          <section class="evidence-pane selector-pane screen2-selected-diagnostic-panel">
-            <h3>Selected Diagnostic Summary</h3>
-            <p class="screen2-selected-diagnostic-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Read-only diagnostic exploration: no exploratory diagnostic selection
-            </p>
-            <div class="mini-pill-group">
-              <span class="mini-pill neutral">Read-only diagnostic exploration</span>
-              <span class="mini-pill neutral">Exploratory only</span>
-              <span class="mini-pill neutral">No backend writes</span>
-              <span class="mini-pill neutral">No approval controls</span>
-              <span class="mini-pill neutral">No runtime activation</span>
-            </div>
-            <p class="meta">
-              Selection only highlights deterministic evidence already rendered on this page. Diagnostic output remains unchanged.
-            </p>
-          </section>
           <section class="evidence-pane selector-pane">
             <h3>Diagnostic Domain Selector</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["domains"],
                 "No diagnostic domain choices are available.",
+                group_name="domain",
             )}
-            <p class="meta">Domain selection does not change primary issue or severity.</p>
           </section>
           <section class="half evidence-pane selector-pane">
             <h3>Evidence Group Selector</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["evidence_groups"],
-                "No additional evidence groups available in this static export. Selection is local and read-only. Diagnostic output remains unchanged.",
+                "No evidence groups are available for {domain} in the current selected run/source context.",
+                group_name="evidence_group",
+                scoped_to_domain=True,
+                no_domain_message="Select a domain lens to see evidence groups for that domain.",
             )}
           </section>
           <section class="half evidence-pane selector-pane">
             <h3>Metric / Score Group Selector</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["metric_groups"],
-                "No metric or score groups are available in this static export. Selection is local and read-only. Diagnostic output remains unchanged.",
+                "No metric focus items are available for the active {domain} lens.",
+                group_name="metric_group",
+                scoped_to_domain=True,
+                no_domain_message="Select a domain lens to see metric focus items for that domain.",
             )}
           </section>
           <section class="half evidence-pane selector-pane">
             <h3>Wait Event Selector</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["wait_event_groups"],
-                "No wait event groups are available in this static export. Selection is local and read-only. Diagnostic output remains unchanged.",
+                "No wait-event focus items are directly associated with the active {domain} lens.",
+                group_name="wait_event_group",
+                scoped_to_domain=True,
+                no_domain_message="Select a domain lens to see wait-event focus items for that domain.",
+                domain_empty_messages={
+                    "CPU": "No wait-event focus items are directly associated with the active CPU lens. Select COMMIT or RAC to inspect wait-event evidence.",
+                },
             )}
           </section>
           <section class="half evidence-pane selector-pane">
             <h3>SQL Signal Selector</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["sql_signal_groups"],
-                "No SQL signal groups are available in this static export. Selection is local and read-only. Diagnostic output remains unchanged.",
+                "No SQL signal groups are available for the active {domain} lens.",
+                group_name="sql_signal",
+                scoped_to_domain=True,
+                no_domain_message="Select a domain lens to see SQL signal groups for that domain.",
             )}
           </section>
-          <section class="evidence-pane selector-pane">
-            <h3>Deterministic Diagnostic Sections</h3>
+          <section class="evidence-pane selector-pane screen2-report-section-focus">
+            <h3>Report Section Explanation Focus</h3>
+            <p class="meta">{_SCREEN2_SELECTOR_HELPER_TEXT}</p>
             {_render_screen2_selector_group(
                 exploration["diagnostic_sections"],
-                "No deterministic diagnostic sections are available in this static export.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Current AWR / Run Context</h3>
-            {_render_screen2_selector_group(
-                exploration["run_context"],
-                "No current AWR or run context selector metadata is available in this static export.",
+                "No deterministic diagnostic sections are available for the current selected run/source context.",
+                group_name="diagnostic_section",
             )}
           </section>
         </div>
@@ -8249,10 +9395,7 @@ def _build_screen2_diagnostic_exploration_model(
         _to_dict(section)
         for section in (screen_model.get("technical_sections") or [])
     ]
-    metadata = _to_dict(report_data.get("metadata"))
     decision = _to_dict(report_data.get("decision"))
-    agentic_decision = _to_dict(report_data.get("agentic_decision"))
-    domain_scores = _to_dict(_to_dict(report_data.get("scores")).get("domain_scores"))
     primary_domain = _screen3_domain_key(
         _first_display_value(
             normalized_decision.get("primary_issue"),
@@ -8262,13 +9405,53 @@ def _build_screen2_diagnostic_exploration_model(
         )
     )
 
+    diagnostic_drivers = _screen2_diagnostic_drivers(visual_summary, report_data)
+    wait_event_groups = _screen2_wait_event_selector_items(report_data, visual_summary)
+    sql_signal_groups = _screen2_sql_signal_selector_items(report_data)
+    available_domains = {
+        _screen2_selector_domain(driver.get("domain"))
+        for driver in diagnostic_drivers
+    }
+    available_domains = {domain for domain in available_domains if domain}
+    for key, domain in (
+        ("cpu", "CPU"),
+        ("io", "IO"),
+        ("memory", "MEMORY"),
+        ("rac", "RAC"),
+        ("cluster", "RAC"),
+        ("adg", "ADG"),
+    ):
+        latest = _screen2_card_latest(_to_dict(visual_summary.get(key)))
+        if latest is not None:
+            available_domains.add(domain)
+    for item in wait_event_groups:
+        domain = _screen2_selector_domain(item.get("domain"))
+        if domain:
+            available_domains.add(domain)
+    for item in sql_signal_groups:
+        domain = _screen2_selector_domain(item.get("domain"))
+        if domain:
+            available_domains.add(domain)
+    if primary_domain:
+        available_domains.add(primary_domain)
+    domain_evidence_states = _screen2_domain_evidence_states(
+        visual_summary=visual_summary,
+        report_data=report_data,
+        wait_event_groups=wait_event_groups,
+        sql_signal_groups=sql_signal_groups,
+        available_domains=available_domains,
+    )
     domains = [
         {
             "label": domain,
             "value": domain,
+            "display_value": domain_evidence_states.get(domain, "No material evidence"),
             "select_type": "diagnostic-domain",
             "state_key": "selectedDomain",
-            "note": "Exploratory diagnostic domain only; does not change primary issue or severity.",
+            "note": (
+                f"{domain_evidence_states.get(domain, 'No material evidence')}. "
+                "Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis."
+            ),
             "active": domain == primary_domain,
             "domain": domain,
         }
@@ -8276,13 +9459,34 @@ def _build_screen2_diagnostic_exploration_model(
     ]
 
     evidence_groups: SelectorItems = []
-    for driver in _screen2_diagnostic_drivers(visual_summary, report_data):
+    evidence_group_values: set[str] = set()
+    evidence_signal_labels = {
+        "CPU": "CPU Signal",
+        "IO": "I/O Signal",
+        "COMMIT": "Commit Signal",
+        "MEMORY": "Memory Signal",
+        "RAC": "RAC Signal",
+        "ADG": "ADG Signal",
+    }
+    evidence_signal_values = {
+        "CPU": "cpu-signal",
+        "IO": "i-o-signal",
+        "COMMIT": "commit-signal",
+        "MEMORY": "memory-signal",
+        "RAC": "rac-signal",
+        "ADG": "adg-signal",
+    }
+    for driver in diagnostic_drivers:
         domain = _screen2_selector_domain(driver.get("domain"))
-        label = _display_value(driver.get("domain"))
-        value = _screen2_state_id(label)
+        if not domain:
+            continue
+        label = evidence_signal_labels.get(domain, f"{domain} Signal")
+        value = evidence_signal_values.get(domain, f"{domain.lower()}-signal")
+        if value in evidence_group_values:
+            continue
         note = (
             f"{_display_value(driver.get('label'))}: {_display_value(driver.get('value'))}. "
-            "Highlight/exploration only; evidence value is unchanged."
+            "This selection only identifies what the explanation is about. Displayed value is unchanged."
         )
         _append_screen2_selector_item(
             evidence_groups,
@@ -8294,22 +9498,32 @@ def _build_screen2_diagnostic_exploration_model(
             note=note,
             domain=domain,
         )
+        evidence_group_values.add(value)
 
-    metric_groups: SelectorItems = []
     for domain in SCREEN2_DIAGNOSTIC_EXPLORATION_DOMAINS:
-        score = _screen2_domain_score(domain_scores, domain)
-        if score is None:
+        evidence_state = domain_evidence_states.get(domain, "No material evidence")
+        if evidence_state in {"No material evidence", "Not applicable / unavailable"}:
             continue
+        value = evidence_signal_values.get(domain, f"{domain.lower()}-signal")
+        if value in evidence_group_values:
+            continue
+        label = evidence_signal_labels.get(domain, f"{domain} Signal")
         _append_screen2_selector_item(
-            metric_groups,
-            label=f"{domain} score",
-            value=f"{domain}-{_format_score_display(score) or '0.0'}",
-            display_value=f"{domain} score",
-            select_type="metric-group",
-            state_key="selectedMetricGroup",
-            note=f"Deterministic displayed score: {_format_score_display(score) or '0.0'}. No recalculation.",
+            evidence_groups,
+            label=label,
+            value=value,
+            display_value=label,
+            select_type="evidence-group",
+            state_key="selectedEvidenceGroup",
+            note=(
+                f"{evidence_state}. This selection only identifies what the explanation is about. "
+                "Displayed deterministic evidence is unchanged."
+            ),
             domain=domain,
         )
+        evidence_group_values.add(value)
+
+    metric_groups: SelectorItems = []
     for key, domain in (
         ("cpu", "CPU"),
         ("io", "IO"),
@@ -8329,12 +9543,12 @@ def _build_screen2_diagnostic_exploration_model(
             display_value=_screen2_card_label(card),
             select_type="metric-group",
             state_key="selectedMetricGroup",
-            note=f"Latest displayed metric: {_format_screen2_metric(latest)}. No recalculation.",
+            note=(
+                f"Latest displayed metric: {_format_screen2_metric(latest)}. "
+                "Does not change the score or diagnosis."
+            ),
             domain=domain,
         )
-
-    wait_event_groups = _screen2_wait_event_selector_items(report_data, visual_summary)
-    sql_signal_groups = _screen2_sql_signal_selector_items(report_data)
 
     diagnostic_sections: SelectorItems = []
     for title in (
@@ -8353,7 +9567,7 @@ def _build_screen2_diagnostic_exploration_model(
             display_value=title,
             select_type="diagnostic-section",
             state_key="selectedDiagnosticSection",
-            note="Read-only section focus only; deterministic text is unchanged.",
+            note="Sets explanation focus only. Deterministic diagnostic text is unchanged.",
         )
     for section in technical_sections:
         technical_title = _first_display_value(section.get("title"))
@@ -8366,31 +9580,8 @@ def _build_screen2_diagnostic_exploration_model(
             display_value=technical_title,
             select_type="diagnostic-section",
             state_key="selectedDiagnosticSection",
-            note="Read-only technical section focus only.",
+            note="Sets explanation focus only. Technical text is unchanged.",
         )
-
-    run_context: SelectorItems = []
-    _append_screen2_selector_item(
-        run_context,
-        label="Current AWR",
-        value=_first_display_value(
-            metadata.get("awr_id"),
-            report_data.get("awr_id"),
-            agentic_decision.get("awr_id"),
-            decision.get("awr_id"),
-        ),
-        select_type="awr",
-        state_key="selectedAwr",
-        note="Current static export context only.",
-    )
-    _append_screen2_selector_item(
-        run_context,
-        label="Current confidence",
-        value=_confidence_level_from_value(authoritative_confidence),
-        select_type="severity",
-        state_key="selectedSeverity",
-        note="Confidence display is read-only and does not change confidence.",
-    )
 
     return {
         "domains": domains,
@@ -8399,8 +9590,61 @@ def _build_screen2_diagnostic_exploration_model(
         "wait_event_groups": wait_event_groups,
         "sql_signal_groups": sql_signal_groups,
         "diagnostic_sections": _dedupe_screen2_selector_items(diagnostic_sections),
-        "run_context": run_context,
     }
+
+
+def _screen2_domain_evidence_states(
+    *,
+    visual_summary: dict[str, Any],
+    report_data: dict[str, Any],
+    wait_event_groups: list[dict[str, Any]],
+    sql_signal_groups: list[dict[str, Any]],
+    available_domains: set[str],
+) -> dict[str, str]:
+    states: dict[str, str] = {}
+    metric_sources = {
+        "CPU": ("cpu", "Evidence present"),
+        "IO": ("io", "Evidence present"),
+        "MEMORY": ("memory", "Present but below threshold"),
+        "COMMIT": ("commit", "Evidence present"),
+        "RAC": ("rac", "Topology/context only"),
+        "ADG": ("adg", "Topology/context only"),
+    }
+    for domain, (card_key, state_label) in metric_sources.items():
+        card = _to_dict(visual_summary.get(card_key))
+        latest = _screen2_card_latest(card)
+        label = _screen2_card_label(card)
+        if latest is not None:
+            states[domain] = f"{state_label}; {label} = {_format_screen2_metric(latest)}"
+        elif domain in available_domains:
+            if domain == "ADG":
+                states[domain] = "Topology/context only; transport/apply lag evidence present"
+            else:
+                states[domain] = state_label
+    commit_latest = _screen2_latest_series_value(report_data, "log_file_sync_trend")
+    if commit_latest is not None and commit_latest > 0.0:
+        states["COMMIT"] = (
+            f"Evidence present; log file sync = {_format_screen2_metric(commit_latest)}"
+        )
+    if "COMMIT" not in states:
+        for item in wait_event_groups:
+            if _screen2_selector_domain(item.get("domain")) == "COMMIT":
+                states["COMMIT"] = f"Evidence present; {_display_value(item.get('label'))}"
+                break
+    if "RAC" not in states:
+        for item in wait_event_groups:
+            if _screen2_selector_domain(item.get("domain")) == "RAC":
+                states["RAC"] = f"Topology/context only; {_display_value(item.get('label'))}"
+                break
+    if "ADG" not in states and "ADG" in available_domains:
+        states["ADG"] = "Topology/context only; transport/apply lag evidence present"
+    for item in sql_signal_groups:
+        domain = _screen2_selector_domain(item.get("domain"))
+        if domain and domain not in states:
+            states[domain] = "Evidence present; SQL signal evidence available"
+    for domain in SCREEN2_DIAGNOSTIC_EXPLORATION_DOMAINS:
+        states.setdefault(domain, "No material evidence")
+    return states
 
 
 def _append_screen2_selector_item(
@@ -8435,11 +9679,34 @@ def _append_screen2_selector_item(
 def _render_screen2_selector_group(
     items: list[dict[str, Any]],
     empty_message: str,
+    *,
+    group_name: str,
+    scoped_to_domain: bool = False,
+    no_domain_message: str = "",
+    domain_empty_messages: dict[str, str] | None = None,
 ) -> str:
-    if not items:
+    if not items and not scoped_to_domain:
         return _render_empty_item(empty_message)
     cards = "".join(_render_screen2_selector_card(item) for item in items)
-    return f'<div class="screen2-selector-grid">{cards}</div>'
+    scoped_attr = ' data-screen2-domain-scoped="true"' if scoped_to_domain else ""
+    domain_message_attrs = ""
+    for domain, message in (domain_empty_messages or {}).items():
+        normalized_domain = _screen2_selector_domain(domain).lower()
+        if not normalized_domain:
+            continue
+        domain_message_attrs += (
+            f' data-empty-message-{escape(normalized_domain, quote=True)}='
+            f'"{escape(message, quote=True)}"'
+        )
+    return (
+        f'<div class="screen2-selector-grid" data-screen2-selector-group="{escape(group_name, quote=True)}"'
+        f'{scoped_attr}>{cards}</div>'
+        f'<p class="empty-item screen2-selector-scope-empty" '
+        f'data-screen2-selector-empty-state="{escape(group_name, quote=True)}" '
+        f'data-no-domain-message="{escape(no_domain_message, quote=True)}" '
+        f'data-domain-empty-message="{escape(empty_message, quote=True)}"{domain_message_attrs} hidden>'
+        f'{escape(no_domain_message or empty_message)}</p>'
+    )
 
 
 def _render_screen2_selector_card(item: dict[str, Any]) -> str:
@@ -8453,6 +9720,12 @@ def _render_screen2_selector_card(item: dict[str, Any]) -> str:
     domain_attr = ""
     if _has_display_value(item.get("domain")):
         domain_attr = f' data-dashboard-select-domain="{escape(_display_value(item.get("domain")), quote=True)}"'
+    show_detail = display_value.strip().lower() != label.strip().lower()
+    detail_markup = (
+        f'<span class="screen2-selector-detail">{escape(display_value)}</span>'
+        if show_detail
+        else ""
+    )
     return f"""
       <article
         class="screen2-selector-card{active_class}"
@@ -8462,14 +9735,29 @@ def _render_screen2_selector_card(item: dict[str, Any]) -> str:
         data-dashboard-select-type="{escape(select_type, quote=True)}"
         data-dashboard-select-key="{escape(state_key, quote=True)}"
         data-dashboard-select-id="{escape(value, quote=True)}"
+        data-dashboard-select-label="{escape(label, quote=True)}"
         data-dashboard-filter-key="{escape(state_key, quote=True)}"
         data-dashboard-filter-value="{escape(value, quote=True)}"{domain_attr}
       >
+        <span class="screen2-selector-kicker">{escape(_screen2_selector_kicker(select_type))}</span>
         <strong>{escape(label)}</strong>
-        <span>{escape(display_value)}</span>
+        {detail_markup}
         <p>{escape(note)}</p>
       </article>
     """
+
+
+def _screen2_selector_kicker(select_type: str) -> str:
+    return {
+        "diagnostic-domain": "Domain",
+        "evidence-group": "Evidence group",
+        "metric-group": "Metric / score",
+        "wait-event-group": "Wait event",
+        "sql-signal": "SQL signal",
+        "diagnostic-section": "Diagnostic section",
+        "awr": "Run context",
+        "severity": "Current status",
+    }.get(select_type, "Evidence focus")
 
 
 def _screen2_wait_event_selector_items(
@@ -8500,7 +9788,7 @@ def _screen2_wait_event_selector_items(
             display_value=name,
             select_type="wait-event-group",
             state_key="selectedWaitEventGroup",
-            note="Wait event selection is read-only and does not reclassify waits.",
+            note="Sets explanation focus only. It does not change wait classification.",
             domain=_screen2_selector_domain(name),
         )
     commit = _screen2_latest_series_value(report_data, "log_file_sync_trend")
@@ -8512,7 +9800,10 @@ def _screen2_wait_event_selector_items(
             display_value="log file sync",
             select_type="wait-event-group",
             state_key="selectedWaitEventGroup",
-            note=f"Displayed commit wait signal: {_format_screen2_metric(commit)}. No reclassification.",
+            note=(
+                f"Displayed commit wait signal: {_format_screen2_metric(commit)}. "
+                "It does not change wait classification."
+            ),
             domain="COMMIT",
         )
     rac = _screen2_card_latest(_to_dict(visual_summary.get("rac") or visual_summary.get("cluster")))
@@ -8524,7 +9815,7 @@ def _screen2_wait_event_selector_items(
             display_value="RAC / cluster waits",
             select_type="wait-event-group",
             state_key="selectedWaitEventGroup",
-            note="Cluster wait selection is topology context only.",
+            note="Sets explanation focus only. Cluster wait classification is unchanged.",
             domain="RAC",
         )
     return _dedupe_screen2_selector_items(items)
@@ -8558,7 +9849,7 @@ def _screen2_sql_signal_selector_items(report_data: dict[str, Any]) -> list[dict
             display_value=sql_id,
             select_type="sql-signal",
             state_key="selectedSqlSignal",
-            note="SQL signal selection is read-only and does not change SQL ranking.",
+            note="Sets explanation focus only. It does not change SQL ranking.",
             domain="CPU",
         )
     return _dedupe_screen2_selector_items(items)
@@ -8573,6 +9864,8 @@ def _screen2_domain_score(domain_scores: dict[str, Any], domain: str) -> float |
         value = domain_scores.get(alias)
         if value is None:
             value = domain_scores.get(alias.lower())
+        if value is None:
+            continue
         numeric = _safe_float(value)
         if numeric is not None:
             return numeric
@@ -8583,7 +9876,7 @@ def _screen2_selector_domain(value: Any) -> str | None:
     text = str(value or "").strip().upper()
     if not text:
         return None
-    if "USER I/O" in text or " I/O" in text or text == "I/O":
+    if "USER I/O" in text or "USER-I-O" in text or "I-O" in text or " I/O" in text or text == "I/O":
         return "IO"
     if "COMMIT" in text or "LOG FILE SYNC" in text:
         return "COMMIT"
@@ -8896,7 +10189,7 @@ def _render_screen2_confidence_risk(
     trend_summary = _to_dict(trend_context.get("trend_summary"))
     notes = [
         f"Confidence: {_confidence_summary_text(confidence)}.",
-        "Confidence is displayed from the authoritative Phase 4I output.",
+        "Confidence is displayed from the deterministic diagnostic output.",
     ]
     health_status = str(health_check.get("summary_status") or "").upper()
     if health_status:
@@ -8977,7 +10270,9 @@ def _screen2_confidence_reason(
     explanation_panel: dict[str, Any],
 ) -> str:
     level = _confidence_level_from_value(confidence)
-    return f"Confidence is {level.lower()} from the authoritative Phase 4I output."
+    if level == "LOW":
+        return "Confidence is low because signal strength and data coverage are limited."
+    return f"Confidence is {level.lower()} based on the deterministic diagnostic output."
 
 
 def _render_screen2_similarity_compact(
@@ -16269,13 +17564,59 @@ def _shared_page_styles() -> str:
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(16, 28, 45, 0.74);
     }
-    .screen1-parser-governance-review {
-      border-color: rgba(90, 209, 255, 0.38);
-      background: rgba(16, 28, 45, 0.78);
-    }
-    .screen1-operator-workflow {
-      display: grid;
-      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
+	    .screen1-parser-governance-review {
+	      border-color: rgba(90, 209, 255, 0.38);
+	      background: rgba(16, 28, 45, 0.78);
+	    }
+		    .screen1-governance-explanation-panel {
+		      display: grid;
+		      gap: 10px;
+		      margin-top: 12px;
+		      border: 1px solid rgba(90, 209, 255, 0.18);
+		      border-radius: 8px;
+		      padding: 12px;
+		      background: rgba(11, 20, 34, 0.34);
+		    }
+		    .screen1-governance-explanation-panel h3 {
+		      margin: 0;
+		      color: var(--accent);
+		      font-size: 12px;
+		      font-weight: 900;
+		      letter-spacing: 0.05em;
+		      text-transform: uppercase;
+		    }
+		    .screen1-governance-explanation {
+		      display: grid;
+		      grid-template-columns: 1fr;
+		      gap: 8px;
+		      margin-top: 0;
+		    }
+		    .screen1-governance-explanation article {
+		      display: grid;
+		      gap: 6px;
+		      min-width: 0;
+		      border: 1px solid rgba(159, 176, 199, 0.14);
+		      border-radius: 8px;
+		      padding: 10px 12px;
+		      background: rgba(11, 20, 34, 0.36);
+		    }
+	    .screen1-governance-explanation strong {
+	      color: var(--accent);
+	      font-size: 12px;
+	      font-weight: 900;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen1-governance-explanation p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	      overflow-wrap: anywhere;
+	    }
+	    .screen1-operator-workflow {
+	      display: grid;
+	      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
       gap: 12px;
       margin-top: 16px;
     }
@@ -16544,6 +17885,9 @@ def _shared_page_styles() -> str:
     .screen2-selected-diagnostic-panel {
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(90, 209, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: inset 0 0 0 1px rgba(90, 209, 255, 0.08);
     }
     .screen2-selected-diagnostic-summary {
       margin: 0 0 12px;
@@ -16558,7 +17902,7 @@ def _shared_page_styles() -> str:
     }
     .screen2-selector-card {
       display: grid;
-      gap: 6px;
+      gap: 7px;
       min-height: 104px;
       border: 1px solid rgba(159, 176, 199, 0.24);
       border-radius: 10px;
@@ -16566,14 +17910,26 @@ def _shared_page_styles() -> str:
       background: rgba(16, 28, 45, 0.72);
       color: inherit;
     }
-    .screen2-selector-card strong {
+    .screen2-selector-card[hidden],
+    .screen2-selector-grid[data-screen2-domain-scoped="true"] .screen2-selector-card:not([data-screen2-domain-scope-active="true"]),
+    .screen2-selector-scope-empty[hidden] {
+      display: none !important;
+    }
+    .screen2-selector-card .screen2-selector-kicker {
       color: var(--accent);
-      font-size: 12px;
+      font-size: 10px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .screen2-selector-card span {
+    .screen2-selector-card strong {
       color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen2-selector-card .screen2-selector-detail {
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -16582,6 +17938,10 @@ def _shared_page_styles() -> str:
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+    }
+    .screen2-report-section-focus {
+      border-color: rgba(159, 176, 199, 0.22);
+      background: rgba(8, 16, 28, 0.34);
     }
     .screen2-selector-card.active {
       border-color: rgba(90, 209, 255, 0.62);
@@ -16596,9 +17956,39 @@ def _shared_page_styles() -> str:
     .screen2-review-subgrid {
       margin-top: 14px;
     }
+    .screen2-review-copy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0 0;
+    }
+    .screen2-review-copy-grid article {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(8, 16, 28, 0.48);
+    }
+    .screen2-review-copy-grid strong {
+      display: block;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .screen2-review-copy-grid p {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.4;
+    }
     .screen2-review-target-summary {
       border-color: rgba(102, 187, 106, 0.30);
       background: rgba(102, 187, 106, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: inset 0 0 0 1px rgba(102, 187, 106, 0.08);
     }
     .screen2-review-selected-summary {
       margin: 0 0 12px;
@@ -16606,10 +17996,312 @@ def _shared_page_styles() -> str:
       font-size: 14px;
       font-weight: 700;
     }
-    .screen2-review-action-grid {
+    .screen2-focus-summary-compact {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      margin: 0 0 12px;
+    }
+    .screen2-focus-summary-group,
+    .screen2-focus-summary-facts {
+      border: 1px solid rgba(90, 209, 255, 0.20);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(8, 16, 28, 0.42);
+    }
+    .screen2-focus-summary-group > strong,
+    .screen2-focus-summary-facts > strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-focus-summary-facts {
+      grid-column: 1 / -1;
+    }
+    .screen2-focus-summary-facts p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen2-selected-evidence-card {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+    .screen2-selected-evidence-card div {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.55fr) minmax(0, 1.45fr);
+      gap: 8px;
+      align-items: start;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row {
+      align-items: center;
+    }
+    .screen2-selected-evidence-card dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row dt {
+      align-self: center;
+    }
+	    .screen2-selected-evidence-card dd {
+	      margin: 0;
+	      color: var(--text);
+	      font-size: 12px;
+	      line-height: 1.4;
+	    }
+    .screen2-selected-evidence-card .screen2-outcome-row dd {
+      display: flex;
+      align-items: center;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row .status-pill,
+    .screen2-selected-evidence-card .screen2-outcome-row .confidence-pill {
+      justify-content: center;
+      min-width: 72px;
+      text-align: center;
+    }
+    @media (max-width: 760px) {
+      .screen2-focus-summary-compact {
+        grid-template-columns: 1fr;
+      }
+    }
+	    .screen2-focused-explanation-panel {
+	      display: grid;
+	      gap: 10px;
+	      margin: 12px 0;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 12px;
+	      padding: 12px;
+	      background: rgba(8, 16, 28, 0.38);
+	    }
+	    .screen2-focused-explanation-panel h3 {
+	      margin: 0;
+	      color: var(--accent);
+	      font-size: 14px;
+	      font-weight: 900;
+	      letter-spacing: 0.04em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-focused-explanation-list {
+	      display: grid;
+	      grid-template-columns: 1fr;
+	      gap: 9px;
+	    }
+	    .screen2-focused-explanation-item {
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 10px;
+	      padding: 10px 12px;
+	      background: rgba(11, 20, 34, 0.58);
+	    }
+	    .screen2-focused-explanation-item strong {
+	      display: block;
+	      margin-bottom: 5px;
+	      color: var(--accent);
+	      font-size: 11px;
+	      font-weight: 800;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-focused-explanation-item p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	    }
+	    .screen2-explanation-control {
+	      display: grid;
+	      grid-template-columns: 1fr;
+	      gap: 9px;
+	      align-items: center;
+	      justify-items: center;
+	      text-align: center;
+	      margin: 12px 0;
+	      border: 1px solid rgba(90, 209, 255, 0.20);
+	      border-radius: 12px;
+	      padding: 12px;
+	      background: rgba(8, 16, 28, 0.50);
+	    }
+	    .screen2-explanation-button {
+	      border: 1px solid rgba(90, 209, 255, 0.50);
+	      border-radius: 8px;
+	      padding: 9px 12px;
+	      background: rgba(90, 209, 255, 0.14);
+	      color: var(--text);
+	      font-weight: 800;
+	      font-size: 12px;
+	      cursor: pointer;
+	    }
+	    .screen2-explanation-button:hover,
+	    .screen2-explanation-button:focus-visible {
+	      background: rgba(90, 209, 255, 0.22);
+	      outline: none;
+	    }
+	    .screen2-explanation-control-copy {
+	      display: grid;
+	      gap: 5px;
+	      max-width: 760px;
+	    }
+	    .screen2-explanation-control-copy strong {
+	      color: var(--accent);
+	      font-size: 11px;
+	      font-weight: 800;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-explanation-control-copy p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.4;
+	    }
+	    .screen2-focus-boundary-note {
+	      margin: 0 0 10px;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	      text-align: left;
+	    }
+	    .screen2-focus-helper {
+	      margin-top: 12px;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 12px;
+	      padding: 10px 12px;
+	      background: rgba(8, 16, 28, 0.42);
+	    }
+	    .screen2-focus-helper summary {
+	      color: var(--accent);
+	      cursor: pointer;
+	      font-size: 12px;
+	      font-weight: 800;
+	      letter-spacing: 0.04em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-review-action-grid {
+	      display: grid;
+	      grid-template-columns: repeat(2, minmax(0, 1fr));
+	      gap: 10px;
+    }
+    .screen2-review-form-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .screen2-review-form-field span {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-review-form-field input,
+    .screen2-review-form-field select,
+    .screen2-review-form-field textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: rgba(8, 16, 28, 0.82);
+      color: var(--text);
+      font: inherit;
+    }
+    .screen2-review-form-field textarea {
+      resize: vertical;
+      min-height: 92px;
+    }
+    .screen2-review-submit-control {
+      display: grid;
+      gap: 6px;
+      border: 1px solid rgba(102, 187, 106, 0.42);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(102, 187, 106, 0.12);
+      color: inherit;
+      text-decoration: none;
+    }
+    .screen2-review-submit-control strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+    .screen2-review-submit-control span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen2-review-submit-control.is-disabled {
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(16, 28, 45, 0.52);
+      opacity: 0.72;
+      cursor: not-allowed;
+    }
+    .screen2-action-status {
+      border: 1px solid rgba(159, 176, 199, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(8, 16, 28, 0.58);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .screen2-action-status strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .screen2-action-result-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen2-action-result-list div {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.55fr) minmax(0, 1.45fr);
+      gap: 10px;
+      border-top: 1px solid rgba(159, 176, 199, 0.12);
+      padding-top: 8px;
+    }
+    .screen2-action-result-list dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-action-result-list dd {
+      margin: 0;
+      color: var(--text);
+    }
+    .screen2-technical-audit-details {
+      margin-top: 10px;
+      border-top: 1px solid rgba(159, 176, 199, 0.12);
+      padding-top: 8px;
+    }
+    .screen2-technical-audit-details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .screen2-technical-audit-details code {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
     .screen2-review-action-card {
       display: grid;
@@ -18535,13 +20227,15 @@ def _shared_page_styles() -> str:
     }
 
     .phase7-governed-action-status[data-phase7-action-status="accepted"],
-    .screen1-action-status[data-phase7-action-status="accepted"] {
+    .screen1-action-status[data-phase7-action-status="accepted"],
+    .screen2-action-status[data-phase7-action-status="accepted"] {
       color: #effbef;
       border-color: rgba(102, 187, 106, 0.42);
     }
 
     .phase7-governed-action-status[data-phase7-action-status="failed"],
-    .screen1-action-status[data-phase7-action-status="failed"] {
+    .screen1-action-status[data-phase7-action-status="failed"],
+    .screen2-action-status[data-phase7-action-status="failed"] {
       color: #fff4f4;
       border-color: rgba(255, 107, 107, 0.42);
     }

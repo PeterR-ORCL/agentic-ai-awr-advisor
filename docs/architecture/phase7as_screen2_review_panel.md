@@ -6,6 +6,8 @@ Phase 7AS adds a Screen 2 Diagnostic Review / Approval Panel for the Agentic AI 
 
 The panel exposes future diagnostic review actions as disabled, preview-only UI. It helps operators see the intended workflow without executing review behavior.
 
+7CO supersedes the preview-only panel with a non-submitting Screen 2 evidence-focus workflow. The active Screen 2 workflow changes only local explanation/reporting focus and does not queue diagnostic review requests, evidence-validation requests, audit records, ML feedback, outcomes, or candidate records. It preserves no direct diagnostic truth mutation, no score mutation, no recommendation mutation, no parser output mutation, no runtime activation, and no candidate created automatically. Deterministic runtime remains authoritative.
+
 ## 2. Scope
 
 The scope is dashboard visibility only: a Screen 2 review panel, read-only review target summary, preview-only review action controls, request preview fields, safety labels, documentation, and tests.

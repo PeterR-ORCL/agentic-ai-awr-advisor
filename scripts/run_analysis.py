@@ -127,6 +127,57 @@ def _phase7_dashboard_local_service_running(host: str, port: int) -> bool:
         return False
 
 
+def _phase7_dashboard_local_service_supports_health(host: str, port: int) -> bool:
+    request = (
+        f"GET /phase7/dashboard/health HTTP/1.1\r\n"
+        f"Host: {host}:{port}\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    ).encode("utf-8")
+    try:
+        with socket.create_connection((host, port), timeout=0.8) as connection:
+            connection.settimeout(1.2)
+            connection.sendall(request)
+            response = connection.recv(512).decode("utf-8", errors="ignore")
+    except OSError:
+        return False
+    return " 200 " in response and "dashboard_workflow_service" in response
+
+
+def _phase7_dashboard_local_service_supports_screen2_explanation(host: str, port: int) -> bool:
+    payload = {
+        "screen_id": "screen_2",
+        "request_type": "screen2_focused_explanation",
+        "provider_mode": "off",
+        "selected_focus": "Overall deterministic result",
+        "target_type": "overall_diagnostic_meaning",
+        "inferred_domain": "Mixed signal set",
+        "decision_posture": "TUNE FIRST",
+        "primary_issue_domain": "No dominant scored domain selected",
+        "severity": "OK",
+        "confidence": "LOW",
+        "deterministic_facts": "Screen 2 explanation endpoint readiness probe.",
+        "non_mutating_explanation_only": True,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    request = (
+        f"POST /phase7/dashboard/screen2/explanation HTTP/1.1\r\n"
+        f"Host: {host}:{port}\r\n"
+        "Content-Type: application/json\r\n"
+        f"Content-Length: {len(body)}\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    ).encode("utf-8") + body
+    try:
+        with socket.create_connection((host, port), timeout=0.8) as connection:
+            connection.settimeout(1.2)
+            connection.sendall(request)
+            response = connection.recv(256).decode("utf-8", errors="ignore")
+    except OSError:
+        return False
+    return " 200 " in response
+
+
 def _ensure_dashboard_workflow_service() -> None:
     """Start the local governed service for browser-facing source workflow demos."""
 
@@ -148,7 +199,26 @@ def _ensure_dashboard_workflow_service() -> None:
     host = str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1"))
     port = int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765"))
     if _phase7_dashboard_local_service_running(host, port):
-        print(f"Dashboard workflow service: already listening on {host}:{port}.")
+        if (
+            _phase7_dashboard_local_service_supports_health(host, port)
+            and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
+        ):
+            print(f"Dashboard workflow service is running at http://{host}:{port}")
+            print("Keep this service running for interactive dashboard features.")
+        else:
+            print(
+                "Dashboard workflow service is already listening at "
+                f"http://{host}:{port}, but it does not expose the current "
+                "required runtime routes: /phase7/dashboard/health and "
+                "/phase7/dashboard/screen2/explanation. This usually means "
+                "an older service process is still running. Stop the stale "
+                f"process on port {port} (for example: lsof -i :{port}, "
+                "then terminate that PID) and restart with: python3 "
+                "scripts/dashboard_workflow_service.py --host "
+                f"{host} --port {port}. Generated dashboard pages remain "
+                "viewable, but interactive features are unavailable until "
+                "the current workflow service is running."
+            )
         return
 
     queue_dir = Path(
@@ -173,9 +243,10 @@ def _ensure_dashboard_workflow_service() -> None:
     ]
     env = os.environ.copy()
     env["AWR_PHASE7_DASHBOARD_ACTION_QUEUE"] = str(queue_dir)
+    process: subprocess.Popen[bytes] | None = None
     try:
         with log_path.open("a", encoding="utf-8") as log_handle:
-            subprocess.Popen(
+            process = subprocess.Popen(
                 command,
                 cwd=str(Path(__file__).resolve().parents[1]),
                 env=env,
@@ -187,13 +258,25 @@ def _ensure_dashboard_workflow_service() -> None:
         print(f"Dashboard workflow service: unable to start local service: {exc}")
         return
 
-    for _ in range(12):
-        if _phase7_dashboard_local_service_running(host, port):
+    for _ in range(80):
+        if process is not None and process.poll() is not None:
+            print(
+                "Dashboard workflow service: local service process exited before "
+                f"becoming reachable; check {log_path}."
+            )
+            return
+        if (
+            _phase7_dashboard_local_service_running(host, port)
+            and _phase7_dashboard_local_service_supports_health(host, port)
+            and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
+        ):
             print(
                 "Dashboard workflow service: started local demo service at "
                 f"http://{host}:{port}/phase7/dashboard/actions "
                 f"(log: {log_path})."
             )
+            print(f"Dashboard workflow service is running at http://{host}:{port}")
+            print("Keep this service running for interactive dashboard features.")
             return
         time.sleep(0.25)
     print(

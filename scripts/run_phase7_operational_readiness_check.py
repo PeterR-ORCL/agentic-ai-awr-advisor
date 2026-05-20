@@ -341,8 +341,10 @@ LISTED_REQUIREMENTS: tuple[RequirementSpec, ...] = (
         name="7CO Screen 2 diagnostic review runtime workflow validated",
         category="dashboard_selection_workflow",
         required_for_final_certification=True,
-        evidence_source="future 7CO validation",
+        evidence_source="7CO Screen 2 diagnostic review runtime workflow validation",
         remediation_subphase="7CO",
+        command=py_command("scripts/run_phase7_screen2_diagnostic_review_workflow_validation.py", "--json"),
+        timeout_seconds=240,
     ),
     RequirementSpec(
         id="screen3_active_reanalysis_runtime_workflow",
@@ -477,6 +479,7 @@ def evaluate_readiness(args: argparse.Namespace) -> dict[str, Any]:
     requirements.append(evaluate_dashboard_requirement(args))
     requirements.append(evaluate_index_source_selection_runtime_requirement())
     requirements.append(evaluate_screen1_parser_governance_runtime_requirement())
+    requirements.append(evaluate_screen2_diagnostic_review_runtime_requirement())
     requirements.append(evaluate_dashboard_runtime_interaction_requirement())
     requirements.extend(evaluate_deferred_dashboard_runtime_workflow_requirements())
     requirements.extend(evaluate_screen_and_operational_wiring(args))
@@ -743,6 +746,50 @@ def evaluate_screen1_parser_governance_runtime_requirement() -> dict[str, Any]:
     )
 
 
+def evaluate_screen2_diagnostic_review_runtime_requirement() -> dict[str, Any]:
+    spec = spec_by_id("screen2_diagnostic_review_runtime_workflow")
+    script = ROOT / "scripts" / "run_phase7_screen2_diagnostic_review_workflow_validation.py"
+    if not script.is_file():
+        return requirement_result(
+            spec,
+            "blocked",
+            "7CO Screen 2 diagnostic review runtime validator is missing.",
+            evidence="",
+            remediation_subphase="7CO",
+        )
+    result = run_command(spec)
+    payload = parse_json_payload(result.get("stdout", "") or result.get("stdout_tail", ""))
+    ready = bool(payload and payload.get("screen2_diagnostic_review_ready") is True)
+    blocker_active = bool(payload and payload.get("blocker_active") is True)
+    if result["status"] == "passed" and ready and not blocker_active:
+        return requirement_result(
+            spec,
+            "satisfied",
+            "7CO Screen 2 diagnostic review runtime workflow validation passed.",
+            evidence=format_command(spec.command),
+            command=result.get("command", ""),
+            returncode=result.get("returncode"),
+            stdout_tail=result.get("stdout_tail", ""),
+            stderr_tail=result.get("stderr_tail", ""),
+        )
+    reason = (
+        "7CO Screen 2 diagnostic review runtime validation reports a blocker."
+        if payload
+        else "7CO Screen 2 diagnostic review runtime validation failed or did not emit JSON."
+    )
+    return requirement_result(
+        spec,
+        "blocked",
+        reason,
+        evidence=format_command(spec.command),
+        remediation_subphase="7CO",
+        command=result.get("command", ""),
+        returncode=result.get("returncode"),
+        stdout_tail=result.get("stdout_tail", ""),
+        stderr_tail=result.get("stderr_tail", ""),
+    )
+
+
 def evaluate_dashboard_runtime_interaction_requirement() -> dict[str, Any]:
     spec = spec_by_id("dashboard_runtime_interaction_wiring")
     return requirement_result(
@@ -750,12 +797,13 @@ def evaluate_dashboard_runtime_interaction_requirement() -> dict[str, Any]:
         "pending",
         (
             "Broad dashboard runtime interaction wiring is intentionally not "
-            "cleared by 7CM or 7CN. Index/source selection and Screen 1 "
-            "parser governance are certified separately; Screens 2-6 and "
-            "cross-screen integration remain pending for 7CO-7CT."
+            "cleared by 7CM, 7CN, or 7CO. Index/source selection, Screen 1 "
+            "parser governance, and Screen 2 diagnostic review are certified "
+            "separately; Screens 3-6 and cross-screen integration remain "
+            "pending for 7CP-7CT."
         ),
-        evidence="7CO-7CT future screen-specific runtime workflow validations",
-        remediation_subphase="7CO-7CT",
+        evidence="7CP-7CT future screen-specific runtime workflow validations",
+        remediation_subphase="7CP-7CT",
     )
 
 
@@ -769,7 +817,6 @@ def evaluate_deferred_dashboard_runtime_workflow_requirements() -> list[dict[str
             remediation_subphase=spec_by_id(req_id).remediation_subphase,
         )
         for req_id in (
-            "screen2_diagnostic_review_runtime_workflow",
             "screen3_active_reanalysis_runtime_workflow",
             "screen4_historical_review_runtime_workflow",
             "screen5_recommendation_action_outcome_runtime_workflow",
@@ -984,6 +1031,14 @@ def evaluate_known_blockers_requirement(
             req
             for req in requirements
             if req["id"] == "screen1_parser_governance_runtime_workflow"
+        ),
+        None,
+    )
+    screen2_runtime = next(
+        (
+            req
+            for req in requirements
+            if req["id"] == "screen2_diagnostic_review_runtime_workflow"
         ),
         None,
     )
@@ -1304,6 +1359,14 @@ def build_known_blockers(requirements: list[dict[str, Any]]) -> list[dict[str, s
         ),
         None,
     )
+    screen2_runtime = next(
+        (
+            req
+            for req in requirements
+            if req["id"] == "screen2_diagnostic_review_runtime_workflow"
+        ),
+        None,
+    )
     if index_source_runtime and index_source_runtime["status"] != "satisfied":
         blockers.append(
             {
@@ -1334,18 +1397,34 @@ def build_known_blockers(requirements: list[dict[str, Any]]) -> list[dict[str, s
                 "reason": screen1_runtime["reason"],
             }
         )
+    if screen2_runtime and screen2_runtime["status"] != "satisfied":
+        blockers.append(
+            {
+                "id": "SCREEN2_DIAGNOSTIC_REVIEW_RUNTIME_WORKFLOW_NOT_WIRED",
+                "description": (
+                    "Screen 2 diagnostic review is not yet validated as a "
+                    "non-submitting evidence focus and diagnostic meaning workflow."
+                ),
+                "impact": "phase7_operational_ready=false until resolved.",
+                "expected_remediation": "Complete Phase 7CO Screen 2 diagnostic review runtime workflow.",
+                "requirement_id": "screen2_diagnostic_review_runtime_workflow",
+                "requirement_status": screen2_runtime["status"],
+                "reason": screen2_runtime["reason"],
+            }
+        )
     if dashboard_runtime and dashboard_runtime["status"] != "satisfied":
         blockers.append(
             {
                 "id": DASHBOARD_RUNTIME_BLOCKER_ID,
                 "description": (
-                    "Only the index/source-selection and Screen 1 parser "
-                    "governance workflows are certified in 7CM/7CN scope. "
-                    "Screens 2-6 runtime workflows and cross-screen "
-                    "integration remain pending for 7CO-7CT."
+                    "Only the index/source-selection, Screen 1 parser "
+                    "governance, and Screen 2 diagnostic review workflows "
+                    "are certified in 7CM/7CN/7CO scope. Screens 3-6 "
+                    "runtime workflows and cross-screen integration remain "
+                    "pending for 7CP-7CT."
                 ),
                 "impact": "phase7_operational_ready=false until resolved.",
-                "expected_remediation": "Complete 7CO-7CT dashboard runtime workflow remediation.",
+                "expected_remediation": "Complete 7CP-7CT dashboard runtime workflow remediation.",
                 "requirement_id": "dashboard_runtime_interaction_wiring",
                 "requirement_status": dashboard_runtime["status"],
                 "reason": dashboard_runtime["reason"],
@@ -1356,7 +1435,6 @@ def build_known_blockers(requirements: list[dict[str, Any]]) -> list[dict[str, s
         for req in requirements
         if req["id"]
         in {
-            "screen2_diagnostic_review_runtime_workflow",
             "screen3_active_reanalysis_runtime_workflow",
             "screen4_historical_review_runtime_workflow",
             "screen5_recommendation_action_outcome_runtime_workflow",
@@ -1370,13 +1448,13 @@ def build_known_blockers(requirements: list[dict[str, Any]]) -> list[dict[str, s
             {
                 "id": DASHBOARD_SELECTION_BLOCKER_ID,
                 "description": (
-                    "The completed 7CM/7CN scope does not certify the "
-                    "Screen 2-6 selection-to-action workflows or cross-screen "
+                    "The completed 7CM/7CN/7CO scope does not certify the "
+                    "Screen 3-6 selection-to-action workflows or cross-screen "
                     "runtime workflow integration."
                 ),
                 "impact": "phase7_operational_ready=false until resolved.",
-                "expected_remediation": "Complete 7CO-7CT screen-specific runtime workflow remediation.",
-                "requirement_id": "7CO-7CT_deferred_dashboard_selection_workflows",
+                "expected_remediation": "Complete 7CP-7CT screen-specific runtime workflow remediation.",
+                "requirement_id": "7CP-7CT_deferred_dashboard_selection_workflows",
                 "requirement_status": "pending",
                 "reason": ", ".join(req["id"] for req in deferred),
             }
@@ -1394,15 +1472,20 @@ def recommended_next_subphase(
         for blocker in known_blockers
     ):
         return "7CN - Screen 1 parser governance runtime workflow"
+    if any(
+        blocker["id"] == "SCREEN2_DIAGNOSTIC_REVIEW_RUNTIME_WORKFLOW_NOT_WIRED"
+        for blocker in known_blockers
+    ):
+        return "7CO - Screen 2 diagnostic review runtime workflow"
     if any(blocker["id"] == DASHBOARD_RUNTIME_BLOCKER_ID for blocker in known_blockers):
         if any(
             blocker.get("requirement_id") == "index_source_selection_runtime_workflow"
             for blocker in known_blockers
         ):
             return "7CM - index/source selection runtime workflow"
-        return "7CO - Screen 2 diagnostic review runtime workflow"
+        return "7CP - Screen 3 active re-analysis runtime workflow"
     if any(blocker["id"] == DASHBOARD_SELECTION_BLOCKER_ID for blocker in known_blockers):
-        return "7CO - Screen 2 diagnostic review runtime workflow"
+        return "7CP - Screen 3 active re-analysis runtime workflow"
     if known_blockers:
         return "7CK - remediation before release certification"
     if blocked_checks:

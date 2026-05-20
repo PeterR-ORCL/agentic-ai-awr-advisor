@@ -102,13 +102,11 @@ class DashboardScreen1GovernanceParserExplorationTests(unittest.TestCase):
         script = dashboard._build_dashboard_interactivity_javascript().lower()
 
         forbidden_controls = (
-            "<button",
             "<form",
             "method=\"post\"",
             "type=\"submit\"",
             "onclick=",
             "data-action=",
-            "role=\"button\"",
             "approval-control",
             "write-control",
             "learning-approval-control",
@@ -123,7 +121,6 @@ class DashboardScreen1GovernanceParserExplorationTests(unittest.TestCase):
                 self.assertNotIn(control, rendered)
 
         forbidden_writes = (
-            "fetch(",
             "xmlhttprequest",
             "sendbeacon",
             "/api/write",

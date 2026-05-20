@@ -158,6 +158,8 @@ class DashboardRuntimeActionRequest:
             _validate_index_source_selection_payload(self.payload)
         if self.screen_id == "screen_1":
             _validate_screen1_parser_governance_payload(self)
+        if self.screen_id == "screen_2":
+            _validate_screen2_diagnostic_review_payload(self)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -198,6 +200,12 @@ class DashboardRuntimeActionResult:
     direct_truth_mutation_performed: bool = False
     run_analysis_called: bool = False
     source_summary: dict[str, Any] = field(default_factory=dict)
+    db_persistence_status: str = "not_attempted"
+    db_persistence_mode: str = "json_audit_file"
+    db_record_reference: str | None = None
+    db_tables_touched: tuple[str, ...] = ()
+    db_persistence_message: str | None = None
+    screen6_candidate_created: bool = False
     errors: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -214,6 +222,12 @@ class DashboardRuntimeActionResult:
         )
         _reject_true(self.run_analysis_called, "run_analysis_called")
         _require_mapping(self.source_summary, "source_summary")
+        _require_text(self.db_persistence_status, "db_persistence_status")
+        _require_text(self.db_persistence_mode, "db_persistence_mode")
+        _require_optional_text(self.db_record_reference, "db_record_reference")
+        _require_string_tuple(self.db_tables_touched, "db_tables_touched")
+        _require_optional_text(self.db_persistence_message, "db_persistence_message")
+        _reject_true(self.screen6_candidate_created, "screen6_candidate_created")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -229,6 +243,12 @@ class DashboardRuntimeActionResult:
             "direct_truth_mutation_performed": self.direct_truth_mutation_performed,
             "run_analysis_called": self.run_analysis_called,
             "source_summary": dict(self.source_summary),
+            "db_persistence_status": self.db_persistence_status,
+            "db_persistence_mode": self.db_persistence_mode,
+            "db_record_reference": self.db_record_reference,
+            "db_tables_touched": list(self.db_tables_touched),
+            "db_persistence_message": self.db_persistence_message,
+            "screen6_candidate_created": self.screen6_candidate_created,
             "errors": list(self.errors),
         }
 
@@ -286,6 +306,8 @@ def process_dashboard_action(
     payload: dict[str, Any],
     *,
     queue_dir: Path | None = None,
+    connection_factory: Any | None = None,
+    db_persistence_enabled: bool = False,
 ) -> DashboardRuntimeActionResult:
     """Validate and queue a governed dashboard action request."""
 
@@ -297,7 +319,7 @@ def process_dashboard_action(
             status="rejected",
             request_id=request_id,
             audit_reference=None,
-            message=f"Dashboard action request rejected by Phase 7CM validation: {exc}",
+            message=f"Dashboard action request rejected by governed validation: {exc}",
             persisted=False,
             queued=False,
             errors=(str(exc),),
@@ -331,15 +353,262 @@ def process_dashboard_action(
         json.dumps(envelope, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    db_persistence = _persist_screen1_parser_governance_review(
+        request,
+        audit_reference,
+        connection_factory=connection_factory,
+        db_persistence_enabled=db_persistence_enabled,
+    )
+    envelope["persistence"] = db_persistence
+    audit_reference.write_text(
+        json.dumps(envelope, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    source_summary = _source_summary_for_request(request)
+    if request.screen_id == "screen_1":
+        source_summary.update(
+            {
+                "persistence_mode": db_persistence["mode"],
+                "db_persistence_status": db_persistence["status"],
+                "db_record_reference": db_persistence.get("record_reference"),
+                "db_tables_touched": list(db_persistence.get("tables_touched") or ()),
+                "db_persistence_message": db_persistence.get("message"),
+                "json_audit_reference": str(audit_reference),
+                "screen6_candidate_created": False,
+                "runtime_influence": (
+                    "Not applied to current run; pending separate "
+                    "materialization/runtime-eligibility approval."
+                ),
+                "screen6_learning_governance_status": (
+                    "Not activated by this submit. Eligible for downstream review "
+                    "only from persisted governance context."
+                ),
+            }
+        )
+    message = "Governed dashboard action request queued for workflow handling."
+    if request.screen_id == "screen_1":
+        if db_persistence["status"] == "persisted":
+            message = (
+                "Accepted / queued for parser governance review. DB-backed "
+                "parser governance record persisted; JSON audit envelope recorded."
+            )
+        elif db_persistence["status"] in {"unavailable", "failed"}:
+            message = (
+                "Accepted / queued for parser governance review. JSON audit fallback "
+                "recorded because DB persistence was unavailable."
+            )
     return DashboardRuntimeActionResult(
         status="accepted",
         request_id=request.request_id,
         audit_reference=str(audit_reference),
-        message="Governed dashboard action request queued for Phase 7 workflow handling.",
+        message=message,
         persisted=True,
         queued=True,
-        source_summary=_source_summary_for_request(request),
+        source_summary=source_summary,
+        db_persistence_status=str(db_persistence["status"]),
+        db_persistence_mode=str(db_persistence["mode"]),
+        db_record_reference=db_persistence.get("record_reference"),
+        db_tables_touched=tuple(str(item) for item in db_persistence.get("tables_touched") or ()),
+        db_persistence_message=db_persistence.get("message"),
+        screen6_candidate_created=False,
     )
+
+
+def _persist_screen1_parser_governance_review(
+    request: DashboardRuntimeActionRequest,
+    audit_reference: Path,
+    *,
+    connection_factory: Any | None,
+    db_persistence_enabled: bool,
+) -> dict[str, Any]:
+    """Persist Screen 1 parser governance review metadata when DB is available."""
+
+    if request.screen_id != "screen_1":
+        return {
+            "status": "not_attempted",
+            "mode": "json_audit_file",
+            "record_reference": None,
+            "tables_touched": [],
+            "message": "DB persistence is not part of this dashboard action.",
+            "screen6_candidate_created": False,
+        }
+    if not db_persistence_enabled:
+        return {
+            "status": "not_attempted",
+            "mode": "json_audit_file",
+            "record_reference": None,
+            "tables_touched": [],
+            "message": "JSON audit record queued; DB persistence was not requested by this service path.",
+            "screen6_candidate_created": False,
+        }
+
+    connection = None
+    try:
+        if connection_factory is not None:
+            connection = connection_factory()
+        else:
+            from src.ingest.awr_adb_loader import get_db_connection
+
+            connection = get_db_connection()
+
+        from src.learning.governed_workflow_repository import (
+            GovernedWorkflowRepository,
+            PersistedWorkflowOutputArtifact,
+            PersistedWorkflowRequest,
+            PersistedWorkflowTransaction,
+            PersistedWorkflowValidation,
+            create_transaction_group_id,
+            create_workflow_audit_id,
+            create_workflow_output_id,
+            create_workflow_request_id,
+            create_workflow_validation_id,
+            hash_payload,
+            PersistedWorkflowAudit,
+        )
+
+        repository = GovernedWorkflowRepository(connection)
+        workflow_request_id = create_workflow_request_id(
+            request.workflow_type,
+            request.idempotency_key,
+        )
+        transaction_group_id = create_transaction_group_id(
+            request.idempotency_key,
+            "screen1_parser_governance_review",
+        )
+        rollback_reference = f"json-audit:{audit_reference.name}"
+        persisted_payload = {
+            "dashboard_request": request.to_dict(),
+            "json_audit_reference": str(audit_reference),
+            "rollback_reference": rollback_reference,
+            "screen1_parser_governance_review": True,
+            "database_persistence_performed": True,
+            "screen6_candidate_created": False,
+            "runtime_influence_granted": False,
+            "future_run_influence_active": False,
+            "requires_screen6_learning_governance": True,
+            "requires_materialization_approval": True,
+            "requires_runtime_eligibility_approval": True,
+        }
+        workflow_request = PersistedWorkflowRequest(
+            workflow_request_id=workflow_request_id,
+            transaction_group_id=transaction_group_id,
+            idempotency_key=request.idempotency_key,
+            source_screen=request.screen_id,
+            workflow_type=request.workflow_type,
+            requested_action=request.action_type,
+            target_type=request.target_type,
+            target_id=request.target_id,
+            actor_id=request.actor_id,
+            payload=persisted_payload,
+            status="VALIDATED",
+            notes=(
+                "Screen 1 parser governance review persisted as governed workflow "
+                "metadata only; no parser/runtime/ML/materialization mutation."
+            ),
+        )
+        transaction = PersistedWorkflowTransaction(
+            transaction_group_id=transaction_group_id,
+            idempotency_key=request.idempotency_key,
+            transaction_scope="screen1_parser_governance_review",
+            rollback_reference=rollback_reference,
+            status="IN_PROGRESS",
+            notes="Non-mutating Screen 1 parser governance persistence.",
+        )
+        validation = PersistedWorkflowValidation(
+            workflow_validation_id=create_workflow_validation_id(workflow_request_id),
+            workflow_request_id=workflow_request_id,
+            validation_status="screen1_parser_governance_valid_non_mutating",
+            valid_flag=True,
+            warnings=[
+                "current parser output is unchanged",
+                "future-run influence requires Screen 6 materialization/runtime eligibility",
+            ],
+            required_next_steps=[
+                "review persisted parser-governance context",
+                "route to Screen 6 learning/materialization governance only if implementation is accepted",
+            ],
+            notes="Screen 1 submit records governance context only.",
+        )
+        audit = PersistedWorkflowAudit(
+            workflow_audit_id=create_workflow_audit_id(
+                workflow_request_id,
+                "screen1_parser_governance_review_persisted",
+            ),
+            workflow_request_id=workflow_request_id,
+            transaction_group_id=transaction_group_id,
+            actor_id=request.actor_id,
+            action="screen1_parser_governance_review_persisted",
+            audit_summary=(
+                "Screen 1 parser governance review persisted; current parser output, "
+                "diagnosis, scoring, recommendation, runtime, ML, materialization, "
+                "runtime eligibility, and future-run behavior were not changed."
+            ),
+            payload_hash=hash_payload(persisted_payload),
+            notes="DB-backed governance record plus JSON audit envelope.",
+        )
+        artifact = PersistedWorkflowOutputArtifact(
+            workflow_output_id=create_workflow_output_id(
+                workflow_request_id,
+                "workflow_audit_artifact",
+                str(audit_reference),
+            ),
+            workflow_request_id=workflow_request_id,
+            artifact_type="workflow_audit_artifact",
+            artifact_reference=str(audit_reference),
+            artifact_summary="Screen 1 parser governance JSON audit envelope.",
+            artifact_metadata={
+                "json_audit_reference": str(audit_reference),
+                "runtime_mutation": False,
+                "screen6_candidate_created": False,
+            },
+            status="RECORDED",
+            notes="Audit envelope only; not parser runtime state.",
+        )
+        result = repository.persist_workflow_bundle(
+            request=workflow_request,
+            transaction=transaction,
+            validation=validation,
+            audit=audit,
+            output_artifacts=(artifact,),
+        )
+        return {
+            "status": "persisted",
+            "mode": "db_backed_workflow_record_and_json_audit",
+            "record_reference": f"AWR_WORKFLOW_REQUEST:{result.workflow_request_id}",
+            "workflow_request_id": result.workflow_request_id,
+            "workflow_audit_id": audit.workflow_audit_id,
+            "transaction_group_id": result.transaction_group_id,
+            "tables_touched": [
+                "AWR_WORKFLOW_TRANSACTION",
+                "AWR_WORKFLOW_REQUEST",
+                "AWR_WORKFLOW_VALIDATION",
+                "AWR_WORKFLOW_AUDIT",
+                "AWR_WORKFLOW_OUTPUT_ARTIFACT",
+            ],
+            "message": (
+                "DB-backed parser governance record persisted; JSON audit envelope recorded. "
+                "No Screen 6 candidate or runtime eligibility record was created."
+            ),
+            "duplicate": result.duplicate,
+            "screen6_candidate_created": False,
+        }
+    except Exception as exc:  # noqa: BLE001 - fallback must stay non-disruptive
+        return {
+            "status": "unavailable",
+            "mode": "json_audit_fallback_only",
+            "record_reference": None,
+            "tables_touched": [],
+            "message": (
+                "JSON audit fallback only - DB persistence unavailable. "
+                f"{type(exc).__name__}: {exc}"
+            ),
+            "screen6_candidate_created": False,
+        }
+    finally:
+        if connection is not None:
+            close = getattr(connection, "close", None)
+            if callable(close):
+                close()
 
 
 def lookup_existing_runs(
@@ -516,6 +785,37 @@ SCREEN1_GOVERNANCE_STATUSES = (
 )
 
 
+SCREEN2_DIAGNOSTIC_REVIEW_TARGETS = (
+    "diagnostic_domain",
+    "diagnostic_evidence",
+    "evidence_group",
+    "metric_group",
+    "wait_event_group",
+    "sql_signal",
+    "diagnostic_section",
+)
+
+SCREEN2_DIAGNOSTIC_REVIEW_DISPOSITIONS = (
+    "confirm_evidence_reviewed",
+    "flag_insufficient_evidence",
+    "dispute_diagnostic_interpretation",
+    "add_reviewer_note",
+    "request_governed_diagnostic_review",
+)
+
+SCREEN2_FORBIDDEN_DISPOSITIONS = (
+    "needs_parser_review",
+    "needs_scoring_review",
+    "needs_recommendation_review",
+    "needs_learning_candidate",
+    "execute_reanalysis",
+    "promote_candidate",
+    "materialize_rule",
+    "change_runtime_eligibility",
+    "capture_recommendation_outcome",
+)
+
+
 def _validate_screen1_parser_governance_payload(
     request: DashboardRuntimeActionRequest,
 ) -> None:
@@ -607,6 +907,115 @@ def _validate_screen1_parser_governance_payload(
     if str(payload.get("target_screen") or "").strip() not in {"", "screen_1"}:
         raise DashboardRuntimeInteractionError(
             "payload.target_screen must remain screen_1 for Screen 1 parser governance"
+        )
+    _reject_source_secret_fields(payload)
+
+
+def _validate_screen2_diagnostic_review_payload(
+    request: DashboardRuntimeActionRequest,
+) -> None:
+    payload = request.payload
+    if request.action_type != "diagnostic_review":
+        raise DashboardRuntimeInteractionError(
+            f"action_type {request.action_type!r} is not a Screen 2 diagnostic review action"
+        )
+    if request.target_type not in SCREEN2_DIAGNOSTIC_REVIEW_TARGETS:
+        raise DashboardRuntimeInteractionError(
+            "target_type for diagnostic_review must be one of "
+            + ", ".join(SCREEN2_DIAGNOSTIC_REVIEW_TARGETS)
+        )
+    _require_text(request.actor_id, "actor_id")
+    _require_text(request.target_id, "target_id")
+    if request.target_id in {"dashboard-target", "screen2-diagnostic-review"}:
+        raise DashboardRuntimeInteractionError(
+            "Screen 2 diagnostic review requests require a selected diagnostic or evidence target"
+        )
+    disposition = str(
+        payload.get("screen2_review_disposition")
+        or payload.get("review_disposition")
+        or payload.get("review_decision")
+        or ""
+    ).strip()
+    _require_supported(
+        disposition,
+        SCREEN2_DIAGNOSTIC_REVIEW_DISPOSITIONS,
+        "payload.screen2_review_disposition",
+    )
+    for forbidden in SCREEN2_FORBIDDEN_DISPOSITIONS:
+        if forbidden in {
+            disposition,
+            str(payload.get("review_decision") or "").strip(),
+            str(payload.get("requested_action") or "").strip(),
+        }:
+            raise DashboardRuntimeInteractionError(
+                f"Screen 2 diagnostic review cannot request {forbidden!r}"
+            )
+    _require_text(
+        payload.get("reviewer_actor_id") or payload.get("actor_id") or request.actor_id,
+        "payload.reviewer_actor_id",
+    )
+    selected_value = str(
+        payload.get("selected_context_value")
+        or payload.get("selectedEvidenceGroup")
+        or payload.get("selectedMetricGroup")
+        or payload.get("selectedWaitEventGroup")
+        or payload.get("selectedSqlSignal")
+        or payload.get("selectedDiagnosticSection")
+        or payload.get("selectedDomain")
+        or ""
+    ).strip()
+    if not selected_value:
+        raise DashboardRuntimeInteractionError(
+            "payload.selected_context_value must identify selected Screen 2 diagnostic evidence"
+        )
+    _require_mapping(
+        payload.get("deterministic_diagnosis_context") or {},
+        "payload.deterministic_diagnosis_context",
+    )
+    forbidden_true_fields = (
+        "diagnostic_truth_mutation_requested",
+        "diagnostic_truth_mutation_allowed",
+        "phase4i_mutation_requested",
+        "phase4i_mutation_allowed",
+        "score_mutation_requested",
+        "score_mutation_allowed",
+        "severity_mutation_requested",
+        "confidence_mutation_requested",
+        "recommendation_mutation_requested",
+        "recommendation_truth_mutation_allowed",
+        "parser_output_mutation_requested",
+        "parser_output_mutation_allowed",
+        "parser_mapping_created",
+        "reanalysis_execution_requested",
+        "runtime_execution_requested",
+        "learning_candidate_created",
+        "candidate_created",
+        "materialization_created",
+        "runtime_eligibility_changed",
+        "runtime_activation_requested",
+        "runtime_activation_granted",
+        "runtime_influence_granted",
+        "future_run_influence_granted",
+        "future_run_influence_active",
+        "browser_db_query_attempted",
+        "browser_object_storage_access_attempted",
+        "browser_file_read_attempted",
+        "run_analysis_coupling",
+        "phase8_behavior",
+        "em_extract_attempted",
+    )
+    for field_name in forbidden_true_fields:
+        if payload.get(field_name) is True:
+            raise DashboardRuntimeInteractionError(
+                f"payload.{field_name} must remain false for Screen 2 diagnostic review"
+            )
+    if payload.get("non_mutating_diagnostic_review_intent") is False:
+        raise DashboardRuntimeInteractionError(
+            "payload.non_mutating_diagnostic_review_intent must remain true"
+        )
+    if str(payload.get("target_screen") or "").strip() not in {"", "screen_2"}:
+        raise DashboardRuntimeInteractionError(
+            "payload.target_screen must remain screen_2 for Screen 2 diagnostic review"
         )
     _reject_source_secret_fields(payload)
 
@@ -828,6 +1237,11 @@ def _require_mapping(value: Any, field_name: str) -> None:
         raise DashboardRuntimeInteractionError(f"{field_name} must be a mapping")
 
 
+def _require_string_tuple(value: Any, field_name: str) -> None:
+    if not isinstance(value, tuple) or not all(isinstance(item, str) for item in value):
+        raise DashboardRuntimeInteractionError(f"{field_name} must be a tuple of strings")
+
+
 def _require_supported(value: str, supported: tuple[str, ...], field_name: str) -> None:
     if value not in supported:
         raise DashboardRuntimeInteractionError(
@@ -964,6 +1378,8 @@ def _source_summary_for_request(request: DashboardRuntimeActionRequest) -> dict[
     if request.screen_id != "index_source_mode" or request.action_type != "source_selection_handoff":
         if request.screen_id == "screen_1":
             return _screen1_governance_summary_for_request(request)
+        if request.screen_id == "screen_2":
+            return _screen2_diagnostic_review_summary_for_request(request)
         return {}
     payload = request.payload
     mode = str(
@@ -1047,6 +1463,35 @@ def _screen1_governance_summary_for_request(
         "runtime_activation_granted": False,
         "phase4i_mutation_allowed": False,
         "parser_output_mutation_allowed": False,
+    }
+
+
+def _screen2_diagnostic_review_summary_for_request(
+    request: DashboardRuntimeActionRequest,
+) -> dict[str, Any]:
+    payload = request.payload
+    return {
+        "screen_id": request.screen_id,
+        "action_type": request.action_type,
+        "workflow_type": request.workflow_type,
+        "target_type": request.target_type,
+        "target_id": request.target_id,
+        "selected_context_key": payload.get("selected_context_key"),
+        "selected_context_value": payload.get("selected_context_value"),
+        "selectedDomain": payload.get("selectedDomain"),
+        "selectedEvidenceGroup": payload.get("selectedEvidenceGroup"),
+        "selectedMetricGroup": payload.get("selectedMetricGroup"),
+        "selectedWaitEventGroup": payload.get("selectedWaitEventGroup"),
+        "selectedSqlSignal": payload.get("selectedSqlSignal"),
+        "selectedDiagnosticSection": payload.get("selectedDiagnosticSection"),
+        "screen2_review_disposition": payload.get("screen2_review_disposition"),
+        "reviewer_actor_id": payload.get("reviewer_actor_id"),
+        "non_mutating_diagnostic_review_intent": payload.get("non_mutating_diagnostic_review_intent"),
+        "diagnostic_truth_mutation_allowed": False,
+        "score_mutation_allowed": False,
+        "recommendation_truth_mutation_allowed": False,
+        "parser_output_mutation_allowed": False,
+        "runtime_activation_granted": False,
     }
 
 

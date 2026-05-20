@@ -35,14 +35,13 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen2()
 
-        self.assertIn("Screen 2 Diagnostic Exploration", source)
-        self.assertIn("Screen 2 Diagnostic Exploration", rendered)
-        self.assertIn("data-dashboard-selected-summary", rendered)
-        self.assertIn("Read-only diagnostic exploration", rendered)
-        self.assertIn("Exploratory only", rendered)
-        self.assertIn("No backend writes", rendered)
-        self.assertIn("No approval controls", rendered)
-        self.assertIn("No runtime activation", rendered)
+        self.assertIn("Interactive Evidence Focus", source)
+        self.assertIn("Interactive Evidence Focus", rendered)
+        self.assertIn('data-screen2-focus="selected_target"', rendered)
+        self.assertIn("Evidence focus only", rendered)
+        self.assertIn("Explanation focus", rendered)
+        self.assertIn("No truth change", rendered)
+        self.assertIn("No runtime action", rendered)
 
     def test_selector_metadata_exists_for_domain_evidence_metric_wait_and_sql(self) -> None:
         rendered = self.render_screen2()
@@ -68,30 +67,90 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_authoritative_domain_controls_are_present(self) -> None:
+    def test_authoritative_domain_controls_are_case_evidence_backed(self) -> None:
         rendered = self.render_screen2()
+        domain_selector = rendered[
+            rendered.index("<h3>Diagnostic Domain Selector</h3>"):
+            rendered.index("<h3>Evidence Group Selector</h3>")
+        ]
 
         for domain in ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG"):
             with self.subTest(domain=domain):
-                self.assertIn(f'data-dashboard-filter-value="{domain}"', rendered)
-                self.assertIn(f">{domain}</span>", rendered)
+                self.assertIn(f'data-dashboard-filter-value="{domain}"', domain_selector)
+                self.assertIn(f"<strong>{domain}</strong>", domain_selector)
+        for evidence_state in ("Evidence present", "No material evidence"):
+            with self.subTest(evidence_state=evidence_state):
+                self.assertIn(evidence_state, domain_selector)
+        self.assertIn("screen2-selector-kicker", domain_selector)
+
+        evidence_selector = rendered[
+            rendered.index("<h3>Evidence Group Selector</h3>"):
+            rendered.index("<h3>Metric / Score Group Selector</h3>")
+        ]
+        self.assertIn('data-screen2-domain-scoped="true"', evidence_selector)
+        self.assertIn("Select a domain lens to see evidence groups for that domain.", evidence_selector)
+        self.assertIn('data-dashboard-select-domain="CPU"', evidence_selector)
+        self.assertIn('data-dashboard-select-domain="IO"', evidence_selector)
+        self.assertIn('data-dashboard-select-domain="COMMIT"', evidence_selector)
+        for label in ("CPU Signal", "I/O Signal", "Commit Signal"):
+            with self.subTest(label=label):
+                self.assertIn(f"<strong>{label}</strong>", evidence_selector)
+        for unavailable_label in ("Memory Signal", "RAC Signal", "ADG Signal"):
+            with self.subTest(unavailable_label=unavailable_label):
+                self.assertNotIn(f"<strong>{unavailable_label}</strong>", evidence_selector)
+
+        metric_selector = rendered[
+            rendered.index("<h3>Metric / Score Group Selector</h3>"):
+            rendered.index("<h3>Wait Event Selector</h3>")
+        ]
+        self.assertIn('data-screen2-domain-scoped="true"', metric_selector)
+        self.assertIn("Select a domain lens to see metric focus items for that domain.", metric_selector)
+        self.assertIn("No metric focus items are available for the active {domain} lens.", metric_selector)
+        self.assertIn('data-dashboard-select-domain="CPU"', metric_selector)
+        self.assertIn('data-dashboard-select-domain="IO"', metric_selector)
+        for unavailable_score in ("CPU score", "IO score", "MEMORY score", "COMMIT score", "RAC score", "ADG score"):
+            with self.subTest(unavailable_score=unavailable_score):
+                self.assertNotIn(f"<strong>{unavailable_score}</strong>", metric_selector)
+        for metric in ("DB CPU % DB Time", "User I/O % DB Time"):
+            with self.subTest(metric=metric):
+                self.assertIn(f"<strong>{metric}</strong>", metric_selector)
+        for unavailable_metric in ("PGA Spill Pressure", "Cluster Wait %"):
+            with self.subTest(unavailable_metric=unavailable_metric):
+                self.assertNotIn(f"<strong>{unavailable_metric}</strong>", metric_selector)
+
+        wait_selector = rendered[
+            rendered.index("<h3>Wait Event Selector</h3>"):
+            rendered.index("<h3>SQL Signal Selector</h3>")
+        ]
+        self.assertIn('data-screen2-domain-scoped="true"', wait_selector)
+        self.assertIn('data-empty-message-cpu="No wait-event focus items are directly associated with the active CPU lens. Select COMMIT or RAC to inspect wait-event evidence."', wait_selector)
+        self.assertIn('data-dashboard-select-domain="COMMIT"', wait_selector)
+
+        sql_selector = rendered[
+            rendered.index("<h3>SQL Signal Selector</h3>"):
+            rendered.index("<h3>Report Section Explanation Focus</h3>")
+        ]
+        self.assertIn('data-screen2-domain-scoped="true"', sql_selector)
+        self.assertIn("No SQL signal groups are available for the active {domain} lens.", sql_selector)
 
     def test_required_safety_wording_is_rendered(self) -> None:
         rendered = self.render_screen2()
 
         required_phrases = (
-            "Read-only diagnostic exploration",
-            "Exploratory only",
-            "No backend writes",
-            "Does not change diagnostic truth",
-            "Does not change primary issue",
-            "Does not change severity",
-            "Does not change confidence",
-            "Does not change recommendation truth",
-            "Semantic/learning context is not diagnostic evidence",
-            "Selection only highlights deterministic evidence",
-            "Cross-Screen Selection Propagation is browser-side only",
-            "URL hash/localStorage state is not authoritative truth",
+            "Evidence focus only",
+            "Explanation focus",
+            "No truth change",
+            "No runtime action",
+            "Use Domain to choose the high-level diagnostic lens.",
+            "Related selections stay grouped",
+            "active domain lens",
+            "Deterministic diagnosis, scoring, recommendations",
+            "governed service behavior remain unchanged.",
+            "recommendations, parser output",
+            "runtime behavior",
+            "only changes the local explanation context",
+            "Generate Focused Explanation",
+            "No workflow request, audit record, governance record",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
@@ -104,13 +163,11 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
         script = dashboard._build_dashboard_interactivity_javascript().lower()
 
         forbidden_controls = (
-            "<button",
             "<form",
             "method=\"post\"",
             "type=\"submit\"",
             "onclick=",
             "data-action=",
-            "role=\"button\"",
             "approval-control",
             "write-control",
             "learning-approval-control",
@@ -118,9 +175,9 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
         for control in forbidden_controls:
             with self.subTest(control=control):
                 self.assertNotIn(control, rendered)
+        self.assertIn('data-screen2-generate-explanation="true"', rendered)
 
         forbidden_writes = (
-            "fetch(",
             "xmlhttprequest",
             "sendbeacon",
             "/api/write",
@@ -135,6 +192,20 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, script)
                 self.assertNotIn(phrase, source)
+        selectable_source = source[
+            source.index("function selectdashboardelement"):
+            source.index("function handledashboardstateinput")
+        ]
+        self.assertNotIn("dashboardscreen2explanationprovider", selectable_source)
+        self.assertIn("screen2activefocuskey", selectable_source)
+        self.assertIn("nextstate.selecteddomain = inferreddomain", selectable_source)
+        self.assertIn("screen2ensureevidenceparentfordomain(nextstate, inferreddomain)", selectable_source)
+        self.assertIn("screen2clearincompatiblefocuscontext(nextstate, inferreddomain, key)", selectable_source)
+        self.assertIn("updatescreen2domainscopedselectors(safestate, root)", source)
+        self.assertIn("data-screen2-domain-scoped", source)
+        self.assertIn("key === 'selecteddiagnosticsection'", selectable_source)
+        self.assertNotIn("screen2_focus_item_state_keys.foreach(function (focuskey)", selectable_source)
+        self.assertNotIn("nextstate.selecteddomain = ''", selectable_source)
 
     def test_no_semantic_learning_or_governance_diagnostic_evidence(self) -> None:
         dashboard = dashboard_module()
@@ -155,7 +226,8 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
                 self.assertNotIn(phrase, screen_2_source)
                 self.assertNotIn(phrase, rendered)
 
-        self.assertIn("Semantic/learning context is not diagnostic evidence", rendered)
+        self.assertIn("focused diagnostic meaning", rendered.lower())
+        self.assertNotIn("governed diagnostic review request", rendered.lower())
 
     def test_no_screen5_recommendation_truth_drift(self) -> None:
         dashboard = dashboard_module()
@@ -166,7 +238,7 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
             "selectedMetricGroup",
             "selectedWaitEventGroup",
             "selectedSqlSignal",
-            "Screen 2 Diagnostic Exploration",
+            "Interactive Evidence Focus",
             "diagnostic exploration as recommendation truth",
         )
         for phrase in forbidden:
@@ -201,7 +273,7 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_learning_imports(path)
                 text = read_text(path)
-                self.assertNotIn("Screen 2 Diagnostic Exploration", text)
+                self.assertNotIn("Interactive Evidence Focus", text)
                 self.assertNotIn("DashboardInteractivityFoundation", text)
 
     def test_documentation_exists_and_contains_required_boundaries(self) -> None:
@@ -210,18 +282,16 @@ class DashboardScreen2DiagnosticExplorationTests(unittest.TestCase):
         text = read_text(doc_path).lower()
 
         required_phrases = (
-            "read-only",
-            "exploratory only",
-            "no backend writes",
-            "no approval controls",
-            "no write controls",
+            "browser-side selectors",
+            "non-mutating",
+            "do not submit governed review requests",
             "does not change diagnostic truth",
             "does not change primary issue",
             "does not change severity",
             "does not change confidence",
             "does not change recommendation truth",
-            "semantic/learning context is not diagnostic evidence",
-            "full cross-screen propagation remains future 7h.8",
+            "does not change runtime truth",
+            "runtime activation",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

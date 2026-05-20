@@ -112,6 +112,61 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         self.assertIn("data-screen1-backlog-submit", source)
         self.assertIn("data-screen1-governance-result-panel", source)
         self.assertIn("Submit Governed Backlog Review Request", source)
+        self.assertIn("Why this matters", source)
+        self.assertIn("How this is implemented", source)
+        self.assertIn("Persistence", source)
+        self.assertIn("What changes", source)
+        self.assertIn("What does not change", source)
+        self.assertIn("Future-run impact", source)
+        self.assertIn("Learning / ML impact", source)
+        self.assertIn(
+            "This review turns repeated parser uncertainty into governed parser-improvement input.",
+            source,
+        )
+        self.assertIn(
+            "This review does not change current or future runs by itself.",
+            source,
+        )
+        self.assertIn(
+            "should review whether it can be materialized",
+            source,
+        )
+        self.assertIn(
+            "This action does not directly change ML behavior or train a model.",
+            source,
+        )
+        self.assertIn(
+            "may become learning/governance input",
+            source,
+        )
+        self.assertIn(
+            "Submitting a parser governance review records reviewer context as DB-backed governed workflow state",
+            source,
+        )
+        self.assertIn(
+            "DB-backed governed workflow metadata",
+            source,
+        )
+        self.assertIn(
+            "does not update AWR_UNKNOWN_SIGNAL_HISTORY",
+            source,
+        )
+        self.assertIn(
+            "create AWR_PARSER_MAPPING_CANDIDATE rows",
+            source,
+        )
+        self.assertIn('data-screen1-governance-result="persistence"', source)
+        self.assertIn('data-screen1-governance-result="db_record"', source)
+        self.assertIn('data-screen1-governance-result="screen6_status"', source)
+        self.assertIn("persistence_target: 'dashboard_workflow_service_db_backed_governance'", source)
+        self.assertIn("database_persistence_requested: true", source)
+        self.assertIn("browser_database_persistence_performed: false", source)
+        self.assertIn("screen6_candidate_created: false", source)
+        self.assertIn(
+            "No knowledge artifacts are available for the current selected run/source context.",
+            source,
+        )
+        self.assertIn("No fake candidates are shown.", source)
         self.assertIn("formState.selected", source)
         self.assertIn("formState.decision", source)
         self.assertIn("formState.reviewer", source)
@@ -121,11 +176,15 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
 
     def test_service_accepts_valid_screen1_review_request(self) -> None:
         from src.learning.dashboard_runtime_interaction import process_dashboard_action
+        from tests.test_phase7ca_governed_workflow_repository import FakeConnection
 
         with tempfile.TemporaryDirectory() as tempdir:
+            fake_connection = FakeConnection()
             result = process_dashboard_action(
                 valid_screen1_request(),
                 queue_dir=Path(tempdir),
+                connection_factory=lambda: fake_connection,
+                db_persistence_enabled=True,
             )
             self.assertEqual("accepted", result.status)
             self.assertTrue(result.queued)
@@ -137,6 +196,26 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
             envelope = json.loads(Path(result.audit_reference or "").read_text())
             self.assertEqual("screen_1", envelope["request"]["screen_id"])
             self.assertEqual("parser_unknown_review", envelope["request"]["action_type"])
+            self.assertEqual(
+                "governed_dashboard_action_request",
+                envelope["record_type"],
+            )
+            self.assertTrue(str(result.audit_reference or "").endswith(".json"))
+            self.assertEqual("persisted", result.db_persistence_status)
+            self.assertEqual(
+                "db_backed_workflow_record_and_json_audit",
+                result.db_persistence_mode,
+            )
+            self.assertIn("AWR_WORKFLOW_REQUEST:", result.db_record_reference or "")
+            self.assertIn("AWR_WORKFLOW_REQUEST", result.db_tables_touched)
+            self.assertEqual(1, len(fake_connection.requests))
+            self.assertEqual(1, len(fake_connection.audits))
+            self.assertEqual("persisted", envelope["persistence"]["status"])
+            self.assertFalse(envelope["persistence"].get("screen6_candidate_created"))
+            self.assertFalse(result.screen6_candidate_created)
+            self.assertFalse(
+                envelope["request"]["payload"].get("screen6_candidate_created")
+            )
 
     def test_service_rejects_missing_screen1_target(self) -> None:
         from src.learning.dashboard_runtime_interaction import process_dashboard_action
@@ -339,10 +418,63 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         self.assertIn("Current run unknowns: 0", primary)
         self.assertIn("This is not a new runtime parser failure", primary)
         self.assertIn("How should this persisted parser signal be handled going forward?", primary)
+        self.assertIn("Why this matters", primary)
+        self.assertIn("How this is implemented", primary)
+        self.assertIn("Persistence", primary)
+        self.assertIn("What changes", primary)
+        self.assertIn("What does not change", primary)
+        self.assertIn("Future-run impact", primary)
+        self.assertIn("Learning / ML impact", primary)
+        self.assertIn(
+            "This review turns repeated parser uncertainty into governed parser-improvement input.",
+            primary,
+        )
+        self.assertIn(
+            "This review does not change current or future runs by itself.",
+            primary,
+        )
+        self.assertIn(
+            "should review whether it can be materialized",
+            primary,
+        )
+        self.assertIn(
+            "This action does not directly change ML behavior or train a model.",
+            primary,
+        )
+        self.assertIn(
+            "may become learning/governance input",
+            primary,
+        )
+        self.assertIn(
+            "Submitting a parser governance review records reviewer context as DB-backed governed workflow state",
+            primary,
+        )
+        self.assertIn(
+            "DB-backed governed workflow metadata",
+            primary,
+        )
+        self.assertIn(
+            "does not update AWR_UNKNOWN_SIGNAL_HISTORY",
+            primary,
+        )
+        self.assertIn(
+            "create AWR_PARSER_MAPPING_CANDIDATE rows",
+            primary,
+        )
+        self.assertIn("screen_6_fleet_overview.html", primary)
+        self.assertGreater(
+            primary.find("screen1-governance-explanation-panel"),
+            primary.find("screen1-governance-boundary"),
+        )
+        self.assertGreater(
+            primary.find("screen1-governance-boundary"),
+            primary.find("screen1-operator-workflow"),
+        )
         self.assertIn("Expected source profile", primary)
         self.assertIn("Parser expectation gap", primary)
         self.assertNotIn("Request parser mapping approval", primary)
         self.assertIn("No new AWR field mapping candidates are available for review.", primary)
+        self.assertIn("No fake candidates are shown.", primary)
         self.assertNotIn("data-screen1-field-submit", primary)
         self.assertIn("Run / Intake Report", primary)
         self.assertNotIn("Report Inventory", primary)
@@ -366,8 +498,33 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         self.assertIn("Unknown Signals", primary)
         self.assertIn("data-screen1-parser-review-unknown-signals", primary)
         self.assertIn("Artifact Context", rendered)
+        self.assertIn(
+            "No knowledge artifacts are available for the current selected run/source context.",
+            rendered,
+        )
+        self.assertIn("Knowledge artifacts are optional reviewer-assist context.", rendered)
+        self.assertNotIn("static export", rendered)
+        self.assertNotIn("static report", rendered)
+        self.assertNotIn("Knowledge artifact data is not available", rendered)
+        self.assertNotIn("Focused Diagnostic Meaning", rendered)
+        self.assertNotIn("mixed CPU", rendered)
+        self.assertNotIn("dominance threshold", rendered)
         self.assertIn("Runtime influence", primary)
-        self.assertIn("Not active", primary)
+        self.assertIn("Persistence", primary)
+        self.assertIn("DB Record", primary)
+        self.assertIn("Screen 6 / Learning Governance", primary)
+        self.assertNotIn(">Not active<", primary)
+        self.assertIn(
+            "Not applied to current run; pending separate materialization/runtime-eligibility approval.",
+            primary,
+        )
+        self.assertIn(
+            "Queued for parser governance review. If accepted for implementation, this should proceed to Screen 6 learning/materialization governance before any future-run influence. No current runtime behavior changed.",
+            (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
+                encoding="utf-8",
+                errors="ignore",
+            ),
+        )
         self.assertNotIn('data-action-type="knowledge_artifact_review"', primary)
         self.assertNotIn('data-action-type="knowledge_artifact_approve"', primary)
         self.assertNotIn('data-action-type="knowledge_artifact_reject"', primary)

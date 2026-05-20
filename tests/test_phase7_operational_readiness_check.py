@@ -264,10 +264,10 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         requirements = {req["id"]: req for req in payload["requirements"]}
         self.assertIn(
             requirements["screen2_operational_wiring"]["status"],
-            {"skipped", "pending"},
+            {"skipped", "pending", "satisfied"},
         )
         self.assertEqual(
-            "pending",
+            "satisfied",
             requirements["screen2_diagnostic_review_runtime_workflow"]["status"],
         )
         self.assertIs(payload["phase7_operational_ready"], False)
@@ -282,8 +282,23 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
                 {
                     "index_source_selection_runtime_workflow",
                     "screen1_parser_governance_runtime_workflow",
+                    "screen2_diagnostic_review_runtime_workflow",
                 },
             )
+            if spec.id == "screen2_diagnostic_review_runtime_workflow":
+                return {
+                    "status": "passed",
+                    "reason": "command completed successfully",
+                    "returncode": 0,
+                    "command": "python scripts/run_phase7_screen2_diagnostic_review_workflow_validation.py --json",
+                    "stdout_tail": json.dumps(
+                        {
+                            "screen2_diagnostic_review_ready": True,
+                            "blocker_active": False,
+                        }
+                    ),
+                    "stderr_tail": "",
+                }
             if spec.id == "screen1_parser_governance_runtime_workflow":
                 return {
                     "status": "passed",
@@ -316,12 +331,14 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
         with mock.patch.object(module, "run_command", side_effect=fake_run_command):
             index_requirement = module.evaluate_index_source_selection_runtime_requirement()
             screen1_requirement = module.evaluate_screen1_parser_governance_runtime_requirement()
+            screen2_requirement = module.evaluate_screen2_diagnostic_review_runtime_requirement()
 
         requirements = {
             req["id"]: req
             for req in [
                 index_requirement,
                 screen1_requirement,
+                screen2_requirement,
                 module.evaluate_dashboard_runtime_interaction_requirement(),
                 *module.evaluate_deferred_dashboard_runtime_workflow_requirements(),
             ]
@@ -345,7 +362,7 @@ class Phase7OperationalReadinessCheckTests(unittest.TestCase):
             requirements["screen1_parser_governance_runtime_workflow"]["status"],
         )
         self.assertEqual(
-            "pending",
+            "satisfied",
             requirements["screen2_diagnostic_review_runtime_workflow"]["status"],
         )
 

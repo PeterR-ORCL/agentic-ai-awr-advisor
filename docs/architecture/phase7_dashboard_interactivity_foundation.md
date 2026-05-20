@@ -10,13 +10,13 @@ Dashboard interactivity is read-only and exploratory only. It does not change ba
 
 The scope is the reusable foundation only. It may define state keys, parse and write URL hash state, persist browser-local selection state, mark selected DOM elements, update optional selected-state summary text, and mark read-only filter placeholders.
 
-The dashboard remains static HTML. The foundation has no server requirement, no build step, no external JavaScript dependency, no database dependency, no API dependency, no network dependency, no OCI dependency, no ADB dependency, no Oracle Agent Memory live dependency, no semantic recall service dependency, and no LLM dependency.
+The dashboard remains static HTML for deterministic report rendering. Browser actions may submit governed workflow requests through the workflow service. Later operational subtasks may submit governed workflow requests through the local or deployed workflow service, but browser actions do not directly mutate parser output, governance truth, Phase 4I, diagnostics, scoring, recommendations, or runtime eligibility.
 
 ## 3. Non-Goals
 
 Phase 7H.1 did not implement Phase 7H.2 Screen 3 Control Center, Phase 7H.3 Screen 2 diagnostic exploration, Phase 7H.4 Screen 4 historical review exploration, Phase 7H.5 Screen 5 recommendation/action exploration, Phase 7H.6 Screen 1 governance/parser exploration, Phase 7H.7 Screen 6 fleet/governance/semantic/learning exploration, Phase 7H.8 cross-screen propagation, or Phase 7I CLI learning commands. Phase 7H.8 later implements cross-screen propagation as browser-side only, read-only, exploratory selection synchronization, not as backend persistence or runtime truth.
 
-It does not add approval controls, reject controls, implement controls, validate controls, close controls, activate controls, apply controls, form posts, API write endpoints, database writes, backend mutation, runtime activation, autonomous learning, parser changes, scoring changes, trend/anomaly changes, decision changes, recommendation changes, or Phase 4I output contract changes.
+It does not add direct approval controls, reject controls, implement controls, validate controls, close controls, activate controls, apply controls, database writes, direct backend mutation, runtime activation, autonomous learning, parser changes, scoring changes, trend/anomaly changes, decision changes, recommendation changes, or Phase 4I output contract changes.
 
 ## 4. Read-Only State Model
 
@@ -86,9 +86,7 @@ Semantic context remains non-authoritative and cannot change confidence, status,
 
 ## 15. Approval / Write-Control Boundary
 
-Phase 7H.1 adds no approval controls and no write controls. It adds no approval buttons, reject buttons, implement buttons, validate buttons, close buttons, activate buttons, apply buttons, form posts, database calls, network calls, API write endpoints, CLI learning commands, OCI writes, ADB writes, or Oracle Agent Memory writes.
-
-No backend writes are added.
+Phase 7H.1 adds no direct approval controls and no write controls. Later governed operational requests may use a workflow service, but browser actions may not directly approve, reject, implement, validate, close, activate, apply, mutate deterministic truth, call the database, call Object Storage, run CLI learning commands, perform OCI writes, perform ADB writes, or write Oracle Agent Memory.
 
 ## 16. Screen-Specific Deferral Boundary
 
@@ -112,7 +110,7 @@ Any future Screen 3 behavior must remain read-only unless a later approved phase
 
 Phase 7H.3 through Phase 7H.7 subtasks add screen-specific exploratory behavior by applying the metadata hooks to selected dashboard elements. Phase 7H.8 implements Cross-Screen Selection Propagation as browser-side only, read-only, exploratory synchronization through URL hash/localStorage state, selected summary panels, and visual selected-state behavior.
 
-Cross-screen selection propagation is browser-side only. URL hash/localStorage state is not authoritative truth. It adds no backend writes, no API calls, no approval controls, no write controls, no runtime activation, no Phase 7I CLI learning commands, and no parser/scoring/decision/recommendation behavior changes.
+Cross-screen selection propagation is browser-side only. URL hash/localStorage state is not authoritative truth. It adds no direct truth mutation, no direct database writes, no Object Storage calls, no runtime activation, no Phase 7I CLI learning commands, and no parser/scoring/decision/recommendation behavior changes.
 
 Phase 7H.6 uses the foundation state keys for read-only Screen 1 governance/parser exploration, including `selectedParserSection`, `selectedParserDiagnostic`, `selectedUnknownSignal`, `selectedGovernanceItem`, `selectedKnowledgeRequest`, and `selectedArtifact`. These keys remain browser-side only and do not change parser output, classify unknown signals, approve mappings, materialize artifacts, create/update knowledge requests, or change governance state.
 

@@ -548,13 +548,59 @@
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(16, 28, 45, 0.74);
     }
-    .screen1-parser-governance-review {
-      border-color: rgba(90, 209, 255, 0.38);
-      background: rgba(16, 28, 45, 0.78);
-    }
-    .screen1-operator-workflow {
-      display: grid;
-      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
+	    .screen1-parser-governance-review {
+	      border-color: rgba(90, 209, 255, 0.38);
+	      background: rgba(16, 28, 45, 0.78);
+	    }
+		    .screen1-governance-explanation-panel {
+		      display: grid;
+		      gap: 10px;
+		      margin-top: 12px;
+		      border: 1px solid rgba(90, 209, 255, 0.18);
+		      border-radius: 8px;
+		      padding: 12px;
+		      background: rgba(11, 20, 34, 0.34);
+		    }
+		    .screen1-governance-explanation-panel h3 {
+		      margin: 0;
+		      color: var(--accent);
+		      font-size: 12px;
+		      font-weight: 900;
+		      letter-spacing: 0.05em;
+		      text-transform: uppercase;
+		    }
+		    .screen1-governance-explanation {
+		      display: grid;
+		      grid-template-columns: 1fr;
+		      gap: 8px;
+		      margin-top: 0;
+		    }
+		    .screen1-governance-explanation article {
+		      display: grid;
+		      gap: 6px;
+		      min-width: 0;
+		      border: 1px solid rgba(159, 176, 199, 0.14);
+		      border-radius: 8px;
+		      padding: 10px 12px;
+		      background: rgba(11, 20, 34, 0.36);
+		    }
+	    .screen1-governance-explanation strong {
+	      color: var(--accent);
+	      font-size: 12px;
+	      font-weight: 900;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen1-governance-explanation p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	      overflow-wrap: anywhere;
+	    }
+	    .screen1-operator-workflow {
+	      display: grid;
+	      grid-template-columns: minmax(280px, 1.05fr) minmax(260px, 0.95fr);
       gap: 12px;
       margin-top: 16px;
     }
@@ -823,6 +869,9 @@
     .screen2-selected-diagnostic-panel {
       border-color: rgba(90, 209, 255, 0.34);
       background: rgba(90, 209, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: inset 0 0 0 1px rgba(90, 209, 255, 0.08);
     }
     .screen2-selected-diagnostic-summary {
       margin: 0 0 12px;
@@ -837,7 +886,7 @@
     }
     .screen2-selector-card {
       display: grid;
-      gap: 6px;
+      gap: 7px;
       min-height: 104px;
       border: 1px solid rgba(159, 176, 199, 0.24);
       border-radius: 10px;
@@ -845,14 +894,26 @@
       background: rgba(16, 28, 45, 0.72);
       color: inherit;
     }
-    .screen2-selector-card strong {
+    .screen2-selector-card[hidden],
+    .screen2-selector-grid[data-screen2-domain-scoped="true"] .screen2-selector-card:not([data-screen2-domain-scope-active="true"]),
+    .screen2-selector-scope-empty[hidden] {
+      display: none !important;
+    }
+    .screen2-selector-card .screen2-selector-kicker {
       color: var(--accent);
-      font-size: 12px;
+      font-size: 10px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .screen2-selector-card span {
+    .screen2-selector-card strong {
       color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen2-selector-card .screen2-selector-detail {
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -861,6 +922,10 @@
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+    }
+    .screen2-report-section-focus {
+      border-color: rgba(159, 176, 199, 0.22);
+      background: rgba(8, 16, 28, 0.34);
     }
     .screen2-selector-card.active {
       border-color: rgba(90, 209, 255, 0.62);
@@ -875,9 +940,39 @@
     .screen2-review-subgrid {
       margin-top: 14px;
     }
+    .screen2-review-copy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0 0;
+    }
+    .screen2-review-copy-grid article {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(8, 16, 28, 0.48);
+    }
+    .screen2-review-copy-grid strong {
+      display: block;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .screen2-review-copy-grid p {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.4;
+    }
     .screen2-review-target-summary {
       border-color: rgba(102, 187, 106, 0.30);
       background: rgba(102, 187, 106, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: inset 0 0 0 1px rgba(102, 187, 106, 0.08);
     }
     .screen2-review-selected-summary {
       margin: 0 0 12px;
@@ -885,10 +980,312 @@
       font-size: 14px;
       font-weight: 700;
     }
-    .screen2-review-action-grid {
+    .screen2-focus-summary-compact {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      margin: 0 0 12px;
+    }
+    .screen2-focus-summary-group,
+    .screen2-focus-summary-facts {
+      border: 1px solid rgba(90, 209, 255, 0.20);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(8, 16, 28, 0.42);
+    }
+    .screen2-focus-summary-group > strong,
+    .screen2-focus-summary-facts > strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-focus-summary-facts {
+      grid-column: 1 / -1;
+    }
+    .screen2-focus-summary-facts p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen2-selected-evidence-card {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+    .screen2-selected-evidence-card div {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.55fr) minmax(0, 1.45fr);
+      gap: 8px;
+      align-items: start;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row {
+      align-items: center;
+    }
+    .screen2-selected-evidence-card dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row dt {
+      align-self: center;
+    }
+	    .screen2-selected-evidence-card dd {
+	      margin: 0;
+	      color: var(--text);
+	      font-size: 12px;
+	      line-height: 1.4;
+	    }
+    .screen2-selected-evidence-card .screen2-outcome-row dd {
+      display: flex;
+      align-items: center;
+    }
+    .screen2-selected-evidence-card .screen2-outcome-row .status-pill,
+    .screen2-selected-evidence-card .screen2-outcome-row .confidence-pill {
+      justify-content: center;
+      min-width: 72px;
+      text-align: center;
+    }
+    @media (max-width: 760px) {
+      .screen2-focus-summary-compact {
+        grid-template-columns: 1fr;
+      }
+    }
+	    .screen2-focused-explanation-panel {
+	      display: grid;
+	      gap: 10px;
+	      margin: 12px 0;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 12px;
+	      padding: 12px;
+	      background: rgba(8, 16, 28, 0.38);
+	    }
+	    .screen2-focused-explanation-panel h3 {
+	      margin: 0;
+	      color: var(--accent);
+	      font-size: 14px;
+	      font-weight: 900;
+	      letter-spacing: 0.04em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-focused-explanation-list {
+	      display: grid;
+	      grid-template-columns: 1fr;
+	      gap: 9px;
+	    }
+	    .screen2-focused-explanation-item {
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 10px;
+	      padding: 10px 12px;
+	      background: rgba(11, 20, 34, 0.58);
+	    }
+	    .screen2-focused-explanation-item strong {
+	      display: block;
+	      margin-bottom: 5px;
+	      color: var(--accent);
+	      font-size: 11px;
+	      font-weight: 800;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-focused-explanation-item p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	    }
+	    .screen2-explanation-control {
+	      display: grid;
+	      grid-template-columns: 1fr;
+	      gap: 9px;
+	      align-items: center;
+	      justify-items: center;
+	      text-align: center;
+	      margin: 12px 0;
+	      border: 1px solid rgba(90, 209, 255, 0.20);
+	      border-radius: 12px;
+	      padding: 12px;
+	      background: rgba(8, 16, 28, 0.50);
+	    }
+	    .screen2-explanation-button {
+	      border: 1px solid rgba(90, 209, 255, 0.50);
+	      border-radius: 8px;
+	      padding: 9px 12px;
+	      background: rgba(90, 209, 255, 0.14);
+	      color: var(--text);
+	      font-weight: 800;
+	      font-size: 12px;
+	      cursor: pointer;
+	    }
+	    .screen2-explanation-button:hover,
+	    .screen2-explanation-button:focus-visible {
+	      background: rgba(90, 209, 255, 0.22);
+	      outline: none;
+	    }
+	    .screen2-explanation-control-copy {
+	      display: grid;
+	      gap: 5px;
+	      max-width: 760px;
+	    }
+	    .screen2-explanation-control-copy strong {
+	      color: var(--accent);
+	      font-size: 11px;
+	      font-weight: 800;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-explanation-control-copy p {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.4;
+	    }
+	    .screen2-focus-boundary-note {
+	      margin: 0 0 10px;
+	      color: var(--muted);
+	      font-size: 12px;
+	      line-height: 1.45;
+	      text-align: left;
+	    }
+	    .screen2-focus-helper {
+	      margin-top: 12px;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 12px;
+	      padding: 10px 12px;
+	      background: rgba(8, 16, 28, 0.42);
+	    }
+	    .screen2-focus-helper summary {
+	      color: var(--accent);
+	      cursor: pointer;
+	      font-size: 12px;
+	      font-weight: 800;
+	      letter-spacing: 0.04em;
+	      text-transform: uppercase;
+	    }
+	    .screen2-review-action-grid {
+	      display: grid;
+	      grid-template-columns: repeat(2, minmax(0, 1fr));
+	      gap: 10px;
+    }
+    .screen2-review-form-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .screen2-review-form-field span {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-review-form-field input,
+    .screen2-review-form-field select,
+    .screen2-review-form-field textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(159, 176, 199, 0.32);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: rgba(8, 16, 28, 0.82);
+      color: var(--text);
+      font: inherit;
+    }
+    .screen2-review-form-field textarea {
+      resize: vertical;
+      min-height: 92px;
+    }
+    .screen2-review-submit-control {
+      display: grid;
+      gap: 6px;
+      border: 1px solid rgba(102, 187, 106, 0.42);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(102, 187, 106, 0.12);
+      color: inherit;
+      text-decoration: none;
+    }
+    .screen2-review-submit-control strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+    .screen2-review-submit-control span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen2-review-submit-control.is-disabled {
+      border-color: rgba(159, 176, 199, 0.24);
+      background: rgba(16, 28, 45, 0.52);
+      opacity: 0.72;
+      cursor: not-allowed;
+    }
+    .screen2-action-status {
+      border: 1px solid rgba(159, 176, 199, 0.26);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(8, 16, 28, 0.58);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .screen2-action-status strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .screen2-action-result-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .screen2-action-result-list div {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.55fr) minmax(0, 1.45fr);
+      gap: 10px;
+      border-top: 1px solid rgba(159, 176, 199, 0.12);
+      padding-top: 8px;
+    }
+    .screen2-action-result-list dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen2-action-result-list dd {
+      margin: 0;
+      color: var(--text);
+    }
+    .screen2-technical-audit-details {
+      margin-top: 10px;
+      border-top: 1px solid rgba(159, 176, 199, 0.12);
+      padding-top: 8px;
+    }
+    .screen2-technical-audit-details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .screen2-technical-audit-details code {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
     .screen2-review-action-card {
       display: grid;
@@ -2814,13 +3211,15 @@
     }
 
     .phase7-governed-action-status[data-phase7-action-status="accepted"],
-    .screen1-action-status[data-phase7-action-status="accepted"] {
+    .screen1-action-status[data-phase7-action-status="accepted"],
+    .screen2-action-status[data-phase7-action-status="accepted"] {
       color: #effbef;
       border-color: rgba(102, 187, 106, 0.42);
     }
 
     .phase7-governed-action-status[data-phase7-action-status="failed"],
-    .screen1-action-status[data-phase7-action-status="failed"] {
+    .screen1-action-status[data-phase7-action-status="failed"],
+    .screen2-action-status[data-phase7-action-status="failed"] {
       color: #fff4f4;
       border-color: rgba(255, 107, 107, 0.42);
     }
@@ -3470,7 +3869,7 @@
     Does not activate learning candidates. No approval controls. No runtime activation.
     Semantic context remains reviewer-assist only.
     Learning candidates remain proposal/review context only.
-    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedSystem, selectedSnapshot, selectedDomain, selectedSeverity, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage.
+    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedSystem, selectedSnapshot, selectedDomain, selectedSeverity, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, screen2ActiveFocusKey, screen2ActiveFocusType, screen2ActiveFocusValue, screen2ActiveFocusLabel, screen2ActiveFocusDomain, screen2InferredDomain, screen2ActiveDomainLens, screen2ActiveEvidenceGroup, screen2ActiveMetric, screen2ActiveWaitEvent, screen2ActiveSqlSignal, screen2ActiveDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage.
     Future selectable metadata hooks: data-dashboard-selectable, data-dashboard-select-type, data-dashboard-select-key, data-dashboard-select-id, data-dashboard-select-domain, data-dashboard-target, data-dashboard-filter-key, data-dashboard-filter-value, data-dashboard-state-input, data-dashboard-state-key.
   -->
   <div class="container">
@@ -3490,7 +3889,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 18, 2026, 8:00 PM</div>
+        <div class="hero-meta">Generated: May 19, 2026, 8:49 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link active" href="screen_2_analysis.html" data-dashboard-propagate-state="true">2 Analysis</a><a class="nav-link" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">3 Selector</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Fleet</a></nav>
@@ -3499,835 +3898,23 @@
 
     <div class="grid">
       <!-- Screen 2 = diagnosis only. Ingestion stays on Screen 1; historical proof stays on Screen 4; action stays on Screen 5. -->
-
-      <!-- Phase 7H.3 Screen 2 Diagnostic Exploration: read-only selectors only. -->
-      <section class="card secondary screen2-diagnostic-exploration">
-        <div class="section-kicker">Phase 7H.3</div>
-        <h2>Screen 2 Diagnostic Exploration</h2>
-        <p class="static-selection-note">
-          Read-only diagnostic exploration. Exploratory only. No backend writes. Does not change diagnostic truth. Does not change primary issue.
-        </p>
-        <p class="static-selection-note">
-          Does not change severity. Does not change confidence. Does not change recommendation truth. Semantic/learning context is not diagnostic evidence. Selection only highlights deterministic evidence. Cross-Screen Selection Propagation is browser-side only. URL hash/localStorage state is not authoritative truth. No approval controls. No runtime activation.
-        </p>
-        <div class="subgrid selector-subgrid">
-          <section class="evidence-pane selector-pane screen2-selected-diagnostic-panel">
-            <h3>Selected Diagnostic Summary</h3>
-            <p class="screen2-selected-diagnostic-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Read-only diagnostic exploration: no exploratory diagnostic selection
-            </p>
-            <div class="mini-pill-group">
-              <span class="mini-pill neutral">Read-only diagnostic exploration</span>
-              <span class="mini-pill neutral">Exploratory only</span>
-              <span class="mini-pill neutral">No backend writes</span>
-              <span class="mini-pill neutral">No approval controls</span>
-              <span class="mini-pill neutral">No runtime activation</span>
-            </div>
-            <p class="meta">
-              Selection only highlights deterministic evidence already rendered on this page. Diagnostic output remains unchanged.
-            </p>
-          </section>
-          <section class="evidence-pane selector-pane">
-            <h3>Diagnostic Domain Selector</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="CPU"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="CPU" data-dashboard-select-domain="CPU"
-      >
-        <strong>CPU</strong>
-        <span>CPU</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="IO"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="IO" data-dashboard-select-domain="IO"
-      >
-        <strong>IO</strong>
-        <span>IO</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="MEMORY"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="MEMORY" data-dashboard-select-domain="MEMORY"
-      >
-        <strong>MEMORY</strong>
-        <span>MEMORY</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="COMMIT"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="COMMIT" data-dashboard-select-domain="COMMIT"
-      >
-        <strong>COMMIT</strong>
-        <span>COMMIT</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="RAC"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="RAC" data-dashboard-select-domain="RAC"
-      >
-        <strong>RAC</strong>
-        <span>RAC</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-domain"
-        data-dashboard-select-key="selectedDomain"
-        data-dashboard-select-id="ADG"
-        data-dashboard-filter-key="selectedDomain"
-        data-dashboard-filter-value="ADG" data-dashboard-select-domain="ADG"
-      >
-        <strong>ADG</strong>
-        <span>ADG</span>
-        <p>Exploratory diagnostic domain only; does not change primary issue or severity.</p>
-      </article>
-    </div>
-            <p class="meta">Domain selection does not change primary issue or severity.</p>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Evidence Group Selector</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="cpu-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="cpu-signal" data-dashboard-select-domain="CPU"
-      >
-        <strong>CPU Signal</strong>
-        <span>CPU Signal</span>
-        <p>DB CPU % DB Time: 30.4. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="i-o-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="i-o-signal"
-      >
-        <strong>I/O Signal</strong>
-        <span>I/O Signal</span>
-        <p>User I/O Pressure: 13.0. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="commit-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="commit-signal" data-dashboard-select-domain="COMMIT"
-      >
-        <strong>Commit Signal</strong>
-        <span>Commit Signal</span>
-        <p>log file sync: 8.4. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="rac-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="rac-signal" data-dashboard-select-domain="RAC"
-      >
-        <strong>RAC Signal</strong>
-        <span>RAC Signal</span>
-        <p>Cluster Wait %: 2.16. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="memory-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="memory-signal" data-dashboard-select-domain="MEMORY"
-      >
-        <strong>Memory Signal</strong>
-        <span>Memory Signal</span>
-        <p>PGA Spill Pressure: 0.03. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="evidence-group"
-        data-dashboard-select-key="selectedEvidenceGroup"
-        data-dashboard-select-id="adg-signal"
-        data-dashboard-filter-key="selectedEvidenceGroup"
-        data-dashboard-filter-value="adg-signal" data-dashboard-select-domain="ADG"
-      >
-        <strong>ADG Signal</strong>
-        <span>ADG Signal</span>
-        <p>Transport/apply lag evidence: Evidence present. Highlight/exploration only; evidence value is unchanged.</p>
-      </article>
-    </div>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Metric / Score Group Selector</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="CPU-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="CPU-0.0" data-dashboard-select-domain="CPU"
-      >
-        <strong>CPU score</strong>
-        <span>CPU score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="IO-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="IO-0.0" data-dashboard-select-domain="IO"
-      >
-        <strong>IO score</strong>
-        <span>IO score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="MEMORY-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="MEMORY-0.0" data-dashboard-select-domain="MEMORY"
-      >
-        <strong>MEMORY score</strong>
-        <span>MEMORY score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="COMMIT-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="COMMIT-0.0" data-dashboard-select-domain="COMMIT"
-      >
-        <strong>COMMIT score</strong>
-        <span>COMMIT score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="RAC-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="RAC-0.0" data-dashboard-select-domain="RAC"
-      >
-        <strong>RAC score</strong>
-        <span>RAC score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="ADG-0.0"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="ADG-0.0" data-dashboard-select-domain="ADG"
-      >
-        <strong>ADG score</strong>
-        <span>ADG score</span>
-        <p>Deterministic displayed score: 0.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="CPU-db-cpu-db-time"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="CPU-db-cpu-db-time" data-dashboard-select-domain="CPU"
-      >
-        <strong>DB CPU % DB Time</strong>
-        <span>DB CPU % DB Time</span>
-        <p>Latest displayed metric: 30.4. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="IO-user-i-o-pressure"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="IO-user-i-o-pressure" data-dashboard-select-domain="IO"
-      >
-        <strong>User I/O Pressure</strong>
-        <span>User I/O Pressure</span>
-        <p>Latest displayed metric: 13.0. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="MEMORY-pga-spill-pressure"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="MEMORY-pga-spill-pressure" data-dashboard-select-domain="MEMORY"
-      >
-        <strong>PGA Spill Pressure</strong>
-        <span>PGA Spill Pressure</span>
-        <p>Latest displayed metric: 0.03. No recalculation.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="metric-group"
-        data-dashboard-select-key="selectedMetricGroup"
-        data-dashboard-select-id="RAC-cluster-wait"
-        data-dashboard-filter-key="selectedMetricGroup"
-        data-dashboard-filter-value="RAC-cluster-wait" data-dashboard-select-domain="RAC"
-      >
-        <strong>Cluster Wait %</strong>
-        <span>Cluster Wait %</span>
-        <p>Latest displayed metric: 2.16. No recalculation.</p>
-      </article>
-    </div>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Wait Event Selector</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="wait-event-group"
-        data-dashboard-select-key="selectedWaitEventGroup"
-        data-dashboard-select-id="wait-log-file-sync"
-        data-dashboard-filter-key="selectedWaitEventGroup"
-        data-dashboard-filter-value="wait-log-file-sync" data-dashboard-select-domain="COMMIT"
-      >
-        <strong>log file sync</strong>
-        <span>log file sync</span>
-        <p>Displayed commit wait signal: 8.4. No reclassification.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="wait-event-group"
-        data-dashboard-select-key="selectedWaitEventGroup"
-        data-dashboard-select-id="wait-rac-cluster"
-        data-dashboard-filter-key="selectedWaitEventGroup"
-        data-dashboard-filter-value="wait-rac-cluster" data-dashboard-select-domain="RAC"
-      >
-        <strong>RAC / cluster waits</strong>
-        <span>RAC / cluster waits</span>
-        <p>Cluster wait selection is topology context only.</p>
-      </article>
-    </div>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>SQL Signal Selector</h3>
-            <div class="item"><div class="meta">No SQL signal groups are available in this static export. Selection is local and read-only. Diagnostic output remains unchanged.</div></div>
-          </section>
-          <section class="evidence-pane selector-pane">
-            <h3>Deterministic Diagnostic Sections</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="diagnostic-snapshot"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="diagnostic-snapshot"
-      >
-        <strong>Diagnostic Snapshot</strong>
-        <span>Diagnostic Snapshot</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="current-diagnostic-drivers"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="current-diagnostic-drivers"
-      >
-        <strong>Current Diagnostic Drivers</strong>
-        <span>Current Diagnostic Drivers</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="visual-summary"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="visual-summary"
-      >
-        <strong>Visual Summary</strong>
-        <span>Visual Summary</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="health-data-completeness"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="health-data-completeness"
-      >
-        <strong>Health / Data Completeness</strong>
-        <span>Health / Data Completeness</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="selected-scope-explanation"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="selected-scope-explanation"
-      >
-        <strong>Selected-Scope Explanation</strong>
-        <span>Selected-Scope Explanation</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="diagnostic-conclusion"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="diagnostic-conclusion"
-      >
-        <strong>Diagnostic Conclusion</strong>
-        <span>Diagnostic Conclusion</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="similarity-context"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="similarity-context"
-      >
-        <strong>Similarity Context</strong>
-        <span>Similarity Context</span>
-        <p>Read-only section focus only; deterministic text is unchanged.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="multi-snapshot-summary"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="multi-snapshot-summary"
-      >
-        <strong>Multi-Snapshot Summary</strong>
-        <span>Multi-Snapshot Summary</span>
-        <p>Read-only technical section focus only.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="trend-findings"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="trend-findings"
-      >
-        <strong>Trend Findings</strong>
-        <span>Trend Findings</span>
-        <p>Read-only technical section focus only.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="anomaly-windows"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="anomaly-windows"
-      >
-        <strong>Anomaly Windows</strong>
-        <span>Anomaly Windows</span>
-        <p>Read-only technical section focus only.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="topology-assessment"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="topology-assessment"
-      >
-        <strong>Topology Assessment</strong>
-        <span>Topology Assessment</span>
-        <p>Read-only technical section focus only.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="diagnostic-section"
-        data-dashboard-select-key="selectedDiagnosticSection"
-        data-dashboard-select-id="latest-snapshot-assessment"
-        data-dashboard-filter-key="selectedDiagnosticSection"
-        data-dashboard-filter-value="latest-snapshot-assessment"
-      >
-        <strong>Latest Snapshot Assessment</strong>
-        <span>Latest Snapshot Assessment</span>
-        <p>Read-only technical section focus only.</p>
-      </article>
-    </div>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Current AWR / Run Context</h3>
-            <div class="screen2-selector-grid">
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="awr"
-        data-dashboard-select-key="selectedAwr"
-        data-dashboard-select-id="108"
-        data-dashboard-filter-key="selectedAwr"
-        data-dashboard-filter-value="108"
-      >
-        <strong>Current AWR</strong>
-        <span>Current AWR</span>
-        <p>Current static export context only.</p>
-      </article>
-
-      <article
-        class="screen2-selector-card"
-        tabindex="0"
-        aria-selected="false"
-        data-dashboard-selectable="true"
-        data-dashboard-select-type="severity"
-        data-dashboard-select-key="selectedSeverity"
-        data-dashboard-select-id="LOW"
-        data-dashboard-filter-key="selectedSeverity"
-        data-dashboard-filter-value="LOW"
-      >
-        <strong>Current confidence</strong>
-        <span>Current confidence</span>
-        <p>Confidence display is read-only and does not change confidence.</p>
-      </article>
-    </div>
-          </section>
-        </div>
-      </section>
-
-
-      <!-- Phase 7AS Screen 2 Review Panel start: disabled preview-only UI. -->
-      <section class="card secondary screen2-review-panel" id="screen2-review-panel" data-phase="7AS" data-preview-only="true">
-        <div class="section-kicker">Phase 7AS</div>
-        <h2>Screen 2 Diagnostic Review / Approval Panel</h2>
-        <p class="static-selection-note">
-          Preview only. Review action disabled in this phase. Review is not mutation.
-        </p>
-        <div class="mini-pill-group screen2-review-safety-labels">
-          <span class="mini-pill neutral">Preview only</span><span class="mini-pill neutral">Review action disabled in this phase</span><span class="mini-pill neutral">Review is not mutation</span><span class="mini-pill neutral">Does not change diagnostic truth</span><span class="mini-pill neutral">Does not change primary issue</span><span class="mini-pill neutral">Does not change severity</span><span class="mini-pill neutral">Does not change confidence</span><span class="mini-pill neutral">Does not change score</span><span class="mini-pill neutral">Does not change parser output</span><span class="mini-pill neutral">Does not change recommendation truth</span><span class="mini-pill neutral">Does not mutate Phase 4I</span><span class="mini-pill neutral">No backend write</span><span class="mini-pill neutral">No governed write path invoked</span><span class="mini-pill neutral">No candidate created automatically</span><span class="mini-pill neutral">Deterministic runtime remains authoritative</span>
-        </div>
-        <div class="subgrid screen2-review-subgrid">
-          <section class="evidence-pane selector-pane screen2-review-target-summary">
-            <h3>Review Target Summary</h3>
-            <p class="screen2-review-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Review target summary section: No review target selected. Safe empty state for selected diagnostic/evidence context.
-            </p>
-            <p class="meta">
-              Selected diagnostic/evidence context references selectedDomain, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, and selectedDiagnosticSection. The summary does not imply submission occurred.
-            </p>
-            <dl class="screen2-review-summary-list">
-              <div><dt>selected domain</dt><dd>No selected domain</dd></div>
-              <div><dt>selected evidence group</dt><dd>No selected evidence group</dd></div>
-              <div><dt>selected metric group</dt><dd>No selected domain domain_score 0</dd></div>
-              <div><dt>selected wait event group</dt><dd>selectedWaitEventGroup safe empty state</dd></div>
-              <div><dt>selected SQL signal</dt><dd>selectedSqlSignal safe empty state</dd></div>
-              <div><dt>selected diagnostic section</dt><dd>selectedDiagnosticSection safe empty state</dd></div>
-              <div><dt>selected severity/status</dt><dd>OK</dd></div>
-              <div><dt>selected confidence label</dt><dd>LOW</dd></div>
-              <div><dt>selected missing/evidence availability marker</dt><dd>missing/evidence availability marker pending future governed review</dd></div>
-              <div><dt>selected primary issue</dt><dd>No selected primary issue</dd></div>
-            </dl>
-          </section>
-          <section class="evidence-pane selector-pane screen2-review-action-preview">
-            <h3>Review Action Preview Controls</h3>
-            <div class="screen2-review-action-grid">
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="confirm"
-              >
-                <strong>Confirm Evidence</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="dispute"
-              >
-                <strong>Dispute Evidence</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="insufficient_evidence"
-              >
-                <strong>Mark Insufficient Evidence</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="needs_parser_review"
-              >
-                <strong>Request Parser Review</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="needs_scoring_review"
-              >
-                <strong>Request Scoring Review</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="needs_recommendation_review"
-              >
-                <strong>Request Recommendation Review</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="needs_learning_candidate"
-              >
-                <strong>Request Learning Candidate</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-              <div
-                class="screen2-review-action-card"
-                aria-disabled="true"
-                data-preview-only="true"
-                data-review-decision="add_reviewer_note"
-              >
-                <strong>Add Reviewer Note</strong>
-                <span>Preview only. Review action disabled in this phase.</span>
-              </div>
-
-            </div>
-            <p class="meta">
-              These visual controls are disabled/preview-only and do not submit, write, route, or execute review workflow state.
-            </p>
-          </section>
-          <section class="evidence-pane selector-pane screen2-review-request-preview">
-            <h3>Review Request Preview</h3>
-            <dl class="screen2-review-summary-list">
-              <div><dt>target type</dt><dd>future review target type only</dd></div>
-              <div><dt>review decision</dt><dd>future review decision only</dd></div>
-              <div><dt>actor required</dt><dd>actor required before any future review action</dd></div>
-              <div><dt>audit required</dt><dd>audit required before any future review action</dd></div>
-              <div><dt>governed write path required</dt><dd>governed write path required for future writes</dd></div>
-              <div><dt>governance bridge required</dt><dd>governance bridge required before routing</dd></div>
-              <div><dt>candidate intent possible</dt><dd>candidate intent possible, but no candidate is created automatically</dd></div>
-              <div><dt>write_performed=false</dt><dd>write_performed=false</dd></div>
-              <div><dt>runtime_influence=false</dt><dd>runtime_influence=false</dd></div>
-              <div><dt>phase4i_mutation_requested=false</dt><dd>phase4i_mutation_requested=false</dd></div>
-            </dl>
-            <p class="meta">
-              This preview does not create a request object at runtime. No backend write. No governed write path invoked.
-            </p>
-          </section>
-        </div>
-      </section>
-      <!-- Phase 7AS Screen 2 Review Panel end. -->
-
       <section class="card prominent diagnostic-compact-card">
         <div class="section-kicker">DECISION</div>
         <h2>Diagnostic Snapshot</h2>
         <div class="info-grid diagnostic-snapshot-grid">
             <div class="info-box">
               <strong>Overall Status</strong>
-              <div>OK</div>
+              <div><span class="status-pill success">OK</span></div>
             </div>
 
             <div class="info-box">
               <strong>Risk</strong>
-              <div>OK</div>
+              <div><span class="status-pill success">OK</span></div>
             </div>
 
             <div class="info-box">
               <strong>Decision Posture</strong>
-              <div>TUNE FIRST</div>
+              <div><span class="status-pill warning">TUNE FIRST</span></div>
             </div>
 
             <div class="info-box">
@@ -4337,15 +3924,15 @@
 
             <div class="info-box">
               <strong>Health Summary</strong>
-              <div>OK</div>
+              <div><span class="status-pill success">OK</span></div>
             </div>
 
             <div class="info-box">
               <strong>Historical Posture</strong>
-              <div>TUNE FIRST</div>
+              <div><span class="status-pill warning">TUNE FIRST</span></div>
             </div>
             </div>
-        <div class="meta decision-summary-note">Signals exist, but no single domain has crossed the deterministic dominance threshold.</div>
+        <div class="meta decision-summary-note">While signals exist, no single domain has crossed the deterministic dominance threshold.</div>
         <div class="decision-summary-confidence diagnostic-confidence-strip">
           <span class="pill-cell confidence-cell">
             <span class="confidence-pill low">LOW</span>
@@ -4368,7 +3955,7 @@
                 <h3>CPU Signal</h3>
                 <p>DB CPU % DB Time = 30.4</p>
               </div>
-              <div class="meta diagnostic-driver-evidence">Visible CPU pressure in the latest interval.</div>
+              <div class="meta diagnostic-driver-evidence">There is visible CPU pressure in the latest interval.</div>
             </article>
 
             <article class="diagnostic-driver-row">
@@ -4553,7 +4140,7 @@
       <section class="card secondary">
         <div class="section-kicker">CONCLUSION</div>
         <h2>Diagnostic Conclusion</h2>
-        <div class="decision-summary-confidence"><span class="confidence-pill low">LOW</span><span class="meta">Confidence is low from the authoritative Phase 4I output.</span></div><div class="narrative"><p>The selected scope is most consistent with the current TUNE FIRST decision posture. Available evidence points to CPU, I/O, and Commit behavior; memory remains present as a below-threshold signal, with RAC and ADG acting as topology context rather than as a standalone capacity trigger.</p></div><p>The observed pattern supports the current posture for this selected scope.</p>
+        <div class="decision-summary-confidence"><span class="confidence-pill low">LOW</span><span class="meta">Confidence is low because signal strength and data coverage are limited.</span></div><div class="narrative"><p>The selected scope is most consistent with the current TUNE FIRST decision posture. Available evidence points to CPU, I/O, and Commit behavior; memory remains present as a below-threshold signal, with RAC and ADG acting as topology context rather than as a standalone capacity trigger.</p></div><p>The observed pattern supports the current posture for this selected scope.</p>
       </section>
       <section class="card secondary">
         <div class="section-kicker">SIMILARITY</div>
@@ -4590,10 +4177,752 @@
             </div>
             </div><div class="meta similarity-note">Nearest vectors are identical at current precision; inspect feature-vector uniqueness if this persists.</div>
       </section>
+
+      <section class="card secondary screen2-diagnostic-exploration">
+        <div class="section-kicker">EVIDENCE FOCUS</div>
+        <h2>Interactive Evidence Focus</h2>
+        <p class="static-selection-note">
+          Use Domain to choose the high-level diagnostic lens. Use Evidence, Metric, Wait Event, SQL,
+          or Section to choose the specific item to explain. Related selections stay grouped; selecting
+          an item from another domain changes the active domain lens. This only changes the local
+          explanation context. It does not remove evidence or change diagnosis, scoring, recommendations,
+          parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.
+        </p>
+        <div class="subgrid selector-subgrid">
+          <section class="evidence-pane selector-pane">
+            <h3>Diagnostic Domain Selector</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="domain">
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="CPU"
+        data-dashboard-select-label="CPU"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="CPU" data-dashboard-select-domain="CPU"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>CPU</strong>
+        <span class="screen2-selector-detail">Evidence present; DB CPU % DB Time = 30.4</span>
+        <p>Evidence present; DB CPU % DB Time = 30.4. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="IO"
+        data-dashboard-select-label="IO"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="IO" data-dashboard-select-domain="IO"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>IO</strong>
+        <span class="screen2-selector-detail">Evidence present; User I/O Pressure = 13.0</span>
+        <p>Evidence present; User I/O Pressure = 13.0. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="MEMORY"
+        data-dashboard-select-label="MEMORY"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="MEMORY" data-dashboard-select-domain="MEMORY"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>MEMORY</strong>
+        <span class="screen2-selector-detail">Present but below threshold; PGA Spill Pressure = 0.03</span>
+        <p>Present but below threshold; PGA Spill Pressure = 0.03. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="COMMIT"
+        data-dashboard-select-label="COMMIT"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="COMMIT" data-dashboard-select-domain="COMMIT"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>COMMIT</strong>
+        <span class="screen2-selector-detail">Evidence present; log file sync = 8.4</span>
+        <p>Evidence present; log file sync = 8.4. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="RAC"
+        data-dashboard-select-label="RAC"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="RAC" data-dashboard-select-domain="RAC"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>RAC</strong>
+        <span class="screen2-selector-detail">Topology/context only; Cluster Wait % = 2.16</span>
+        <p>Topology/context only; Cluster Wait % = 2.16. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-domain"
+        data-dashboard-select-key="selectedDomain"
+        data-dashboard-select-id="ADG"
+        data-dashboard-select-label="ADG"
+        data-dashboard-filter-key="selectedDomain"
+        data-dashboard-filter-value="ADG" data-dashboard-select-domain="ADG"
+      >
+        <span class="screen2-selector-kicker">Domain</span>
+        <strong>ADG</strong>
+        <span class="screen2-selector-detail">Topology/context only; transport/apply lag evidence present</span>
+        <p>Topology/context only; transport/apply lag evidence present. Sets the high-level diagnostic lens only; it does not change the selected primary issue, severity, score, or diagnosis.</p>
+      </article>
+    </div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="domain" data-no-domain-message="" data-domain-empty-message="No diagnostic domain choices are available." hidden>No diagnostic domain choices are available.</p>
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Evidence Group Selector</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="evidence_group" data-screen2-domain-scoped="true">
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="cpu-signal"
+        data-dashboard-select-label="CPU Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="cpu-signal" data-dashboard-select-domain="CPU"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>CPU Signal</strong>
+
+        <p>DB CPU % DB Time: 30.4. This selection only identifies what the explanation is about. Displayed value is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="commit-signal"
+        data-dashboard-select-label="Commit Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="commit-signal" data-dashboard-select-domain="COMMIT"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>Commit Signal</strong>
+
+        <p>log file sync: 8.4. This selection only identifies what the explanation is about. Displayed value is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="rac-signal"
+        data-dashboard-select-label="RAC Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="rac-signal" data-dashboard-select-domain="RAC"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>RAC Signal</strong>
+
+        <p>Cluster Wait %: 2.16. This selection only identifies what the explanation is about. Displayed value is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="memory-signal"
+        data-dashboard-select-label="Memory Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="memory-signal" data-dashboard-select-domain="MEMORY"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>Memory Signal</strong>
+
+        <p>PGA Spill Pressure: 0.03. This selection only identifies what the explanation is about. Displayed value is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="adg-signal"
+        data-dashboard-select-label="ADG Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="adg-signal" data-dashboard-select-domain="ADG"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>ADG Signal</strong>
+
+        <p>Transport/apply lag evidence: Evidence present. This selection only identifies what the explanation is about. Displayed value is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="evidence-group"
+        data-dashboard-select-key="selectedEvidenceGroup"
+        data-dashboard-select-id="i-o-signal"
+        data-dashboard-select-label="I/O Signal"
+        data-dashboard-filter-key="selectedEvidenceGroup"
+        data-dashboard-filter-value="i-o-signal" data-dashboard-select-domain="IO"
+      >
+        <span class="screen2-selector-kicker">Evidence group</span>
+        <strong>I/O Signal</strong>
+
+        <p>Evidence present; User I/O Pressure = 13.0. This selection only identifies what the explanation is about. Displayed deterministic evidence is unchanged.</p>
+      </article>
+    </div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="evidence_group" data-no-domain-message="Select a domain lens to see evidence groups for that domain." data-domain-empty-message="No evidence groups are available for {domain} in the current selected run/source context." hidden>Select a domain lens to see evidence groups for that domain.</p>
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Metric / Score Group Selector</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="metric_group" data-screen2-domain-scoped="true">
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="metric-group"
+        data-dashboard-select-key="selectedMetricGroup"
+        data-dashboard-select-id="CPU-db-cpu-db-time"
+        data-dashboard-select-label="DB CPU % DB Time"
+        data-dashboard-filter-key="selectedMetricGroup"
+        data-dashboard-filter-value="CPU-db-cpu-db-time" data-dashboard-select-domain="CPU"
+      >
+        <span class="screen2-selector-kicker">Metric / score</span>
+        <strong>DB CPU % DB Time</strong>
+
+        <p>Latest displayed metric: 30.4. Does not change the score or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="metric-group"
+        data-dashboard-select-key="selectedMetricGroup"
+        data-dashboard-select-id="IO-user-i-o-pressure"
+        data-dashboard-select-label="User I/O Pressure"
+        data-dashboard-filter-key="selectedMetricGroup"
+        data-dashboard-filter-value="IO-user-i-o-pressure" data-dashboard-select-domain="IO"
+      >
+        <span class="screen2-selector-kicker">Metric / score</span>
+        <strong>User I/O Pressure</strong>
+
+        <p>Latest displayed metric: 13.0. Does not change the score or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="metric-group"
+        data-dashboard-select-key="selectedMetricGroup"
+        data-dashboard-select-id="MEMORY-pga-spill-pressure"
+        data-dashboard-select-label="PGA Spill Pressure"
+        data-dashboard-filter-key="selectedMetricGroup"
+        data-dashboard-filter-value="MEMORY-pga-spill-pressure" data-dashboard-select-domain="MEMORY"
+      >
+        <span class="screen2-selector-kicker">Metric / score</span>
+        <strong>PGA Spill Pressure</strong>
+
+        <p>Latest displayed metric: 0.03. Does not change the score or diagnosis.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="metric-group"
+        data-dashboard-select-key="selectedMetricGroup"
+        data-dashboard-select-id="RAC-cluster-wait"
+        data-dashboard-select-label="Cluster Wait %"
+        data-dashboard-filter-key="selectedMetricGroup"
+        data-dashboard-filter-value="RAC-cluster-wait" data-dashboard-select-domain="RAC"
+      >
+        <span class="screen2-selector-kicker">Metric / score</span>
+        <strong>Cluster Wait %</strong>
+
+        <p>Latest displayed metric: 2.16. Does not change the score or diagnosis.</p>
+      </article>
+    </div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="metric_group" data-no-domain-message="Select a domain lens to see metric focus items for that domain." data-domain-empty-message="No metric focus items are available for the active {domain} lens." hidden>Select a domain lens to see metric focus items for that domain.</p>
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>Wait Event Selector</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="wait_event_group" data-screen2-domain-scoped="true">
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="wait-event-group"
+        data-dashboard-select-key="selectedWaitEventGroup"
+        data-dashboard-select-id="wait-log-file-sync"
+        data-dashboard-select-label="log file sync"
+        data-dashboard-filter-key="selectedWaitEventGroup"
+        data-dashboard-filter-value="wait-log-file-sync" data-dashboard-select-domain="COMMIT"
+      >
+        <span class="screen2-selector-kicker">Wait event</span>
+        <strong>log file sync</strong>
+
+        <p>Displayed commit wait signal: 8.4. It does not change wait classification.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="wait-event-group"
+        data-dashboard-select-key="selectedWaitEventGroup"
+        data-dashboard-select-id="wait-rac-cluster"
+        data-dashboard-select-label="RAC / cluster waits"
+        data-dashboard-filter-key="selectedWaitEventGroup"
+        data-dashboard-filter-value="wait-rac-cluster" data-dashboard-select-domain="RAC"
+      >
+        <span class="screen2-selector-kicker">Wait event</span>
+        <strong>RAC / cluster waits</strong>
+
+        <p>Sets explanation focus only. Cluster wait classification is unchanged.</p>
+      </article>
+    </div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="wait_event_group" data-no-domain-message="Select a domain lens to see wait-event focus items for that domain." data-domain-empty-message="No wait-event focus items are directly associated with the active {domain} lens." data-empty-message-cpu="No wait-event focus items are directly associated with the active CPU lens. Select COMMIT or RAC to inspect wait-event evidence." hidden>Select a domain lens to see wait-event focus items for that domain.</p>
+          </section>
+          <section class="half evidence-pane selector-pane">
+            <h3>SQL Signal Selector</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="sql_signal" data-screen2-domain-scoped="true"></div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="sql_signal" data-no-domain-message="Select a domain lens to see SQL signal groups for that domain." data-domain-empty-message="No SQL signal groups are available for the active {domain} lens." hidden>Select a domain lens to see SQL signal groups for that domain.</p>
+          </section>
+          <section class="evidence-pane selector-pane screen2-report-section-focus">
+            <h3>Report Section Explanation Focus</h3>
+            <p class="meta">Use Domain to choose the high-level diagnostic lens. Use this selector to choose the specific item to explain. Related selections stay grouped; selecting an item from another domain changes the active domain lens. This only changes the local explanation context and does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.</p>
+            <div class="screen2-selector-grid" data-screen2-selector-group="diagnostic_section">
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="diagnostic-snapshot"
+        data-dashboard-select-label="Diagnostic Snapshot"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="diagnostic-snapshot"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Diagnostic Snapshot</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="current-diagnostic-drivers"
+        data-dashboard-select-label="Current Diagnostic Drivers"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="current-diagnostic-drivers"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Current Diagnostic Drivers</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="visual-summary"
+        data-dashboard-select-label="Visual Summary"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="visual-summary"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Visual Summary</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="health-data-completeness"
+        data-dashboard-select-label="Health / Data Completeness"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="health-data-completeness"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Health / Data Completeness</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="selected-scope-explanation"
+        data-dashboard-select-label="Selected-Scope Explanation"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="selected-scope-explanation"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Selected-Scope Explanation</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="diagnostic-conclusion"
+        data-dashboard-select-label="Diagnostic Conclusion"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="diagnostic-conclusion"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Diagnostic Conclusion</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="similarity-context"
+        data-dashboard-select-label="Similarity Context"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="similarity-context"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Similarity Context</strong>
+
+        <p>Sets explanation focus only. Deterministic diagnostic text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="multi-snapshot-summary"
+        data-dashboard-select-label="Multi-Snapshot Summary"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="multi-snapshot-summary"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Multi-Snapshot Summary</strong>
+
+        <p>Sets explanation focus only. Technical text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="trend-findings"
+        data-dashboard-select-label="Trend Findings"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="trend-findings"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Trend Findings</strong>
+
+        <p>Sets explanation focus only. Technical text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="anomaly-windows"
+        data-dashboard-select-label="Anomaly Windows"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="anomaly-windows"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Anomaly Windows</strong>
+
+        <p>Sets explanation focus only. Technical text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="topology-assessment"
+        data-dashboard-select-label="Topology Assessment"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="topology-assessment"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Topology Assessment</strong>
+
+        <p>Sets explanation focus only. Technical text is unchanged.</p>
+      </article>
+
+      <article
+        class="screen2-selector-card"
+        tabindex="0"
+        aria-selected="false"
+        data-dashboard-selectable="true"
+        data-dashboard-select-type="diagnostic-section"
+        data-dashboard-select-key="selectedDiagnosticSection"
+        data-dashboard-select-id="latest-snapshot-assessment"
+        data-dashboard-select-label="Latest Snapshot Assessment"
+        data-dashboard-filter-key="selectedDiagnosticSection"
+        data-dashboard-filter-value="latest-snapshot-assessment"
+      >
+        <span class="screen2-selector-kicker">Diagnostic section</span>
+        <strong>Latest Snapshot Assessment</strong>
+
+        <p>Sets explanation focus only. Technical text is unchanged.</p>
+      </article>
+    </div><p class="empty-item screen2-selector-scope-empty" data-screen2-selector-empty-state="diagnostic_section" data-no-domain-message="" data-domain-empty-message="No deterministic diagnostic sections are available for the current selected run/source context." hidden>No deterministic diagnostic sections are available for the current selected run/source context.</p>
+          </section>
+        </div>
+      </section>
+
+
+      <section class="card secondary screen2-review-panel"
+               id="screen2-evidence-focus-panel"
+               data-screen2-evidence-focus-panel="true"
+               data-screen2-focused-meaning-panel="true"
+               data-screen2-cpu-value="30.4"
+               data-screen2-io-value="13.0"
+               data-screen2-memory-value="0.03"
+               data-screen2-commit-value="8.4"
+               data-screen2-rac-value="2.16"
+               data-screen2-adg-value="Transport/apply lag evidence is present"
+               data-screen2-overall-status="OK"
+               data-screen2-confidence-label="LOW"
+               data-screen2-posture="TUNE FIRST"
+               data-screen2-primary-issue-domain="No dominant scored domain selected"
+               data-screen2-severity-label="OK">
+        <div class="section-kicker">DIAGNOSTIC MEANING</div>
+        <h2>Focused Diagnostic Meaning</h2>
+        <p class="static-selection-note">
+          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes.
+        </p>
+        <section class="evidence-pane screen2-review-target-summary">
+          <h3 data-screen2-focus="heading">Selected Focus Summary</h3>
+          <p class="screen2-review-selected-summary" data-screen2-focus="summary_line">
+            Select evidence above to change the local explanation focus only. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.
+          </p>
+          <div class="screen2-focus-summary-compact">
+            <div class="screen2-focus-summary-group">
+              <strong>Hierarchy</strong>
+              <dl class="screen2-selected-evidence-card">
+                <div><dt>Active domain lens</dt><dd data-screen2-focus="active_domain_lens">Mixed signal set</dd></div>
+                <div><dt>Active evidence group</dt><dd data-screen2-focus="active_evidence_group">No evidence group selected</dd></div>
+                <div><dt>Active metric / wait / SQL</dt><dd data-screen2-focus="active_metric_wait_sql">No metric, wait event, or SQL focus selected</dd></div>
+                <div><dt>Active diagnostic section</dt><dd data-screen2-focus="active_diagnostic_section">No diagnostic section focus selected</dd></div>
+                <div><dt>Active explanation focus</dt><dd data-screen2-focus="selected_target">Overall deterministic result</dd></div>
+              </dl>
+            </div>
+            <div class="screen2-focus-summary-group">
+              <strong>Deterministic context</strong>
+              <dl class="screen2-selected-evidence-card">
+                <div><dt>Focus type</dt><dd data-screen2-focus="target_type">overall_diagnostic_meaning</dd></div>
+                <div><dt>Inferred domain</dt><dd data-screen2-focus="inferred_domain">Mixed signal set</dd></div>
+                <div><dt>Primary issue / domain</dt><dd data-screen2-focus="primary_issue_domain">No dominant scored domain selected</dd></div>
+                <div class="screen2-outcome-row"><dt>Decision posture</dt><dd data-screen2-focus="decision_posture"><span class="status-pill warning">TUNE FIRST</span></dd></div>
+                <div class="screen2-outcome-row"><dt>Severity</dt><dd data-screen2-focus="severity"><span class="status-pill success">OK</span></dd></div>
+                <div class="screen2-outcome-row"><dt>Confidence</dt><dd data-screen2-focus="confidence"><span class="confidence-pill low">LOW</span></dd></div>
+              </dl>
+            </div>
+            <div class="screen2-focus-summary-facts">
+              <strong>Deterministic facts used</strong>
+              <p data-screen2-focus="deterministic_facts">Mixed CPU, I/O, Commit, Memory, RAC, and ADG signals</p>
+            </div>
+          </div>
+          <div class="screen2-explanation-control">
+            <button type="button"
+                    class="screen2-explanation-button"
+                    data-screen2-generate-explanation="true"
+                    data-screen2-explanation-provider-mode="oci">
+              Generate Focused Explanation
+            </button>
+            <div class="screen2-explanation-control-copy">
+              <strong>Provider mode: OCI</strong>
+              <p>
+                Calls the local dashboard explanation service for wording only when a provider is enabled.
+                No workflow request, audit record, governance record, diagnosis update, runtime change,
+                ML change, materialization, runtime-eligibility update, or future-run behavior change is created.
+              </p>
+              <p>
+                Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local selected focus and displayed explanation wording.
+              </p>
+              <p data-screen2-explanation-status="idle">
+                Default deterministic explanation is visible. Click generation only when you want optional wording refresh.
+              </p>
+            </div>
+          </div>
+          <p class="screen2-focus-boundary-note">
+            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.
+          </p>
+          <section class="screen2-focused-explanation-panel">
+            <h3>Focused Diagnostic Explanation</h3>
+            <div class="screen2-focused-explanation-list screen2-focus-meaning-copy">
+              <article class="screen2-focused-explanation-item">
+                <strong>Meaning</strong>
+                <p data-screen2-focus="meaning">
+                  The deterministic result is OK status with LOW confidence and a TUNE FIRST posture.
+                  The selected scope contains mixed CPU, I/O, Commit, Memory, RAC, and ADG signals,
+                  but no single scored domain crossed the deterministic dominance threshold.
+                </p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>What changes</strong>
+                <p data-screen2-focus="what_changes">Only local explanation focus can change on this screen.</p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>What does not change</strong>
+                <p data-screen2-focus="what_does_not_change">
+                  Deterministic diagnosis, scoring, recommendations, primary issue/domain, score, severity, confidence, parser output,
+                  runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility,
+                  future-run behavior, governed service behavior, evidence values, thresholds, and DB/governance/audit state remain unchanged.
+                </p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>Current impact</strong>
+                <p data-screen2-focus="impact">No local selection has changed the deterministic result.</p>
+              </article>
+              <article class="screen2-focused-explanation-item">
+                <strong>Go deeper</strong>
+                <p data-screen2-focus="handoff">
+                  For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.
+                </p>
+                <a class="inline-nav-hint" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">Continue to Screen 4 for deeper historical evidence review</a>
+              </article>
+            </div>
+          </section>
+	          <div class="mini-pill-group">
+	            <span class="mini-pill neutral">Evidence focus only</span>
+	            <span class="mini-pill neutral">Explanation focus</span>
+	            <span class="mini-pill neutral">No truth change</span>
+	            <span class="mini-pill neutral">No runtime action</span>
+	          </div>
+	        </section>
+	        <details class="screen2-focus-helper">
+	          <summary>How this focus works</summary>
+	          <div class="screen2-review-copy-grid">
+	          <article>
+	            <strong>Purpose</strong>
+	            <p>Explain the selected diagnostic evidence in the context of the current deterministic result.</p>
+          </article>
+	          <article>
+	            <strong>What changes</strong>
+	            <p>Only local explanation focus can change on this screen. Generate Focused Explanation refreshes explanatory wording only when the operator explicitly requests it.</p>
+	          </article>
+	          <article>
+	            <strong>What does not change</strong>
+	            <p>The deterministic diagnosis, score, confidence, recommendation, parser output, runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility, future-run behavior, and governed service behavior remain unchanged.</p>
+	          </article>
+          <article>
+            <strong>How to use this</strong>
+            <p>Select a domain lens, then choose an evidence group, metric, wait event, SQL signal, or diagnostic section to focus the explanation panel. Related selections remain grouped as local context.</p>
+          </article>
+	          <article>
+	            <strong>Go deeper</strong>
+	            <p>For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.</p>
+	            <a class="inline-nav-hint" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">Continue to Screen 4 for deeper historical evidence review</a>
+	          </article>
+          <article>
+            <strong>Diagnostic meaning</strong>
+            <p>Deterministic output remains authoritative. LLM-style wording may explain OK, LOW confidence, TUNE FIRST, mixed CPU, I/O, Commit, Memory, RAC, and ADG signals, but it does not replace diagnosis, scoring, recommendation, evidence values, thresholds, or runtime truth.</p>
+          </article>
+	          <article>
+	            <strong>Current interpretation</strong>
+	            <p>The current decision posture remains TUNE FIRST because the deterministic output shows mixed evidence and no local selection can recalculate or override it.</p>
+	          </article>
+	          </div>
+	        </details>
+	      </section>
+
     </div>
 
 
-    <div class="footer">Generated at May 18, 2026, 8:00 PM</div>
+    <div class="footer">Generated at May 19, 2026, 8:49 PM</div>
   </div>
 
   <script>
@@ -4616,7 +4945,7 @@
       // No approval controls. No runtime activation.
       const DASHBOARD_FOUNDATION_LABEL = 'Dashboard Interactivity Foundation';
       const DASHBOARD_PROPAGATION_LABEL = 'Cross-Screen Selection Propagation';
-      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedSystem", "selectedSnapshot", "selectedDomain", "selectedSeverity", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage"]);
+      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedSystem", "selectedSnapshot", "selectedDomain", "selectedSeverity", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "screen2ActiveFocusKey", "screen2ActiveFocusType", "screen2ActiveFocusValue", "screen2ActiveFocusLabel", "screen2ActiveFocusDomain", "screen2InferredDomain", "screen2ActiveDomainLens", "screen2ActiveEvidenceGroup", "screen2ActiveMetric", "screen2ActiveWaitEvent", "screen2ActiveSqlSignal", "screen2ActiveDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage"]);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = "agenticAiAwrAdvisor.dashboardInteractivityState.v1";
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
@@ -4627,10 +4956,19 @@
       const SOURCE_PICKER_SELECTOR = '[data-phase7-source-picker]';
       const EXISTING_RUN_LOOKUP_SELECTOR = '[data-phase7-existing-run-lookup-control="true"]';
       const EXISTING_RUN_OPTIONS_SELECTOR = '[data-phase7-existing-run-options="true"]';
-      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
-      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
-      const HTTP_SCHEME_PREFIX = 'http:' + '//';
+	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
+	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
+	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
+	      const HTTP_SCHEME_PREFIX = 'http:' + '//';
       const HTTPS_SCHEME_PREFIX = 'https:' + '//';
+	      const SCREEN2_EXPLANATION_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_SCREEN2_EXPLANATION_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen2/explanation')
+	      );
+	      const PHASE7_DASHBOARD_HEALTH_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/health')
+	      );
       const MAX_STATE_VALUE_LENGTH = 256;
       const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         awr: 'selectedAwr',
@@ -4706,6 +5044,29 @@
         source: 'selectedSourceMode',
         sourceContext: 'selectedSourceContext'
       });
+      const SCREEN2_FOCUS_STATE_KEYS = Object.freeze([
+        'selectedDomain',
+        'selectedEvidenceGroup',
+        'selectedMetricGroup',
+        'selectedWaitEventGroup',
+        'selectedSqlSignal',
+        'selectedDiagnosticSection'
+      ]);
+      const SCREEN2_FOCUS_ITEM_STATE_KEYS = Object.freeze([
+        'selectedEvidenceGroup',
+        'selectedMetricGroup',
+        'selectedWaitEventGroup',
+        'selectedSqlSignal',
+        'selectedDiagnosticSection'
+      ]);
+      const SCREEN2_FOCUS_TYPE_BY_STATE_KEY = Object.freeze({
+        selectedDomain: 'diagnostic_domain',
+        selectedEvidenceGroup: 'evidence_group',
+        selectedMetricGroup: 'metric_group',
+        selectedWaitEventGroup: 'wait_event_group',
+        selectedSqlSignal: 'sql_signal',
+        selectedDiagnosticSection: 'diagnostic_section'
+      });
       const PHASE7CM_SOURCE_MODE_REQUIRED_FIELDS = Object.freeze({
         local_staged: ['sourceSelectionMethod'],
         local_file: ['sourceSelectionMethod'],
@@ -4730,6 +5091,19 @@
           .replace(/[<>]/g, '')
           .trim()
           .slice(0, MAX_STATE_VALUE_LENGTH);
+      }
+
+      function safeExplanationText(value) {
+        if (value === undefined || value === null) {
+          return '';
+        }
+        return String(value)
+          .replace(/[<>]/g, '')
+          .replace(/(^|\s)#{1,6}\s+/g, '$1')
+          .replace(/[\u0000-\u001f\u007f]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 2000);
       }
 
       function isDashboardStateKey(key) {
@@ -4897,7 +5271,10 @@
         elements.forEach(function (element) {
           const key = stateKeyForSelectable(element);
           const value = valueForSelectable(element);
-          const isSelected = Boolean(key && value && safeState[key] === value);
+          let isSelected = Boolean(key && value && safeState[key] === value);
+          if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
+            isSelected = Boolean(key && value && safeState[key] === value);
+          }
           element.classList.toggle('is-selected', isSelected);
           element.setAttribute('data-selected', isSelected ? 'true' : 'false');
           if (element.hasAttribute('aria-selected')) {
@@ -4923,6 +5300,59 @@
             safeState[key] === value ? 'true' : 'false'
           );
         });
+      }
+
+      function screen2CurrentDomainLens(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return (
+          safeStateValue(safeState.screen2ActiveDomainLens) ||
+          safeStateValue(safeState.selectedDomain) ||
+          ''
+        );
+      }
+
+      function updateScreen2DomainScopedSelectors(state, root) {
+        const scope = root || document;
+        const domainLens = screen2CurrentDomainLens(state);
+        scope.querySelectorAll('[data-screen2-domain-scoped="true"]').forEach(function (grid) {
+          let visibleCount = 0;
+          const groupName = safeStateValue(grid.getAttribute('data-screen2-selector-group'));
+          const cards = grid.querySelectorAll('[data-dashboard-selectable="true"]');
+          cards.forEach(function (card) {
+            const cardDomain = safeStateValue(card.getAttribute('data-dashboard-select-domain'));
+            const visible = Boolean(domainLens && cardDomain === domainLens);
+            card.hidden = !visible;
+            card.setAttribute('data-screen2-domain-scope-active', visible ? 'true' : 'false');
+            if (visible) {
+              visibleCount += 1;
+            }
+          });
+          const emptyState = grid.parentElement
+            ? grid.parentElement.querySelector('[data-screen2-selector-empty-state]')
+            : null;
+          if (!emptyState) {
+            return;
+          }
+          emptyState.hidden = visibleCount > 0;
+          emptyState.textContent = screen2DomainScopedEmptyMessage(emptyState, groupName, domainLens);
+        });
+      }
+
+      function screen2DomainScopedEmptyMessage(emptyState, groupName, domainLens) {
+        if (!domainLens) {
+          return safeStateValue(emptyState.getAttribute('data-no-domain-message'));
+        }
+        const specificMessage = safeStateValue(
+          emptyState.getAttribute('data-empty-message-' + domainLens.toLowerCase())
+        );
+        if (specificMessage) {
+          return specificMessage;
+        }
+        const template = safeStateValue(emptyState.getAttribute('data-domain-empty-message'));
+        if (template) {
+          return template.replace('{domain}', domainLens);
+        }
+        return 'No ' + groupName.replace(/_/g, ' ') + ' items are available for the active ' + domainLens + ' lens.';
       }
 
       function updateDashboardStateInputs(state, root) {
@@ -5271,7 +5701,7 @@
         }
         if (mode === 'object_storage') {
           if (safeState.objectStorageValidationStatus === 'unavailable') {
-            return 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+            return 'Dashboard workflow service is not running. Start the service to use interactive features.';
           }
           return 'Complete Object Storage metadata and validate configured defaults. Missing: ' + missing.join(', ') + '.';
         }
@@ -5395,6 +5825,679 @@
         return missing;
       }
 
+      function isScreen2DiagnosticReviewAction(element) {
+        return false;
+      }
+
+      function screen2ActionMessage(element, state, missing) {
+        return 'Screen 2 evidence focus updates explanation context only; it does not submit review requests.';
+      }
+
+      function screen2MissingFields(element, state) {
+        return [];
+      }
+
+      function screen2FocusTypeForStateKey(key) {
+        return SCREEN2_FOCUS_TYPE_BY_STATE_KEY[safeStateValue(key)] || '';
+      }
+
+      function screen2InferDomainFromText(value) {
+        const text = safeStateValue(value).toUpperCase();
+        if (!text) {
+          return '';
+        }
+        if (text.indexOf('USER-I-O') !== -1 || text.indexOf('USER I/O') !== -1 || text.indexOf('I-O') !== -1 || text.indexOf('IO') === 0 || text.indexOf('I/O') !== -1) {
+          return 'IO';
+        }
+        if (text.indexOf('COMMIT') !== -1 || text.indexOf('LOG-FILE-SYNC') !== -1 || text.indexOf('LOG FILE SYNC') !== -1) {
+          return 'COMMIT';
+        }
+        if (text.indexOf('MEMORY') !== -1 || text.indexOf('PGA') !== -1) {
+          return 'MEMORY';
+        }
+        if (text.indexOf('RAC') !== -1 || text.indexOf('CLUSTER') !== -1) {
+          return 'RAC';
+        }
+        if (text.indexOf('ADG') !== -1 || text.indexOf('TRANSPORT') !== -1 || text.indexOf('APPLY') !== -1) {
+          return 'ADG';
+        }
+        if (text.indexOf('CPU') !== -1) {
+          return 'CPU';
+        }
+        return '';
+      }
+
+      function screen2EvidenceGroupValueForDomain(domain) {
+        return {
+          CPU: 'cpu-signal',
+          IO: 'i-o-signal',
+          MEMORY: 'memory-signal',
+          COMMIT: 'commit-signal',
+          RAC: 'rac-signal',
+          ADG: 'adg-signal'
+        }[safeStateValue(domain)] || '';
+      }
+
+      function screen2EvidenceGroupLabelForDomain(domain) {
+        return {
+          CPU: 'CPU Signal',
+          IO: 'I/O Signal',
+          MEMORY: 'Memory Signal',
+          COMMIT: 'Commit Signal',
+          RAC: 'RAC Signal',
+          ADG: 'ADG Signal'
+        }[safeStateValue(domain)] || '';
+      }
+
+      function screen2DisplayLabelForSelection(value) {
+        const text = safeStateValue(value);
+        if (!text) {
+          return '';
+        }
+        const knownLabels = {
+          'cpu-signal': 'CPU Signal',
+          'i-o-signal': 'I/O Signal',
+          'memory-signal': 'Memory Signal',
+          'commit-signal': 'Commit Signal',
+          'rac-signal': 'RAC Signal',
+          'adg-signal': 'ADG Signal',
+          'CPU-db-cpu-db-time': 'DB CPU % DB Time',
+          'IO-user-i-o-pressure': 'User I/O Pressure',
+          'MEMORY-pga-spill-pressure': 'PGA Spill Pressure',
+          'RAC-cluster-wait': 'Cluster Wait %',
+          'wait-log-file-sync': 'log file sync',
+          'wait-rac-cluster': 'RAC / cluster waits',
+          'diagnostic-snapshot': 'Diagnostic Snapshot',
+          'current-diagnostic-drivers': 'Current Diagnostic Drivers',
+          'visual-summary': 'Visual Summary',
+          'health-data-completeness': 'Health / Data Completeness',
+          'selected-scope-explanation': 'Selected-Scope Explanation',
+          'diagnostic-conclusion': 'Diagnostic Conclusion',
+          'similarity-context': 'Similarity Context',
+          'multi-snapshot-summary': 'Multi-Snapshot Summary',
+          'trend-findings': 'Trend Findings',
+          'anomaly-windows': 'Anomaly Windows',
+          'topology-assessment': 'Topology Assessment',
+          'latest-snapshot-assessment': 'Latest Snapshot Assessment'
+        };
+        return knownLabels[text] || text;
+      }
+
+      function screen2LabelForSelectable(element, value) {
+        if (!element || !element.querySelector) {
+          return screen2DisplayLabelForSelection(value);
+        }
+        const explicitLabel = safeStateValue(element.getAttribute('data-dashboard-select-label'));
+        if (explicitLabel) {
+          return explicitLabel;
+        }
+        const strong = element.querySelector('strong');
+        if (strong && safeStateValue(strong.textContent)) {
+          return safeStateValue(strong.textContent);
+        }
+        return screen2DisplayLabelForSelection(value);
+      }
+
+      function screen2SelectionDomainForStateKey(state, key) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (key === 'selectedDiagnosticSection') {
+          return '';
+        }
+        const value = safeStateValue(safeState[key]);
+        if (!value) {
+          return '';
+        }
+        return screen2InferDomainFromText(value);
+      }
+
+      function screen2ClearSelectionLabelForKey(state, key) {
+        if (key === 'selectedEvidenceGroup') {
+          state.screen2ActiveEvidenceGroup = '';
+        } else if (key === 'selectedMetricGroup') {
+          state.screen2ActiveMetric = '';
+        } else if (key === 'selectedWaitEventGroup') {
+          state.screen2ActiveWaitEvent = '';
+        } else if (key === 'selectedSqlSignal') {
+          state.screen2ActiveSqlSignal = '';
+        } else if (key === 'selectedDiagnosticSection') {
+          state.screen2ActiveDiagnosticSection = '';
+        }
+      }
+
+      function screen2ClearIncompatibleFocusContext(state, domain, activeKey) {
+        const domainLens = safeStateValue(domain);
+        if (!domainLens) {
+          return;
+        }
+        ['selectedEvidenceGroup', 'selectedMetricGroup', 'selectedWaitEventGroup', 'selectedSqlSignal'].forEach(function (key) {
+          if (key === activeKey) {
+            return;
+          }
+          const existingDomain = screen2SelectionDomainForStateKey(state, key);
+          if (existingDomain && existingDomain !== domainLens) {
+            state[key] = '';
+            screen2ClearSelectionLabelForKey(state, key);
+          }
+        });
+      }
+
+      function screen2EnsureEvidenceParentForDomain(state, domain) {
+        const domainLens = safeStateValue(domain);
+        if (!domainLens) {
+          return;
+        }
+        const evidenceDomain = screen2SelectionDomainForStateKey(state, 'selectedEvidenceGroup');
+        if (evidenceDomain === domainLens) {
+          if (!state.screen2ActiveEvidenceGroup) {
+            state.screen2ActiveEvidenceGroup = screen2DisplayLabelForSelection(state.selectedEvidenceGroup);
+          }
+          return;
+        }
+        const evidenceValue = screen2EvidenceGroupValueForDomain(domainLens);
+        if (!evidenceValue) {
+          return;
+        }
+        state.selectedEvidenceGroup = evidenceValue;
+        state.screen2ActiveEvidenceGroup = screen2EvidenceGroupLabelForDomain(domainLens);
+      }
+
+      function screen2ActiveFocus(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const activeKey = safeStateValue(safeState.screen2ActiveFocusKey);
+        const activeValue = safeStateValue(safeState.screen2ActiveFocusValue);
+        const activeLabel = safeStateValue(safeState.screen2ActiveFocusLabel) ||
+          screen2DisplayLabelForSelection(activeValue);
+        if (screen2FocusTypeForStateKey(activeKey) && activeValue) {
+          const activeType = screen2FocusTypeForStateKey(activeKey);
+          const activeDomain = activeKey === 'selectedDiagnosticSection'
+            ? ''
+            : (
+              safeStateValue(safeState.screen2InferredDomain) ||
+              safeStateValue(safeState.screen2ActiveFocusDomain) ||
+              screen2InferDomainFromText(activeValue)
+            );
+          return {
+            key: activeKey,
+            type: activeType,
+            value: activeValue,
+            label: activeLabel || activeValue,
+            inferredDomain: activeDomain
+          };
+        }
+        const fallbackKeys = [
+          'selectedDiagnosticSection',
+          'selectedSqlSignal',
+          'selectedWaitEventGroup',
+          'selectedMetricGroup',
+          'selectedEvidenceGroup',
+          'selectedDomain'
+        ];
+        for (let index = 0; index < fallbackKeys.length; index += 1) {
+          const key = fallbackKeys[index];
+          const value = safeStateValue(safeState[key]);
+          if (!value) {
+            continue;
+          }
+          return {
+            key: key,
+            type: screen2FocusTypeForStateKey(key),
+            value: value,
+            label: screen2DisplayLabelForSelection(value),
+            inferredDomain: key === 'selectedDiagnosticSection' ? '' : screen2InferDomainFromText(value)
+          };
+        }
+        return {
+          key: '',
+          type: 'overall_diagnostic_meaning',
+          value: '',
+          label: '',
+          inferredDomain: ''
+        };
+      }
+
+      function screen2SelectedEvidenceTarget(state) {
+        return screen2ActiveFocus(state).value || '';
+      }
+
+      function screen2SelectedEvidenceType(state) {
+        return screen2ActiveFocus(state).type || 'diagnostic_evidence';
+      }
+
+      function screen2SelectedFocusDomain(state) {
+        return screen2ActiveFocus(state).inferredDomain || '';
+      }
+
+      function screen2FocusValue(panel, key, fallback) {
+        if (!panel || !panel.getAttribute) {
+          return fallback || '';
+        }
+        return safeStateValue(panel.getAttribute('data-screen2-' + key)) || fallback || '';
+      }
+
+	      function screen2FocusedDiagnosticMeaning(state, panel) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const activeFocus = screen2ActiveFocus(safeState);
+        const selectedTarget = activeFocus.value;
+        const selectedTargetLabel = activeFocus.label || selectedTarget;
+        const targetType = activeFocus.type;
+        const focusDomain = activeFocus.inferredDomain;
+        const activeDomainLensRaw = (
+          safeStateValue(safeState.screen2ActiveDomainLens) ||
+          safeStateValue(safeState.selectedDomain) ||
+          focusDomain ||
+          ''
+        );
+        const defaultMeaning = 'The deterministic result is ' + screen2FocusValue(panel, 'overall-status', 'OK') + ' status with ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ' confidence and a ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ' posture. The selected scope contains mixed CPU, I/O, Commit, Memory, RAC, and ADG signals, but no single scored domain crossed the deterministic dominance threshold.';
+        const isDiagnosticSection = selectedTarget && targetType === 'diagnostic_section';
+        const activeDomainLens = activeDomainLensRaw
+          ? (isDiagnosticSection ? activeDomainLensRaw + ' (preserved prior context)' : activeDomainLensRaw)
+          : 'No domain lens selected';
+        const activeEvidenceGroup = safeStateValue(safeState.screen2ActiveEvidenceGroup) ||
+          screen2DisplayLabelForSelection(safeState.selectedEvidenceGroup) ||
+          'No evidence group selected';
+        const activeMetricWaitSqlParts = [
+          safeStateValue(safeState.screen2ActiveMetric) || screen2DisplayLabelForSelection(safeState.selectedMetricGroup),
+          safeStateValue(safeState.screen2ActiveWaitEvent) || screen2DisplayLabelForSelection(safeState.selectedWaitEventGroup),
+          safeStateValue(safeState.screen2ActiveSqlSignal) || screen2DisplayLabelForSelection(safeState.selectedSqlSignal)
+        ].filter(Boolean);
+        const activeDiagnosticSection = safeStateValue(safeState.screen2ActiveDiagnosticSection) ||
+          screen2DisplayLabelForSelection(safeState.selectedDiagnosticSection) ||
+          'No diagnostic section focus selected';
+        const genericMeaning = selectedTarget
+          ? (isDiagnosticSection
+            ? 'This diagnostic section focus changes which part of the report is being explained. It does not select a governing domain or change the deterministic result. Prior domain and evidence context remain preserved as local context only.'
+            : 'This selection changes only the explanation focus for the selected evidence item. Deterministic diagnosis, scoring, recommendation, parser output, runtime behavior, and learning state remain unchanged.')
+          : defaultMeaning;
+        const summaryHeading = 'Selected Focus Summary';
+        const focusMap = {
+          CPU: {
+            heading: summaryHeading,
+            meaning: 'The selected CPU signal shows CPU pressure is visible in this interval, with DB CPU % DB Time = ' + screen2FocusValue(panel, 'cpu-value', '30.4') + '. This is meaningful evidence, but it did not become the governing diagnostic domain for this selected scope.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'DB CPU % DB Time = ' + screen2FocusValue(panel, 'cpu-value', '30.4'),
+            handoff: 'Use Screen 4 to inspect CPU behavior over time, including trend and anomaly context.'
+          },
+          IO: {
+            heading: summaryHeading,
+            meaning: 'The selected I/O signal shows User I/O Pressure = ' + screen2FocusValue(panel, 'io-value', '13.0') + '. It contributes to the mixed evidence picture, but it does not establish a single dominant governing domain or override the current posture.',
+            impact: 'The deterministic result remains unchanged.',
+            facts: 'User I/O Pressure = ' + screen2FocusValue(panel, 'io-value', '13.0'),
+            handoff: 'Use Screen 4 to inspect I/O trend, anomaly, and similarity context.'
+          },
+          MEMORY: {
+            heading: summaryHeading,
+            meaning: 'The selected MEMORY signal shows PGA Spill Pressure = ' + screen2FocusValue(panel, 'memory-value', '0.03') + '. Memory evidence is present, but it remains below the governing threshold for this selected scope, so it should be treated as context rather than the primary diagnostic issue.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'PGA Spill Pressure = ' + screen2FocusValue(panel, 'memory-value', '0.03'),
+            handoff: 'Use Screen 4 to review memory-related trend, anomaly, and historical context.'
+          },
+          COMMIT: {
+            heading: summaryHeading,
+            meaning: 'The selected COMMIT signal shows commit latency is present in this interval, with log file sync at ' + screen2FocusValue(panel, 'commit-value', '8.4') + '. This is meaningful evidence, but it is not strong enough by itself to override the mixed-signal diagnosis.',
+            impact: 'The decision posture remains ' + screen2FocusValue(panel, 'posture', 'TUNE FIRST') + ', confidence remains ' + screen2FocusValue(panel, 'confidence-label', 'LOW') + ', and no dominant scored domain is selected.',
+            facts: 'log file sync = ' + screen2FocusValue(panel, 'commit-value', '8.4'),
+            handoff: 'Use Screen 4 to inspect commit wait trend and anomaly context.'
+          },
+          RAC: {
+            heading: summaryHeading,
+            meaning: 'The selected RAC signal shows cluster wait context at ' + screen2FocusValue(panel, 'rac-value', '2.16') + '%. RAC may help explain topology-related workload behavior, but it is not acting as a standalone governing issue in this result.',
+            impact: 'The deterministic result remains unchanged.',
+            facts: 'Cluster Wait % = ' + screen2FocusValue(panel, 'rac-value', '2.16'),
+            handoff: 'Use Screen 4 to review cluster wait behavior and topology context over time.'
+          },
+          ADG: {
+            heading: summaryHeading,
+            meaning: screen2FocusValue(panel, 'adg-value', 'Transport/apply lag evidence is present') + '. ADG / redo transport evidence is present as topology/context. It should be interpreted as context for the selected workload, not as a standalone diagnostic or capacity trigger in this result.',
+            impact: 'The deterministic diagnosis remains unchanged.',
+            facts: screen2FocusValue(panel, 'adg-value', 'Transport/apply lag evidence is present'),
+            handoff: 'Use Screen 4 to review historical topology and Data Guard-related context where available.'
+          }
+        };
+        const focus = focusMap[focusDomain] || {
+          heading: summaryHeading,
+          meaning: genericMeaning,
+          impact: selectedTarget
+            ? 'Only the local explanation focus changes.'
+            : 'No local selection has changed the deterministic result.',
+          facts: selectedTarget
+            ? 'Selected deterministic evidence item: ' + selectedTarget
+            : 'Mixed CPU, I/O, Commit, Memory, RAC, and ADG signals; no single scored domain crossed the deterministic dominance threshold.',
+          handoff: 'For deeper historical evidence, trend, anomaly, and similarity review, continue to Screen 4.'
+        };
+        return {
+          heading: focus.heading,
+          summary_line: selectedTarget
+            ? 'Local hierarchy context preserved for the active explanation focus. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.'
+            : 'Select evidence above to change the local explanation focus only. Deterministic diagnosis, scoring, recommendations, parser output, runtime behavior, and governed service behavior remain unchanged.',
+          meaning: focus.meaning,
+          impact: focus.impact,
+          handoff: focus.handoff,
+          selected_target: selectedTargetLabel || 'Overall deterministic result',
+          target_type: selectedTarget ? targetType : 'overall_diagnostic_meaning',
+          active_domain_lens: activeDomainLens,
+          active_evidence_group: isDiagnosticSection && activeEvidenceGroup !== 'No evidence group selected'
+            ? activeEvidenceGroup + ' (preserved prior context)'
+            : activeEvidenceGroup,
+          active_metric_wait_sql: activeMetricWaitSqlParts.length
+            ? activeMetricWaitSqlParts.join(' | ') + (isDiagnosticSection ? ' (preserved prior context)' : '')
+            : 'No metric, wait event, or SQL focus selected',
+          active_diagnostic_section: activeDiagnosticSection,
+          inferred_domain: focusDomain || (selectedTarget ? 'Not domain-specific' : 'Mixed signal set'),
+          deterministic_facts: focus.facts,
+          decision_posture: screen2FocusValue(panel, 'posture', 'TUNE FIRST'),
+          primary_issue_domain: screen2FocusValue(panel, 'primary-issue-domain', 'No dominant scored domain selected'),
+          severity: screen2FocusValue(panel, 'severity-label', 'OK'),
+          confidence: screen2FocusValue(panel, 'confidence-label', 'LOW'),
+          what_changes: selectedTarget
+            ? 'Only the local evidence focus and explanation wording change.'
+            : 'Only local explanation focus can change on this screen.',
+          what_does_not_change: 'Deterministic diagnosis, scoring, recommendations, primary issue/domain, score, severity, confidence, parser output, runtime behavior, ML behavior, learning candidates, materialization state, runtime eligibility, future-run behavior, governed service behavior, evidence values, thresholds, and DB/governance/audit state remain unchanged.',
+          active_focus_guidance: selectedTarget
+            ? 'Last selected item is the active explanation focus.'
+            : 'No evidence focus selected; showing the overall deterministic result.'
+	        };
+	      }
+
+	      function screen2ExplanationStatusTarget(button) {
+	        const panel = button && button.closest
+	          ? button.closest('[data-screen2-focused-meaning-panel]')
+	          : null;
+	        return panel ? panel.querySelector('[data-screen2-explanation-status]') : null;
+	      }
+
+	      function setScreen2ExplanationStatus(button, status, message) {
+	        const target = screen2ExplanationStatusTarget(button);
+	        if (!target) {
+	          return;
+	        }
+	        target.setAttribute('data-screen2-explanation-status', status);
+	        target.textContent = message;
+	      }
+
+      function applyScreen2GeneratedExplanation(panel, explanation) {
+        if (!panel || !explanation) {
+          return;
+        }
+        const safeExplanation = safeExplanationText(explanation);
+	        if (!safeExplanation) {
+	          return;
+	        }
+	        panel.querySelectorAll('[data-screen2-focus="meaning"]').forEach(function (element) {
+	          element.textContent = safeExplanation;
+	        });
+	      }
+
+      function screen2StatusPillClass(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'ok' || normalized === 'success' || normalized === 'healthy') {
+          return 'success';
+        }
+        if (normalized === 'warning' || normalized === 'medium' || normalized === 'tune first') {
+          return 'warning';
+        }
+        if (normalized === 'high' || normalized === 'critical' || normalized === 'error') {
+          return 'error';
+        }
+        if (!normalized || normalized === 'not available' || normalized === 'n/a') {
+          return 'na';
+        }
+        return 'neutral';
+      }
+
+      function screen2ConfidencePillClass(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'low') {
+          return 'low';
+        }
+        if (normalized === 'medium' || normalized === 'moderate') {
+          return 'medium';
+        }
+        if (normalized === 'high') {
+          return 'high';
+        }
+        return 'low';
+      }
+
+      function screen2FocusValueMarkup(key, value) {
+        const safeValue = safeStateValue(value);
+        if (key === 'severity') {
+          return '<span class="status-pill ' + screen2StatusPillClass(safeValue) + '">' + escapeHtml(safeValue || 'OK') + '</span>';
+        }
+        if (key === 'decision_posture') {
+          return '<span class="status-pill ' + screen2StatusPillClass(safeValue) + '">' + escapeHtml(safeValue || 'TUNE FIRST') + '</span>';
+        }
+        if (key === 'confidence') {
+          return '<span class="confidence-pill ' + screen2ConfidencePillClass(safeValue) + '">' + escapeHtml(safeValue || 'LOW') + '</span>';
+        }
+        return '';
+      }
+
+      function applyScreen2FocusValue(element, key, value) {
+        const markup = screen2FocusValueMarkup(key, value);
+        if (markup) {
+          element.innerHTML = markup;
+          return;
+        }
+        element.textContent = value;
+      }
+
+	      function screen2ExplanationViolatesBoundary(explanation) {
+	        const lowered = safeExplanationText(explanation).toLowerCase();
+	        const unsafeMarkers = [
+	          'changed the diagnosis',
+	          'changes the diagnosis',
+	          'updated the diagnosis',
+	          'updates the diagnosis',
+	          'changed the score',
+	          'changes the score',
+	          'updated the score',
+	          'updates the score',
+	          'changed confidence',
+	          'updates confidence',
+	          'updated the recommendation',
+	          'changes the recommendation',
+	          'runtime behavior changed',
+	          'changes runtime behavior',
+	          'parser output changed',
+	          'materialized',
+	          'runtime eligible',
+	          'normal runtime eligibility',
+	          'runtime eligibility aligns',
+	          'runtime eligibility is normal',
+	          'created audit',
+	          'created governance',
+	          'created review',
+	          'trained the model',
+	          'future runs will',
+	          'below concern threshold',
+	          'below concern thresholds',
+	          'above concern threshold',
+	          'above concern thresholds'
+	        ];
+	        return unsafeMarkers.some(function (marker) {
+	          return lowered.indexOf(marker) !== -1;
+	        });
+	      }
+
+	      function screen2GeneratedExplanationText(focusedMeaning, providerMode) {
+	        const mode = providerMode ? providerMode.toUpperCase() : 'LOCAL';
+	        return 'Generated explanation (' + mode + ' mode): ' + focusedMeaning.meaning +
+	          ' LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes. Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local explanation focus and optional LLM-worded explanation.';
+	      }
+
+	      function dashboardScreen2ExplanationProvider(context) {
+	        if (!window.fetch) {
+	          return Promise.reject(new Error('fetch unavailable'));
+	        }
+	        const payload = Object.assign({}, context || {}, {
+	          screen_id: 'screen_2',
+	          request_type: 'screen2_focused_explanation',
+	          non_mutating_explanation_only: true
+	        });
+	        return window.fetch(SCREEN2_EXPLANATION_ENDPOINT, {
+	          method: 'POST',
+	          headers: {
+	            'Content-Type': 'application/json'
+	          },
+	          body: JSON.stringify(payload)
+	        }).then(function (response) {
+	          return response.json().catch(function () {
+	            return {};
+	          }).then(function (payload) {
+	            if (!response.ok) {
+	              const error = new Error(payload && payload.message ? payload.message : 'provider request failed');
+	              error.payload = payload;
+	              error.httpStatus = response.status;
+	              throw error;
+	            }
+	            return payload;
+	          });
+	        });
+	      }
+	      window.dashboardScreen2ExplanationProvider = dashboardScreen2ExplanationProvider;
+
+	      function handleScreen2GenerateExplanationClick(event) {
+	        if (!event || !(event.target instanceof Element)) {
+	          return;
+	        }
+	        const button = event.target.closest(SCREEN2_EXPLANATION_GENERATE_SELECTOR);
+	        if (!button) {
+	          return;
+	        }
+	        event.preventDefault();
+	        const panel = button.closest('[data-screen2-focused-meaning-panel]');
+	        if (!panel) {
+	          return;
+	        }
+	        const providerMode = safeStateValue(button.getAttribute('data-screen2-explanation-provider-mode')).toLowerCase() || 'off';
+	        const focusedMeaning = screen2FocusedDiagnosticMeaning(readDashboardState(), panel);
+	        const context = Object.freeze({
+	          provider_mode: providerMode,
+	          selected_focus: focusedMeaning.selected_target,
+	          target_type: focusedMeaning.target_type,
+	          inferred_domain: focusedMeaning.inferred_domain,
+	          decision_posture: focusedMeaning.decision_posture,
+	          primary_issue_domain: focusedMeaning.primary_issue_domain,
+	          severity: focusedMeaning.severity,
+	          confidence: focusedMeaning.confidence,
+	          deterministic_facts: focusedMeaning.deterministic_facts,
+	          deterministic_values_remain_authoritative: true,
+	          non_mutating_explanation_only: true,
+	          allowed_screen2_changes: ['local_selected_focus', 'displayed_explanation_wording'],
+	          forbidden_screen2_changes: [
+	            'diagnosis',
+	            'primary_issue_domain',
+	            'score',
+	            'severity',
+	            'confidence',
+	            'recommendation',
+	            'parser_output',
+	            'runtime_behavior',
+	            'ml_behavior',
+	            'learning_candidates',
+	            'materialization',
+	            'runtime_eligibility',
+	            'future_run_behavior',
+	            'evidence_values',
+	            'thresholds',
+	            'db_governance_audit_state'
+	          ]
+	        });
+		        if (providerMode === 'off') {
+		          setScreen2ExplanationStatus(
+		            button,
+		            'provider-off',
+		            'Explanation provider is off in this dashboard view. The deterministic explanation remains available, and no provider call or platform state change was created.'
+		          );
+		          return;
+		        }
+		        const providerHook = window.dashboardScreen2ExplanationProvider;
+	        setScreen2ExplanationStatus(
+	          button,
+	          'pending-provider',
+	          'Requesting explanatory wording only. Deterministic values remain authoritative.'
+	        );
+	        Promise.resolve(providerHook(context))
+	          .then(function (providerResult) {
+	            const explanation = safeExplanationText(providerResult && providerResult.explanation);
+	            const providerStatus = safeStateValue(providerResult && providerResult.status);
+	            const providerMessage = safeExplanationText(providerResult && providerResult.message);
+	            if (providerStatus === 'provider_off') {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-off',
+	                providerMessage || 'Explanation generation is disabled for this run. The deterministic explanation remains available.'
+	              );
+	              return;
+	            }
+	            if (!explanation) {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-empty',
+	                providerMessage || 'Provider returned no explanatory wording. Default deterministic explanation remains visible.'
+	              );
+	              return;
+	            }
+	            if (screen2ExplanationViolatesBoundary(explanation)) {
+	              setScreen2ExplanationStatus(
+	                button,
+	                'provider-boundary-rejected',
+	                'Generated wording was not applied because it conflicted with deterministic Screen 2 boundaries. The deterministic explanation remains available.'
+	              );
+	              return;
+	            }
+	            applyScreen2GeneratedExplanation(panel, explanation);
+	            setScreen2ExplanationStatus(
+	              button,
+	              'generated-provider',
+	              providerMessage || 'Focused explanation wording refreshed. Only explanatory text changed; platform truth and runtime behavior remain unchanged.'
+	            );
+	          })
+		          .catch(function (error) {
+		            const payload = error && error.payload ? error.payload : {};
+		            const message = safeExplanationText(payload.message);
+		            const loweredMessage = message.toLowerCase();
+		            let fallbackMessage = 'Explanation provider service is not running. Start the dashboard workflow service and try again. The deterministic explanation remains available.';
+		            if (providerMode === 'oci' && payload.status === 'provider_failed') {
+		              fallbackMessage = 'OCI GenAI explanation request failed. The deterministic explanation remains available.';
+		            } else if (error && error.httpStatus === 404) {
+		              fallbackMessage = 'Explanation endpoint is not available in the dashboard workflow service. The deterministic explanation remains available.';
+		            } else if (message && error && error.httpStatus !== 404 && loweredMessage.indexOf('unsupported') === -1) {
+		              fallbackMessage = message;
+		            }
+		            setScreen2ExplanationStatus(
+		              button,
+		              'provider-failed',
+		              fallbackMessage
+		            );
+		          });
+	      }
+
+	      function updateScreen2DiagnosticReviewSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const selectedTarget = screen2SelectedEvidenceTarget(safeState);
+        const targetType = screen2SelectedEvidenceType(safeState);
+        const values = {
+          selected_target: selectedTarget || 'Select a domain, finding, evidence group, metric, wait event, SQL signal, or section.',
+          target_type: selectedTarget ? targetType : 'No diagnostic evidence target selected.',
+          boundary: 'Evidence focus only. Diagnosis, scoring, recommendations, parser output, runtime execution, and runtime eligibility remain unchanged.'
+        };
+        Object.keys(values).forEach(function (key) {
+          scope.querySelectorAll('[data-screen2-review-summary="' + key + '"]').forEach(function (element) {
+            element.textContent = values[key];
+          });
+        });
+        scope.querySelectorAll('[data-screen2-focused-meaning-panel]').forEach(function (panel) {
+          const focusedMeaning = screen2FocusedDiagnosticMeaning(safeState, panel);
+          Object.keys(focusedMeaning).forEach(function (key) {
+            panel.querySelectorAll('[data-screen2-focus="' + key + '"]').forEach(function (element) {
+              applyScreen2FocusValue(element, key, focusedMeaning[key]);
+            });
+          });
+        });
+      }
+
       function updateScreen1ParserGovernanceSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -5469,42 +6572,45 @@
           };
         }
         return {
-          actionType: 'awr_field_mapping_review',
-          workflowType: 'screen1_awr_field_mapping_review',
-          governanceIntent: 'review governed AWR field mapping candidate',
-          governanceStatus: 'field_review_requested',
-          nextStep: 'Queued for governed review. No runtime behavior changed.'
-        };
+	          actionType: 'awr_field_mapping_review',
+	          workflowType: 'screen1_awr_field_mapping_review',
+	          governanceIntent: 'review governed AWR field mapping candidate',
+	          governanceStatus: 'field_review_requested',
+	          nextStep: 'Queued for governed parser mapping review. Materialization and runtime eligibility approval remain separate; no current runtime behavior changed.'
+	        };
       }
 
-      function screen1BacklogDecisionConfig(decision) {
-        const normalizedDecision = safeStateValue(decision);
-        if (normalizedDecision === 'Reject / close') {
-          return {
-            actionType: 'parser_unknown_reject',
-            workflowType: 'screen1_parser_unknown_reject',
-            governanceIntent: 'reject or close parser signal backlog item',
-            governanceStatus: 'rejection_requested',
-            nextStep: 'Queued for governed review. No runtime behavior changed.'
-          };
-        }
-        if (normalizedDecision === 'Defer / keep in backlog') {
-          return {
-            actionType: 'parser_unknown_route',
-            workflowType: 'screen1_parser_unknown_route',
-            governanceIntent: 'defer parser signal in governed backlog',
-            governanceStatus: 'route_requested',
-            nextStep: 'Queued for governed review. No runtime behavior changed.'
-          };
-        }
-        return {
-          actionType: 'parser_unknown_review',
-          workflowType: 'screen1_parser_unknown_review',
-          governanceIntent: 'review parser signal backlog decision',
-          governanceStatus: 'review_requested',
-          nextStep: 'Queued for governed review. No runtime behavior changed.'
-        };
-      }
+	      function screen1BacklogDecisionConfig(decision) {
+	        const normalizedDecision = safeStateValue(decision);
+	        const governedBacklogNextStep = (
+	          'Queued for parser governance review. If accepted for implementation, this should proceed to Screen 6 learning/materialization governance before any future-run influence. No current runtime behavior changed.'
+	        );
+	        if (normalizedDecision === 'Reject / close') {
+	          return {
+	            actionType: 'parser_unknown_reject',
+	            workflowType: 'screen1_parser_unknown_reject',
+	            governanceIntent: 'reject or close parser signal backlog item',
+	            governanceStatus: 'rejection_requested',
+	            nextStep: governedBacklogNextStep
+	          };
+	        }
+	        if (normalizedDecision === 'Defer / keep in backlog') {
+	          return {
+	            actionType: 'parser_unknown_route',
+	            workflowType: 'screen1_parser_unknown_route',
+	            governanceIntent: 'defer parser signal in governed backlog',
+	            governanceStatus: 'route_requested',
+	            nextStep: governedBacklogNextStep
+	          };
+	        }
+	        return {
+	          actionType: 'parser_unknown_review',
+	          workflowType: 'screen1_parser_unknown_review',
+	          governanceIntent: 'review parser signal backlog decision',
+	          governanceStatus: 'review_requested',
+	          nextStep: governedBacklogNextStep
+	        };
+	      }
 
       function screen1FieldPanelState(panel) {
         const state = readDashboardState();
@@ -5678,18 +6784,49 @@
           .replace(/Phase 7 validation/g, 'governed validation');
       }
 
-      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message) {
-        if (!panel) {
-          return;
-        }
-        const values = {
-          status: screen1DisplayMessage(status || message || 'Waiting for submission.'),
-          request_id: requestId || 'Not issued',
-          audit_id: auditReference || 'Not issued',
-          decision: decision || 'Not submitted',
-          runtime_influence: 'Not active',
-          next_step: nextStep || 'Select a decision and submit a governed request.'
-        };
+	      function setScreen1GovernanceReviewResult(panel, status, requestId, auditReference, decision, nextStep, message, resultPayload) {
+	        if (!panel) {
+	          return;
+	        }
+	        const isBacklogPanel = Boolean(panel.matches && panel.matches('[data-screen1-backlog-review="true"]'));
+	        const statusText = status === 'Accepted' && isBacklogPanel
+	          ? 'Accepted / queued for parser governance review'
+	          : status;
+	        const responsePayload = resultPayload || {};
+	        const sourceSummary = responsePayload.source_summary || {};
+	        const dbStatus = safeStateValue(responsePayload.db_persistence_status || sourceSummary.db_persistence_status || '');
+	        const dbRecord = safeStateValue(responsePayload.db_record_reference || sourceSummary.db_record_reference || '');
+	        const dbMessage = safeStateValue(responsePayload.db_persistence_message || sourceSummary.db_persistence_message || '');
+	        const tablesTouched = responsePayload.db_tables_touched || sourceSummary.db_tables_touched || [];
+	        let persistenceText = 'Not submitted.';
+	        let dbRecordText = 'Not created';
+	        if (dbStatus === 'persisted') {
+	          persistenceText = 'DB-backed parser governance record persisted; JSON audit envelope also recorded.';
+	          dbRecordText = dbRecord || 'AWR_WORKFLOW_REQUEST record persisted';
+	          if (Array.isArray(tablesTouched) && tablesTouched.length) {
+	            persistenceText += ' Tables: ' + tablesTouched.join(', ') + '.';
+	          }
+	        } else if (dbStatus === 'unavailable' || dbStatus === 'failed') {
+	          persistenceText = 'JSON audit fallback only - DB persistence unavailable. No database governance record was created.';
+	          dbRecordText = 'Not created';
+	        } else if (auditReference) {
+	          persistenceText = 'Governed workflow/audit JSON record created through the dashboard service queue; database persistence was not reported.';
+	          dbRecordText = 'Not reported';
+	        }
+	        if (dbMessage && dbStatus !== 'persisted') {
+	          persistenceText += ' ' + screen1DisplayMessage(dbMessage);
+	        }
+		        const values = {
+		          status: screen1DisplayMessage(statusText || message || 'Waiting for submission.'),
+		          request_id: requestId || 'Not issued',
+		          audit_id: auditReference || 'Not issued',
+		          persistence: persistenceText,
+		          db_record: dbRecordText,
+		          decision: decision || 'Not submitted',
+		          runtime_influence: 'Not applied to current run; pending separate materialization/runtime-eligibility approval.',
+		          next_step: nextStep || 'Select a decision and submit a governed request.',
+		          screen6_status: 'Not activated by this submit. Eligible for downstream review only if persisted governance context is accepted for implementation.'
+		        };
         Object.keys(values).forEach(function (key) {
           panel.querySelectorAll('[data-screen1-governance-result="' + key + '"]').forEach(function (element) {
             element.textContent = values[key];
@@ -5751,8 +6888,12 @@
             proposed_normalized_field_name: proposedMapping,
             persisted_review_record_count: isFieldPanel ? 0 : 24,
             current_run_unknown_count: isFieldPanel ? null : 0,
-            runtime_influence_state: 'not_active',
-            future_run_influence_gated: true,
+	            runtime_influence_state: 'not_active',
+	            persistence_target: 'dashboard_workflow_service_db_backed_governance',
+	            database_persistence_requested: true,
+	            browser_database_persistence_performed: false,
+	            screen6_candidate_created: false,
+	            future_run_influence_gated: true,
             future_run_influence_granted: false,
             future_run_influence_active: false,
             runtime_activation_requested: false,
@@ -5871,11 +7012,12 @@
               panel,
               'Accepted',
               payload.request_id || '',
-              payload.audit_reference || '',
-              formState.decision,
-              config.nextStep,
-              payload.message || ''
-            );
+	              payload.audit_reference || '',
+	              formState.decision,
+	              config.nextStep,
+	              payload.message || '',
+	              payload
+	            );
           })
           .catch(function () {
             setScreen1GovernanceReviewResult(
@@ -5884,7 +7026,7 @@
               '',
               '',
               formState.decision,
-              'Start scripts/dashboard_workflow_service.py and retry.',
+              'Dashboard workflow service is not running. Start the service to use interactive features.',
               ''
             );
           });
@@ -6027,6 +7169,8 @@
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
         updateScreen1GovernanceReviewWorkflow(root);
+        updateScreen2DiagnosticReviewSummary(safeState, root);
+        updateScreen2DomainScopedSelectors(safeState, root);
         updatePhase7ActionEnablement(safeState, root);
         preserveDashboardStateInNavigation(safeState, root);
         return safeState;
@@ -6038,11 +7182,57 @@
         }
         const key = stateKeyForSelectable(element);
         const value = valueForSelectable(element);
-        if (!isDashboardStateKey(key) || !value) {
-          return {};
-        }
-        const nextState = readDashboardState();
-        nextState[key] = value;
+	        if (!isDashboardStateKey(key) || !value) {
+	          return {};
+	        }
+	        const nextState = readDashboardState();
+	        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
+	          const selectedDomain = safeStateValue(element.getAttribute('data-dashboard-select-domain'));
+	          const selectedLabel = screen2LabelForSelectable(element, value);
+	          const inferredDomain = key === 'selectedDiagnosticSection'
+	            ? ''
+	            : (selectedDomain || screen2InferDomainFromText(value) || screen2InferDomainFromText(selectedLabel));
+	          const previousDomain = safeStateValue(nextState.selectedDomain);
+	          nextState[key] = value;
+	          if (key === 'selectedDomain') {
+	            nextState.selectedDomain = selectedDomain || value;
+	            nextState.screen2ActiveDomainLens = nextState.selectedDomain;
+	            nextState.selectedDiagnosticSection = '';
+	            nextState.screen2ActiveDiagnosticSection = '';
+	            screen2ClearIncompatibleFocusContext(nextState, nextState.selectedDomain, key);
+	          } else if (key === 'selectedDiagnosticSection') {
+	            nextState.screen2ActiveDiagnosticSection = selectedLabel || value;
+	            nextState.screen2InferredDomain = 'Not domain-specific';
+	          } else if (inferredDomain) {
+	            if (previousDomain && previousDomain !== inferredDomain) {
+	              screen2ClearIncompatibleFocusContext(nextState, inferredDomain, key);
+	            }
+	            nextState.selectedDomain = inferredDomain;
+	            nextState.screen2ActiveDomainLens = inferredDomain;
+	            screen2EnsureEvidenceParentForDomain(nextState, inferredDomain);
+	            nextState.selectedDiagnosticSection = '';
+	            nextState.screen2ActiveDiagnosticSection = '';
+	          }
+	          if (key === 'selectedEvidenceGroup') {
+	            nextState.screen2ActiveEvidenceGroup = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedMetricGroup') {
+	            nextState.screen2ActiveMetric = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedWaitEventGroup') {
+	            nextState.screen2ActiveWaitEvent = selectedLabel || screen2DisplayLabelForSelection(value);
+	          } else if (key === 'selectedSqlSignal') {
+	            nextState.screen2ActiveSqlSignal = selectedLabel || screen2DisplayLabelForSelection(value);
+	          }
+	          nextState.screen2ActiveFocusKey = key;
+	          nextState.screen2ActiveFocusType = screen2FocusTypeForStateKey(key);
+	          nextState.screen2ActiveFocusValue = value;
+	          nextState.screen2ActiveFocusLabel = selectedLabel || value;
+	          nextState.screen2ActiveFocusDomain = inferredDomain;
+	          if (key !== 'selectedDiagnosticSection') {
+	            nextState.screen2InferredDomain = inferredDomain || 'Not domain-specific';
+	          }
+	        } else {
+	          nextState[key] = value;
+	        }
         if (key === 'selectedSourceMode') {
           nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
           nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
@@ -6270,6 +7460,27 @@
         target.textContent = message;
       }
 
+      function escapeHtml(value) {
+        return safeStateValue(value).replace(/[&<>"']/g, function (character) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+          }[character] || character;
+        });
+      }
+
+      function setActionStatusMarkup(element, status, html) {
+        const target = actionStatusElement(element);
+        if (!target) {
+          return;
+        }
+        target.setAttribute('data-phase7-action-status', status);
+        target.innerHTML = html;
+      }
+
       function requiredSelectionKey(element) {
         if (!element || !element.getAttribute) {
           return '';
@@ -6381,6 +7592,7 @@
           element.setAttribute('data-selected-context-value', selectedValue || '');
           element.setAttribute('data-missing-source-fields', missingSourceFields.join(','));
           element.setAttribute('data-missing-screen1-fields', missingScreen1Fields.join(','));
+          element.setAttribute('data-missing-screen2-fields', '');
           const status = actionStatusElement(element);
           if (status) {
             const currentStatus = status.getAttribute('data-phase7-action-status') || '';
@@ -6415,7 +7627,7 @@
         const targetType = safeStateValue(element.getAttribute('data-target-type'));
         const targetId = safeStateValue(element.getAttribute('data-target-id'));
         const requestedAt = new Date().toISOString();
-        const dashboardState = readDashboardState();
+        const dashboardState = Object.assign({}, readDefaultDashboardState(document), readDashboardState());
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         const isScreen1Action = isScreen1ParserGovernanceAction(element);
@@ -6510,6 +7722,12 @@
               ? screen1SelectedTargetType(dashboardState)
               : '',
             screen1_selected_target_id: isScreen1Action ? selectedContextValue : '',
+            selectedDomain: dashboardState.selectedDomain || '',
+            selectedEvidenceGroup: dashboardState.selectedEvidenceGroup || '',
+            selectedMetricGroup: dashboardState.selectedMetricGroup || '',
+            selectedWaitEventGroup: dashboardState.selectedWaitEventGroup || '',
+            selectedSqlSignal: dashboardState.selectedSqlSignal || '',
+            selectedDiagnosticSection: dashboardState.selectedDiagnosticSection || '',
             selectedUnknownSignal: dashboardState.selectedUnknownSignal || '',
             selectedGovernanceItem: dashboardState.selectedGovernanceItem || '',
             selectedKnowledgeRequest: dashboardState.selectedKnowledgeRequest || '',
@@ -6518,16 +7736,21 @@
             selectedParserDiagnostic: dashboardState.selectedParserDiagnostic || '',
             reviewer_actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
             governance_intent: payload.governance_intent || (
-              isScreen1Action ? 'screen1_parser_governance_review' : ''
+              isScreen1Action
+                ? 'screen1_parser_governance_review'
+                : ''
             ),
             governance_status: payload.governance_status || (
-              isScreen1Action ? 'review_requested' : ''
+              isScreen1Action
+                ? 'review_requested'
+                : ''
             ),
             future_run_influence_gated: true,
             future_run_influence_granted: false,
             future_run_influence_active: false,
             runtime_activation_requested: false,
             runtime_activation_granted: false,
+            runtime_execution_requested: false,
             parser_output_mutation_requested: false,
             parser_output_mutation_allowed: false,
             direct_parser_mutation_allowed: false,
@@ -6540,6 +7763,18 @@
             artifact_revision_persisted: false,
             materialization_created: false,
             phase4i_mutation_requested: false,
+            diagnostic_truth_mutation_requested: false,
+            diagnostic_truth_mutation_allowed: false,
+            score_mutation_requested: false,
+            score_mutation_allowed: false,
+            severity_mutation_requested: false,
+            confidence_mutation_requested: false,
+            recommendation_mutation_requested: false,
+            recommendation_truth_mutation_allowed: false,
+            reanalysis_execution_requested: false,
+            learning_candidate_created: false,
+            candidate_created: false,
+            runtime_eligibility_changed: false,
             awr_signature_validation: dashboardState.awrSignatureValidation || '',
             browser_parsing_performed: false,
             browser_db_query_attempted: false,
@@ -6701,7 +7936,7 @@
           state.selectedSourceMode = 'existing_run';
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupStatus = 'unavailable';
-          state.existingRunLookupMessage = 'Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs. Start scripts/dashboard_workflow_service.py and retry.';
+          state.existingRunLookupMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           state.existingRunLookupCount = '0';
           state.selectedRunReference = '';
           writeDashboardState(state);
@@ -6778,14 +8013,14 @@
           nextState.selectedSourceMode = 'object_storage';
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = 'unavailable';
-          nextState.objectStorageValidationMessage = 'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.';
+          nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           writeDashboardState(nextState);
         });
       }
 
       function submitDashboardAction(element) {
         const selectedContextKey = requiredSelectionKey(element);
-        const dashboardState = readDashboardState();
+        const dashboardState = Object.assign({}, readDefaultDashboardState(document), readDashboardState());
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         if (selectedContextKey && !selectedContextValue) {
           if (isScreen1ParserGovernanceAction(element)) {
@@ -6793,6 +8028,14 @@
               element,
               'disabled-no-selection',
               screen1ActionMessage(element, dashboardState, [selectedContextKey])
+            );
+            return;
+          }
+          if (isScreen2DiagnosticReviewAction(element)) {
+            setActionStatus(
+              element,
+              'disabled-no-selection',
+              screen2ActionMessage(element, dashboardState, [selectedContextKey])
             );
             return;
           }
@@ -6822,15 +8065,15 @@
             element,
             'disabled-missing-screen1-target',
             screen1ActionMessage(element, dashboardState, missingScreen1Fields)
-          );
-          return;
-        }
+            );
+            return;
+          }
         const requestBridge = window['fetch'];
         if (typeof requestBridge !== 'function') {
           setActionStatus(
             element,
             'failed',
-            'Governed workflow service unavailable: browser request bridge is not available.'
+            'Dashboard workflow service is not running. Start the service to use interactive features.'
           );
           return;
         }
@@ -6862,21 +8105,21 @@
               );
               return;
             }
-            setActionStatus(
-              element,
-              'accepted',
-              'Success. Request ID: ' + result.payload.request_id +
-                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
-                (isScreen1ParserGovernanceAction(element)
-                  ? '. Parser governance request is queued for governed review; runtime influence remains gated.'
-                  : '. Next step: open Screen 3.')
-            );
+	            setActionStatus(
+	              element,
+	              'accepted',
+	              'Success. Request ID: ' + result.payload.request_id +
+	                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
+	                (isScreen1ParserGovernanceAction(element)
+	                  ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
+	                  : '. Next step: open Screen 3.')
+	            );
           })
           .catch(function () {
             setActionStatus(
               element,
               'failed',
-              'Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.'
+              'Dashboard workflow service is not running. Start the service to use interactive features.'
             );
           });
       }
@@ -6933,9 +8176,10 @@
         }
         if (!dashboardInteractivityInitialized) {
           document.addEventListener('click', handleDashboardSelectableClick);
-          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
-          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
-          document.addEventListener('click', handlePhase7ActionClick);
+	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
+	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
+	          document.addEventListener('click', handleScreen2GenerateExplanationClick);
+	          document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleExistingRunLookupClick);
           document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);

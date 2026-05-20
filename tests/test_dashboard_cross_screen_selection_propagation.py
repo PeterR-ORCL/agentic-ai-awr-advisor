@@ -48,12 +48,11 @@ class DashboardCrossScreenSelectionPropagationTests(unittest.TestCase):
 
         required = (
             "Cross-Screen Selection Propagation",
-            "Browser-side selection state only",
+            "Browser-side selection state is not authoritative truth",
             "URL hash/localStorage state is not authoritative truth",
-            "Read-only",
-            "Exploratory only",
-            "No backend writes",
-            "No API calls",
+            "Browser actions may submit governed workflow requests through the workflow service",
+            "Browser actions do not directly mutate parser output, governance truth",
+            "Does not change diagnostic truth",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -113,7 +112,6 @@ class DashboardCrossScreenSelectionPropagationTests(unittest.TestCase):
             "function(",
             "settimeout(\"",
             "setinterval(\"",
-            "innerhtml =",
         )
         for phrase in forbidden_dynamic_execution:
             with self.subTest(phrase=phrase):
@@ -192,10 +190,9 @@ class DashboardCrossScreenSelectionPropagationTests(unittest.TestCase):
                 self.assertIn(marker, source)
 
         summary_boundaries = (
-            "Browser-side selection state only",
-            "Read-only",
-            "Exploratory only",
-            "No backend writes",
+            "Browser-side selection state is not authoritative truth",
+            "Browser actions may submit governed workflow requests through the workflow service",
+            "Browser actions do not directly mutate parser output, governance truth",
             "URL hash/localStorage state is not authoritative truth",
             "Does not change diagnostic truth",
             "Does not change historical truth",
@@ -256,7 +253,6 @@ class DashboardCrossScreenSelectionPropagationTests(unittest.TestCase):
                 self.assertNotIn(phrase, rendered)
 
         forbidden_writes = (
-            "fetch(",
             "xmlhttprequest",
             "sendbeacon",
             "form.submit",
@@ -272,22 +268,35 @@ class DashboardCrossScreenSelectionPropagationTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, script)
 
-    def test_no_backend_dependencies_or_phase7i_commands(self) -> None:
+    def test_no_ungoverned_backend_dependencies_or_phase7i_commands(self) -> None:
         dashboard = dashboard_module()
         script = dashboard._build_dashboard_interactivity_javascript().lower()
         run_analysis = read_text(RUN_ANALYSIS_PATH).lower()
 
-        forbidden_script_dependencies = (
+        governed_service_markers = (
             "fetch(",
+            "/phase7/dashboard/actions",
+            "/phase7/dashboard/existing-runs",
+            "/phase7/dashboard/object-storage/validate",
+            "/phase7/dashboard/screen2/explanation",
+        )
+        for phrase in governed_service_markers:
+            with self.subTest(governed_service_marker=phrase):
+                self.assertIn(phrase, script)
+
+        forbidden_script_dependencies = (
             "xmlhttprequest",
             "sendbeacon",
             "indexeddb",
             "websocket",
             "eventsource",
             "sessionstorage",
-            "server-side state",
-            "backend state persistence",
             "database call",
+            "/api/write",
+            "/api/approve",
+            "/api/reject",
+            "/api/implement",
+            "/api/activate",
         )
         for phrase in forbidden_script_dependencies:
             with self.subTest(phrase=phrase):

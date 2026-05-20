@@ -1357,7 +1357,7 @@ def validate_index_source_selection_workflow(
         "No prior runs found in governed persistence.",
         "Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs.",
         "Validate Object Storage Source",
-        "Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.",
+        "Dashboard workflow service is not running. Start the service to use interactive features.",
         "System Flow",
         "AWR Intelligence Pipeline",
         'data-phase7-current-runtime-pipeline="true"',

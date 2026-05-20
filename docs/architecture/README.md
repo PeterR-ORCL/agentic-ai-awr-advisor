@@ -128,6 +128,7 @@ This directory contains architecture, governance, validation, and operational do
 122. [Phase 7 Screen 2 Review Readiness](phase7_screen2_review_readiness.md)
 123. [Phase 7 Screen 2 Review Release Certification](phase7_screen2_review_release_certification.md)
 124. [Phase 7 Screen 2 Review Operational Checklist](phase7_screen2_review_operational_checklist.md)
+125. [Phase 7CO Screen 2 Diagnostic Review Runtime Workflow](phase7_screen2_diagnostic_review_runtime_workflow.md)
 125. [Phase 7BE Screen 5 Recommendation Action Workflow Boundary](phase7be_screen5_recommendation_action_workflow_boundary.md)
 126. [Phase 7BE Screen 5 Action Outcome Lifecycle](phase7be_screen5_action_outcome_lifecycle.md)
 127. [Phase 7BF Recommendation Decision Object Model](phase7bf_recommendation_decision_model.md)

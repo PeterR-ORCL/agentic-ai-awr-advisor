@@ -2,7 +2,9 @@
 
 ## 1. Purpose
 
-Phase 7H.3 makes Screen 2 diagnostic content explorable through read-only browser-side selectors. The selectors help a user highlight deterministic evidence already rendered on Screen 2 without changing any runtime truth.
+Phase 7H.3 makes Screen 2 diagnostic content explorable through browser-side selectors. The selectors help a user highlight deterministic evidence already rendered on Screen 2 without changing any runtime truth.
+
+The Screen 2 diagnostic review workflow is non-mutating and changes local evidence focus and explanatory reporting context only. Browser-side selectors do not submit governed review requests and do not directly change diagnosis, score, severity, confidence, recommendations, parser output, Phase 4I, runtime execution, materialization, or runtime eligibility. Selection does not change runtime truth.
 
 Screen 2 is read-only. Selections are exploratory only. They do not change diagnostic truth, primary issue, secondary issues, severity, confidence, recommendation truth, parser output, scoring, trend/anomaly behavior, decisions, recommendations, Phase 4I output, semantic context, or learning candidate state. Screen 2 selection does not change diagnostic truth, does not change primary issue, does not change severity, does not change confidence, and does not change recommendation truth.
 

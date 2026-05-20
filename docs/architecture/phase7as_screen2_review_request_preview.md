@@ -6,6 +6,8 @@ Phase 7AS defines the Screen 2 review request preview shown in the disabled diag
 
 The preview is not review execution. It only displays the future governed request shape.
 
+7CO replaces the visible preview with a non-submitting evidence-focus state. Screen 2 changes only local explanation/reporting focus; it does not queue audit/review metadata, submit evidence-validation requests, create ML feedback, or create candidate records. It performs no direct diagnostic truth mutation, no score mutation, no recommendation mutation, no parser output mutation, no runtime activation, and no candidate created automatically. Deterministic runtime remains authoritative.
+
 ## 2. Review Request Preview Shape
 
 The preview displays target type, review decision, actor required, audit required, governed write path required, governance bridge required, candidate intent possible, `write_performed=false`, `runtime_influence=false`, and `phase4i_mutation_requested=false`.

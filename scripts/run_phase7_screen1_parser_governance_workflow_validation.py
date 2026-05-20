@@ -45,9 +45,27 @@ REQUIRED_OPERATOR_WORKFLOW_SNIPPETS: tuple[str, ...] = (
     "data-screen1-backlog-submit",
     "data-screen1-governance-result-panel",
     "Submit Governed Backlog Review Request",
+    "Why this matters",
+    "How this is implemented",
+    "Persistence",
+    "What changes",
+    "What does not change",
+    "Future-run impact",
+    "Learning / ML impact",
+    "This review turns repeated parser uncertainty into governed parser-improvement input.",
+    "This review does not change current or future runs by itself.",
+    "should review whether it can be materialized",
+    "This action does not directly change ML behavior or train a model.",
+    "may become learning/governance input",
+    "Submitting a parser governance review records reviewer context as DB-backed governed workflow state",
+    "DB-backed governed workflow metadata",
+    "does not update AWR_UNKNOWN_SIGNAL_HISTORY",
+    "create AWR_PARSER_MAPPING_CANDIDATE rows",
+    "screen_6_fleet_overview.html",
     "New AWR Field Mapping Candidates",
     "No new AWR field mapping candidates are available for review.",
     "Field approval will appear here when governed parser mapping candidate records exist.",
+    "No fake candidates are shown.",
 )
 
 FORBIDDEN_SCREEN1_SNIPPETS: tuple[str, ...] = (
@@ -314,6 +332,7 @@ def validate_screen1_parser_governance(
         "New AWR Field Mapping Candidates" in primary_text
         and "No new AWR field mapping candidates are available for review." in primary_text
         and "Field approval will appear here when governed parser mapping candidate records exist." in primary_text
+        and "No fake candidates are shown." in primary_text
         and "Optional IO section absence is handled as parser backlog review" not in primary_text
         and "data-screen1-field-submit" not in primary_text
     )
@@ -348,17 +367,99 @@ def validate_screen1_parser_governance(
             'data-screen1-governance-result="status"',
             'data-screen1-governance-result="request_id"',
             'data-screen1-governance-result="audit_id"',
+            'data-screen1-governance-result="persistence"',
+            'data-screen1-governance-result="db_record"',
             'data-screen1-governance-result="decision"',
             'data-screen1-governance-result="runtime_influence"',
             'data-screen1-governance-result="next_step"',
+            'data-screen1-governance-result="screen6_status"',
+        )
+    )
+    active_workflow_index = primary_text.find('<div class="screen1-operator-workflow">')
+    boundary_index = primary_text.find('<section class="screen1-governance-boundary">')
+    explanation_index = primary_text.find('<section class="screen1-governance-explanation-panel">')
+    explanation_layout_ready = (
+        active_workflow_index >= 0
+        and boundary_index > active_workflow_index
+        and explanation_index > boundary_index
+        and "Parser Governance Explanation" in primary_text
+        and "grid-template-columns: 1fr" in source_text
+        and ".screen1-governance-explanation-panel" in source_text
+    )
+    persistence_copy_ready = all(
+        snippet in primary_text
+        for snippet in (
+            "Persistence",
+            "DB-backed governed workflow metadata",
+            "does not update AWR_UNKNOWN_SIGNAL_HISTORY",
+            "create AWR_PARSER_MAPPING_CANDIDATE rows",
+            "create Screen 6 learning/materialization/runtime-eligibility candidates",
+            "screen_6_fleet_overview.html",
+        )
+    ) and all(
+        snippet in source_text
+        for snippet in (
+            "persistence_target: 'dashboard_workflow_service_db_backed_governance'",
+            "database_persistence_requested: true",
+            "browser_database_persistence_performed: false",
+            "screen6_candidate_created: false",
+            "DB-backed parser governance record persisted",
+        )
+    )
+    parser_governance_explanation_ready = all(
+        snippet in primary_text
+        for snippet in (
+            "Why this matters",
+            "How this is implemented",
+            "Persistence",
+            "What changes",
+            "What does not change",
+            "Future-run impact",
+            "Learning / ML impact",
+            "This review turns repeated parser uncertainty into governed parser-improvement input.",
+            "This review does not change current or future runs by itself.",
+            "should review whether it can be materialized",
+            "This action does not directly change ML behavior or train a model.",
+            "may become learning/governance input",
+            "Submitting a parser governance review records reviewer context as DB-backed governed workflow state",
+            "This protects current diagnostic truth while still allowing parser improvements",
+        )
+    )
+    downstream_governance_ready = all(
+        snippet in primary_text
+        for snippet in (
+            "may create governed input for downstream learning/materialization review",
+            "Future-run influence is possible only if a later governed",
+            "marks a parser change runtime-eligible",
+            "Not applied to current run; pending separate materialization/runtime-eligibility approval.",
+        )
+    ) and "Queued for parser governance review. If accepted for implementation, this should proceed to Screen 6 learning/materialization governance before any future-run influence. No current runtime behavior changed." in source_text
+    repeated_sections_absent = primary_text.count('id="screen1-parser-governance-review"') == 1
+    screen1_static_export_wording_absent = not any(
+        snippet in generated_text
+        for snippet in (
+            "static export",
+            "static report",
+            "Knowledge artifact data is not available",
+        )
+    )
+    screen2_diagnostic_explanation_absent = not any(
+        snippet in primary_visible_text
+        for snippet in (
+            "Focused Diagnostic Meaning",
+            "mixed CPU",
+            "TUNE FIRST",
+            "dominance threshold",
+            "Screen 4 for historical trend",
         )
     )
     safety_text_ready = all(
         snippet in generated_text
         for snippet in (
-            "Review requests are queued and audited",
-            "Parser behavior, runtime decisions",
-            "dashboard truth remain unchanged",
+            "Submitting a parser governance review records reviewer context as DB-backed governed workflow state",
+            "it does not change the current parser output, diagnosis, scoring",
+            "runtime eligibility, or dashboard truth",
+            "Future-run influence is possible only if a later governed",
         )
     )
     contract_validation_ready = all(
@@ -380,6 +481,9 @@ def validate_screen1_parser_governance(
     service_validation_ready = (
         service_smoke.get("valid_request_accepted") is True
         and service_smoke.get("audit_reference_exists") is True
+        and service_smoke.get("db_insert_update_performed") is True
+        and service_smoke.get("persistence_mode") == "db_backed_workflow_record_and_json_audit"
+        and bool(service_smoke.get("db_record_reference"))
         and service_smoke.get("missing_target_rejected") is True
         and service_smoke.get("unsafe_parser_mutation_rejected") is True
         and service_smoke.get("phase4i_mutation_rejected") is True
@@ -488,7 +592,39 @@ def validate_screen1_parser_governance(
         check_result(
             "request_result_audit_state_exists",
             request_result_ready,
-            "Request result and audit output state is visible.",
+            "Request result, persistence, and audit output state is visible.",
+        ),
+        check_result(
+            "screen1_persistence_truth_ready",
+            persistence_copy_ready,
+            "Screen 1 states DB-backed governed workflow persistence with JSON audit fallback.",
+        ),
+        check_result(
+            "parser_governance_explanation_ready",
+            parser_governance_explanation_ready
+            and downstream_governance_ready
+            and explanation_layout_ready,
+            "Parser governance explains why the backlog matters, what changes, and what remains protected.",
+        ),
+        check_result(
+            "parser_governance_explanation_layout_ready",
+            explanation_layout_ready,
+            "Parser Governance Explanation appears below Governance Boundary in a vertical secondary layout.",
+        ),
+        check_result(
+            "single_parser_governance_section_ready",
+            repeated_sections_absent,
+            "Multiple parser unknowns are represented inside one governance section instead of repeated sections.",
+        ),
+        check_result(
+            "screen1_static_export_wording_absent",
+            screen1_static_export_wording_absent,
+            "Screen 1 product wording avoids static export/static report language.",
+        ),
+        check_result(
+            "screen2_diagnostic_explanation_absent",
+            screen2_diagnostic_explanation_absent,
+            "Screen 2 diagnostic explanation wording does not leak into Screen 1.",
         ),
         check_result(
             "future_run_influence_gated",
@@ -537,6 +673,17 @@ def validate_screen1_parser_governance(
         "knowledge_artifact_actions_hidden_when_empty": knowledge_empty_state_ready,
         "visible_phase_preview_labels_not_primary": visible_phase_labels_not_primary,
         "future_run_influence_gated": safety_text_ready,
+        "parser_governance_explanation_ready": (
+            parser_governance_explanation_ready
+            and downstream_governance_ready
+            and explanation_layout_ready
+        ),
+        "persistence_mode": service_smoke.get("persistence_mode", "db_backed_workflow_record_and_json_audit"),
+        "persistence_copy_ready": persistence_copy_ready,
+        "parser_governance_explanation_layout_ready": explanation_layout_ready,
+        "single_parser_governance_section_ready": repeated_sections_absent,
+        "screen1_static_export_wording_absent": screen1_static_export_wording_absent,
+        "screen2_diagnostic_explanation_absent": screen2_diagnostic_explanation_absent,
         "blocker_active": not ready,
         "blocker_id": "" if ready else BLOCKER_ID,
         "remaining_deferred_screens": [
@@ -595,8 +742,16 @@ def run_service_smoke_test() -> dict[str, Any]:
         "run_analysis_coupling": False,
     }
     with tempfile.TemporaryDirectory() as tempdir:
+        from tests.test_phase7ca_governed_workflow_repository import FakeConnection
+
         queue_dir = Path(tempdir)
-        valid = process_dashboard_action(base_request, queue_dir=queue_dir)
+        fake_connection = FakeConnection()
+        valid = process_dashboard_action(
+            base_request,
+            queue_dir=queue_dir,
+            connection_factory=lambda: fake_connection,
+            db_persistence_enabled=True,
+        )
         missing_target = json.loads(json.dumps(base_request))
         missing_target["target_id"] = "screen1-parser-governance"
         missing_target["payload"]["selected_context_value"] = ""
@@ -615,6 +770,11 @@ def run_service_smoke_test() -> dict[str, Any]:
             "queued": valid.queued,
             "audit_reference": valid.audit_reference,
             "audit_reference_exists": audit_path.is_file(),
+            "persistence_mode": valid.db_persistence_mode,
+            "db_insert_update_performed": valid.db_persistence_status == "persisted",
+            "db_record_reference": valid.db_record_reference,
+            "db_tables_touched": list(valid.db_tables_touched),
+            "screen6_candidate_created": False,
             "missing_target_rejected": missing.status == "rejected",
             "unsafe_parser_mutation_rejected": parser_mutation.status == "rejected",
             "phase4i_mutation_rejected": phase4i_mutation.status == "rejected",

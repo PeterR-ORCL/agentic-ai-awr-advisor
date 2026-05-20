@@ -80,6 +80,12 @@ PHASE7CN_REQUIRED_SCREEN1_RUNTIME_ARTIFACTS: tuple[str, ...] = (
     "scripts/run_phase7_screen1_parser_governance_workflow_validation.py",
     "tests/test_phase7_screen1_parser_governance_runtime_workflow.py",
 )
+PHASE7CO_REQUIRED_SCREEN2_RUNTIME_ARTIFACTS: tuple[str, ...] = (
+    "docs/architecture/phase7_screen2_diagnostic_review_runtime_workflow.md",
+    "src/learning/dashboard_runtime_interaction.py",
+    "scripts/run_phase7_screen2_diagnostic_review_workflow_validation.py",
+    "tests/test_phase7_screen2_diagnostic_review_runtime_workflow.py",
+)
 PHASE7CM_RUN_ANALYSIS_BOOTSTRAP_MARKERS: tuple[str, ...] = (
     "_ensure_dashboard_workflow_service",
     "PHASE7_DASHBOARD_ACTION_ENDPOINT",
@@ -444,6 +450,11 @@ def check_behavior_file_diff() -> list[str]:
     if (
         PHASE7CK_DASHBOARD_REMEDIATION_FILE in changed
         and set(PHASE7CN_REQUIRED_SCREEN1_RUNTIME_ARTIFACTS).issubset(all_changed)
+    ):
+        changed.remove(PHASE7CK_DASHBOARD_REMEDIATION_FILE)
+    if (
+        PHASE7CK_DASHBOARD_REMEDIATION_FILE in changed
+        and set(PHASE7CO_REQUIRED_SCREEN2_RUNTIME_ARTIFACTS).issubset(all_changed)
     ):
         changed.remove(PHASE7CK_DASHBOARD_REMEDIATION_FILE)
     if (

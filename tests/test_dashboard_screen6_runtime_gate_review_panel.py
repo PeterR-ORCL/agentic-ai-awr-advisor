@@ -140,8 +140,8 @@ class DashboardScreen6RuntimeGateReviewPanelTests(unittest.TestCase):
     def test_existing_screen6_visibility_and_exploration_remain_present(self) -> None:
         rendered = self.render_screen6()
         for phrase in (
-            "Screen 6 Fleet / Governance / Semantic / Learning Exploration",
-            "Read-only fleet/governance/semantic/learning exploration",
+            "Screen 6 Learning Governance Exploration",
+            "Read-only learning governance, materialization, runtime eligibility, semantic, and fleet-context exploration",
             "ML / Adaptive Explainability Visibility",
             "Runtime Gate / Adapter / Fallback Posture",
             "Runtime gate visibility does not activate runtime",

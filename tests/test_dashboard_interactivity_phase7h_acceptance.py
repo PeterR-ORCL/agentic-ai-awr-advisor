@@ -95,9 +95,9 @@ class DashboardInteractivityPhase7HAcceptanceTests(unittest.TestCase):
             "Screen 2 Control",
             "Interactive Evidence Focus",
             "Screen 4 Historical Review Exploration",
-            "Screen 5 Recommendation/Action Exploration",
+            "Screen 5 Recommendation Action & Outcome Exploration",
             "Screen 1 Governance / Parser Exploration",
-            "Screen 6 Fleet / Governance / Semantic / Learning Exploration",
+            "Screen 6 Learning Governance Exploration",
             "Cross-Screen Selection Propagation",
         )
         for marker in required_markers:

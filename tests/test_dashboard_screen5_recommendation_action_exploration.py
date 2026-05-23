@@ -35,8 +35,8 @@ class DashboardScreen5RecommendationActionExplorationTests(unittest.TestCase):
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen5()
 
-        self.assertIn("Screen 5 Recommendation/Action Exploration", source)
-        self.assertIn("Screen 5 Recommendation/Action Exploration", rendered)
+        self.assertIn("Screen 5 Recommendation Action & Outcome Exploration", source)
+        self.assertIn("Screen 5 Recommendation Action & Outcome Exploration", rendered)
         self.assertIn("data-dashboard-selected-summary", rendered)
         self.assertIn("Selected Recommendation / Action Summary", rendered)
         self.assertIn("Read-only recommendation/action exploration", rendered)
@@ -193,7 +193,7 @@ class DashboardScreen5RecommendationActionExplorationTests(unittest.TestCase):
             "selectedActionContext",
             "selectedOutcomeContext",
             "selectedFeedbackContext",
-            "Screen 5 Recommendation/Action Exploration",
+            "Screen 5 Recommendation Action & Outcome Exploration",
             "recommendation/action exploration as diagnostic truth",
             "recommendation/action exploration as historical truth",
         )
@@ -232,7 +232,7 @@ class DashboardScreen5RecommendationActionExplorationTests(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_learning_imports(path)
                 text = read_text(path)
-                self.assertNotIn("Screen 5 Recommendation/Action Exploration", text)
+                self.assertNotIn("Screen 5 Recommendation Action & Outcome Exploration", text)
                 self.assertNotIn("DashboardInteractivityFoundation", text)
 
     def test_documentation_exists_and_contains_required_boundaries(self) -> None:

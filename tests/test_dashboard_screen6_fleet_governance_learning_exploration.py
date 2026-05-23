@@ -35,11 +35,14 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen6()
 
-        self.assertIn("Screen 6 Fleet / Governance / Semantic / Learning Exploration", source)
-        self.assertIn("Screen 6 Fleet / Governance / Semantic / Learning Exploration", rendered)
+        self.assertIn("Screen 6 Learning Governance Exploration", source)
+        self.assertIn("Screen 6 Learning Governance Exploration", rendered)
         self.assertIn("data-dashboard-selected-summary", rendered)
         self.assertIn("Selected Screen 6 Summary", rendered)
-        self.assertIn("Read-only fleet/governance/semantic/learning exploration", rendered)
+        self.assertIn(
+            "Read-only learning governance, materialization, runtime eligibility, semantic, and fleet-context exploration",
+            rendered,
+        )
         self.assertIn("Exploratory only", rendered)
         self.assertIn("No backend writes", rendered)
         self.assertIn("No approval controls", rendered)
@@ -90,7 +93,7 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
         rendered = self.render_screen6()
 
         required_phrases = (
-            "Read-only fleet/governance/semantic/learning exploration",
+            "Read-only learning governance, materialization, runtime eligibility, semantic, and fleet-context exploration",
             "Exploratory only",
             "No backend writes",
             "Does not change fleet posture",
@@ -226,7 +229,7 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             "selectedLearningCandidateType",
             "selectedOutcomePattern",
             "selectedActionEffectivenessPattern",
-            "Screen 6 Fleet / Governance / Semantic / Learning Exploration",
+            "Screen 6 Learning Governance Exploration",
             "screen 6 selection as diagnostic truth",
             "screen 6 selection as recommendation truth",
             "screen 6 selection as parser truth",
@@ -272,7 +275,7 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_learning_imports(path)
                 text = read_text(path)
-                self.assertNotIn("Screen 6 Fleet / Governance / Semantic / Learning Exploration", text)
+                self.assertNotIn("Screen 6 Learning Governance Exploration", text)
                 self.assertNotIn("DashboardInteractivityFoundation", text)
 
     def test_documentation_exists_and_contains_required_boundaries(self) -> None:

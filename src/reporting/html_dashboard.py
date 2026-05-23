@@ -44,10 +44,77 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedAwr",
     "selectedRun",
     "selectedDb",
+    "selectedDbid",
+    "selectedInstance",
+    "selectedHost",
     "selectedSystem",
+    "selectedReportId",
     "selectedSnapshot",
+    "selectedSnapshotBegin",
+    "selectedSnapshotEnd",
+    "selectedTimeWindow",
+    "selectedApplication",
+    "selectedRuntimeScope",
+    "selectedRuntimeScopeSourceTable",
+    "selectedRuntimeScopeAwrCount",
+    "selectedRuntimeScopeSnapshotCount",
+    "selectedRuntimeScopeResolutionState",
+    "selectedRuntimeScopeReadinessState",
+    "screen3ActiveSelectionTarget",
+    "screen3RuntimeFilterApplication",
+    "screen3RuntimeFilterDb",
+    "screen3RuntimeFilterDbid",
+    "screen3RuntimeFilterInstance",
+    "screen3RuntimeFilterHost",
+    "screen3RuntimeFilterSourceType",
+    "screen3RuntimeFilterTimeRange",
+    "screen3RuntimeFilterSearch",
+    "screen3RuntimeFilteredResultCount",
+    "screen3RuntimeResultLimit",
+    "screen3RuntimeSortKey",
+    "screen3RuntimeSortDirection",
+    "screen3SelectedRuntimeScopeRowId",
+    "screen3SelectedTargetARowId",
+    "screen3SelectedTargetBRowId",
+    "screen3SelectedRuntimeIntervalId",
+    "screen3SelectedTargetAIntervalId",
+    "screen3SelectedTargetBIntervalId",
+    "screen3RuntimeScopeSelectionSource",
+    "screen3TargetASelectionSource",
+    "screen3TargetBSelectionSource",
     "selectedDomain",
     "selectedSeverity",
+    "selectedComparisonMode",
+    "selectedComparisonTargetA",
+    "selectedComparisonTargetB",
+    "selectedComparisonTargetASourceType",
+    "selectedComparisonTargetBSourceType",
+    "selectedComparisonTargetAScopeType",
+    "selectedComparisonTargetBScopeType",
+    "selectedComparisonTargetAScopeValue",
+    "selectedComparisonTargetBScopeValue",
+    "selectedComparisonTargetATimeWindow",
+    "selectedComparisonTargetBTimeWindow",
+    "selectedComparisonTargetAResolutionState",
+    "selectedComparisonTargetBResolutionState",
+    "selectedComparisonTargetAReadinessState",
+    "selectedComparisonTargetBReadinessState",
+    "selectedComparisonTargetAResolutionSummary",
+    "selectedComparisonTargetBResolutionSummary",
+    "selectedComparisonTargetAAwrCount",
+    "selectedComparisonTargetBAwrCount",
+    "selectedComparisonTargetASnapshotCount",
+    "selectedComparisonTargetBSnapshotCount",
+    "selectedComparisonTargetAMissingGates",
+    "selectedComparisonTargetBMissingGates",
+    "selectedComparisonBothComparable",
+    "selectedComparisonAwrA",
+    "selectedComparisonAwrB",
+    "selectedComparisonSnapshotA",
+    "selectedComparisonSnapshotB",
+    "selectedComparisonWindowA",
+    "selectedComparisonWindowB",
+    "selectedReviewMode",
     "selectedRecommendation",
     "selectedRecommendationCategory",
     "selectedRecommendationEvidence",
@@ -101,6 +168,28 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedActionEffectivenessPattern",
     "selectedFleetGroup",
     "selectedComparisonBaseline",
+    "screen3RuntimeOptionsStatus",
+    "screen3RuntimeOptionsMessage",
+    "screen3RuntimeOptionsCount",
+    "screen3RuntimeOptionsLoadedRows",
+    "screen3RuntimeOptionsIncludedTables",
+    "screen3RuntimeOptionsLoadedAt",
+    "screen3RuntimeOptionsDbPersistenceStatus",
+    "screen3RuntimeOptionsCacheStatus",
+    "screen3RuntimeOptionsSourceTables",
+    "screen3RuntimeOptionsCoverageMessage",
+    "screen3LiveServiceStatus",
+    "screen3LastRequestedAction",
+    "screen3LastActionStatus",
+    "screen3LastRequestId",
+    "screen3LastTransactionId",
+    "screen3LastValidationStatus",
+    "screen3LastAuditReference",
+    "screen3LastPersistenceStatus",
+    "screen3LastExecutionStatus",
+    "screen3LastOutputArtifact",
+    "screen3LastNewRunOutputReference",
+    "screen3LastNextStep",
     "selectedSourceMode",
     "selectedSourceContext",
     "selectedSourcePath",
@@ -131,6 +220,8 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "objectStorageRegion",
     "objectStorageValidationStatus",
     "objectStorageValidationMessage",
+    "sourceHandoffRequestId",
+    "sourceHandoffAuditStatus",
 )
 DASHBOARD_INTERACTIVITY_SELECTABLE_ATTRIBUTES = (
     "data-dashboard-selectable",
@@ -203,7 +294,7 @@ PAGE_DEFINITIONS = (
     ("home", "Home", "index.html"),
     ("screen_1", "1 Ingestion", "screen_1_ingestion.html"),
     ("screen_2", "2 Analysis", "screen_2_analysis.html"),
-    ("screen_3", "3 Selector", "screen_3_history_selector.html"),
+    ("screen_3", "3 Control", "screen_3_history_selector.html"),
     ("screen_4", "4 Review", "screen_4_historical_review.html"),
     ("screen_5", "5 Action", "screen_5_recommendation_action.html"),
     ("screen_6", "6 Fleet", "screen_6_fleet_overview.html"),
@@ -701,7 +792,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
         ),
         "screen_3_history_selector.html": _build_page_html(
             page_key="screen_3",
-            page_title="Screen 3 - History Selector",
+            page_title="Screen 3 - Governed Runtime Control Center",
             report_data=report_data,
             content_html=_render_screen_3_selector_page(
                 screen_models.get("screen_3_history_selector") or {},
@@ -849,6 +940,7 @@ def _build_page_html(
     hero_title = escape(_hero_title_for_page(page_key, product))
     nav_html = _render_page_navigation(page_key)
     runtime_badge_html = _render_runtime_status_badge(report_data)
+    runtime_badge_hydration_script = _render_runtime_badge_early_hydration_script()
     shell_class = "top-shell sticky-shell"
     chart_payload_json = (
         json.dumps(_chart_payload_json_safe(chart_payload or {}), indent=2)
@@ -897,6 +989,7 @@ def _build_page_html(
         <div class="eyebrow">AWR PERFORMANCE INTELLIGENCE</div>
         <h1>{hero_title}</h1>
         {runtime_badge_html}
+        {runtime_badge_hydration_script}
         <p class="hero-summary">
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
@@ -972,6 +1065,8 @@ def _build_dashboard_interactivity_javascript() -> str:
       const DASHBOARD_STATE_KEYS = Object.freeze(__DASHBOARD_STATE_KEYS__);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = __DASHBOARD_STORAGE_KEY__;
+      const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
+      const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
       const SELECTED_SUMMARY_SELECTOR = '[data-dashboard-selected-summary]';
       const FILTER_PLACEHOLDER_SELECTOR = '[data-dashboard-filter-key][data-dashboard-filter-value]';
@@ -980,6 +1075,9 @@ def _build_dashboard_interactivity_javascript() -> str:
       const SOURCE_PICKER_SELECTOR = '[data-phase7-source-picker]';
       const EXISTING_RUN_LOOKUP_SELECTOR = '[data-phase7-existing-run-lookup-control="true"]';
       const EXISTING_RUN_OPTIONS_SELECTOR = '[data-phase7-existing-run-options="true"]';
+      const SCREEN3_OPTIONS_LOAD_SELECTOR = '[data-screen3-runtime-options-load="true"]';
+      const SCREEN3_RUNTIME_FILTER_APPLY_SELECTOR = '[data-screen3-runtime-filters-apply="true"]';
+      const SCREEN3_RUNTIME_FILTER_CLEAR_SELECTOR = '[data-screen3-runtime-filters-clear="true"]';
 	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
 	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
 	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
@@ -1145,6 +1243,85 @@ def _build_dashboard_interactivity_javascript() -> str:
             state[key] = value;
           }
         });
+        inferScreen3SelectionSources(state);
+        return state;
+      }
+
+      function screen3SelectionSourceFromExistingState(state, scopeValue, rowId, intervalId) {
+        const sourceTable = safeStateValue(state.selectedRuntimeScopeSourceTable || '').toLowerCase();
+        const resolutionState = safeStateValue(state.selectedRuntimeScopeResolutionState || '').toLowerCase();
+        const scopeText = safeStateValue(scopeValue || '').toLowerCase();
+        if (rowId) {
+          return 'Selected from DB-backed runtime inventory';
+        }
+        if (intervalId) {
+          return 'Selected from interval table';
+        }
+        if (
+          sourceTable.indexOf('fallback') >= 0 ||
+          resolutionState.indexOf('current_generated') >= 0 ||
+          scopeText.indexOf('current generated fallback') >= 0
+        ) {
+          return 'Current generated fallback';
+        }
+        return 'Restored from dashboard state';
+      }
+
+      function inferScreen3SelectionSources(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        if (
+          !state.screen3RuntimeScopeSelectionSource &&
+          (
+            state.screen3SelectedRuntimeScopeRowId ||
+            state.screen3SelectedRuntimeIntervalId ||
+            state.selectedRunReference ||
+            state.selectedRuntimeScope ||
+            state.selectedTimeWindow
+          )
+        ) {
+          state.screen3RuntimeScopeSelectionSource = screen3SelectionSourceFromExistingState(
+            state,
+            state.selectedRuntimeScope || state.selectedRunReference || '',
+            state.screen3SelectedRuntimeScopeRowId,
+            state.screen3SelectedRuntimeIntervalId
+          );
+        }
+        if (
+          !state.screen3TargetASelectionSource &&
+          (
+            state.screen3SelectedTargetARowId ||
+            state.screen3SelectedTargetAIntervalId ||
+            state.selectedComparisonTargetA ||
+            state.selectedComparisonTargetAScopeValue ||
+            state.selectedComparisonTargetATimeWindow
+          )
+        ) {
+          state.screen3TargetASelectionSource = screen3SelectionSourceFromExistingState(
+            state,
+            state.selectedComparisonTargetAScopeValue || state.selectedComparisonTargetA || '',
+            state.screen3SelectedTargetARowId,
+            state.screen3SelectedTargetAIntervalId
+          );
+        }
+        if (
+          !state.screen3TargetBSelectionSource &&
+          (
+            state.screen3SelectedTargetBRowId ||
+            state.screen3SelectedTargetBIntervalId ||
+            state.selectedComparisonTargetB ||
+            state.selectedComparisonTargetBScopeValue ||
+            state.selectedComparisonTargetBTimeWindow
+          )
+        ) {
+          state.screen3TargetBSelectionSource = screen3SelectionSourceFromExistingState(
+            state,
+            state.selectedComparisonTargetBScopeValue || state.selectedComparisonTargetB || '',
+            state.screen3SelectedTargetBRowId,
+            state.screen3SelectedTargetBIntervalId
+          );
+        }
         return state;
       }
 
@@ -1206,14 +1383,233 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
       }
 
+      function screen3RuntimeOptionsCacheStatusText(prefix, cachedAt) {
+        const timestamp = safeStateValue(cachedAt || '');
+        return prefix + (timestamp ? ' from ' + timestamp : '') + '.';
+      }
+
+      function readScreen3RuntimeOptionsCache() {
+        try {
+          const rawValue = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+          if (!rawValue) {
+            return null;
+          }
+          const cache = JSON.parse(rawValue);
+          if (
+            !cache ||
+            typeof cache !== 'object' ||
+            cache.cache_version !== SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION ||
+            !cache.options ||
+            typeof cache.options !== 'object'
+          ) {
+            window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+            return null;
+          }
+          return cache;
+        } catch (error) {
+          try {
+            window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+          } catch (innerError) {
+            return null;
+          }
+          return null;
+        }
+      }
+
+      function screen3RuntimeOptionsBodyFromCache(cache) {
+        if (!cache || typeof cache !== 'object') {
+          return {};
+        }
+        return {
+          status: cache.status || 'accepted',
+          validation_status: cache.validation_status || 'valid',
+          db_persistence_status: cache.db_persistence_status || '',
+          message: cache.message || '',
+          option_count: cache.option_count || cache.run_count || 0,
+          run_count: cache.run_count || cache.loaded_rows || 0,
+          options: cache.options || {},
+          runtime_options_source_tables: Array.isArray(cache.source_tables) ? cache.source_tables : [],
+          runtime_options_source_note: cache.coverage_message || '',
+          metadata: {
+            runtime_options_source_tables: Array.isArray(cache.source_tables) ? cache.source_tables : [],
+            runtime_options_source_note: cache.coverage_message || ''
+          }
+        };
+      }
+
+      function screen3RuntimeOptionsStateFromCache(cache) {
+        if (!cache || typeof cache !== 'object') {
+          return {};
+        }
+        const state = {};
+        state.screen3LiveServiceStatus = safeStateValue(cache.service_status || 'Available');
+        state.screen3RuntimeOptionsStatus = safeStateValue(cache.runtime_options_status || 'restored from cache');
+        state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
+          'Runtime options restored from browser cache',
+          cache.cached_at
+        ) + ' Click Refresh options to re-query the workflow service.';
+        state.screen3RuntimeOptionsCount = safeStateValue(cache.option_count || '');
+        state.screen3RuntimeOptionsLoadedRows = safeStateValue(cache.loaded_rows || cache.run_count || '');
+        state.screen3RuntimeOptionsDbPersistenceStatus = safeStateValue(cache.db_persistence_status || '');
+        state.screen3RuntimeOptionsLoadedAt = safeStateValue(cache.cached_at || '');
+        state.screen3RuntimeOptionsIncludedTables = safeStateValue(cache.included_tables || '');
+        state.screen3RuntimeOptionsSourceTables = safeStateValue(cache.source_tables_summary || '');
+        state.screen3RuntimeOptionsCoverageMessage = safeStateValue(cache.coverage_message || '');
+        state.screen3RuntimeOptionsCacheStatus = screen3RuntimeOptionsCacheStatusText(
+          'Runtime options restored from browser cache',
+          cache.cached_at
+        );
+        return state;
+      }
+
+      function writeScreen3RuntimeOptionsCache(responseBody, state) {
+        const body = responseBody && typeof responseBody === 'object' ? responseBody : {};
+        const options = body.options && typeof body.options === 'object' ? body.options : {};
+        const runs = Array.isArray(options.runs) ? options.runs : [];
+        if (body.status !== 'accepted' || !runs.length) {
+          return null;
+        }
+        const safeState = sanitizeDashboardState(state || {});
+        const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
+        const sourceTables = Array.isArray(body.runtime_options_source_tables)
+          ? body.runtime_options_source_tables
+          : (Array.isArray(metadata.runtime_options_source_tables) ? metadata.runtime_options_source_tables : []);
+        const cachedAt = safeState.screen3RuntimeOptionsLoadedAt || new Date().toISOString();
+        const cache = {
+          cache_version: SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION,
+          cached_at: cachedAt,
+          service_status: safeState.screen3LiveServiceStatus || 'Available',
+          db_persistence_status: safeState.screen3RuntimeOptionsDbPersistenceStatus || body.db_persistence_status || '',
+          runtime_options_status: safeState.screen3RuntimeOptionsStatus || 'route available',
+          message: body.message || safeState.screen3RuntimeOptionsMessage || '',
+          option_count: String(body.option_count || body.run_count || runs.length || 0),
+          loaded_rows: String(body.run_count || runs.length || 0),
+          included_tables: safeState.screen3RuntimeOptionsIncludedTables || screen3RuntimeIncludedTableSummary(sourceTables, body.run_count || runs.length || 0),
+          source_tables_summary: safeState.screen3RuntimeOptionsSourceTables || screen3RuntimeSourceTableSummary(sourceTables),
+          source_tables: sourceTables,
+          coverage_message: safeState.screen3RuntimeOptionsCoverageMessage || metadata.runtime_options_source_note || body.runtime_options_source_note || '',
+          run_count: Number(body.run_count || runs.length || 0) || 0,
+          options: options,
+          validation_status: body.validation_status || '',
+          status: body.status || ''
+        };
+        try {
+          window.localStorage.setItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY, JSON.stringify(cache));
+          return cache;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function screen3CachedRuntimeRowIds(cache) {
+        const ids = new Set();
+        const body = screen3RuntimeOptionsBodyFromCache(cache);
+        const options = body.options && typeof body.options === 'object' ? body.options : {};
+        (Array.isArray(options.runs) ? options.runs : []).forEach(function (run) {
+          const runReference = screen3RuntimeOptionValue(run, 'DB-backed run');
+          ids.add(safeStateValue(screen3RuntimeRowIdentity(run, runReference)));
+        });
+        return ids;
+      }
+
+      function screen3CachedIntervalRowIds(cache) {
+        const ids = new Set();
+        const body = screen3RuntimeOptionsBodyFromCache(cache);
+        const options = body.options && typeof body.options === 'object' ? body.options : {};
+        (Array.isArray(options.intervals) ? options.intervals : []).forEach(function (interval) {
+          const windowLabel = screen3RuntimeWindow(interval) || screen3RuntimeOptionLabel(interval, 'Snapshot / interval');
+          ids.add(safeStateValue(screen3IntervalRowIdentity(interval, windowLabel)));
+        });
+        return ids;
+      }
+
+      function screen3ReconcileCachedSelectionState(state, cache) {
+        const nextState = sanitizeDashboardState(state || {});
+        const rowIds = screen3CachedRuntimeRowIds(cache);
+        const intervalIds = screen3CachedIntervalRowIds(cache);
+        [
+          ['screen3SelectedRuntimeScopeRowId', 'screen3RuntimeScopeSelectionSource'],
+          ['screen3SelectedTargetARowId', 'screen3TargetASelectionSource'],
+          ['screen3SelectedTargetBRowId', 'screen3TargetBSelectionSource']
+        ].forEach(function (entry) {
+          const rowKey = entry[0];
+          const sourceKey = entry[1];
+          if (nextState[rowKey] && rowIds.has(nextState[rowKey])) {
+            nextState[sourceKey] = 'Restored from browser cache';
+          } else if (nextState[rowKey]) {
+            delete nextState[rowKey];
+            nextState[sourceKey] = 'Restored stale state; row not in cached inventory';
+          }
+        });
+        [
+          ['screen3SelectedRuntimeIntervalId', 'screen3RuntimeScopeSelectionSource'],
+          ['screen3SelectedTargetAIntervalId', 'screen3TargetASelectionSource'],
+          ['screen3SelectedTargetBIntervalId', 'screen3TargetBSelectionSource']
+        ].forEach(function (entry) {
+          const intervalKey = entry[0];
+          const sourceKey = entry[1];
+          if (nextState[intervalKey] && intervalIds.has(nextState[intervalKey])) {
+            nextState[sourceKey] = 'Restored from browser cache';
+          } else if (nextState[intervalKey]) {
+            delete nextState[intervalKey];
+            nextState[sourceKey] = 'Restored stale state; interval not in cached inventory';
+          }
+        });
+        return nextState;
+      }
+
+      function restoreScreen3RuntimeOptionsFromCache(root, messageOverride) {
+        const scope = root || document;
+        if (!scope.querySelector || !scope.querySelector('[data-screen3-runtime-options-target="runtime-scope-rows"]')) {
+          return null;
+        }
+        const cache = readScreen3RuntimeOptionsCache();
+        if (!cache) {
+          return null;
+        }
+        const state = Object.assign(
+          {},
+          readDashboardState(),
+          screen3RuntimeOptionsStateFromCache(cache)
+        );
+        if (messageOverride) {
+          state.screen3RuntimeOptionsMessage = safeStateValue(messageOverride);
+          state.screen3RuntimeOptionsCacheStatus = safeStateValue(messageOverride);
+        }
+        const reconciledState = screen3ReconcileCachedSelectionState(state, cache);
+        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache));
+        return writeDashboardState(reconciledState, { updateHash: false });
+      }
+
+      function showScreen3CachedRuntimeOptionsAfterRefreshFailure(cache, state, message) {
+        if (!cache) {
+          return null;
+        }
+        const cachedState = Object.assign(
+          {},
+          screen3RuntimeOptionsStateFromCache(cache),
+          sanitizeDashboardState(state || {})
+        );
+        cachedState.screen3RuntimeOptionsMessage = safeStateValue(message);
+        cachedState.screen3RuntimeOptionsCacheStatus = safeStateValue(message);
+        const reconciledState = screen3ReconcileCachedSelectionState(cachedState, cache);
+        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache));
+        return writeDashboardState(reconciledState, { updateHash: false });
+      }
+
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
+        const cachedRuntimeOptions = readScreen3RuntimeOptionsCache();
+        const cachedRuntimeOptionsState = screen3RuntimeOptionsStateFromCache(cachedRuntimeOptions);
         const explicitState = Object.assign(
           {},
           readLocalStorageState(),
           parseHashState(window.location.hash)
         );
-        const state = Object.assign({}, defaultState, explicitState);
+        let state = Object.assign({}, defaultState, cachedRuntimeOptionsState, explicitState);
+        if (cachedRuntimeOptions) {
+          state = screen3ReconcileCachedSelectionState(state, cachedRuntimeOptions);
+        }
         if (
           explicitState.selectedSourceMode &&
           explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
@@ -1288,6 +1684,19 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function applySelectableStateOverrides(element, state) {
+        if (!element || !element.getAttribute || !state) {
+          return state || {};
+        }
+        DASHBOARD_STATE_KEYS.forEach(function (stateKey) {
+          const attributeName = 'data-dashboard-state-set-' + stateKey;
+          if (element.hasAttribute(attributeName)) {
+            state[stateKey] = safeStateValue(element.getAttribute(attributeName));
+          }
+        });
+        return state;
+      }
+
       function markSelectedElement(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -1295,12 +1704,36 @@ def _build_dashboard_interactivity_javascript() -> str:
         elements.forEach(function (element) {
           const key = stateKeyForSelectable(element);
           const value = valueForSelectable(element);
+          const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
+          const isScreen3RuntimeRow = selectType === 'runtimeScope';
+          const isScreen3IntervalRow = selectType === 'snapshot';
+          const screen3ContextSelected = selectableMatchesScreen3Context(element, value, safeState);
           let isSelected = Boolean(key && value && safeState[key] === value);
           if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
             isSelected = Boolean(key && value && safeState[key] === value);
           }
+          if (isScreen3RuntimeRow || isScreen3IntervalRow) {
+            isSelected = screen3ContextSelected;
+          } else if (screen3ContextSelected) {
+            isSelected = true;
+          }
           element.classList.toggle('is-selected', isSelected);
+          element.classList.toggle('screen3-selected-runtime-row', isSelected && selectType === 'runtimeScope');
+          element.classList.toggle('screen3-selected-interval-row', isSelected && selectType === 'snapshot');
+          element.classList.toggle(
+            'screen3-selected-advanced-row',
+            isSelected && (selectType === 'comparisonTargetA' || selectType === 'comparisonTargetB')
+          );
           element.setAttribute('data-selected', isSelected ? 'true' : 'false');
+          if (isSelected && selectType === 'runtimeScope') {
+            element.setAttribute('data-screen3-selected-kind', 'runtime-row');
+          } else if (isSelected && selectType === 'snapshot') {
+            element.setAttribute('data-screen3-selected-kind', 'interval-row');
+          } else if (isSelected && (selectType === 'comparisonTargetA' || selectType === 'comparisonTargetB')) {
+            element.setAttribute('data-screen3-selected-kind', 'advanced-option');
+          } else {
+            element.removeAttribute('data-screen3-selected-kind');
+          }
           if (element.hasAttribute('aria-selected')) {
             element.setAttribute('aria-selected', isSelected ? 'true' : 'false');
           }
@@ -1379,6 +1812,42 @@ def _build_dashboard_interactivity_javascript() -> str:
         return 'No ' + groupName.replace(/_/g, ' ') + ' items are available for the active ' + domainLens + ' lens.';
       }
 
+      function dashboardRuntimeStateClass(value) {
+        const normalized = safeStateValue(value || '').toLowerCase();
+        if (
+          normalized === 'connected' ||
+          normalized === 'available' ||
+          normalized === 'active' ||
+          normalized === 'accepted' ||
+          normalized === 'loaded'
+        ) {
+          return 'state-pass';
+        }
+        if (
+          normalized.indexOf('error') >= 0 ||
+          normalized.indexOf('failed') >= 0 ||
+          normalized.indexOf('unavailable') >= 0
+        ) {
+          return 'state-error';
+        }
+        if (
+          normalized.indexOf('warning') >= 0 ||
+          normalized.indexOf('degraded') >= 0 ||
+          normalized.indexOf('partial') >= 0
+        ) {
+          return 'state-warning';
+        }
+        return 'state-muted';
+      }
+
+      function updateDashboardRuntimeStateClass(element, value) {
+        if (!element || !element.classList || !element.hasAttribute('data-dashboard-state-status-class')) {
+          return;
+        }
+        element.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
+        element.classList.add(dashboardRuntimeStateClass(value || element.getAttribute('data-empty-label') || ''));
+      }
+
       function updateDashboardStateInputs(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
@@ -1400,6 +1869,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           ) {
             element.textContent = value || element.getAttribute('data-empty-label') || 'not selected';
           }
+          updateDashboardRuntimeStateClass(element, value);
           element.setAttribute('data-dashboard-state-value', value);
         });
       }
@@ -3129,6 +3599,22 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateScreen1ParserGovernanceSummary(safeState, scope);
       }
 
+      function updateScreen3SourceHandoffEmptyState(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        const hasSourceContext = Boolean(
+          safeState.selectedSourceMode ||
+          safeState.selectedRunReference ||
+          safeState.objectStorageNamespace ||
+          safeState.selectedSourcePath ||
+          safeState.selectedLocalFileName
+        );
+        scope.querySelectorAll('[data-screen3-source-handoff-empty="true"]').forEach(function (element) {
+          element.hidden = hasSourceContext;
+          element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
+        });
+      }
+
       function isStaticDashboardHref(rawHref) {
         const href = String(rawHref || '').replace(/[<>]/g, '').trim();
         const lowerHref = href.toLowerCase();
@@ -3192,6 +3678,11 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
+        updateScreen3SourceHandoffEmptyState(safeState, root);
+        updateScreen3RuntimeFilters(safeState, root);
+        applyScreen3TableStates(root);
+        updateScreen3RowApplyLabels(safeState, root);
+        updateScreen3ResultPanelFromSelection(safeState, root);
         updateScreen1GovernanceReviewWorkflow(root);
         updateScreen2DiagnosticReviewSummary(safeState, root);
         updateScreen2DomainScopedSelectors(safeState, root);
@@ -3210,6 +3701,7 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          return {};
 	        }
 	        const nextState = readDashboardState();
+        const previousState = Object.assign({}, nextState);
 	        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
 	          const selectedDomain = safeStateValue(element.getAttribute('data-dashboard-select-domain'));
 	          const selectedLabel = screen2LabelForSelectable(element, value);
@@ -3256,7 +3748,87 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          }
 	        } else {
 	          nextState[key] = value;
-	        }
+        }
+        applySelectableStateOverrides(element, nextState);
+        const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
+        if (selectType === 'runtimeScope') {
+          const selectedRowId = valueForSelectable(element);
+          const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
+          if (activeSelectionTarget === 'Target A') {
+            nextState.screen3SelectedTargetARowId = selectedRowId;
+          } else if (activeSelectionTarget === 'Target B') {
+            nextState.screen3SelectedTargetBRowId = selectedRowId;
+          } else {
+            nextState.screen3SelectedRuntimeScopeRowId = selectedRowId;
+          }
+          applyScreen3RuntimeScopeToActiveTarget(element, nextState);
+          if (screen3ActiveTargetSuffix(nextState)) {
+            [
+              'selectedRuntimeScope',
+              'selectedRuntimeScopeSourceTable',
+              'selectedRuntimeScopeAwrCount',
+              'selectedRuntimeScopeSnapshotCount',
+              'selectedSourceMode',
+              'sourceSelectionMethod',
+              'selectedRunReference',
+              'selectedAwr',
+              'selectedRun',
+              'selectedReportId',
+              'selectedApplication',
+              'selectedDb',
+              'selectedDbid',
+              'selectedHost',
+              'selectedInstance',
+              'selectedSystem',
+              'selectedSnapshot',
+              'selectedSnapshotBegin',
+              'selectedSnapshotEnd',
+              'selectedTimeWindow',
+              'selectedRuntimeScopeResolutionState',
+              'selectedRuntimeScopeReadinessState',
+              'existingRunLookupStatus'
+            ].forEach(function (stateKey) {
+              if (previousState[stateKey]) {
+                nextState[stateKey] = previousState[stateKey];
+              } else {
+                delete nextState[stateKey];
+              }
+            });
+          }
+          screen3SetActiveSelectionSource(nextState, screen3RuntimeRowSelectionSource(element, nextState));
+        } else if (selectType === 'snapshot') {
+          const selectedIntervalId = valueForSelectable(element);
+          const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
+          if (activeSelectionTarget === 'Target A') {
+            nextState.screen3SelectedTargetAIntervalId = selectedIntervalId;
+          } else if (activeSelectionTarget === 'Target B') {
+            nextState.screen3SelectedTargetBIntervalId = selectedIntervalId;
+          } else {
+            nextState.screen3SelectedRuntimeIntervalId = selectedIntervalId;
+          }
+          applyScreen3IntervalToActiveTarget(nextState);
+          if (screen3ActiveTargetSuffix(nextState)) {
+            [
+              'selectedSnapshot',
+              'selectedSnapshotBegin',
+              'selectedSnapshotEnd',
+              'selectedTimeWindow',
+              'selectedRunReference'
+            ].forEach(function (stateKey) {
+              if (previousState[stateKey]) {
+                nextState[stateKey] = previousState[stateKey];
+              } else {
+                delete nextState[stateKey];
+              }
+            });
+          }
+          screen3SetActiveSelectionSource(nextState, 'Selected from interval table');
+        }
+        if (selectType === 'comparisonTargetA') {
+          nextState.screen3TargetASelectionSource = 'Selected from advanced/external option';
+        } else if (selectType === 'comparisonTargetB') {
+          nextState.screen3TargetBSelectionSource = 'Selected from advanced/external option';
+        }
         if (key === 'selectedSourceMode') {
           nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
           nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
@@ -3445,6 +4017,10 @@ def _build_dashboard_interactivity_javascript() -> str:
         window.PHASE7_DASHBOARD_EXISTING_RUN_LOOKUP_ENDPOINT ||
         derivePhase7Endpoint('/phase7/dashboard/existing-runs')
       );
+      const PHASE7_SCREEN3_OPTIONS_ENDPOINT = (
+        window.PHASE7_DASHBOARD_SCREEN3_OPTIONS_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/screen3/options')
+      );
       const PHASE7_OBJECT_STORAGE_VALIDATE_ENDPOINT = (
         window.PHASE7_DASHBOARD_OBJECT_STORAGE_VALIDATE_ENDPOINT ||
         derivePhase7Endpoint('/phase7/dashboard/object-storage/validate')
@@ -3468,6 +4044,13 @@ def _build_dashboard_interactivity_javascript() -> str:
             return cardTarget;
           }
         }
+        const screen3ActionCard = element.closest('.screen3-reanalysis-action-card');
+        if (screen3ActionCard) {
+          const cardTarget = screen3ActionCard.querySelector('[data-phase7-action-status]');
+          if (cardTarget) {
+            return cardTarget;
+          }
+        }
         const panel = element.closest('[data-phase7-runtime-interaction-panel]');
         if (!panel) {
           return null;
@@ -3482,6 +4065,833 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         target.setAttribute('data-phase7-action-status', status);
         target.textContent = message;
+        updateScreen3ExecutionResultPanel(element, status, message);
+      }
+
+      function screen3ActionProductLabel(actionKey) {
+        const normalized = safeStateValue(actionKey);
+        const labels = {
+          analyze_selection: 'Analyze Selection',
+          rerun_analysis: 'Re-run Analysis',
+          build_comparison: 'Build Comparison',
+          load_from_object_storage: 'Load / Prepare External Target'
+        };
+        return labels[normalized] || normalized || 'Screen 3 action';
+      }
+
+      function setScreen3ResultField(panel, fieldName, value) {
+        const target = panel.querySelector('[data-screen3-result-field="' + fieldName + '"]');
+        if (!target) {
+          return;
+        }
+        const safeValue = safeStateValue(value);
+        target.textContent = safeValue || safeStateValue(target.getAttribute('data-default-value')) || 'Not reported';
+      }
+
+      function screen3SourceModeSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        return safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '') || 'Pending source selection';
+      }
+
+      function screen3RuntimeScopeSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const parts = [
+          safeState.selectedApplication,
+          safeState.selectedDb,
+          safeState.selectedDbid ? 'DBID: ' + safeState.selectedDbid : '',
+          safeState.selectedHost ? 'Host: ' + safeState.selectedHost : '',
+          safeState.selectedInstance ? 'Instance: ' + safeState.selectedInstance : '',
+          safeState.selectedSystem,
+          safeState.selectedAwr,
+          safeState.selectedRun,
+          safeState.selectedRunReference ? 'Run reference: ' + safeState.selectedRunReference : '',
+          safeState.selectedReportId ? 'Report ID: ' + safeState.selectedReportId : '',
+          safeState.selectedSnapshot,
+          safeState.selectedTimeWindow,
+          safeState.selectedDomain ? 'Issue Domain filter: ' + safeState.selectedDomain : '',
+          safeState.selectedSeverity ? 'Severity / Status filter: ' + safeState.selectedSeverity : ''
+        ].filter(Boolean);
+        return parts.length ? parts.join(' | ') : 'Pending runtime selection';
+      }
+
+      function screen3DisplayOrUnavailable(value) {
+        const safeValue = safeStateValue(value);
+        return safeValue || 'Not available';
+      }
+
+      function screen3ComparisonSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        return safeState.selectedComparisonMode || 'Pending comparison mode';
+      }
+
+      function screen3TargetSummary(state, suffix) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const target = safeState['selectedComparisonTarget' + suffix] || '';
+        const sourceType = safeState['selectedComparisonTarget' + suffix + 'SourceType'] || '';
+        const scopeType = safeState['selectedComparisonTarget' + suffix + 'ScopeType'] || '';
+        const scopeValue = safeState['selectedComparisonTarget' + suffix + 'ScopeValue'] || '';
+        const timeWindow = safeState['selectedComparisonTarget' + suffix + 'TimeWindow'] || '';
+        const resolution = safeState['selectedComparisonTarget' + suffix + 'ResolutionSummary'] || '';
+        const awrCount = safeState['selectedComparisonTarget' + suffix + 'AwrCount'] || '';
+        const snapshotCount = safeState['selectedComparisonTarget' + suffix + 'SnapshotCount'] || '';
+        const readiness = safeState['selectedComparisonTarget' + suffix + 'ReadinessState'] || '';
+        const parts = [
+          sourceType ? 'Source: ' + sourceType : '',
+          scopeType ? 'Scope: ' + scopeType : '',
+          scopeValue ? 'Value: ' + scopeValue : target,
+          timeWindow ? 'Window: ' + timeWindow : '',
+          resolution ? 'Resolves to: ' + resolution : '',
+          awrCount ? 'AWR count: ' + awrCount : '',
+          snapshotCount ? 'Snapshot/window count: ' + snapshotCount : '',
+          readiness ? 'Readiness: ' + readiness : ''
+        ].filter(Boolean);
+        return parts.length ? parts.join(' | ') : 'Not resolved';
+      }
+
+      function screen3TargetShortSummary(state, suffix) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const target = safeState['selectedComparisonTarget' + suffix] || '';
+        const sourceType = safeState['selectedComparisonTarget' + suffix + 'SourceType'] || '';
+        const scopeType = safeState['selectedComparisonTarget' + suffix + 'ScopeType'] || '';
+        const scopeValue = safeState['selectedComparisonTarget' + suffix + 'ScopeValue'] || target;
+        const timeWindow = safeState['selectedComparisonTarget' + suffix + 'TimeWindow'] || '';
+        const readiness = safeState['selectedComparisonTarget' + suffix + 'ReadinessState'] || '';
+        const awrCount = safeState['selectedComparisonTarget' + suffix + 'AwrCount'] || '';
+        const snapshotCount = safeState['selectedComparisonTarget' + suffix + 'SnapshotCount'] || '';
+        const identity = [sourceType, scopeType, scopeValue].filter(Boolean).join(' / ');
+        const parts = [
+          identity || 'Not resolved',
+          timeWindow ? 'Window: ' + timeWindow : '',
+          readiness ? 'Readiness: ' + readiness : '',
+          (awrCount || snapshotCount)
+            ? 'Resolves: ' + (awrCount || '0') + ' AWR / ' + (snapshotCount || '0') + ' window(s)'
+            : ''
+        ].filter(Boolean);
+        return parts.join(' · ');
+      }
+
+      function screen3BothTargetsComparable(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const targetA = safeState.selectedComparisonTargetA || '';
+        const targetB = safeState.selectedComparisonTargetB || '';
+        return safeState.selectedComparisonTargetAReadinessState === 'comparable' &&
+          safeState.selectedComparisonTargetBReadinessState === 'comparable' &&
+          targetA && targetB && targetA !== targetB;
+      }
+
+      function screen3ComparisonMissingGatesSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const gates = [
+          safeState.selectedComparisonTargetAMissingGates,
+          safeState.selectedComparisonTargetBMissingGates
+        ].filter(Boolean);
+        if (!safeState.selectedComparisonTargetA) {
+          gates.push('Target A unresolved');
+        }
+        if (!safeState.selectedComparisonTargetB) {
+          gates.push('Target B unresolved');
+        }
+        if (!screen3BothTargetsComparable(safeState)) {
+          gates.push('Both targets must resolve to comparable persisted data');
+          if (safeState.selectedComparisonTargetA && safeState.selectedComparisonTargetB &&
+              safeState.selectedComparisonTargetA === safeState.selectedComparisonTargetB) {
+            gates.push('Target B must differ from Target A by run, report, snapshot, window, or scope');
+          }
+        }
+        return gates.length ? gates.join('; ') : 'No comparison missing gates reported';
+      }
+
+      function screen3RuntimeSourceTableSummary(sourceTables) {
+        const tables = Array.isArray(sourceTables) ? sourceTables : [];
+        const parts = tables.map(function (item) {
+          const table = item && typeof item === 'object' ? item : {};
+          const name = safeStateValue(table.table_name || '');
+          if (!name) {
+            return '';
+          }
+          const rowCount = table.row_count === null || typeof table.row_count === 'undefined'
+            ? 'unknown'
+            : String(table.row_count);
+          const included = table.included_in_screen3_runtime_options || table.included_in_options
+            ? 'included'
+            : 'not included';
+          const exists = safeStateValue(table.table_exists || 'unknown');
+          const selectableCount = table.selectable_row_count === null || typeof table.selectable_row_count === 'undefined'
+            ? String(table.returned_option_count || 0)
+            : String(table.selectable_row_count);
+          const keyColumns = Array.isArray(table.key_columns_used) && table.key_columns_used.length
+            ? ', key columns=' + table.key_columns_used.join('/')
+            : '';
+          const missingColumns = Array.isArray(table.missing_columns) && table.missing_columns.length
+            ? ', missing=' + table.missing_columns.join('/')
+            : '';
+          const applicationCount = table.application_non_null_count === null ||
+              typeof table.application_non_null_count === 'undefined'
+            ? ''
+            : ', application values=' + String(table.application_non_null_count);
+          return name + ': exists=' + exists + ', ' + rowCount + ' row(s), ' +
+            selectableCount + ' selectable row(s), ' + included + keyColumns +
+            missingColumns + applicationCount;
+        }).filter(Boolean);
+        return parts.length ? parts.join('; ') : 'Source table coverage not reported';
+      }
+
+      function screen3RuntimeIncludedTableSummary(sourceTables, rowCount) {
+        const tables = Array.isArray(sourceTables) ? sourceTables : [];
+        const included = tables.map(function (item) {
+          const table = item && typeof item === 'object' ? item : {};
+          const name = safeStateValue(table.table_name || '');
+          if (!name || !(table.included_in_screen3_runtime_options || table.included_in_options)) {
+            return '';
+          }
+          const selectableCount = table.selectable_row_count === null || typeof table.selectable_row_count === 'undefined'
+            ? String(table.returned_option_count || 0)
+            : String(table.selectable_row_count);
+          return name + ' (' + selectableCount + ')';
+        }).filter(Boolean);
+        if (included.length) {
+          return String(rowCount || 0) + ' selectable row(s) from ' + included.join(', ');
+        }
+        return rowCount ? String(rowCount) + ' selectable row(s); included tables not reported' : 'No selectable source tables reported';
+      }
+
+      function screen3ReviewModeSummary(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        return safeState.selectedReviewMode || 'Pending review mode selection';
+      }
+
+      function screen3ActiveSelectionTarget(state) {
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const activeTarget = safeState.screen3ActiveSelectionTarget || 'Runtime Scope';
+        return ['Runtime Scope', 'Target A', 'Target B'].indexOf(activeTarget) >= 0
+          ? activeTarget
+          : 'Runtime Scope';
+      }
+
+      function screen3ActiveTargetSuffix(state) {
+        const activeTarget = screen3ActiveSelectionTarget(state);
+        if (activeTarget === 'Target A') {
+          return 'A';
+        }
+        if (activeTarget === 'Target B') {
+          return 'B';
+        }
+        return '';
+      }
+
+      function screen3SetActiveSelectionSource(state, sourceLabel) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        const activeTarget = screen3ActiveSelectionTarget(state);
+        const label = safeStateValue(sourceLabel || 'Restored from dashboard state');
+        if (activeTarget === 'Target A') {
+          state.screen3TargetASelectionSource = label;
+        } else if (activeTarget === 'Target B') {
+          state.screen3TargetBSelectionSource = label;
+        } else {
+          state.screen3RuntimeScopeSelectionSource = label;
+        }
+        return state;
+      }
+
+      function screen3RuntimeRowSelectionSource(element, state) {
+        const sourceTable = safeStateValue(
+          (element && element.getAttribute && element.getAttribute('data-screen3-filter-source-table')) ||
+          (state && state.selectedRuntimeScopeSourceTable) ||
+          ''
+        ).toLowerCase();
+        const resolutionState = safeStateValue(state && state.selectedRuntimeScopeResolutionState || '').toLowerCase();
+        if (sourceTable.indexOf('fallback') >= 0 || resolutionState.indexOf('current_generated') >= 0) {
+          return 'Current generated fallback';
+        }
+        return 'Selected from DB-backed runtime inventory';
+      }
+
+      function screen3NormalizeFilter(value) {
+        const safeValue = safeStateValue(value);
+        if (!safeValue || safeValue.toLowerCase().indexOf('all ') === 0 || safeValue === 'All') {
+          return '';
+        }
+        return safeValue;
+      }
+
+      function selectableMatchesScreen3Context(element, value, state) {
+        const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
+        const safeValue = safeStateValue(value || '');
+        if (!safeValue) {
+          return false;
+        }
+        if (selectType === 'runtimeScope') {
+          const activeTarget = screen3ActiveSelectionTarget(state);
+          if (activeTarget === 'Target A') {
+            return safeValue === safeStateValue(state.screen3SelectedTargetARowId || '');
+          }
+          if (activeTarget === 'Target B') {
+            return safeValue === safeStateValue(state.screen3SelectedTargetBRowId || '');
+          }
+          return safeValue === safeStateValue(state.screen3SelectedRuntimeScopeRowId || '');
+        }
+        if (selectType === 'snapshot') {
+          const activeTarget = screen3ActiveSelectionTarget(state);
+          if (activeTarget === 'Target A') {
+            return safeValue === safeStateValue(state.screen3SelectedTargetAIntervalId || '');
+          }
+          if (activeTarget === 'Target B') {
+            return safeValue === safeStateValue(state.screen3SelectedTargetBIntervalId || '');
+          }
+          return safeValue === safeStateValue(state.screen3SelectedRuntimeIntervalId || '');
+        }
+        return false;
+      }
+
+      const screen3TableStates = {};
+
+      function screen3TableState(tableId) {
+        const safeTableId = safeStateValue(tableId || '');
+        if (!safeTableId) {
+          return { sortKey: '', sortDirection: 'asc', filters: {} };
+        }
+        if (!screen3TableStates[safeTableId]) {
+          screen3TableStates[safeTableId] = { sortKey: '', sortDirection: 'asc', filters: {} };
+        }
+        return screen3TableStates[safeTableId];
+      }
+
+      function screen3TableForControl(control) {
+        if (!control || !control.closest) {
+          return null;
+        }
+        const explicitTableId = safeStateValue(
+          control.getAttribute('data-screen3-table-sort') ||
+          control.getAttribute('data-screen3-table-filter') ||
+          control.getAttribute('data-screen3-table-filter-toggle') ||
+          control.getAttribute('data-screen3-clear-table-filters')
+        );
+        if (explicitTableId && control.getAttribute('data-screen3-clear-table-filters')) {
+          return document.querySelector('[data-screen3-table-id="' + explicitTableId + '"]');
+        }
+        return control.closest('[data-screen3-table-id]');
+      }
+
+      function screen3RowsForTable(table) {
+        if (!table) {
+          return [];
+        }
+        return Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-screen3-table-row="true"]'));
+      }
+
+      function screen3RowCellValue(row, keyName) {
+        const safeKey = safeStateValue(keyName || '');
+        if (!safeKey) {
+          return '';
+        }
+        const value = safeStateValue(
+          row.getAttribute('data-screen3-filter-' + safeKey) ||
+          row.getAttribute('data-screen3-sort-' + safeKey) ||
+          ''
+        );
+        if (value) {
+          return value;
+        }
+        const cell = row.querySelector('[data-screen3-cell-key="' + safeKey + '"]');
+        return safeStateValue(cell ? cell.textContent : '');
+      }
+
+      function screen3SortValue(row, sortKey) {
+        const key = safeStateValue(sortKey || '');
+        if (!key) {
+          return '';
+        }
+        const value = screen3RowCellValue(row, key);
+        if (key === 'snapshot_count') {
+          const numericValue = Number(value);
+          return Number.isFinite(numericValue) ? numericValue : -1;
+        }
+        if (key === 'awr_count') {
+          const numericValue = Number(value);
+          return Number.isFinite(numericValue) ? numericValue : -1;
+        }
+        if (key === 'begin' || key === 'end') {
+          const parsed = Date.parse(value);
+          return Number.isFinite(parsed) ? parsed : value.toLowerCase();
+        }
+        return value.toLowerCase();
+      }
+
+      function sortScreen3TableRows(table, tableState) {
+        const sortKey = safeStateValue(tableState.sortKey || '');
+        const sortDirection = safeStateValue(tableState.sortDirection || 'asc') === 'desc' ? 'desc' : 'asc';
+        table.querySelectorAll('tbody').forEach(function (tbody) {
+          const rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-screen3-table-row="true"]'));
+          if (!sortKey || rows.length < 2) {
+            return;
+          }
+          rows.sort(function (left, right) {
+            const leftValue = screen3SortValue(left, sortKey);
+            const rightValue = screen3SortValue(right, sortKey);
+            if (leftValue < rightValue) {
+              return sortDirection === 'asc' ? -1 : 1;
+            }
+            if (leftValue > rightValue) {
+              return sortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+          });
+          rows.forEach(function (row) {
+            tbody.appendChild(row);
+          });
+        });
+      }
+
+      function updateScreen3TableSortIndicators(table, tableState) {
+        const sortKey = safeStateValue(tableState.sortKey || '');
+        const direction = safeStateValue(tableState.sortDirection || 'asc') === 'desc' ? 'desc' : 'asc';
+        table.querySelectorAll('[data-screen3-sort-indicator], [data-screen3-table-sort-indicator]').forEach(function (indicator) {
+          const key = safeStateValue(
+            indicator.getAttribute('data-screen3-table-sort-indicator') ||
+            indicator.getAttribute('data-screen3-sort-indicator')
+          );
+          indicator.textContent = key === sortKey
+            ? (direction === 'desc' ? '↓' : '↑')
+            : '↕';
+          const sortButton = indicator.closest('[data-screen3-table-sort]');
+          if (sortButton) {
+            sortButton.classList.toggle('is-active', key === sortKey);
+            sortButton.setAttribute('aria-pressed', key === sortKey ? 'true' : 'false');
+          }
+        });
+      }
+
+      function screen3FilterControlsForTable(table) {
+        return Array.prototype.slice.call(table.querySelectorAll('[data-screen3-table-filter]'));
+      }
+
+      function applyScreen3TableState(table) {
+        if (!table) {
+          return;
+        }
+        const tableId = safeStateValue(table.getAttribute('data-screen3-table-id'));
+        if (!tableId) {
+          return;
+        }
+        const state = screen3TableState(tableId);
+        screen3FilterControlsForTable(table).forEach(function (control) {
+          const key = safeStateValue(control.getAttribute('data-screen3-filter-key') || control.getAttribute('data-screen3-table-filter'));
+          if (key) {
+            state.filters[key] = safeStateValue(control.value || '');
+          }
+        });
+        table.querySelectorAll('.screen3-table-header-control').forEach(function (headerControl) {
+          const input = headerControl.querySelector('[data-screen3-table-filter]');
+          const filterButton = headerControl.querySelector('[data-screen3-table-filter-toggle]');
+          const hasValue = Boolean(input && safeStateValue(input.value || ''));
+          headerControl.classList.toggle('has-active-filter', hasValue);
+          if (filterButton) {
+            filterButton.classList.toggle('is-active', hasValue);
+            filterButton.setAttribute('aria-pressed', hasValue ? 'true' : 'false');
+          }
+        });
+        sortScreen3TableRows(table, state);
+        updateScreen3TableSortIndicators(table, state);
+        const rows = screen3RowsForTable(table);
+        const activeFilters = Object.keys(state.filters || {}).filter(function (key) {
+          return safeStateValue(state.filters[key] || '');
+        });
+        let visibleCount = 0;
+        let baselineCount = 0;
+        rows.forEach(function (row) {
+          const topLevelVisible = row.getAttribute('data-screen3-top-filter-visible') !== 'false';
+          if (topLevelVisible) {
+            baselineCount += 1;
+          }
+          const tableMatches = activeFilters.every(function (key) {
+            const filterValue = safeStateValue(state.filters[key] || '').toLowerCase();
+            if (!filterValue) {
+              return true;
+            }
+            return screen3RowCellValue(row, key).toLowerCase().indexOf(filterValue) >= 0;
+          });
+          const visible = topLevelVisible && tableMatches;
+          row.hidden = !visible;
+          row.setAttribute('data-screen3-table-filtered-visible', visible ? 'true' : 'false');
+          if (visible) {
+            visibleCount += 1;
+          }
+        });
+        table.querySelectorAll('[data-screen3-table-empty-row="true"]').forEach(function (row) {
+          row.remove();
+        });
+        if (!visibleCount) {
+          table.querySelectorAll('tbody').forEach(function (tbody) {
+            const colCount = Math.max(1, table.querySelectorAll('thead th').length);
+            const emptyRow = document.createElement('tr');
+            emptyRow.setAttribute('data-screen3-table-empty-row', 'true');
+            const cell = document.createElement('td');
+            cell.colSpan = colCount;
+            cell.className = 'empty-state';
+            cell.textContent = rows.length
+              ? 'No rows match current table filters.'
+              : 'Load available runtime options to populate this table.';
+            emptyRow.appendChild(cell);
+            tbody.appendChild(emptyRow);
+          });
+        }
+        document.querySelectorAll('[data-screen3-table-count="' + tableId + '"]').forEach(function (element) {
+          element.textContent = 'Showing ' + String(visibleCount) + ' of ' + String(baselineCount) + ' row(s) after table filters.';
+          element.setAttribute('data-screen3-table-visible-count', String(visibleCount));
+          element.setAttribute('data-screen3-table-total-count', String(baselineCount));
+        });
+        const sortKey = safeStateValue(state.sortKey || '');
+        const direction = safeStateValue(state.sortDirection || 'asc') === 'desc' ? 'desc' : 'asc';
+        const filterSummary = activeFilters.map(function (key) {
+          return key + '=' + safeStateValue(state.filters[key] || '');
+        }).join(', ') || 'none';
+        const sortSummary = sortKey
+          ? (sortKey + ' ' + (direction === 'desc' ? '↓' : '↑'))
+          : 'none';
+        document.querySelectorAll('[data-screen3-table-sort-summary="' + tableId + '"]').forEach(function (element) {
+          element.textContent = sortSummary;
+        });
+        document.querySelectorAll('[data-screen3-table-filter-summary="' + tableId + '"]').forEach(function (element) {
+          element.textContent = filterSummary;
+        });
+      }
+
+      function applyScreen3TableStateById(tableId, root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen3-table-id="' + safeStateValue(tableId) + '"]').forEach(applyScreen3TableState);
+      }
+
+      function applyScreen3TableStates(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-screen3-table-id]').forEach(applyScreen3TableState);
+      }
+
+      function initializeScreen3Tables(root) {
+        applyScreen3TableStates(root || document);
+      }
+
+      function attachScreen3TableSortAndFilters(root) {
+        initializeScreen3Tables(root || document);
+      }
+
+      function updateScreen3TableCounts(tableId, root) {
+        applyScreen3TableStateById(tableId, root || document);
+      }
+
+      function clearScreen3AllTableFilters(root) {
+        const scope = root || document;
+        Object.keys(screen3TableStates).forEach(function (tableId) {
+          screen3TableStates[tableId].filters = {};
+        });
+        scope.querySelectorAll('[data-screen3-table-filter]').forEach(function (input) {
+          input.value = '';
+        });
+      }
+
+      function updateScreen3RowApplyLabels(state, root) {
+        const scope = root || document;
+        const activeTarget = screen3ActiveSelectionTarget(state || readDashboardState());
+        scope.querySelectorAll('[data-screen3-row-apply-label="true"]').forEach(function (cell) {
+          const row = cell.closest(SELECTABLE_SELECTOR);
+          const selectType = row ? safeStateValue(row.getAttribute('data-dashboard-select-type')) : '';
+          if (selectType === 'runtimeScope') {
+            cell.textContent = 'Use row for ' + activeTarget;
+          } else if (selectType === 'snapshot') {
+            cell.textContent = 'Use interval for ' + activeTarget;
+          }
+        });
+      }
+
+      function screen3RowMatchesFilter(row, state, stateKey, attributeName) {
+        const filterValue = screen3NormalizeFilter(state[stateKey] || '');
+        if (!filterValue) {
+          return true;
+        }
+        const rowValue = safeStateValue(row.getAttribute(attributeName) || '');
+        return rowValue === filterValue;
+      }
+
+      function updateScreen3RuntimeFilters(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        const runtimeTableState = screen3TableState('screen3-runtime-inventory');
+        runtimeTableState.sortKey = safeStateValue(safeState.screen3RuntimeSortKey || '');
+        runtimeTableState.sortDirection = safeStateValue(safeState.screen3RuntimeSortDirection || 'asc');
+        const searchTerm = safeStateValue(safeState.screen3RuntimeFilterSearch || '').toLowerCase();
+        const limitValue = safeStateValue(safeState.screen3RuntimeResultLimit || '50');
+        const resultLimit = limitValue.toLowerCase() === 'all'
+          ? Number.POSITIVE_INFINITY
+          : (Number(limitValue) || 50);
+        let totalRows = 0;
+        let matchingRows = 0;
+        let renderedRows = 0;
+        scope.querySelectorAll('[data-screen3-runtime-scope-row="true"]').forEach(function (row) {
+          totalRows += 1;
+          const rowSearchText = safeStateValue(row.textContent || '').toLowerCase();
+          const matches =
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterApplication', 'data-screen3-filter-application') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterDb', 'data-screen3-filter-db') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterDbid', 'data-screen3-filter-dbid') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterInstance', 'data-screen3-filter-instance') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterHost', 'data-screen3-filter-host') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterSourceType', 'data-screen3-filter-source-table') &&
+            screen3RowMatchesFilter(row, safeState, 'screen3RuntimeFilterTimeRange', 'data-screen3-filter-time-window') &&
+            (!searchTerm || rowSearchText.indexOf(searchTerm) >= 0);
+          if (matches) {
+            matchingRows += 1;
+          }
+          const withinLimit = matches && renderedRows < resultLimit;
+          if (withinLimit) {
+            renderedRows += 1;
+          }
+          row.hidden = !withinLimit;
+          row.setAttribute('data-screen3-top-filter-visible', withinLimit ? 'true' : 'false');
+          row.setAttribute('data-screen3-filtered-visible', withinLimit ? 'true' : 'false');
+          row.setAttribute('data-screen3-filtered-match', matches ? 'true' : 'false');
+        });
+        const countText = 'Showing ' + String(renderedRows) + ' of ' + String(matchingRows) +
+          ' matching row(s) from ' + String(totalRows) + ' loaded row(s). Use filters to narrow results.';
+        scope.querySelectorAll('[data-screen3-filtered-result-count="true"]').forEach(function (element) {
+          element.textContent = countText;
+          element.setAttribute('data-screen3-filtered-count-value', String(renderedRows));
+          element.setAttribute('data-screen3-filtered-match-value', String(matchingRows));
+          element.setAttribute('data-screen3-filtered-total-value', String(totalRows));
+        });
+        applyScreen3TableStateById('screen3-runtime-inventory', scope);
+      }
+
+      function screen3RuntimeScopeSourceTypeFromState(state) {
+        const sourceTable = safeStateValue(state.selectedRuntimeScopeSourceTable || '');
+        if (sourceTable.toLowerCase().indexOf('fallback') >= 0 ||
+            state.selectedRuntimeScopeResolutionState === 'current_generated_context') {
+          return 'current_generated_context';
+        }
+        return 'db_backed';
+      }
+
+      function applyScreen3RuntimeScopeToActiveTarget(element, state) {
+        const suffix = screen3ActiveTargetSuffix(state);
+        if (!suffix) {
+          return state;
+        }
+        const sourceType = screen3RuntimeScopeSourceTypeFromState(state);
+        const reportId = safeStateValue(state.selectedReportId || '');
+        const runReference = safeStateValue(state.selectedRunReference || state.selectedRun || state.selectedAwr || '');
+        const scopeType = reportId ? 'report' : (runReference ? 'run' : (state.selectedDbid ? 'dbid' : 'db_name'));
+        const scopeValue = reportId || runReference || state.selectedDbid || state.selectedDb || safeStateValue(element.getAttribute('data-dashboard-select-id'));
+        const timeWindow = safeStateValue(state.selectedTimeWindow || state.selectedSnapshot || '');
+        const readiness = safeStateValue(state.selectedRuntimeScopeReadinessState || '');
+        const awrCount = safeStateValue(state.selectedRuntimeScopeAwrCount || (sourceType === 'db_backed' ? '1' : '0'));
+        const snapshotCount = safeStateValue(state.selectedRuntimeScopeSnapshotCount || (timeWindow ? '1' : '0'));
+        const resolution = safeStateValue(
+          state.selectedRuntimeScopeResolutionState === 'current_generated_context'
+            ? 'Current generated dashboard context; DB-backed comparable resolution not confirmed'
+            : (awrCount + ' AWR/run record(s) / ' + snapshotCount + ' snapshot window(s)')
+        );
+        const targetKey = 'selectedComparisonTarget' + suffix;
+        state[targetKey] = [sourceType, scopeType, scopeValue, timeWindow].filter(Boolean).join(' | ');
+        state[targetKey + 'SourceType'] = sourceType;
+        state[targetKey + 'ScopeType'] = scopeType;
+        state[targetKey + 'ScopeValue'] = scopeValue;
+        state[targetKey + 'TimeWindow'] = timeWindow;
+        state[targetKey + 'ResolutionState'] = state.selectedRuntimeScopeResolutionState || (sourceType === 'db_backed' ? 'resolved_persisted_data' : 'current_generated_context');
+        state[targetKey + 'ReadinessState'] = readiness || (sourceType === 'db_backed' ? 'comparable' : 'analysis_required');
+        state[targetKey + 'ResolutionSummary'] = resolution;
+        state[targetKey + 'AwrCount'] = awrCount;
+        state[targetKey + 'SnapshotCount'] = snapshotCount;
+        state[targetKey + 'MissingGates'] = state[targetKey + 'ReadinessState'] === 'comparable'
+          ? ''
+          : 'confirm persisted comparable target before comparison';
+        if (suffix === 'A') {
+          state.selectedComparisonAwrA = scopeValue;
+          state.selectedComparisonWindowA = timeWindow;
+        } else {
+          state.selectedComparisonAwrB = scopeValue;
+          state.selectedComparisonWindowB = timeWindow;
+        }
+        return state;
+      }
+
+      function applyScreen3IntervalToActiveTarget(state) {
+        const suffix = screen3ActiveTargetSuffix(state);
+        if (!suffix) {
+          return state;
+        }
+        const targetKey = 'selectedComparisonTarget' + suffix;
+        const windowLabel = safeStateValue(state.selectedTimeWindow || state.selectedSnapshot || '');
+        if (windowLabel) {
+          state[targetKey + 'TimeWindow'] = windowLabel;
+          if (suffix === 'A') {
+            state.selectedComparisonWindowA = windowLabel;
+          } else {
+            state.selectedComparisonWindowB = windowLabel;
+          }
+          const sourceType = safeStateValue(state[targetKey + 'SourceType'] || screen3RuntimeScopeSourceTypeFromState(state));
+          const scopeType = safeStateValue(state[targetKey + 'ScopeType'] || 'time_window');
+          const scopeValue = safeStateValue(state[targetKey + 'ScopeValue'] || state.selectedRunReference || state.selectedDbid || windowLabel);
+          state[targetKey] = [sourceType, scopeType, scopeValue, windowLabel].filter(Boolean).join(' | ');
+        }
+        return state;
+      }
+
+      function updateScreen3ExecutionResultPanel(element, status, message) {
+        if (!isScreen3RuntimeAction(element)) {
+          return;
+        }
+        const payload = readActionPayload(element);
+        const dashboardState = readDashboardState();
+        const productLabel = safeStateValue(element.getAttribute('data-action-label')) ||
+          screen3ActionProductLabel(payload.requested_screen3_action);
+        document.querySelectorAll('[data-screen3-execution-result-panel="true"]').forEach(function (panel) {
+          setScreen3ResultField(panel, 'status', status || 'Waiting for submission');
+          setScreen3ResultField(panel, 'requested_action', productLabel || 'Not issued');
+          setScreen3ResultField(panel, 'selected_source_mode', screen3SourceModeSummary(dashboardState));
+          setScreen3ResultField(panel, 'selected_application', screen3DisplayOrUnavailable(dashboardState.selectedApplication));
+          setScreen3ResultField(panel, 'selected_db', dashboardState.selectedDb || 'Not selected');
+          setScreen3ResultField(panel, 'selected_dbid', dashboardState.selectedDbid || 'Not selected');
+          setScreen3ResultField(panel, 'selected_host', screen3DisplayOrUnavailable(dashboardState.selectedHost || dashboardState.selectedSystem));
+          setScreen3ResultField(panel, 'selected_instance', screen3DisplayOrUnavailable(dashboardState.selectedInstance));
+          setScreen3ResultField(panel, 'selected_awr_run', dashboardState.selectedAwr || dashboardState.selectedRun || dashboardState.selectedRunReference || 'Not selected');
+          setScreen3ResultField(panel, 'selected_snapshot_window', dashboardState.selectedSnapshot || dashboardState.selectedTimeWindow || 'Not selected');
+          setScreen3ResultField(panel, 'runtime_scope', screen3RuntimeScopeSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_mode', screen3ComparisonSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_target_a', screen3TargetShortSummary(dashboardState, 'A'));
+          setScreen3ResultField(panel, 'comparison_target_b', screen3TargetShortSummary(dashboardState, 'B'));
+          setScreen3ResultField(panel, 'comparison_status', productLabel === 'Build Comparison' ? (status || 'Comparison request pending') : 'Not submitted');
+          setScreen3ResultField(panel, 'comparison_result_mode', screen3ComparisonSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_target_a_readiness', dashboardState.selectedComparisonTargetAReadinessState || 'Target A: not resolved');
+          setScreen3ResultField(panel, 'comparison_target_b_readiness', dashboardState.selectedComparisonTargetBReadinessState || 'Target B: not resolved');
+          setScreen3ResultField(panel, 'comparison_both_comparable', screen3BothTargetsComparable(dashboardState) ? 'Yes' : 'No');
+          setScreen3ResultField(panel, 'comparison_result_target_a', screen3TargetShortSummary(dashboardState, 'A'));
+          setScreen3ResultField(panel, 'comparison_result_target_b', screen3TargetShortSummary(dashboardState, 'B'));
+          setScreen3ResultField(panel, 'comparison_artifact_reference', 'Not created');
+          setScreen3ResultField(panel, 'comparison_screen4_handoff', 'Open Screen 4 after a comparison request returns an artifact/reference.');
+          setScreen3ResultField(panel, 'comparison_missing_gates', productLabel === 'Build Comparison' ? (message || screen3ComparisonMissingGatesSummary(dashboardState)) : screen3ComparisonMissingGatesSummary(dashboardState));
+          setScreen3ResultField(panel, 'review_mode', screen3ReviewModeSummary(dashboardState));
+          setScreen3ResultField(panel, 'execution_status', status || 'Not executed');
+          setScreen3ResultField(panel, 'existing_run_truth', 'Existing run truth unchanged');
+          setScreen3ResultField(panel, 'next_step', message || 'Review governed request status.');
+        });
+      }
+
+      function updateScreen3ExecutionResultPanelFromResponse(element, responseStatus, payload) {
+        if (!isScreen3RuntimeAction(element)) {
+          return;
+        }
+        const responsePayload = payload && typeof payload === 'object' ? payload : {};
+        const summary = responsePayload.source_summary && typeof responsePayload.source_summary === 'object'
+          ? responsePayload.source_summary
+          : {};
+        const productLabel = safeStateValue(element.getAttribute('data-action-label')) ||
+          screen3ActionProductLabel(summary.requested_screen3_action);
+        const missingGates = Array.isArray(summary.missing_execution_gates)
+          ? summary.missing_execution_gates
+          : [];
+        const dashboardState = readDashboardState();
+        const nextState = Object.assign({}, dashboardState);
+        nextState.screen3LastRequestedAction = productLabel || '';
+        nextState.screen3LastActionStatus = responseStatus || responsePayload.status || '';
+        nextState.screen3LastRequestId = responsePayload.request_id || '';
+        nextState.screen3LastTransactionId = summary.transaction_group_id || responsePayload.transaction_id || '';
+        nextState.screen3LastValidationStatus = summary.validation_status || '';
+        nextState.screen3LastAuditReference = responsePayload.audit_reference || summary.audit_reference || '';
+        nextState.screen3LastPersistenceStatus = responsePayload.db_persistence_status || '';
+        nextState.screen3LastExecutionStatus = responseStatus || responsePayload.status || '';
+        nextState.screen3LastOutputArtifact = summary.output_artifact_reference || '';
+        nextState.screen3LastNewRunOutputReference = summary.new_run_output_reference || '';
+        nextState.screen3LastNextStep = missingGates.length
+          ? screen3SubmittedActionMessage(productLabel || 'runtime', responseStatus || 'blocked', missingGates)
+          : 'Review returned request, audit, and artifact references.';
+        writeDashboardState(nextState);
+        document.querySelectorAll('[data-screen3-execution-result-panel="true"]').forEach(function (panel) {
+          setScreen3ResultField(panel, 'status', responseStatus || responsePayload.status || 'Not reported');
+          setScreen3ResultField(panel, 'requested_action', productLabel || 'Not issued');
+          setScreen3ResultField(panel, 'selected_source_mode', screen3SourceModeSummary(dashboardState));
+          setScreen3ResultField(panel, 'selected_application', screen3DisplayOrUnavailable(dashboardState.selectedApplication));
+          setScreen3ResultField(panel, 'selected_db', dashboardState.selectedDb || 'Not selected');
+          setScreen3ResultField(panel, 'selected_dbid', dashboardState.selectedDbid || 'Not selected');
+          setScreen3ResultField(panel, 'selected_host', screen3DisplayOrUnavailable(dashboardState.selectedHost || dashboardState.selectedSystem));
+          setScreen3ResultField(panel, 'selected_instance', screen3DisplayOrUnavailable(dashboardState.selectedInstance));
+          setScreen3ResultField(panel, 'selected_awr_run', dashboardState.selectedAwr || dashboardState.selectedRun || dashboardState.selectedRunReference || 'Not selected');
+          setScreen3ResultField(panel, 'selected_snapshot_window', dashboardState.selectedSnapshot || dashboardState.selectedTimeWindow || 'Not selected');
+          setScreen3ResultField(panel, 'runtime_scope', screen3RuntimeScopeSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_mode', screen3ComparisonSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_target_a', screen3TargetShortSummary(dashboardState, 'A'));
+          setScreen3ResultField(panel, 'comparison_target_b', screen3TargetShortSummary(dashboardState, 'B'));
+          setScreen3ResultField(panel, 'comparison_status', productLabel === 'Build Comparison' ? (responseStatus || responsePayload.status || 'Not reported') : 'Not submitted');
+          setScreen3ResultField(panel, 'comparison_result_mode', screen3ComparisonSummary(dashboardState));
+          setScreen3ResultField(panel, 'comparison_target_a_readiness', dashboardState.selectedComparisonTargetAReadinessState || 'Target A: not resolved');
+          setScreen3ResultField(panel, 'comparison_target_b_readiness', dashboardState.selectedComparisonTargetBReadinessState || 'Target B: not resolved');
+          setScreen3ResultField(panel, 'comparison_both_comparable', screen3BothTargetsComparable(dashboardState) ? 'Yes' : 'No');
+          setScreen3ResultField(panel, 'comparison_result_target_a', screen3TargetShortSummary(dashboardState, 'A'));
+          setScreen3ResultField(panel, 'comparison_result_target_b', screen3TargetShortSummary(dashboardState, 'B'));
+          setScreen3ResultField(panel, 'comparison_artifact_reference', summary.output_artifact_reference || 'Not created');
+          setScreen3ResultField(panel, 'comparison_screen4_handoff', summary.output_artifact_reference ? 'Open Screen 4 to review comparison evidence.' : 'Open Screen 4 after comparison evidence is built or an artifact/reference is returned.');
+          setScreen3ResultField(panel, 'comparison_missing_gates', missingGates.length ? missingGates.join('; ') : screen3ComparisonMissingGatesSummary(dashboardState));
+          setScreen3ResultField(panel, 'review_mode', screen3ReviewModeSummary(dashboardState));
+          setScreen3ResultField(panel, 'request_id', responsePayload.request_id || 'Not created');
+          setScreen3ResultField(panel, 'transaction_id', summary.transaction_group_id || responsePayload.transaction_id || 'Not created');
+          setScreen3ResultField(panel, 'validation_status', summary.validation_status || 'Not evaluated');
+          setScreen3ResultField(panel, 'audit_reference', responsePayload.audit_reference || summary.audit_reference || 'Not created');
+          setScreen3ResultField(panel, 'persistence', responsePayload.db_persistence_status || 'Not reported');
+          setScreen3ResultField(panel, 'db_record', responsePayload.db_persistence_status || 'Not created');
+          setScreen3ResultField(panel, 'execution_status', responseStatus || responsePayload.status || 'Not executed');
+          setScreen3ResultField(panel, 'output_artifact', summary.output_artifact_reference || 'Not created');
+          setScreen3ResultField(panel, 'new_run_output_reference', summary.new_run_output_reference || 'Not created');
+          setScreen3ResultField(panel, 'existing_run_truth', 'Existing run truth unchanged');
+          setScreen3ResultField(
+            panel,
+            'next_step',
+            missingGates.length
+              ? screen3SubmittedActionMessage(productLabel || 'runtime', responseStatus || 'blocked', missingGates)
+              : 'Review returned request, audit, and artifact references.'
+          );
+        });
+      }
+
+      function updateScreen3ResultPanelFromSelection(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || readDashboardState());
+        scope.querySelectorAll('[data-screen3-execution-result-panel="true"]').forEach(function (panel) {
+          setScreen3ResultField(panel, 'status', safeState.screen3LastActionStatus || 'Waiting for submission');
+          setScreen3ResultField(panel, 'requested_action', safeState.screen3LastRequestedAction || (safeState.screen3LastActionStatus ? 'Last governed action' : 'Not issued'));
+          setScreen3ResultField(panel, 'selected_source_mode', screen3SourceModeSummary(safeState));
+          setScreen3ResultField(panel, 'selected_application', screen3DisplayOrUnavailable(safeState.selectedApplication));
+          setScreen3ResultField(panel, 'selected_db', safeState.selectedDb || 'Not selected');
+          setScreen3ResultField(panel, 'selected_dbid', safeState.selectedDbid || 'Not selected');
+          setScreen3ResultField(panel, 'selected_host', screen3DisplayOrUnavailable(safeState.selectedHost || safeState.selectedSystem));
+          setScreen3ResultField(panel, 'selected_instance', screen3DisplayOrUnavailable(safeState.selectedInstance));
+          setScreen3ResultField(panel, 'selected_awr_run', safeState.selectedAwr || safeState.selectedRun || safeState.selectedRunReference || 'Not selected');
+          setScreen3ResultField(panel, 'selected_snapshot_window', safeState.selectedSnapshot || safeState.selectedTimeWindow || 'Not selected');
+          setScreen3ResultField(panel, 'runtime_scope', screen3RuntimeScopeSummary(safeState));
+          setScreen3ResultField(panel, 'comparison_mode', screen3ComparisonSummary(safeState));
+          setScreen3ResultField(panel, 'comparison_target_a', screen3TargetShortSummary(safeState, 'A'));
+          setScreen3ResultField(panel, 'comparison_target_b', screen3TargetShortSummary(safeState, 'B'));
+          setScreen3ResultField(panel, 'comparison_status', safeState.screen3LastRequestedAction === 'Build Comparison' ? (safeState.screen3LastActionStatus || 'Comparison request pending') : 'Pending comparison request');
+          setScreen3ResultField(panel, 'comparison_result_mode', screen3ComparisonSummary(safeState));
+          setScreen3ResultField(panel, 'comparison_target_a_readiness', safeState.selectedComparisonTargetAReadinessState || 'Target A: not resolved');
+          setScreen3ResultField(panel, 'comparison_target_b_readiness', safeState.selectedComparisonTargetBReadinessState || 'Target B: not resolved');
+          setScreen3ResultField(panel, 'comparison_both_comparable', screen3BothTargetsComparable(safeState) ? 'Yes' : 'No');
+          setScreen3ResultField(panel, 'comparison_result_target_a', screen3TargetShortSummary(safeState, 'A'));
+          setScreen3ResultField(panel, 'comparison_result_target_b', screen3TargetShortSummary(safeState, 'B'));
+          setScreen3ResultField(panel, 'comparison_artifact_reference', safeState.screen3LastOutputArtifact || 'Not created');
+          setScreen3ResultField(panel, 'comparison_screen4_handoff', 'Open Screen 4 after a comparison request returns an artifact/reference.');
+          setScreen3ResultField(panel, 'comparison_missing_gates', screen3ComparisonMissingGatesSummary(safeState));
+          setScreen3ResultField(panel, 'review_mode', screen3ReviewModeSummary(safeState));
+          setScreen3ResultField(panel, 'request_id', safeState.screen3LastRequestId || 'Not created');
+          setScreen3ResultField(panel, 'transaction_id', safeState.screen3LastTransactionId || 'Not created');
+          setScreen3ResultField(panel, 'validation_status', safeState.screen3LastValidationStatus || 'Not evaluated');
+          setScreen3ResultField(panel, 'audit_reference', safeState.screen3LastAuditReference || 'Not created');
+          setScreen3ResultField(panel, 'persistence', safeState.screen3LastPersistenceStatus || 'Not reported');
+          setScreen3ResultField(panel, 'db_record', safeState.screen3LastPersistenceStatus || 'Not created');
+          setScreen3ResultField(panel, 'execution_status', safeState.screen3LastExecutionStatus || 'Not executed');
+          setScreen3ResultField(panel, 'output_artifact', safeState.screen3LastOutputArtifact || 'Not created');
+          setScreen3ResultField(panel, 'new_run_output_reference', safeState.screen3LastNewRunOutputReference || 'Not created');
+          setScreen3ResultField(panel, 'existing_run_truth', 'Existing run truth unchanged');
+          setScreen3ResultField(panel, 'next_step', safeState.screen3LastNextStep || 'Select source/scope/comparison/review mode, then submit a governed action');
+        });
       }
 
       function escapeHtml(value) {
@@ -3522,8 +4932,8 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function sourceSelectionMissingFields(state) {
         const safeState = sanitizeDashboardState(state || readDashboardState());
-        const mode = safeState.selectedSourceMode || '';
-        const method = safeState.sourceSelectionMethod || (mode === 'local_staged' ? 'backend_path' : '');
+        const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
+        const method = safeState.sourceSelectionMethod || (mode === 'local_staged' ? 'backend_path' : (mode === 'existing_run' ? 'existing_run_reference' : ''));
         const missing = [];
         if (!mode) {
           missing.push('selectedSourceMode');
@@ -3593,13 +5003,72 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function isScreen3RuntimeAction(element) {
+        return (
+          safeStateValue(element.getAttribute('data-screen-id')) === 'screen_3' &&
+          safeStateValue(element.getAttribute('data-action-type')) === 'screen3_active_reanalysis'
+        );
+      }
+
+      function screen3ActionMessage(element, state, missingFields) {
+        const action = safeStateValue(readActionPayload(element).requested_screen3_action || '');
+        if (missingFields && missingFields.length) {
+          return 'Screen 3 action is blocked until a DB-backed runtime row is selected or Index source context is ready.';
+        }
+        return 'Ready to submit governed Screen 3 ' + screen3ActionProductLabel(action) + ' request. Existing run truth remains unchanged.';
+      }
+
+      function screen3SubmittedActionMessage(actionLabel, responseStatus, missingGates) {
+        const gates = Array.isArray(missingGates) ? missingGates.filter(Boolean) : [];
+        if (responseStatus === 'blocked' && gates.length) {
+          const firstGate = safeStateValue(gates[0]);
+          const normalizedGate = firstGate.toLowerCase();
+          const normalizedAction = safeStateValue(actionLabel).toLowerCase();
+          if (normalizedAction.indexOf('build comparison') >= 0) {
+            if (normalizedGate.indexOf('target b') >= 0 && normalizedGate.indexOf('unresolved') >= 0) {
+              return 'Blocked: Target B is unresolved. Select a comparable Target B before building comparison. Existing run truth unchanged.';
+            }
+            if (normalizedGate.indexOf('target a') >= 0 && normalizedGate.indexOf('unresolved') >= 0) {
+              return 'Blocked: Target A is unresolved. Select a comparable Target A before building comparison. Existing run truth unchanged.';
+            }
+            if (normalizedGate.indexOf('load_required') >= 0 || normalizedGate.indexOf('load/parse/ingest/analyze') >= 0) {
+              return 'Blocked: an external target must be loaded, parsed, ingested, analyzed, and persisted before comparison. Existing run truth unchanged.';
+            }
+            if (normalizedGate.indexOf('artifact lifecycle') >= 0 || normalizedGate.indexOf('screen 4 handoff') >= 0) {
+              return 'Blocked: comparison artifact lifecycle and Screen 4 handoff are not connected. Existing run truth unchanged.';
+            }
+            return 'Blocked: comparison-specific gate missing - ' + firstGate + '. Existing run truth unchanged.';
+          }
+          if (normalizedAction.indexOf('load') >= 0 || normalizedAction.indexOf('external target') >= 0) {
+            return 'Blocked: external target preparation needs server-side load/read, parser/ingest, deterministic analysis, and artifact lifecycle. Existing run truth unchanged.';
+          }
+          if (normalizedAction.indexOf('re-run') >= 0 || normalizedAction.indexOf('rerun') >= 0) {
+            return 'Blocked: re-run needs a persisted source/scope plus deterministic runner and new output lifecycle. Existing run truth unchanged.';
+          }
+          if (normalizedAction.indexOf('analyze') >= 0) {
+            return 'Blocked: analysis needs a selected source/scope plus deterministic runner and output lifecycle. Existing run truth unchanged.';
+          }
+          return 'Blocked: ' + firstGate + '. Existing run truth unchanged.';
+        }
+        if (responseStatus === 'blocked') {
+          return 'Blocked safely: required backend gates are missing. Existing run truth unchanged.';
+        }
+        if (responseStatus === 'accepted') {
+          return 'Accepted: ' + actionLabel + ' request was recorded. Review Request / Execution Result for references.';
+        }
+        if (responseStatus === 'completed') {
+          return 'Completed: ' + actionLabel + ' returned a governed result. Review Request / Execution Result.';
+        }
+        return 'Screen 3 ' + actionLabel + ' request ' + responseStatus + '. Existing run truth unchanged.';
+      }
+
       function updatePhase7ActionEnablement(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
         scope.querySelectorAll(PHASE7_ACTION_SELECTOR).forEach(function (element) {
           const key = requiredSelectionKey(element);
           const selectedValue = selectionValueForAction(element, safeState);
-          const missingSourceFields = isIndexSourceSelectionAction(element)
+          const missingSourceFields = (isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element))
             ? sourceSelectionMissingFields(safeState)
             : [];
           const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
@@ -3627,8 +5096,12 @@ def _build_dashboard_interactivity_javascript() -> str:
                 isScreen1ParserGovernanceAction(element)
                   ? screen1ActionMessage(element, safeState, missingScreen1Fields) +
                     ' Nothing has been mutated; governed request/audit record is created only after submit.'
-                  : sourceActionStateMessage(safeState, missingSourceFields) +
-                    ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                  : (
+                    isScreen3RuntimeAction(element)
+                      ? screen3ActionMessage(element, safeState, missingSourceFields)
+                      : sourceActionStateMessage(safeState, missingSourceFields) +
+                        ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                  )
               );
             } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
               setActionStatus(
@@ -3636,7 +5109,11 @@ def _build_dashboard_interactivity_javascript() -> str:
                 'disabled-missing-required-selection',
                 isScreen1ParserGovernanceAction(element)
                   ? screen1ActionMessage(element, safeState, missingScreen1Fields)
-                  : sourceActionStateMessage(safeState, missingSourceFields)
+                  : (
+                    isScreen3RuntimeAction(element)
+                      ? screen3ActionMessage(element, safeState, missingSourceFields)
+                      : sourceActionStateMessage(safeState, missingSourceFields)
+                  )
               );
             }
           }
@@ -3655,8 +5132,9 @@ def _build_dashboard_interactivity_javascript() -> str:
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         const isScreen1Action = isScreen1ParserGovernanceAction(element);
-        const requestPrefix = isScreen1Action ? 'PHASE7CN' : 'PHASE7CM';
-        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : 'phase7cm';
+        const isScreen3Action = isScreen3RuntimeAction(element);
+        const requestPrefix = isScreen1Action ? 'PHASE7CN' : (isScreen3Action ? 'SCREEN3' : 'PHASE7CM');
+        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : (isScreen3Action ? 'screen3' : 'phase7cm');
         const idempotencyKey = [
           idempotencyPrefix,
           screenId,
@@ -3684,10 +5162,10 @@ def _build_dashboard_interactivity_javascript() -> str:
             dashboard_state: dashboardState,
             selected_context_key: selectedContextKey,
             selected_context_value: selectedContextValue,
-            selectedSourceMode: dashboardState.selectedSourceMode || '',
-            source_mode: dashboardState.selectedSourceMode || '',
-            sourceSelectionMethod: dashboardState.sourceSelectionMethod || '',
-            source_selection_method: dashboardState.sourceSelectionMethod || '',
+            selectedSourceMode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            source_mode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            sourceSelectionMethod: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
+            source_selection_method: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
             selectedSourcePath: dashboardState.selectedSourcePath || '',
             backend_visible_path: dashboardState.selectedSourcePath || '',
             selectedLocalFolderFileCount: dashboardState.selectedLocalFolderFileCount || '',
@@ -3737,7 +5215,7 @@ def _build_dashboard_interactivity_javascript() -> str:
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
-            target_screen: isScreen1Action ? 'screen_1' : 'screen3',
+            target_screen: isScreen1Action ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
             source_request_contract_version: isScreen1Action ? '' : '7CM.index_source_selection.v1',
             screen1_parser_governance_contract_version: isScreen1Action
               ? '7CN.screen1_parser_governance.v1'
@@ -3752,6 +5230,70 @@ def _build_dashboard_interactivity_javascript() -> str:
             selectedWaitEventGroup: dashboardState.selectedWaitEventGroup || '',
             selectedSqlSignal: dashboardState.selectedSqlSignal || '',
             selectedDiagnosticSection: dashboardState.selectedDiagnosticSection || '',
+            selectedApplication: dashboardState.selectedApplication || '',
+            selectedDb: dashboardState.selectedDb || '',
+            selectedDbid: dashboardState.selectedDbid || '',
+            selectedHost: dashboardState.selectedHost || '',
+            selectedInstance: dashboardState.selectedInstance || '',
+            selectedSystem: dashboardState.selectedSystem || '',
+            selectedAwr: dashboardState.selectedAwr || '',
+            selectedRun: dashboardState.selectedRun || '',
+            selectedReportId: dashboardState.selectedReportId || '',
+            selectedSnapshot: dashboardState.selectedSnapshot || '',
+            selectedSnapshotBegin: dashboardState.selectedSnapshotBegin || '',
+            selectedSnapshotEnd: dashboardState.selectedSnapshotEnd || '',
+            selectedTimeWindow: dashboardState.selectedTimeWindow || '',
+            selectedRuntimeScope: dashboardState.selectedRuntimeScope || '',
+            selectedRuntimeScopeSourceTable: dashboardState.selectedRuntimeScopeSourceTable || '',
+            selectedRuntimeScopeAwrCount: dashboardState.selectedRuntimeScopeAwrCount || '',
+            selectedRuntimeScopeSnapshotCount: dashboardState.selectedRuntimeScopeSnapshotCount || '',
+            selectedRuntimeScopeResolutionState: dashboardState.selectedRuntimeScopeResolutionState || '',
+            selectedRuntimeScopeReadinessState: dashboardState.selectedRuntimeScopeReadinessState || '',
+            screen3ActiveSelectionTarget: dashboardState.screen3ActiveSelectionTarget || '',
+            screen3RuntimeFilterApplication: dashboardState.screen3RuntimeFilterApplication || '',
+            screen3RuntimeFilterDb: dashboardState.screen3RuntimeFilterDb || '',
+            screen3RuntimeFilterDbid: dashboardState.screen3RuntimeFilterDbid || '',
+            screen3RuntimeFilterInstance: dashboardState.screen3RuntimeFilterInstance || '',
+            screen3RuntimeFilterHost: dashboardState.screen3RuntimeFilterHost || '',
+            screen3RuntimeFilterSourceType: dashboardState.screen3RuntimeFilterSourceType || '',
+            screen3RuntimeFilterTimeRange: dashboardState.screen3RuntimeFilterTimeRange || '',
+            screen3RuntimeFilterSearch: dashboardState.screen3RuntimeFilterSearch || '',
+            screen3RuntimeFilteredResultCount: dashboardState.screen3RuntimeFilteredResultCount || '',
+            screen3RuntimeResultLimit: dashboardState.screen3RuntimeResultLimit || '50',
+            selectedComparisonMode: dashboardState.selectedComparisonMode || '',
+            selectedComparisonTargetA: dashboardState.selectedComparisonTargetA || '',
+            selectedComparisonTargetB: dashboardState.selectedComparisonTargetB || '',
+            selectedComparisonTargetASourceType: dashboardState.selectedComparisonTargetASourceType || '',
+            selectedComparisonTargetBSourceType: dashboardState.selectedComparisonTargetBSourceType || '',
+            selectedComparisonTargetAScopeType: dashboardState.selectedComparisonTargetAScopeType || '',
+            selectedComparisonTargetBScopeType: dashboardState.selectedComparisonTargetBScopeType || '',
+            selectedComparisonTargetAScopeValue: dashboardState.selectedComparisonTargetAScopeValue || '',
+            selectedComparisonTargetBScopeValue: dashboardState.selectedComparisonTargetBScopeValue || '',
+            selectedComparisonTargetATimeWindow: dashboardState.selectedComparisonTargetATimeWindow || '',
+            selectedComparisonTargetBTimeWindow: dashboardState.selectedComparisonTargetBTimeWindow || '',
+            selectedComparisonTargetAResolutionState: dashboardState.selectedComparisonTargetAResolutionState || '',
+            selectedComparisonTargetBResolutionState: dashboardState.selectedComparisonTargetBResolutionState || '',
+            selectedComparisonTargetAReadinessState: dashboardState.selectedComparisonTargetAReadinessState || '',
+            selectedComparisonTargetBReadinessState: dashboardState.selectedComparisonTargetBReadinessState || '',
+            selectedComparisonTargetAResolutionSummary: dashboardState.selectedComparisonTargetAResolutionSummary || '',
+            selectedComparisonTargetBResolutionSummary: dashboardState.selectedComparisonTargetBResolutionSummary || '',
+            selectedComparisonTargetAAwrCount: dashboardState.selectedComparisonTargetAAwrCount || '',
+            selectedComparisonTargetBAwrCount: dashboardState.selectedComparisonTargetBAwrCount || '',
+            selectedComparisonTargetASnapshotCount: dashboardState.selectedComparisonTargetASnapshotCount || '',
+            selectedComparisonTargetBSnapshotCount: dashboardState.selectedComparisonTargetBSnapshotCount || '',
+            selectedComparisonTargetAMissingGates: dashboardState.selectedComparisonTargetAMissingGates || '',
+            selectedComparisonTargetBMissingGates: dashboardState.selectedComparisonTargetBMissingGates || '',
+            selectedComparisonBothComparable: screen3BothTargetsComparable(dashboardState) ? 'yes' : 'no',
+            selectedComparisonAwrA: dashboardState.selectedComparisonAwrA || '',
+            selectedComparisonAwrB: dashboardState.selectedComparisonAwrB || '',
+            selectedComparisonSnapshotA: dashboardState.selectedComparisonSnapshotA || '',
+            selectedComparisonSnapshotB: dashboardState.selectedComparisonSnapshotB || '',
+            selectedComparisonWindowA: dashboardState.selectedComparisonWindowA || '',
+            selectedComparisonWindowB: dashboardState.selectedComparisonWindowB || '',
+            selectedComparisonBaseline: dashboardState.selectedComparisonBaseline || '',
+            selectedFleetGroup: dashboardState.selectedFleetGroup || '',
+            selectedSimilarCase: dashboardState.selectedSimilarCase || '',
+            selectedReviewMode: dashboardState.selectedReviewMode || '',
             selectedUnknownSignal: dashboardState.selectedUnknownSignal || '',
             selectedGovernanceItem: dashboardState.selectedGovernanceItem || '',
             selectedKnowledgeRequest: dashboardState.selectedKnowledgeRequest || '',
@@ -3759,6 +5301,9 @@ def _build_dashboard_interactivity_javascript() -> str:
             selectedParserSection: dashboardState.selectedParserSection || '',
             selectedParserDiagnostic: dashboardState.selectedParserDiagnostic || '',
             reviewer_actor_id: 'ACTOR-LOCAL-DASHBOARD-REVIEWER',
+            requested_screen3_action: isScreen3Action
+              ? safeStateValue(payload.requested_screen3_action || payload.requested_action || '')
+              : '',
             governance_intent: payload.governance_intent || (
               isScreen1Action
                 ? 'screen1_parser_governance_review'
@@ -3778,6 +5323,9 @@ def _build_dashboard_interactivity_javascript() -> str:
             parser_output_mutation_requested: false,
             parser_output_mutation_allowed: false,
             direct_parser_mutation_allowed: false,
+            current_run_truth_mutated: false,
+            deterministic_truth_changed: false,
+            parser_mutated: false,
             parser_mapping_created: false,
             parser_candidate_created: false,
             parser_backlog_item_created: false,
@@ -3786,6 +5334,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             artifact_rejected: false,
             artifact_revision_persisted: false,
             materialization_created: false,
+            materialization_changed: false,
             phase4i_mutation_requested: false,
             diagnostic_truth_mutation_requested: false,
             diagnostic_truth_mutation_allowed: false,
@@ -3799,6 +5348,11 @@ def _build_dashboard_interactivity_javascript() -> str:
             learning_candidate_created: false,
             candidate_created: false,
             runtime_eligibility_changed: false,
+            phase8_started: false,
+            llm_changed_status: false,
+            llm_changed_validation: false,
+            llm_changed_execution: false,
+            llm_changed_truth: false,
             awr_signature_validation: dashboardState.awrSignatureValidation || '',
             browser_parsing_performed: false,
             browser_db_query_attempted: false,
@@ -3852,6 +5406,920 @@ def _build_dashboard_interactivity_javascript() -> str:
             return { ok: response.ok, status: response.status, body: body };
           });
         });
+      }
+
+      function screen3RuntimeOptionValue(option, fallback) {
+        if (!option || typeof option !== 'object') {
+          return safeStateValue(fallback || '');
+        }
+        return safeStateValue(
+          option.value ||
+          option.run_reference ||
+          option.run_history_id ||
+          option.report_id ||
+          option.awr_id ||
+          option.label ||
+          fallback ||
+          ''
+        );
+      }
+
+      function screen3RuntimeOptionLabel(option, fallback) {
+        if (!option || typeof option !== 'object') {
+          return safeStateValue(fallback || 'Unavailable');
+        }
+        return safeStateValue(option.label || option.value || fallback || 'DB-backed option');
+      }
+
+      function screen3RuntimeWindow(option) {
+        if (!option || typeof option !== 'object') {
+          return '';
+        }
+        return safeStateValue(
+          option.time_window ||
+          option.window ||
+          (
+            option.snapshot_begin || option.snapshot_end
+              ? safeStateValue(option.snapshot_begin || '') + ' -> ' + safeStateValue(option.snapshot_end || '')
+              : ''
+          )
+        );
+      }
+
+      function screen3RuntimeRowIdentity(option, fallback) {
+        const item = option && typeof option === 'object' ? option : {};
+        return [
+          item.source_table || 'runtime_source_unknown',
+          item.report_id || item.awr_id || item.run_history_id || item.analysis_run_id || item.run_reference || fallback || 'row',
+          item.dbid || 'dbid_unknown',
+          item.instance_name || 'instance_unknown',
+          item.snapshot_begin || item.awr_begin_time || 'begin_unknown',
+          item.snapshot_end || item.awr_end_time || screen3RuntimeWindow(item) || 'end_unknown'
+        ].map(function (part) {
+          return safeStateValue(part).replace(/\s+/g, ' ').trim() || 'unknown';
+        }).join('|');
+      }
+
+      function screen3IntervalRowIdentity(option, fallback) {
+        const item = option && typeof option === 'object' ? option : {};
+        return [
+          item.source_table || item.source || 'interval_source_unknown',
+          item.run_reference || item.report_id || item.awr_id || fallback || 'interval',
+          item.snapshot_begin || item.begin_time || 'begin_unknown',
+          item.snapshot_end || item.end_time || screen3RuntimeWindow(item) || 'end_unknown',
+          item.window_type || 'window'
+        ].map(function (part) {
+          return safeStateValue(part).replace(/\s+/g, ' ').trim() || 'unknown';
+        }).join('|');
+      }
+
+      function setOptionalStateAttribute(element, stateKey, value) {
+        if (!element || !isDashboardStateKey(stateKey)) {
+          return;
+        }
+        const safeValue = safeStateValue(value);
+        if (safeValue) {
+          element.setAttribute('data-dashboard-state-set-' + stateKey, safeValue);
+        }
+      }
+
+      function createScreen3RuntimeOptionCard(option, config) {
+        const item = option && typeof option === 'object' ? option : {};
+        const card = document.createElement('article');
+        const value = screen3RuntimeOptionValue(item, config.fallbackValue || '');
+        const label = screen3RuntimeOptionLabel(item, config.fallbackLabel || value);
+        card.className = 'selector-card screen3-runtime-option-card';
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('data-dashboard-selectable', 'true');
+        card.setAttribute('data-dashboard-select-type', config.selectType || 'screen3RuntimeOption');
+        card.setAttribute('data-dashboard-select-key', config.stateKey);
+        card.setAttribute('data-dashboard-select-id', value);
+        card.setAttribute('data-dashboard-target', value);
+        Object.keys(config.stateValues || {}).forEach(function (stateKey) {
+          setOptionalStateAttribute(card, stateKey, config.stateValues[stateKey]);
+        });
+        if (config.enrichFromRun) {
+          setOptionalStateAttribute(card, 'selectedSourceMode', 'existing_run');
+          setOptionalStateAttribute(card, 'sourceSelectionMethod', 'existing_run_reference');
+          setOptionalStateAttribute(card, 'selectedRunReference', item.run_reference);
+          setOptionalStateAttribute(card, 'selectedAwr', item.report_id || item.awr_id || item.run_reference);
+          setOptionalStateAttribute(card, 'selectedRun', item.analysis_run_id || item.run_history_id || item.run_reference);
+          setOptionalStateAttribute(card, 'selectedReportId', item.report_id || item.awr_id);
+          setOptionalStateAttribute(card, 'selectedDb', item.db_name);
+          setOptionalStateAttribute(card, 'selectedDbid', item.dbid);
+          setOptionalStateAttribute(card, 'selectedHost', item.host_name);
+          setOptionalStateAttribute(card, 'selectedInstance', item.instance_name);
+          setOptionalStateAttribute(card, 'selectedSystem', item.host_name || item.instance_name);
+          setOptionalStateAttribute(card, 'selectedSnapshotBegin', item.snapshot_begin);
+          setOptionalStateAttribute(card, 'selectedSnapshotEnd', item.snapshot_end);
+          setOptionalStateAttribute(card, 'selectedTimeWindow', screen3RuntimeWindow(item));
+          setOptionalStateAttribute(card, 'selectedSnapshot', screen3RuntimeWindow(item));
+          setOptionalStateAttribute(card, 'existingRunLookupStatus', 'valid');
+        }
+        const title = document.createElement('span');
+        title.className = 'selector-card-title';
+        title.textContent = label;
+        const detail = document.createElement('span');
+        detail.className = 'selector-card-detail';
+        detail.textContent = config.detailBuilder ? config.detailBuilder(item) : (item.db_name || item.dbid || item.source_file_name || value);
+        card.appendChild(title);
+        card.appendChild(detail);
+        return card;
+      }
+
+      function createScreen3FilterOption(label, value, detail) {
+        const option = document.createElement('option');
+        const safeValue = safeStateValue(value || '');
+        const safeLabel = safeStateValue(label || safeValue || 'All');
+        const safeDetail = safeStateValue(detail || '');
+        option.value = safeValue;
+        option.textContent = safeDetail ? safeLabel + ' - ' + safeDetail : safeLabel;
+        return option;
+      }
+
+      function screen3FilterNodesFromOptions(options, config) {
+        const nodes = [
+          createScreen3FilterOption(config.allLabel || 'All', '', 'Do not filter by this field')
+        ];
+        const seen = new Set();
+        (Array.isArray(options) ? options : []).forEach(function (option) {
+          const item = option && typeof option === 'object' ? option : {};
+          const value = safeStateValue(item[config.valueKey] || item.value || item.label || '');
+          if (!value || seen.has(value)) {
+            return;
+          }
+          seen.add(value);
+          nodes.push(createScreen3FilterOption(
+            item.label || value,
+            value,
+            config.detailBuilder ? config.detailBuilder(item) : 'DB-backed filter value'
+          ));
+        });
+        if (!seen.size && config.emptyLabel) {
+          return [
+            createScreen3FilterOption(
+              config.emptyLabel,
+              '',
+              config.emptyDetail || 'Unavailable in current persistence model'
+            )
+          ];
+        }
+        return nodes;
+      }
+
+      function replaceRuntimeOptionCards(targetName, cards, emptyMessage) {
+        document.querySelectorAll('[data-screen3-runtime-options-target="' + targetName + '"]').forEach(function (container) {
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+          if (!cards.length) {
+            const empty = document.createElement('p');
+            empty.className = 'empty-state';
+            empty.textContent = emptyMessage;
+            container.appendChild(empty);
+            return;
+          }
+          cards.forEach(function (card) {
+            container.appendChild(card.cloneNode(true));
+          });
+        });
+      }
+
+      function screen3AppendCell(row, value, key) {
+        const cell = document.createElement('td');
+        cell.textContent = safeStateValue(value || '') || 'Not available';
+        const safeKey = safeStateValue(key || '');
+        if (safeKey) {
+          cell.setAttribute('data-screen3-cell-key', safeKey);
+        }
+        row.appendChild(cell);
+        return cell;
+      }
+
+      function screen3ApplyStateAttributes(element, values) {
+        Object.keys(values || {}).forEach(function (stateKey) {
+          setOptionalStateAttribute(element, stateKey, values[stateKey]);
+        });
+      }
+
+      function createScreen3RuntimeScopeRow(run) {
+        const item = run && typeof run === 'object' ? run : {};
+        const row = document.createElement('tr');
+        const runReference = screen3RuntimeOptionValue(item, 'DB-backed run');
+        const rowIdentity = screen3RuntimeRowIdentity(item, runReference);
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('role', 'button');
+        row.setAttribute('data-dashboard-selectable', 'true');
+        row.setAttribute('data-dashboard-select-type', 'runtimeScope');
+        row.setAttribute('data-dashboard-select-key', 'selectedRuntimeScope');
+        row.setAttribute('data-dashboard-select-id', rowIdentity);
+        row.setAttribute('data-dashboard-target', rowIdentity);
+        row.setAttribute('data-screen3-row-id', rowIdentity);
+        const application = item.application || item.application_name || item.app_name || 'Not available';
+        const hostSystem = item.host_name || item.primary_host_name || item.instance_name || 'Not available';
+        const snapshotCount = item.snapshot_count || (screen3RuntimeWindow(item) ? '1' : '0');
+        const readinessState = item.readiness_state || 'comparable';
+        const sourceTable = item.source_table || 'AWR_RUN_HISTORY';
+        row.setAttribute('data-screen3-runtime-scope-row', 'true');
+        row.setAttribute('data-screen3-table-row', 'true');
+        row.setAttribute('data-screen3-filter-application', safeStateValue(application));
+        row.setAttribute('data-screen3-filter-db', safeStateValue(item.db_name || ''));
+        row.setAttribute('data-screen3-filter-dbid', safeStateValue(item.dbid || ''));
+        row.setAttribute('data-screen3-filter-instance', safeStateValue(item.instance_name || ''));
+        row.setAttribute('data-screen3-filter-host', safeStateValue(item.host_name || item.primary_host_name || ''));
+        row.setAttribute('data-screen3-filter-source-table', safeStateValue(sourceTable));
+        row.setAttribute('data-screen3-filter-time-window', safeStateValue(screen3RuntimeWindow(item)));
+        row.setAttribute('data-screen3-sort-source_table', safeStateValue(sourceTable));
+        row.setAttribute('data-screen3-sort-application', safeStateValue(application));
+        row.setAttribute('data-screen3-sort-db', safeStateValue(item.db_name || ''));
+        row.setAttribute('data-screen3-sort-dbid', safeStateValue(item.dbid || ''));
+        row.setAttribute('data-screen3-sort-instance', safeStateValue(item.instance_name || ''));
+        row.setAttribute('data-screen3-sort-host', safeStateValue(hostSystem));
+        row.setAttribute('data-screen3-sort-awr_run', safeStateValue(item.run_reference || item.analysis_run_id || item.run_history_id || ''));
+        row.setAttribute('data-screen3-sort-report_id', safeStateValue(item.report_id || item.awr_id || ''));
+        row.setAttribute('data-screen3-sort-begin', safeStateValue(item.snapshot_begin || item.awr_begin_time || ''));
+        row.setAttribute('data-screen3-sort-end', safeStateValue(item.snapshot_end || item.awr_end_time || screen3RuntimeWindow(item)));
+        row.setAttribute('data-screen3-sort-snapshot_count', safeStateValue(snapshotCount));
+        row.setAttribute('data-screen3-sort-readiness', safeStateValue(readinessState));
+        screen3ApplyStateAttributes(row, {
+          selectedRuntimeScope: screen3RuntimeOptionLabel(item, runReference),
+          selectedRuntimeScopeSourceTable: sourceTable,
+          selectedRuntimeScopeAwrCount: item.awr_count || item.resolved_awr_count || '1',
+          selectedRuntimeScopeSnapshotCount: snapshotCount,
+          selectedSourceMode: 'existing_run',
+          sourceSelectionMethod: 'existing_run_reference',
+          selectedRunReference: item.run_reference || runReference,
+          selectedAwr: item.report_id || item.awr_id || item.run_reference || runReference,
+          selectedRun: item.analysis_run_id || item.run_history_id || item.run_reference || runReference,
+          selectedReportId: item.report_id || item.awr_id || '',
+          selectedApplication: application,
+          selectedDb: item.db_name || '',
+          selectedDbid: item.dbid || '',
+          selectedHost: item.host_name || item.primary_host_name || 'Not available',
+          selectedInstance: item.instance_name || '',
+          selectedSystem: hostSystem,
+          selectedSnapshot: screen3RuntimeWindow(item),
+          selectedSnapshotBegin: item.snapshot_begin || '',
+          selectedSnapshotEnd: item.snapshot_end || '',
+          selectedTimeWindow: screen3RuntimeWindow(item),
+          selectedRuntimeScopeResolutionState: 'resolved_persisted_data',
+          selectedRuntimeScopeReadinessState: readinessState,
+          existingRunLookupStatus: 'valid'
+        });
+        [
+          ['use', 'Apply row'],
+          ['source_table', sourceTable],
+          ['application', application],
+          ['db', item.db_name || ''],
+          ['dbid', item.dbid || ''],
+          ['instance', item.instance_name || ''],
+          ['host', hostSystem],
+          ['awr_run', item.run_reference || item.analysis_run_id || item.run_history_id || ''],
+          ['report_id', item.report_id || item.awr_id || ''],
+          ['begin', item.snapshot_begin || item.awr_begin_time || ''],
+          ['end', item.snapshot_end || item.awr_end_time || screen3RuntimeWindow(item)],
+          ['snapshot_count', snapshotCount],
+          ['readiness', readinessState]
+        ].forEach(function (entry) {
+          const cell = screen3AppendCell(row, entry[1], entry[0]);
+          if (entry[0] === 'use') {
+            cell.setAttribute('data-screen3-row-apply-label', 'true');
+          }
+        });
+        return row;
+      }
+
+      function createScreen3IntervalRow(interval) {
+        const item = interval && typeof interval === 'object' ? interval : {};
+        const windowLabel = screen3RuntimeWindow(item) || screen3RuntimeOptionLabel(item, 'Snapshot / interval');
+        const rowIdentity = screen3IntervalRowIdentity(item, windowLabel);
+        const row = document.createElement('tr');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('role', 'button');
+        row.setAttribute('data-dashboard-selectable', 'true');
+        row.setAttribute('data-dashboard-select-type', 'snapshot');
+        row.setAttribute('data-dashboard-select-key', 'selectedTimeWindow');
+        row.setAttribute('data-dashboard-select-id', rowIdentity);
+        row.setAttribute('data-dashboard-target', rowIdentity);
+        row.setAttribute('data-screen3-row-id', rowIdentity);
+        row.setAttribute('data-screen3-table-row', 'true');
+        screen3ApplyStateAttributes(row, {
+          selectedSnapshot: windowLabel,
+          selectedSnapshotBegin: item.snapshot_begin || '',
+          selectedSnapshotEnd: item.snapshot_end || '',
+          selectedTimeWindow: windowLabel,
+          selectedRunReference: item.run_reference || ''
+        });
+        [
+          ['use', 'Apply interval'],
+          ['window_type', item.window_type || 'DB-backed interval'],
+          ['begin', item.snapshot_begin || ''],
+          ['end', item.snapshot_end || ''],
+          ['source', item.run_reference || item.db_name || 'DB-backed option']
+        ].forEach(function (entry) {
+          const cell = screen3AppendCell(row, entry[1], entry[0]);
+          if (entry[0] === 'use') {
+            cell.setAttribute('data-screen3-row-apply-label', 'true');
+          }
+        });
+        return row;
+      }
+
+      function createScreen3ComparisonTargetRow(candidate, targetName) {
+        const item = candidate && typeof candidate === 'object' ? candidate : {};
+        const targetA = targetName === 'comparison-target-a';
+        const stateKey = targetA ? 'selectedComparisonTargetA' : 'selectedComparisonTargetB';
+        const awrKey = targetA ? 'selectedComparisonAwrA' : 'selectedComparisonAwrB';
+        const windowKey = targetA ? 'selectedComparisonWindowA' : 'selectedComparisonWindowB';
+        const prefix = targetA ? 'selectedComparisonTargetA' : 'selectedComparisonTargetB';
+        const sourceType = safeStateValue(item.source_type || 'db_backed');
+        const scopeType = safeStateValue(item.scope_type || 'run');
+        const scopeValue = safeStateValue(item.scope_value || item.run_reference || item.value || '');
+        const windowLabel = safeStateValue(item.time_window || screen3RuntimeWindow(item));
+        const resolutionState = safeStateValue(item.resolution_state || 'resolved_persisted_data');
+        let readinessState = safeStateValue(item.readiness_state || item.readiness || 'comparable');
+        const awrCount = item.awr_count || item.resolved_awr_count || item.run_count || '0';
+        const snapshotCount = item.snapshot_count || item.resolved_snapshot_count || item.window_count || '0';
+        const awrCountNumber = Number(awrCount || 0) || 0;
+        const snapshotCountNumber = Number(snapshotCount || 0) || 0;
+        const resolutionSummary = safeStateValue(item.resolution_summary || (
+          String(awrCount) + ' AWR/run record(s) / ' + String(snapshotCount) + ' snapshot window(s)'
+        ));
+        const missingGates = Array.isArray(item.missing_gates)
+          ? item.missing_gates.join('; ')
+          : safeStateValue(item.missing_gates || '');
+        let targetMissingGates = missingGates;
+        if (readinessState === 'comparable' && awrCountNumber <= 0) {
+          readinessState = 'unavailable';
+          targetMissingGates = targetMissingGates
+            ? targetMissingGates + '; resolved AWR count is 0'
+            : 'resolved AWR count is 0';
+        } else if (readinessState === 'comparable' && snapshotCountNumber <= 0 &&
+            ['application', 'db_name', 'dbid', 'instance', 'host', 'system', 'fleet_group', 'cluster_context', 'similar_awr_set'].indexOf(scopeType) < 0) {
+          readinessState = 'analysis_required';
+          targetMissingGates = targetMissingGates
+            ? targetMissingGates + '; resolved snapshot/window count is 0'
+            : 'resolved snapshot/window count is 0';
+        }
+        const targetValue = [sourceType, scopeType, scopeValue, windowLabel].filter(Boolean).join(' | ');
+        const row = document.createElement('tr');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('role', 'button');
+        row.setAttribute('data-dashboard-selectable', 'true');
+        row.setAttribute('data-dashboard-select-type', targetA ? 'comparisonTargetA' : 'comparisonTargetB');
+        row.setAttribute('data-dashboard-select-key', stateKey);
+        row.setAttribute('data-dashboard-select-id', targetValue);
+        row.setAttribute('data-dashboard-target', targetValue);
+        row.setAttribute('data-screen3-table-row', 'true');
+        const stateValues = {};
+        stateValues[stateKey] = targetValue;
+        stateValues[prefix + 'SourceType'] = sourceType;
+        stateValues[prefix + 'ScopeType'] = scopeType;
+        stateValues[prefix + 'ScopeValue'] = scopeValue;
+        stateValues[prefix + 'TimeWindow'] = windowLabel;
+        stateValues[prefix + 'ResolutionState'] = resolutionState;
+        stateValues[prefix + 'ReadinessState'] = readinessState;
+        stateValues[prefix + 'ResolutionSummary'] = resolutionSummary;
+        stateValues[prefix + 'MissingGates'] = targetMissingGates;
+        stateValues[prefix + 'AwrCount'] = awrCount;
+        stateValues[prefix + 'SnapshotCount'] = snapshotCount;
+        stateValues[awrKey] = (Array.isArray(item.run_ids) ? item.run_ids.join(', ') : '') || item.report_id || item.awr_id || item.run_reference || scopeValue || targetValue;
+        stateValues[windowKey] = windowLabel;
+        screen3ApplyStateAttributes(row, stateValues);
+        [
+          ['use', targetA ? 'Use for Target A' : 'Use for Target B'],
+          ['source_type', sourceType],
+          ['scope_type', scopeType],
+          ['scope_value', scopeValue || 'Not available'],
+          ['time_window', windowLabel || 'Not selected'],
+          ['resolution', resolutionSummary || 'Not resolved'],
+          ['awr_count', awrCount],
+          ['snapshot_count', snapshotCount],
+          ['readiness', readinessState || 'unavailable'],
+          ['missing_gates', targetMissingGates || 'None']
+        ].forEach(function (entry) {
+          screen3AppendCell(row, entry[1], entry[0]);
+        });
+        return row;
+      }
+
+      function replaceRuntimeOptionNodes(targetName, nodes, emptyMessage, emptyColspan) {
+        document.querySelectorAll('[data-screen3-runtime-options-target="' + targetName + '"]').forEach(function (container) {
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+          const isSelect = container.tagName && container.tagName.toLowerCase() === 'select';
+          if (!nodes.length) {
+            if (isSelect) {
+              const emptyOption = document.createElement('option');
+              emptyOption.value = '';
+              emptyOption.textContent = emptyMessage;
+              container.appendChild(emptyOption);
+            } else if (container.tagName && container.tagName.toLowerCase() === 'tbody') {
+              const row = document.createElement('tr');
+              const cell = document.createElement('td');
+              cell.colSpan = emptyColspan || 4;
+              cell.className = 'empty-state';
+              cell.textContent = emptyMessage;
+              row.appendChild(cell);
+              container.appendChild(row);
+            } else {
+              const empty = document.createElement('p');
+              empty.className = 'empty-state';
+              empty.textContent = emptyMessage;
+              container.appendChild(empty);
+            }
+            return;
+          }
+          nodes.forEach(function (node) {
+            container.appendChild(node.cloneNode(true));
+          });
+          if (isSelect) {
+            const stateKey = safeStateValue(container.getAttribute('data-dashboard-state-key'));
+            const safeState = readDashboardState();
+            if (stateKey && safeState[stateKey]) {
+              container.value = safeState[stateKey];
+            }
+          }
+        });
+      }
+
+      function updateScreen3RuntimeOptionPanels(responseBody) {
+        const body = responseBody && typeof responseBody === 'object' ? responseBody : {};
+        const options = body.options && typeof body.options === 'object' ? body.options : {};
+        const runs = Array.isArray(options.runs) ? options.runs : [];
+        const intervals = Array.isArray(options.intervals) ? options.intervals : [];
+        document.querySelectorAll('[data-screen3-interval-result-count="true"]').forEach(function (element) {
+          element.textContent = 'Showing ' + String(intervals.length) + ' interval/window row(s).';
+          element.setAttribute('data-screen3-interval-count-value', String(intervals.length));
+        });
+        const sourceTableOptions = [];
+        const seenSourceTables = new Set();
+        runs.forEach(function (run) {
+          const sourceTable = safeStateValue(run && typeof run === 'object' ? run.source_table : '');
+          if (sourceTable && !seenSourceTables.has(sourceTable)) {
+            seenSourceTables.add(sourceTable);
+            sourceTableOptions.push({ label: sourceTable, value: sourceTable });
+          }
+        });
+        replaceRuntimeOptionNodes(
+          'runtime-filter-application',
+          screen3FilterNodesFromOptions(options.applications, {
+            stateKey: 'screen3RuntimeFilterApplication',
+            allLabel: 'All applications',
+            allValue: 'All applications',
+            valueKey: 'application',
+            emptyLabel: 'Application metadata unavailable',
+            emptyDetail: 'No non-null application values returned by DB-backed runtime option tables',
+            detailBuilder: function (item) { return item.db_name ? 'DB: ' + item.db_name : 'Application scope filter'; }
+          }),
+          'Application metadata unavailable.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-db',
+          screen3FilterNodesFromOptions(options.databases, {
+            stateKey: 'screen3RuntimeFilterDb',
+            allLabel: 'All DB names',
+            allValue: 'All DB names',
+            valueKey: 'db_name',
+            detailBuilder: function (item) { return item.dbid ? 'DBID: ' + item.dbid : 'Database name filter'; }
+          }),
+          'DB Name filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-dbid',
+          screen3FilterNodesFromOptions(options.dbids, {
+            stateKey: 'screen3RuntimeFilterDbid',
+            allLabel: 'All DBIDs',
+            allValue: 'All DBIDs',
+            valueKey: 'dbid',
+            detailBuilder: function (item) { return item.db_name ? 'DB: ' + item.db_name : 'DBID filter'; }
+          }),
+          'DBID filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-instance',
+          screen3FilterNodesFromOptions(options.instances, {
+            stateKey: 'screen3RuntimeFilterInstance',
+            allLabel: 'All instances',
+            allValue: 'All instances',
+            valueKey: 'instance_name',
+            detailBuilder: function (item) { return item.db_name ? 'DB: ' + item.db_name : 'Instance filter'; }
+          }),
+          'Instance filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-host',
+          screen3FilterNodesFromOptions(options.hosts, {
+            stateKey: 'screen3RuntimeFilterHost',
+            allLabel: 'All hosts/systems',
+            allValue: 'All hosts/systems',
+            valueKey: 'host_name',
+            detailBuilder: function () { return 'Host/System filter'; }
+          }),
+          'Host/System filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-source-type',
+          screen3FilterNodesFromOptions(sourceTableOptions, {
+            stateKey: 'screen3RuntimeFilterSourceType',
+            allLabel: 'All source tables',
+            allValue: 'All source tables',
+            valueKey: 'value',
+            detailBuilder: function () { return 'Runtime option source table'; }
+          }),
+          'Source type filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-filter-time-range',
+          screen3FilterNodesFromOptions(intervals, {
+            stateKey: 'screen3RuntimeFilterTimeRange',
+            allLabel: 'All time ranges',
+            allValue: 'All time ranges',
+            valueKey: 'time_window',
+            detailBuilder: function (item) { return item.run_reference || 'Interval/window filter'; }
+          }),
+          'Time range filter unavailable until runtime options load.',
+          1
+        );
+        replaceRuntimeOptionNodes(
+          'runtime-scope-rows',
+          runs.map(createScreen3RuntimeScopeRow),
+          'No DB-backed AWR/run options were returned. Use the current generated fallback row or restore DB-backed run history.',
+          13
+        );
+        replaceRuntimeOptionNodes(
+          'interval-rows',
+          intervals.map(createScreen3IntervalRow),
+          'Interval options unavailable; use current generated snapshot/window fallback.',
+          5
+        );
+        // DB-backed AWR/report rows are selected from the main bounded runtime
+        // inventory. The advanced picker intentionally stays focused on
+        // generated, external, and baseline target types so it cannot become a
+        // duplicate endless inventory table.
+        const refreshedState = readDashboardState();
+        updateDashboardStateInputs(refreshedState, document);
+        markSelectedElement(refreshedState, document);
+        updateScreen3RuntimeFilters(refreshedState, document);
+        applyScreen3TableStates(document);
+        updateScreen3RowApplyLabels(refreshedState, document);
+        updateScreen3ResultPanelFromSelection(refreshedState, document);
+      }
+
+      function handleScreen3RuntimeOptionsLoadClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest(SCREEN3_OPTIONS_LOAD_SELECTOR);
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        const refreshRequested = control.hasAttribute('data-screen3-runtime-options-refresh');
+        const nextState = readDashboardState();
+        nextState.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
+        nextState.screen3LastActionStatus = 'Loading runtime options';
+        nextState.screen3LastValidationStatus = 'pending';
+        nextState.screen3LastExecutionStatus = 'Not executed';
+        nextState.screen3LastNextStep = 'Waiting for workflow service response.';
+        nextState.screen3RuntimeOptionsStatus = 'pending';
+        nextState.screen3RuntimeOptionsMessage = 'Loading DB-backed runtime options through governed workflow service.';
+        nextState.screen3RuntimeOptionsCount = nextState.screen3RuntimeOptionsCount || '0';
+        nextState.screen3RuntimeOptionsLoadedRows = nextState.screen3RuntimeOptionsLoadedRows || '0';
+        nextState.screen3RuntimeOptionsDbPersistenceStatus = 'checking';
+        nextState.screen3RuntimeOptionsIncludedTables = 'Checking selectable source tables';
+        nextState.screen3RuntimeOptionsCacheStatus = refreshRequested
+          ? 'Refreshing runtime options through workflow service.'
+          : 'Loading runtime options through workflow service.';
+        nextState.screen3LiveServiceStatus = 'Checking';
+        writeDashboardState(nextState);
+        invokePhase7Service(PHASE7_SCREEN3_OPTIONS_ENDPOINT, {
+          screen_id: 'screen_3',
+          action_type: 'screen3_load_runtime_options',
+          workflow_type: 'screen3_runtime_options_lookup',
+          target_screen: 'screen3',
+          governance_mode: 'governed_request',
+          limit: 250,
+          selectedSourceMode: nextState.selectedSourceMode || '',
+          sourceSelectionMethod: nextState.sourceSelectionMethod || '',
+          selectedRunReference: nextState.selectedRunReference || '',
+          objectStorageNamespace: nextState.objectStorageNamespace || '',
+          objectStorageBucket: nextState.objectStorageBucket || '',
+          objectStorageObjectName: nextState.objectStorageObjectName || '',
+          objectStorageRegion: nextState.objectStorageRegion || '',
+          screen3RuntimeFilterApplication: nextState.screen3RuntimeFilterApplication || '',
+          screen3RuntimeFilterDb: nextState.screen3RuntimeFilterDb || '',
+          screen3RuntimeFilterDbid: nextState.screen3RuntimeFilterDbid || '',
+          screen3RuntimeFilterInstance: nextState.screen3RuntimeFilterInstance || '',
+          screen3RuntimeFilterHost: nextState.screen3RuntimeFilterHost || '',
+          screen3RuntimeFilterSourceType: nextState.screen3RuntimeFilterSourceType || '',
+          screen3RuntimeFilterTimeRange: nextState.screen3RuntimeFilterTimeRange || '',
+          screen3RuntimeFilterSearch: nextState.screen3RuntimeFilterSearch || '',
+          browser_db_query_attempted: false,
+          browser_object_storage_access_attempted: false,
+          direct_object_storage_execution_attempted: false,
+          direct_truth_mutation_allowed: false,
+          current_run_truth_mutated: false,
+          deterministic_truth_changed: false,
+          parser_mutated: false,
+          learning_candidate_created: false,
+          materialization_changed: false,
+          runtime_eligibility_changed: false,
+          phase4i_mutation_allowed: false,
+          phase8_behavior: false,
+          phase8_started: false,
+          run_analysis_coupling: false
+        }).then(function (result) {
+          const body = result.body || {};
+          const state = readDashboardState();
+          const routeUnavailable = result.status === 404 ||
+            safeStateValue(body.message || '').toLowerCase().indexOf('route is unavailable') >= 0;
+          const dbUnavailable = !routeUnavailable &&
+            (body.validation_status === 'unavailable' || body.db_persistence_status === 'unavailable');
+          const noOptions = !routeUnavailable && !dbUnavailable &&
+            (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
+          const serviceMessage = routeUnavailable
+            ? 'Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py.'
+            : (body.message || 'Screen 3 runtime options request completed.');
+          const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
+          const sourceTables = Array.isArray(body.runtime_options_source_tables)
+            ? body.runtime_options_source_tables
+            : (Array.isArray(metadata.runtime_options_source_tables) ? metadata.runtime_options_source_tables : []);
+          const selectableRowCount = Number(body.run_count || 0) || 0;
+          const optionsLoaded = result.ok && body.status === 'accepted' && Number(body.run_count || 0) > 0;
+          state.screen3RuntimeOptionsStatus = routeUnavailable
+            ? 'route unavailable'
+            : 'route available';
+          state.screen3LiveServiceStatus = routeUnavailable
+            ? 'Unavailable'
+            : (result.ok ? 'Available' : 'Error');
+          state.screen3RuntimeOptionsMessage = serviceMessage;
+          state.screen3RuntimeOptionsCount = String(body.option_count || body.run_count || 0);
+          state.screen3RuntimeOptionsLoadedRows = String(selectableRowCount);
+          state.screen3RuntimeOptionsDbPersistenceStatus = routeUnavailable
+            ? 'not checked'
+            : (body.db_persistence_status || (dbUnavailable ? 'unavailable' : 'available'));
+          state.screen3RuntimeOptionsLoadedAt = new Date().toISOString();
+          state.screen3RuntimeOptionsSourceTables = screen3RuntimeSourceTableSummary(sourceTables);
+          state.screen3RuntimeOptionsIncludedTables = screen3RuntimeIncludedTableSummary(sourceTables, selectableRowCount);
+          state.screen3RuntimeOptionsCoverageMessage = metadata.runtime_options_source_note || body.runtime_options_source_note || 'Source table coverage not reported';
+          state.screen3RuntimeOptionsCacheStatus = optionsLoaded
+            ? 'Runtime options live-loaded at ' + state.screen3RuntimeOptionsLoadedAt + '.'
+            : 'No runtime options cache update was made.';
+          state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
+          state.screen3LastActionStatus = routeUnavailable
+            ? 'Runtime options route unavailable'
+            : (
+              optionsLoaded
+                ? 'Runtime options loaded'
+                : (noOptions ? 'No runtime options found' : 'Runtime options unavailable')
+            );
+          state.screen3LastRequestId = body.request_id || '';
+          state.screen3LastTransactionId = '';
+          state.screen3LastValidationStatus = routeUnavailable
+            ? 'route_unavailable'
+            : (body.validation_status || 'not evaluated');
+          state.screen3LastAuditReference = body.audit_reference || '';
+          state.screen3LastPersistenceStatus = routeUnavailable
+            ? 'not checked'
+            : (body.db_persistence_status || (result.ok ? 'available' : 'unavailable'));
+          state.screen3LastExecutionStatus = 'Not executed';
+          state.screen3LastOutputArtifact = '';
+          state.screen3LastNewRunOutputReference = '';
+          state.screen3LastNextStep = routeUnavailable
+            ? 'Restart current dashboard_workflow_service.py so Screen 3 can load DB-backed runtime options.'
+            : (
+              optionsLoaded
+                ? 'Select a DB-backed AWR/run, interval, comparison target, and review mode.'
+                : (
+                  dbUnavailable
+                    ? 'Restore DB connectivity, wallet, or service configuration, then load runtime options again.'
+                    : (noOptions ? 'Ingest or persist AWR runs, then refresh runtime options.' : serviceMessage)
+                )
+            );
+          state.existingRunLookupCount = String(body.run_count || 0);
+          if (optionsLoaded) {
+            state.existingRunLookupStatus = 'runs_loaded';
+            state.existingRunLookupMessage = 'Select a DB-backed AWR/run from Screen 3 runtime options.';
+          } else if (body.validation_status === 'empty') {
+            state.existingRunLookupStatus = 'empty';
+            state.existingRunLookupMessage = body.message || 'No DB-backed AWR runs were found.';
+          } else if (!result.ok || body.status === 'pending') {
+            state.existingRunLookupStatus = 'unavailable';
+            state.existingRunLookupMessage = body.message || 'Screen 3 runtime options are unavailable.';
+          }
+          if (optionsLoaded) {
+            writeScreen3RuntimeOptionsCache(body, state);
+          } else {
+            const fallbackCache = readScreen3RuntimeOptionsCache();
+            if (fallbackCache) {
+              const cachedMessage = (
+                refreshRequested
+                  ? 'Refresh failed; showing cached runtime options'
+                  : 'Load failed; showing cached runtime options'
+              ) + (fallbackCache.cached_at ? ' from ' + fallbackCache.cached_at : '') + '.';
+              showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, cachedMessage);
+              return;
+            }
+          }
+          writeDashboardState(state);
+          updateScreen3RuntimeOptionPanels(body);
+        }).catch(function () {
+          const state = readDashboardState();
+          const fallbackCache = readScreen3RuntimeOptionsCache();
+          state.screen3RuntimeOptionsStatus = 'unavailable';
+          state.screen3RuntimeOptionsMessage = fallbackCache
+            ? 'Refresh failed; showing last cached runtime options.'
+            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 3 runtime options.';
+          state.screen3RuntimeOptionsCount = fallbackCache ? state.screen3RuntimeOptionsCount || '0' : '0';
+          state.screen3RuntimeOptionsLoadedRows = fallbackCache ? state.screen3RuntimeOptionsLoadedRows || '0' : '0';
+          state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+          state.screen3RuntimeOptionsIncludedTables = 'No selectable source tables reported';
+          state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
+          state.screen3RuntimeOptionsCoverageMessage = fallbackCache
+            ? 'Runtime options source tables were not refreshed because the service was unavailable.'
+            : 'Runtime options source tables were not checked because the service was unavailable.';
+          state.screen3LiveServiceStatus = 'Error';
+          state.screen3RuntimeOptionsCacheStatus = fallbackCache
+            ? 'Refresh failed; showing cached runtime options from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + '.'
+            : 'No runtime options cache is available.';
+          state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
+          state.screen3LastActionStatus = 'Runtime options service unavailable';
+          state.screen3LastValidationStatus = 'service_unavailable';
+          state.screen3LastPersistenceStatus = 'unavailable';
+          state.screen3LastExecutionStatus = 'Not executed';
+          state.screen3LastNextStep = fallbackCache
+            ? 'Workflow service unavailable. Cached runtime options remain visible; retry Refresh options when service is available.'
+            : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
+          if (fallbackCache) {
+            showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, state.screen3RuntimeOptionsCacheStatus);
+            return;
+          }
+          writeDashboardState(state);
+          updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
+        });
+      }
+
+      function handleScreen3RuntimeFilterButtonClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const applyControl = event.target.closest(SCREEN3_RUNTIME_FILTER_APPLY_SELECTOR);
+        const clearControl = event.target.closest(SCREEN3_RUNTIME_FILTER_CLEAR_SELECTOR);
+        if (!applyControl && !clearControl) {
+          return;
+        }
+        event.preventDefault();
+        const nextState = readDashboardState();
+        if (clearControl) {
+          nextState.screen3RuntimeFilterApplication = '';
+          nextState.screen3RuntimeFilterDb = '';
+          nextState.screen3RuntimeFilterDbid = '';
+          nextState.screen3RuntimeFilterInstance = '';
+          nextState.screen3RuntimeFilterHost = '';
+          nextState.screen3RuntimeFilterSourceType = '';
+          nextState.screen3RuntimeFilterTimeRange = '';
+          nextState.screen3RuntimeFilterSearch = '';
+          nextState.screen3RuntimeSortKey = '';
+          nextState.screen3RuntimeSortDirection = '';
+          nextState.screen3SelectedRuntimeScopeRowId = '';
+          nextState.screen3SelectedTargetARowId = '';
+          nextState.screen3SelectedTargetBRowId = '';
+          nextState.screen3SelectedRuntimeIntervalId = '';
+          nextState.screen3SelectedTargetAIntervalId = '';
+          nextState.screen3SelectedTargetBIntervalId = '';
+          nextState.screen3RuntimeScopeSelectionSource = '';
+          nextState.screen3TargetASelectionSource = '';
+          nextState.screen3TargetBSelectionSource = '';
+          nextState.screen3LastNextStep = 'Runtime filters cleared. Select a filtered AWR/run/report row or reload runtime options.';
+          clearScreen3AllTableFilters(document);
+        } else {
+          nextState.screen3LastNextStep = 'Runtime filters applied. Select a filtered AWR/run/report row for Runtime Scope, Target A, or Target B.';
+        }
+        writeDashboardState(nextState);
+      }
+
+      function handleScreen3TableSortClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest('[data-screen3-table-sort]');
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const sortKey = safeStateValue(control.getAttribute('data-screen3-sort-key') || control.getAttribute('data-screen3-table-sort'));
+        if (!sortKey) {
+          return;
+        }
+        const table = screen3TableForControl(control);
+        if (!table) {
+          return;
+        }
+        const tableId = safeStateValue(table.getAttribute('data-screen3-table-id'));
+        const tableState = screen3TableState(tableId);
+        const currentKey = safeStateValue(tableState.sortKey || '');
+        const currentDirection = safeStateValue(tableState.sortDirection || 'asc');
+        if (currentKey !== sortKey) {
+          tableState.sortKey = sortKey;
+          tableState.sortDirection = 'asc';
+        } else if (currentDirection === 'asc') {
+          tableState.sortKey = sortKey;
+          tableState.sortDirection = 'desc';
+        } else {
+          tableState.sortKey = '';
+          tableState.sortDirection = 'asc';
+        }
+        if (tableId === 'screen3-runtime-inventory') {
+          const nextState = readDashboardState();
+          nextState.screen3RuntimeSortKey = tableState.sortKey;
+          nextState.screen3RuntimeSortDirection = tableState.sortDirection;
+          nextState.screen3LastNextStep = tableState.sortKey
+            ? 'Runtime inventory sorted in the browser. This changes display order only; deterministic truth is unchanged.'
+            : 'Runtime inventory sort cleared. This changes display order only; deterministic truth is unchanged.';
+          writeDashboardState(nextState);
+        } else {
+          applyScreen3TableState(table);
+        }
+      }
+
+      function handleScreen3TableFilterToggleClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest('[data-screen3-table-filter-toggle]');
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const headerControl = control.closest('.screen3-table-header-control');
+        if (!headerControl) {
+          return;
+        }
+        headerControl.classList.toggle('is-filter-open');
+        const input = headerControl.querySelector('[data-screen3-table-filter]');
+        const expanded = headerControl.classList.contains('is-filter-open');
+        control.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        if (expanded && input) {
+          input.focus();
+          input.select();
+        }
+      }
+
+      function handleScreen3TableFilterInput(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest('[data-screen3-table-filter]');
+        if (!control) {
+          return;
+        }
+        const table = screen3TableForControl(control);
+        if (!table) {
+          return;
+        }
+        applyScreen3TableState(table);
+      }
+
+      function handleScreen3TableClearFiltersClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const control = event.target.closest('[data-screen3-clear-table-filters]');
+        if (!control) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const table = screen3TableForControl(control);
+        if (!table) {
+          return;
+        }
+        const tableId = safeStateValue(table.getAttribute('data-screen3-table-id'));
+        const tableState = screen3TableState(tableId);
+        tableState.filters = {};
+        table.querySelectorAll('[data-screen3-table-filter]').forEach(function (input) {
+          input.value = '';
+        });
+        table.querySelectorAll('.screen3-table-header-control').forEach(function (headerControl) {
+          headerControl.classList.remove('is-filter-open', 'has-active-filter');
+          const filterButton = headerControl.querySelector('[data-screen3-table-filter-toggle]');
+          if (filterButton) {
+            filterButton.setAttribute('aria-expanded', 'false');
+            filterButton.setAttribute('aria-pressed', 'false');
+          }
+        });
+        applyScreen3TableState(table);
       }
 
       function updateExistingRunOptions(runs, lookupStatus, lookupMessage) {
@@ -4071,13 +6539,14 @@ def _build_dashboard_interactivity_javascript() -> str:
           return;
         }
         const missingSourceFields = isIndexSourceSelectionAction(element)
+          || isScreen3RuntimeAction(element)
           ? sourceSelectionMissingFields(dashboardState)
           : [];
         if (missingSourceFields.length) {
           setActionStatus(
             element,
             'disabled-missing-source-selection',
-            'Disabled because source configuration is incomplete: ' + missingSourceFields.join(', ') + '.'
+            'Disabled because source configuration is incomplete. Return to Source Intake or complete validation before submitting.'
           );
           return;
         }
@@ -4106,7 +6575,11 @@ def _build_dashboard_interactivity_javascript() -> str:
           'pending',
           isScreen1ParserGovernanceAction(element)
             ? 'Submitting governed Screen 1 parser governance request...'
-            : 'Submitting governed source-selection request...'
+            : (
+              isScreen3RuntimeAction(element)
+                ? 'Submitting governed Screen 3 runtime-control request...'
+                : 'Submitting governed source-selection request...'
+            )
         );
         requestBridge(PHASE7_ACTION_ENDPOINT, {
           method: 'POST',
@@ -4119,7 +6592,9 @@ def _build_dashboard_interactivity_javascript() -> str:
             });
           })
           .then(function (result) {
-            if (!result.ok || !result.payload || result.payload.status !== 'accepted') {
+            const responseStatus = result.payload ? safeStateValue(result.payload.status || '') : '';
+            const successfulStatus = responseStatus === 'accepted' || responseStatus === 'blocked' || responseStatus === 'completed';
+            if (!result.ok || !result.payload || !successfulStatus) {
               setActionStatus(
                 element,
                 'failed',
@@ -4127,6 +6602,21 @@ def _build_dashboard_interactivity_javascript() -> str:
                   ? result.payload.message
                   : 'Governed workflow request was rejected.'
               );
+              return;
+            }
+            if (isScreen3RuntimeAction(element)) {
+              const summary = result.payload.source_summary || {};
+              const missingGates = Array.isArray(summary.missing_execution_gates)
+                ? summary.missing_execution_gates
+                : [];
+              const productActionLabel = safeStateValue(element.getAttribute('data-action-label')) ||
+                screen3ActionProductLabel(summary.requested_screen3_action || '');
+              setActionStatus(
+                element,
+                responseStatus,
+                screen3SubmittedActionMessage(productActionLabel || 'runtime', responseStatus, missingGates)
+              );
+              updateScreen3ExecutionResultPanelFromResponse(element, responseStatus, result.payload);
               return;
             }
 	            setActionStatus(
@@ -4203,12 +6693,19 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
 	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
 	          document.addEventListener('click', handleScreen2GenerateExplanationClick);
-	          document.addEventListener('click', handlePhase7ActionClick);
+          document.addEventListener('click', handlePhase7ActionClick);
+          document.addEventListener('click', handleScreen3RuntimeOptionsLoadClick);
+          document.addEventListener('click', handleScreen3RuntimeFilterButtonClick);
+          document.addEventListener('click', handleScreen3TableSortClick);
+          document.addEventListener('click', handleScreen3TableFilterToggleClick);
+          document.addEventListener('click', handleScreen3TableClearFiltersClick);
           document.addEventListener('click', handleExistingRunLookupClick);
           document.addEventListener('click', handleObjectStorageValidationClick);
           document.addEventListener('keydown', handleDashboardSelectableKeydown);
           document.addEventListener('input', handleScreen1GovernanceFormInput);
           document.addEventListener('change', handleScreen1GovernanceFormInput);
+          document.addEventListener('input', handleScreen3TableFilterInput);
+          document.addEventListener('change', handleScreen3TableFilterInput);
           document.addEventListener('input', handleDashboardStateInput);
           document.addEventListener('change', handleDashboardStateInput);
           document.addEventListener('change', handlePhase7SourcePickerChange);
@@ -4218,7 +6715,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           });
           dashboardInteractivityInitialized = true;
         }
-        return applyDashboardState(readDashboardState(), scope);
+        const appliedState = applyDashboardState(readDashboardState(), scope);
+        return restoreScreen3RuntimeOptionsFromCache(scope) || appliedState;
       }
 
       window.DashboardInteractivityFoundation = Object.freeze({
@@ -4246,6 +6744,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         scope: 'index_source_selection_runtime_workflow',
         endpoint: PHASE7_ACTION_ENDPOINT,
         existingRunLookupEndpoint: PHASE7_EXISTING_RUN_LOOKUP_ENDPOINT,
+        screen3RuntimeOptionsEndpoint: PHASE7_SCREEN3_OPTIONS_ENDPOINT,
         objectStorageValidateEndpoint: PHASE7_OBJECT_STORAGE_VALIDATE_ENDPOINT,
         selector: PHASE7_ACTION_SELECTOR,
         governanceMode: 'governed_request',
@@ -4256,6 +6755,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         runAnalysisCoupling: false,
         buildDashboardActionRequest: buildDashboardActionRequest,
         submitDashboardAction: submitDashboardAction,
+        handleScreen3RuntimeOptionsLoadClick: handleScreen3RuntimeOptionsLoadClick,
+        handleScreen3RuntimeFilterButtonClick: handleScreen3RuntimeFilterButtonClick,
         handleExistingRunLookupClick: handleExistingRunLookupClick,
         handleObjectStorageValidationClick: handleObjectStorageValidationClick
       });
@@ -4292,7 +6793,7 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
         "home": product.get("title") or "AWR Performance Intelligence Dashboard",
         "screen_1": "Screen 1 - Ingestion",
         "screen_2": "Screen 2 - Diagnostic Snapshot",
-        "screen_3": "Screen 3 - History Selector",
+        "screen_3": "Screen 3 - Governed Runtime Control Center",
         "screen_4": "Screen 4 - Historical Review",
         "screen_5": "Screen 5 - Recommendation / Action",
         "screen_6": "Screen 6 - Fleet Overview",
@@ -4307,13 +6808,119 @@ def _render_runtime_status_badge(report_data: dict[str, Any]) -> str:
         else _status_pill_class(status["runtime_mode"])
     )
     return f"""
-      <div class="runtime-badge">
+      <div class="runtime-badge" data-dashboard-runtime-badge="true">
         <span class="status-pill {escape(mode_class)}">{escape(status["runtime_mode"])}</span>
         <div class="runtime-meta">
           {_render_runtime_state_line(report_data, status)}
         </div>
       </div>
     """
+
+
+def _render_runtime_badge_early_hydration_script() -> str:
+    """Return a tiny inline badge hydrator that runs before the main JS bundle."""
+
+    storage_key_json = json.dumps(DASHBOARD_INTERACTIVITY_STORAGE_KEY)
+    return """
+        <script>
+          (function () {
+            'use strict';
+            const DASHBOARD_STORAGE_KEY = __DASHBOARD_STORAGE_KEY__;
+            const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
+            const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
+            const badge = document.querySelector('[data-dashboard-runtime-badge="true"]');
+            const workflowStatus = document.querySelector('[data-dashboard-runtime-workflow-status="true"]');
+
+            function safeRuntimeBadgeValue(value) {
+              if (value === undefined || value === null) {
+                return '';
+              }
+              return String(value).replace(/[<>]/g, '').trim().slice(0, 256);
+            }
+
+            function runtimeBadgeStateClass(value) {
+              const normalized = safeRuntimeBadgeValue(value).toLowerCase();
+              if (
+                normalized === 'connected' ||
+                normalized === 'available' ||
+                normalized === 'active' ||
+                normalized === 'accepted' ||
+                normalized === 'loaded'
+              ) {
+                return 'state-pass';
+              }
+              if (
+                normalized.indexOf('error') >= 0 ||
+                normalized.indexOf('failed') >= 0 ||
+                normalized.indexOf('unavailable') >= 0
+              ) {
+                return 'state-error';
+              }
+              if (
+                normalized.indexOf('warning') >= 0 ||
+                normalized.indexOf('degraded') >= 0 ||
+                normalized.indexOf('partial') >= 0
+              ) {
+                return 'state-warning';
+              }
+              return 'state-muted';
+            }
+
+            function readStoredWorkflowStatus() {
+              try {
+                const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
+                if (rawState) {
+                  const dashboardState = JSON.parse(rawState);
+                  const storedStatus = safeRuntimeBadgeValue(dashboardState && dashboardState.screen3LiveServiceStatus);
+                  if (storedStatus) {
+                    return storedStatus;
+                  }
+                }
+              } catch (error) {
+                // Badge hydration is continuity-only; invalid browser state is ignored.
+              }
+              try {
+                const rawCache = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+                if (rawCache) {
+                  const cache = JSON.parse(rawCache);
+                  if (
+                    cache &&
+                    cache.cache_version === SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION &&
+                    cache.options &&
+                    typeof cache.options === 'object'
+                  ) {
+                    return safeRuntimeBadgeValue(cache.service_status || 'Available');
+                  }
+                }
+              } catch (error) {
+                // Cache is not authoritative truth; failed cache reads leave the neutral default.
+              }
+              return '';
+            }
+
+            function applyWorkflowStatus(value) {
+              if (!workflowStatus) {
+                return;
+              }
+              const nextValue = (
+                safeRuntimeBadgeValue(value) ||
+                safeRuntimeBadgeValue(workflowStatus.getAttribute('data-empty-label')) ||
+                'Check with Load Options'
+              );
+              workflowStatus.textContent = nextValue;
+              workflowStatus.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
+              workflowStatus.classList.add(runtimeBadgeStateClass(nextValue));
+              workflowStatus.setAttribute('data-dashboard-state-value', nextValue);
+            }
+
+            applyWorkflowStatus(readStoredWorkflowStatus());
+            if (badge) {
+              badge.classList.add('runtime-badge-hydrated');
+              badge.setAttribute('data-runtime-badge-hydrated', 'true');
+            }
+          }());
+        </script>
+    """.replace("__DASHBOARD_STORAGE_KEY__", storage_key_json)
 
 
 def _render_runtime_state_line(
@@ -4324,10 +6931,22 @@ def _render_runtime_state_line(
     db_state = status["db_connectivity"]
     similarity_state = status["similarity_status"]
     return (
-        '<span class="runtime-state-line">'
-        f'DB: <span class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</span>'
-        f' · Similarity: <span class="{escape(_similarity_runtime_state_class(similarity_state))}">{escape(similarity_state)}</span>'
-        f' · Governed Memory: <span class="{escape(memory_class)}">{escape(memory_state)}</span>'
+        '<span class="runtime-state-line runtime-state-pills">'
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">Build DB: '
+        f'<strong class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</strong>'
+        "</span>"
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the Screen 3 options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow Service: '
+        '<strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" '
+        'data-dashboard-runtime-workflow-status="true" '
+        'data-dashboard-state-key="screen3LiveServiceStatus" '
+        'data-empty-label="Check with Load Options">Check with Load Options</strong>'
+        "</span>"
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: '
+        f'<strong class="{escape(_similarity_runtime_state_class(similarity_state))}">{escape(similarity_state)}</strong>'
+        "</span>"
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: '
+        f'<strong class="{escape(memory_class)}">{escape(memory_state)}</strong>'
+        "</span>"
         "</span>"
     )
 
@@ -4384,7 +7003,12 @@ def _runtime_status_from_report(report_data: dict[str, Any]) -> dict[str, str]:
     )
     db_ready = _truthy_status(summary.get("db_similarity_ready"))
     connected = db_connectivity.strip().lower() == "connected"
-    runtime_mode = "FULL DB MODE" if connected and db_ready else "LOCAL ONLY MODE"
+    if connected and db_ready:
+        runtime_mode = "FULL DB MODE"
+    elif connected:
+        runtime_mode = "DB CONNECTED - SIMILARITY UNAVAILABLE"
+    else:
+        runtime_mode = "GENERATED DB WARNING"
     similarity_status = "Available" if connected and db_ready else "Unavailable"
     display_db_connectivity = "Connected" if connected else "Failed"
     return {
@@ -5162,7 +7786,7 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 3 - History Selector / Filter / Scope Definition",
+            "Screen 3 - Runtime Control Center",
             "screen_3_history_selector.html",
             [
                 ("Snapshot Count", selector_header.get("snapshot_count")),
@@ -5217,10 +7841,6 @@ def _render_home_page(
 
       {_render_phase7cm_index_source_intake_panel()}
       {_render_home_system_ux_sections()}
-      {_render_index_source_mode_entry_preview()}
-      {_render_index_source_status_panel()}
-      {_render_index_object_storage_config_panel()}
-      {_render_index_screen3_handoff_panel()}
 
       <section class="card secondary compact-card ai-explanation-card">
         <div class="section-kicker">AI Explanation Layer</div>
@@ -5239,6 +7859,12 @@ def _render_home_page(
           {"".join(_render_navigation_card(title, href, previews) for title, href, previews in navigation_cards)}
         </div>
       </section>
+
+      {_render_phase7cm_index_debug_state_panel()}
+      {_render_index_source_mode_entry_preview()}
+      {_render_index_source_status_panel()}
+      {_render_index_object_storage_config_panel()}
+      {_render_index_screen3_handoff_panel()}
     </div>
     """
 
@@ -5733,25 +8359,74 @@ def _render_phase7cm_index_source_intake_panel() -> str:
           </div>
         </section>
 
-        <section class="evidence-pane" data-phase7-debug-state-panel="true">
-          <h3>Advanced Debug State</h3>
-          <p class="meta">
-            Raw browser/hash/localStorage keys are intentionally secondary and
-            collapsed. They are useful for audit/debugging, not the primary
-            source-selection workflow.
-          </p>
-          <details class="phase7-legacy-boundary-details phase7cm-debug-state-details"
-                   data-phase7-advanced-debug-state="true">
-            <summary>Advanced Debug State / Browser Selection State</summary>
-            <p data-dashboard-selected-summary
-               data-phase7-current-selection-summary="true"
-               data-dashboard-state-empty="true">
-              No source mode has been selected. Choose Local staged AWR, Local
-              file, Existing run, or Object Storage to enable the governed
-              source-selection handoff.
-            </p>
-          <dl class="phase7cm-source-metadata-summary"
-              data-phase7-source-metadata-summary="true">
+        <a href="#phase7cm-source-intake-panel"
+           class="phase7-governed-action-control"
+           data-phase7-action-control="true"
+           data-screen-id="index_source_mode"
+           data-action-type="source_selection_handoff"
+           data-workflow-type="index_source_selection_handoff"
+           data-target-type="source_selection"
+           data-target-id="index-source-selection"
+           data-required-selection-key="selectedSourceMode"
+           data-execution-mode="request_record_only"
+           data-runtime-influence-granted="false"
+           data-phase4i-mutation-allowed="false"
+           data-phase8-behavior="false"
+           data-direct-truth-mutation-allowed="false"
+           data-run-analysis-coupling="false"
+           data-action-enabled-state="disabled-no-selection"
+           data-action-payload="{escape(action_payload, quote=True)}"
+           aria-disabled="true">
+          <strong data-phase7-source-submit-label="true">Submit Local Folder Source Handoff</strong>
+          <span>
+            Submits the selected source through the governed workflow service.
+            Disabled until the selected source and validation requirements are
+            satisfied.
+          </span>
+        </a>
+
+        <div class="phase7-governed-action-status"
+             data-phase7-action-result-panel="true"
+             data-phase7-action-status="waiting"
+             data-phase7-request-id-target="true"
+             data-phase7-audit-status-area="true">
+          Waiting for a valid source selection. After submit, this panel shows
+          success/failure, Request ID, Audit record, and the next step.
+        </div>
+
+        <p class="meta phase7cm-next-step-note">
+          Next step after an accepted request:
+          <a class="inline-nav-hint" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">Open Screen 3</a>
+          to continue governed re-analysis with the accepted source context.
+        </p>
+      </section>
+    """
+
+
+def _render_phase7cm_index_debug_state_panel() -> str:
+    """Render collapsed browser/source state diagnostics at the bottom of index."""
+
+    return """
+      <details class="card secondary phase7-legacy-boundary-details phase7cm-debug-state-details"
+               data-phase7-debug-state-panel="true"
+               data-phase7-advanced-debug-state="true">
+        <summary>Historical Phase Boundary Evidence - Advanced Debug State / Browser Selection State</summary>
+        <div class="section-kicker">Legacy Debug Context</div>
+        <h2>Advanced Debug State / Browser Selection State</h2>
+        <p class="meta">
+          Raw browser/hash/localStorage keys are intentionally secondary and
+          collapsed. They are useful for audit/debugging, not the primary
+          source-selection workflow.
+        </p>
+        <p data-dashboard-selected-summary
+           data-phase7-current-selection-summary="true"
+           data-dashboard-state-empty="true">
+          No source mode has been selected. Choose Local staged AWR, Local
+          file, Existing run, or Object Storage to enable the governed
+          source-selection handoff.
+        </p>
+        <dl class="phase7cm-source-metadata-summary"
+            data-phase7-source-metadata-summary="true">
             <div>
               <dt>selectedSourceMode</dt>
               <dd data-dashboard-state-input="true"
@@ -5920,51 +8595,8 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                   data-dashboard-state-key="selectedLocalFolderValidationMessages"
                   data-empty-label="none">none</dd>
             </div>
-          </dl>
-          </details>
-        </section>
-
-        <a href="#phase7cm-source-intake-panel"
-           class="phase7-governed-action-control"
-           data-phase7-action-control="true"
-           data-screen-id="index_source_mode"
-           data-action-type="source_selection_handoff"
-           data-workflow-type="index_source_selection_handoff"
-           data-target-type="source_selection"
-           data-target-id="index-source-selection"
-           data-required-selection-key="selectedSourceMode"
-           data-execution-mode="request_record_only"
-           data-runtime-influence-granted="false"
-           data-phase4i-mutation-allowed="false"
-           data-phase8-behavior="false"
-           data-direct-truth-mutation-allowed="false"
-           data-run-analysis-coupling="false"
-           data-action-enabled-state="disabled-no-selection"
-           data-action-payload="{escape(action_payload, quote=True)}"
-           aria-disabled="true">
-          <strong data-phase7-source-submit-label="true">Submit Local Folder Source Handoff</strong>
-          <span>
-            Submits the selected source through the governed workflow service.
-            Disabled until the selected source and validation requirements are
-            satisfied.
-          </span>
-        </a>
-
-        <div class="phase7-governed-action-status"
-             data-phase7-action-result-panel="true"
-             data-phase7-action-status="waiting"
-             data-phase7-request-id-target="true"
-             data-phase7-audit-status-area="true">
-          Waiting for a valid source selection. After submit, this panel shows
-          success/failure, Request ID, Audit record, and the next step.
-        </div>
-
-        <p class="meta phase7cm-next-step-note">
-          Next step after an accepted request:
-          <a class="inline-nav-hint" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">Open Screen 3</a>
-          to continue governed re-analysis with the accepted source context.
-        </p>
-      </section>
+        </dl>
+      </details>
     """
 
 
@@ -7261,6 +9893,7 @@ def _render_screen1_parser_governance_runtime_workflow(
               <span>Review needed</span>
             </div>
             <div class="screen1-review-item-metrics">
+              <span>Signal: MISSING_EXPECTED_SECTION</span>
               <span>Count: 24 persisted review records</span>
               <span>Current run unknowns: 0</span>
             </div>
@@ -10850,148 +13483,1698 @@ def _render_screen_3_selector_page(
     timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
     review_mode = _to_dict(screen_model.get("review_mode"))
     current_selection_summary = _to_dict(screen_model.get("current_selection_summary"))
-    control_center = _build_screen3_control_center_model(screen_model, report_data or {})
+    report = report_data or {}
+    control_center = _build_screen3_control_center_model(screen_model, report)
     return f"""
     <div class="grid">
-      <!-- Phase 7H.2 Screen 3 Control Center: read-only selectors only. -->
-      <section class="card secondary screen3-control-center">
-        <div class="section-kicker">Phase 7H.2</div>
-        <h2>Screen 3 Control Center</h2>
+      <section class="card secondary screen3-control-center" id="screen3-runtime-control-center">
+        <div class="section-kicker">Runtime Control Center</div>
+        <h2>Screen 3 - Governed Runtime Control Center</h2>
         <p class="static-selection-note">
-          Read-only selection state. Exploratory only. No backend writes. Does not change diagnostic truth. Does not change recommendation truth.
+          Review the source selected on Index, choose the run/scope or comparison window, validate readiness, and submit
+          governed backend actions. Existing deterministic truth is not overwritten.
         </p>
         <p class="static-selection-note">
-          Selection does not change primary issue. Selection does not change severity. Cross-Screen Selection Propagation is browser-side only. URL hash/localStorage state is not authoritative truth. No approval controls. No runtime activation.
+          If execution is not fully governed, the action is recorded and returned as blocked with the missing gates. New
+          deterministic outputs, when available, must be represented as new run/output/artifact references.
         </p>
         <div class="subgrid selector-subgrid">
-          <section class="evidence-pane selector-pane screen3-selected-state-panel">
-            <h3>Selected State Summary</h3>
-            <p class="screen3-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Read-only selection state: no exploratory selection
-            </p>
-            <div class="mini-pill-group">
-              <span class="mini-pill neutral">Read-only selection state</span>
-              <span class="mini-pill neutral">Exploratory only</span>
-              <span class="mini-pill neutral">No backend writes</span>
-              <span class="mini-pill neutral">No approval controls</span>
-              <span class="mini-pill neutral">No runtime activation</span>
-            </div>
-            <p class="meta">
-              Browser-side selection may update URL hash/local state through the Phase 7H.1 foundation. It does not alter Screen 2 diagnostic evidence or Screen 5 recommendation truth.
-            </p>
-          </section>
-          <section class="evidence-pane selector-pane">
-            <h3>AWR / Run Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["awr_run"],
-                "No additional AWR choices available in this static export. Selection is stored locally for exploration only.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Database / System Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["database_system"],
-                "No database or system selector metadata is available in this static export. Additional selectable options will appear when export metadata includes them.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Snapshot Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["snapshot"],
-                "No snapshot selector metadata is available in this static export. This selector does not change diagnostic output.",
-            )}
-          </section>
-          <section class="evidence-pane selector-pane">
-            <h3>Issue Domain Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["domain"],
-                "No issue domain choices are available.",
-            )}
-            <p class="meta">Domain selection is exploratory only; selection does not change primary issue.</p>
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Severity / Status Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["severity"],
-                "No severity or status selector metadata is available. Selection does not change severity.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Comparison Baseline Selector</h3>
-            {_render_screen3_selector_group(
-                control_center["comparison_baseline"],
-                "No comparison baseline data is available in this static export.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Fleet / Comparison Context</h3>
-            {_render_screen3_selector_group(
-                control_center["fleet_context"],
-                "No fleet peer or comparison context is available in this static export.",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Current Export Context</h3>
-            {_render_info_grid(
-                [
-                    ("DB Name", header.get("db_name")),
-                    ("DBID", header.get("dbid")),
-                    ("Instance", header.get("instance_name")),
-                    ("Host", header.get("host_name")),
-                    ("Window", header.get("window")),
-                ],
-                extra_class="selector-header-grid",
-            )}
-          </section>
-          {_render_screen3_reanalysis_action_ui(screen_model, report_data or {}, control_center)}
-          <section class="evidence-pane selector-pane">
-            <h3>Canonical Static Selection Context</h3>
-            <p class="static-selection-note">
-              This view reflects the selected analysis window used across all
-              downstream screens. The controls above do not rewrite this canonical context.
-            </p>
-            {_render_selection_controls(selection_controls)}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Timeframe Selection</h3>
-            {_render_info_grid(
-                [
-                    ("Comparison Window", timeframe_selection.get("comparison_window")),
-                    ("Start / End Period", timeframe_selection.get("start_end_period")),
-                    ("Window A", timeframe_selection.get("window_a")),
-                    ("Window B", timeframe_selection.get("window_b")),
-                ],
-                extra_class="selector-compact-grid",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Review Mode / Intent</h3>
-            {_render_screen3_option_chips(
-                review_mode.get("options") or [],
-                "reviewMode",
-                "selectedRun",
-                active_value=review_mode.get("active_mode"),
-            )}
-            {_render_info_strip([("Active Review Mode", review_mode.get("active_mode"))])}
-          </section>
-          <section class="half evidence-pane selector-pane">
-            <h3>Deterministic Current Selection Summary</h3>
-            {_render_info_grid(
-                [
-                    ("Scope", current_selection_summary.get("scope")),
-                    ("Timeframe", current_selection_summary.get("timeframe")),
-                    ("Review Mode", current_selection_summary.get("review_mode")),
-                ],
-                extra_class="selector-compact-grid",
-            )}
-          </section>
+          {_render_screen3_selected_source_scope_panel(screen_model, report)}
+          {_render_screen3_runtime_scope_work_area(screen_model, report, control_center)}
+          {_render_screen3_comparison_review_work_area(screen_model, report, control_center)}
+          {_render_screen3_submit_result_work_area(screen_model, report, control_center)}
+          {_render_screen3_safety_selection_impact_panel()}
+          {_render_screen3_technical_audit_debug_details(
+              screen_model,
+              report,
+              control_center,
+              selection_controls,
+              timeframe_selection,
+              review_mode,
+              current_selection_summary,
+          )}
         </div>
       </section>
     </div>
     """
 
 
-def _render_screen3_reanalysis_action_ui(
+def _render_screen3_selected_source_scope_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    """Render source context received from Index without duplicating source intake."""
+
+    source_rows = [
+        ("Source mode", "selectedSourceMode", "select a source on index"),
+        ("Source method", "sourceSelectionMethod", "not selected"),
+        ("Local source path", "selectedSourcePath", "not selected"),
+        ("Local folder candidates", "selectedLocalFolderAwrCandidateCount", "not selected"),
+        ("Selected local file", "selectedLocalFileName", "not selected"),
+        ("Existing run reference", "selectedRunReference", "not selected"),
+        ("Existing run status", "existingRunLookupStatus", "lookup required"),
+        ("Object Storage namespace", "objectStorageNamespace", "not selected"),
+        ("Object Storage bucket", "objectStorageBucket", "not selected"),
+        ("Object Storage object", "objectStorageObjectName", "not selected"),
+        ("Object Storage region", "objectStorageRegion", "not selected"),
+        ("Object Storage validation", "objectStorageValidationStatus", "validation required"),
+        ("Object Storage message", "objectStorageValidationMessage", "validate through governed service"),
+        ("Handoff request ID", "sourceHandoffRequestId", "not issued"),
+        ("Handoff audit status", "sourceHandoffAuditStatus", "not issued"),
+    ]
+
+    def state_row_html(rows: list[tuple[str, str, str]]) -> str:
+        return "\n".join(
+            f"""
+                  <div>
+                    <dt>{escape(label)}</dt>
+                    <dd data-dashboard-state-input="true"
+                        data-dashboard-state-key="{escape(key, quote=True)}"
+                        data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
+                  </div>
+            """
+            for label, key, empty in rows
+        )
+
+    source_row_html = state_row_html(source_rows)
+    return f"""
+          <section class="evidence-pane selector-pane screen3-source-received-panel">
+            <h3>Source Received From Index</h3>
+            <p class="static-selection-note">
+              Screen 3 receives source context from Index. It does not redo source intake or expose browser-side cloud credentials.
+            </p>
+            <p class="empty-state screen3-source-handoff-empty"
+               data-screen3-source-handoff-empty="true">
+              No Index source handoff has been received. Return to Index to select Local staged AWR, Local file, Existing run, or Object Storage.
+            </p>
+            <p>
+              <a class="inline-action-link" href="index.html" data-dashboard-propagate-state="true">Return to Source Intake</a>
+            </p>
+            <div class="screen3-source-scope-stack">
+              <article class="screen3-context-subpanel">
+                <h4>Index-selected source context</h4>
+                <dl class="info-grid selector-compact-grid screen3-source-scope-grid">
+                  {source_row_html}
+                </dl>
+              </article>
+            </div>
+          </section>
+    """
+
+
+def _screen3_state_override_attrs(values: dict[str, Any]) -> str:
+    """Render data attributes that update local Screen 3 selection state."""
+
+    attrs: list[str] = []
+    for key, value in values.items():
+        if value is None:
+            continue
+        safe_value = str(value).strip()
+        if not safe_value:
+            continue
+        attrs.append(
+            f'data-dashboard-state-set-{escape(str(key), quote=True)}="{escape(safe_value, quote=True)}"'
+        )
+    return " ".join(attrs)
+
+
+def _screen3_selectable_attrs(
+    *,
+    select_type: str,
+    state_key: str,
+    select_id: str,
+    state_values: dict[str, Any] | None = None,
+) -> str:
+    state_attrs = _screen3_state_override_attrs(state_values or {})
+    return (
+        'tabindex="0" role="button" data-dashboard-selectable="true" '
+        f'data-dashboard-select-type="{escape(select_type, quote=True)}" '
+        f'data-dashboard-select-key="{escape(state_key, quote=True)}" '
+        f'data-dashboard-select-id="{escape(select_id, quote=True)}" '
+        f'data-dashboard-target="{escape(select_id, quote=True)}"'
+        + (f" {state_attrs}" if state_attrs else "")
+    )
+
+
+def _screen3_generated_runtime_values(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, str]:
+    header = _to_dict(screen_model.get("header"))
+    metadata = _to_dict(report_data.get("metadata"))
+    analysis_context = _to_dict(report_data.get("analysis_context"))
+    timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
+    window = _first_display_value(
+        header.get("window"),
+        timeframe_selection.get("window_a"),
+        timeframe_selection.get("comparison_window"),
+        analysis_context.get("snapshot_window"),
+    )
+    return {
+        "application": _first_display_value(
+            metadata.get("application"),
+            metadata.get("app_name"),
+            analysis_context.get("application"),
+        ),
+        "db_name": _first_display_value(header.get("db_name"), metadata.get("db_name")),
+        "dbid": _first_display_value(header.get("dbid"), metadata.get("dbid")),
+        "instance": _first_display_value(header.get("instance_name"), metadata.get("instance_name")),
+        "host": _first_display_value(header.get("host_name"), metadata.get("host_name")),
+        "run_reference": _first_display_value(
+            report_data.get("run_history_id"),
+            report_data.get("run_id"),
+            analysis_context.get("run_history_id"),
+            analysis_context.get("run_id"),
+            "Current generated run",
+        ),
+        "report_id": _first_display_value(report_data.get("report_id"), analysis_context.get("report_id")),
+        "window": window,
+        "begin": _first_display_value(timeframe_selection.get("window_a"), window),
+        "end": _first_display_value(timeframe_selection.get("window_b"), ""),
+        "source": _first_display_value(
+            report_data.get("source_file_name"),
+            metadata.get("source_file"),
+            metadata.get("source_file_name"),
+            "current generated fallback",
+        ),
+    }
+
+
+def _render_screen3_runtime_scope_fallback_row(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    values = _screen3_generated_runtime_values(screen_model, report_data)
+    application = values["application"] or "Not available"
+    host_system = values["host"] or values["instance"] or "Not available"
+    row_state = {
+        "selectedRuntimeScope": "Current generated fallback",
+        "selectedRuntimeScopeSourceTable": "current generated fallback",
+        "selectedRuntimeScopeAwrCount": "0",
+        "selectedRuntimeScopeSnapshotCount": "1" if values["window"] else "0",
+        "selectedApplication": application,
+        "selectedDb": values["db_name"],
+        "selectedDbid": values["dbid"],
+        "selectedInstance": values["instance"],
+        "selectedHost": values["host"] or "Not available",
+        "selectedSystem": host_system,
+        "selectedAwr": values["report_id"] or values["run_reference"],
+        "selectedRun": values["run_reference"],
+        "selectedReportId": values["report_id"],
+        "selectedRunReference": values["run_reference"],
+        "selectedSnapshot": values["window"],
+        "selectedTimeWindow": values["window"],
+        "selectedRuntimeScopeResolutionState": "current_generated_context",
+        "selectedRuntimeScopeReadinessState": "analysis_required",
+    }
+    attrs = _screen3_selectable_attrs(
+        select_type="runtimeScope",
+        state_key="selectedRuntimeScope",
+        select_id="current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown",
+        state_values=row_state,
+    )
+    attrs += (
+        f' data-screen3-runtime-scope-row="true"'
+        f' data-screen3-table-row="true"'
+        f' data-screen3-row-id="current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown"'
+        f' data-screen3-filter-application="{escape(application, quote=True)}"'
+        f' data-screen3-filter-db="{escape(values["db_name"], quote=True)}"'
+        f' data-screen3-filter-dbid="{escape(values["dbid"], quote=True)}"'
+        f' data-screen3-filter-instance="{escape(values["instance"], quote=True)}"'
+        f' data-screen3-filter-host="{escape(values["host"], quote=True)}"'
+        f' data-screen3-filter-source-table="current generated fallback"'
+        f' data-screen3-filter-time-window="{escape(values["window"], quote=True)}"'
+        f' data-screen3-sort-source_table="current generated fallback"'
+        f' data-screen3-sort-application="{escape(application, quote=True)}"'
+        f' data-screen3-sort-db="{escape(values["db_name"], quote=True)}"'
+        f' data-screen3-sort-dbid="{escape(values["dbid"], quote=True)}"'
+        f' data-screen3-sort-instance="{escape(values["instance"], quote=True)}"'
+        f' data-screen3-sort-host="{escape(host_system, quote=True)}"'
+        f' data-screen3-sort-awr_run="{escape(values["run_reference"], quote=True)}"'
+        f' data-screen3-sort-report_id="{escape(values["report_id"] or values["run_reference"], quote=True)}"'
+        f' data-screen3-sort-begin="{escape(values["begin"], quote=True)}"'
+        f' data-screen3-sort-end="{escape(values["end"] or values["window"], quote=True)}"'
+        f' data-screen3-sort-snapshot_count="{"1" if values["window"] else "0"}"'
+        f' data-screen3-sort-readiness="analysis_required"'
+    )
+    cells = [
+        ("use", "Apply row"),
+        ("source_table", "current generated fallback"),
+        ("application", application),
+        ("db", values["db_name"]),
+        ("dbid", values["dbid"]),
+        ("instance", values["instance"]),
+        ("host", host_system),
+        ("awr_run", values["run_reference"]),
+        ("report_id", values["report_id"] or values["run_reference"]),
+        ("begin", values["begin"]),
+        ("end", values["end"] or values["window"]),
+        ("snapshot_count", "1" if values["window"] else "0"),
+        ("readiness", "analysis_required"),
+    ]
+    return (
+        "<tr "
+        + attrs
+        + ">"
+        + "".join(
+            f'<td data-screen3-cell-key="{escape(key, quote=True)}"'
+            + (' data-screen3-row-apply-label="true"' if key == "use" else "")
+            + f">{escape(value or 'Not available')}</td>"
+            for key, value in cells
+        )
+        + "</tr>"
+    )
+
+
+def _render_screen3_interval_fallback_row(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    values = _screen3_generated_runtime_values(screen_model, report_data)
+    attrs = _screen3_selectable_attrs(
+        select_type="snapshot",
+        state_key="selectedTimeWindow",
+        select_id=(
+            "current_generated_context|interval|"
+            + (values["begin"] or "begin_unknown")
+            + "|"
+            + (values["end"] or values["window"] or "end_unknown")
+        ),
+        state_values={
+            "selectedSnapshot": values["window"],
+            "selectedTimeWindow": values["window"],
+            "selectedSnapshotBegin": values["begin"],
+            "selectedSnapshotEnd": values["end"],
+            "selectedComparisonWindowA": values["window"],
+        },
+    )
+    attrs += (
+        ' data-screen3-table-row="true"'
+        f' data-screen3-row-id="{escape("current_generated_context|interval|" + (values["begin"] or "begin_unknown") + "|" + (values["end"] or values["window"] or "end_unknown"), quote=True)}"'
+    )
+    cells = [
+        ("use", "Apply interval"),
+        ("window_type", "latest/current"),
+        ("begin", values["begin"] or values["window"]),
+        ("end", values["end"] or values["window"]),
+        ("source", "current generated fallback"),
+    ]
+    return (
+        "<tr "
+        + attrs
+        + ">"
+        + "".join(
+            f'<td data-screen3-cell-key="{escape(key, quote=True)}"'
+            + (' data-screen3-row-apply-label="true"' if key == "use" else "")
+            + f">{escape(value or 'Not available')}</td>"
+            for key, value in cells
+        )
+        + "</tr>"
+    )
+
+
+def _render_screen3_selected_runtime_scope_summary() -> str:
+    rows = [
+        ("Source type", "selectedSourceMode", "Not selected"),
+        ("Runtime source table", "selectedRuntimeScopeSourceTable", "Not selected"),
+        ("Application", "selectedApplication", "Not available"),
+        ("DB Name", "selectedDb", "Not selected"),
+        ("DBID", "selectedDbid", "Not selected"),
+        ("Instance", "selectedInstance", "Not available"),
+        ("Host/System", "selectedHost", "Not available"),
+        ("Application filter", "screen3RuntimeFilterApplication", "All applications"),
+        ("DB Name filter", "screen3RuntimeFilterDb", "All DB names"),
+        ("DBID filter", "screen3RuntimeFilterDbid", "All DBIDs"),
+        ("Instance filter", "screen3RuntimeFilterInstance", "All instances"),
+        ("Host/System filter", "screen3RuntimeFilterHost", "All hosts/systems"),
+        ("Source type filter", "screen3RuntimeFilterSourceType", "All source tables"),
+        ("Time range filter", "screen3RuntimeFilterTimeRange", "All time ranges"),
+        ("Apply selection to", "screen3ActiveSelectionTarget", "Runtime Scope"),
+        ("Run/report reference", "selectedRunReference", "Not selected"),
+        ("Snapshot / Time Window", "selectedTimeWindow", "Not selected"),
+        ("Resolved AWR count", "selectedRuntimeScopeAwrCount", "0"),
+        ("Resolved snapshot/window count", "selectedRuntimeScopeSnapshotCount", "0"),
+        ("Resolution state", "selectedRuntimeScopeResolutionState", "Pending target resolution"),
+        ("Readiness", "selectedRuntimeScopeReadinessState", "Pending target readiness"),
+    ]
+    return "\n".join(
+        f"""
+              <div>
+                <dt>{escape(label)}</dt>
+                <dd data-dashboard-state-input="true"
+                    data-dashboard-state-key="{escape(key, quote=True)}"
+                    data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
+              </div>
+        """
+        for label, key, empty in rows
+    )
+
+
+def _render_screen3_runtime_option_loader_content() -> str:
+    rows = [
+        ("Service", "screen3RuntimeOptionsStatus", "not loaded"),
+        ("DB persistence", "screen3RuntimeOptionsDbPersistenceStatus", "not checked"),
+        ("Loaded rows", "screen3RuntimeOptionsLoadedRows", "0"),
+        ("Options", "screen3RuntimeOptionsCount", "0"),
+        ("Last loaded", "screen3RuntimeOptionsLoadedAt", "not loaded"),
+        ("Included selectable tables", "screen3RuntimeOptionsIncludedTables", "not checked"),
+        ("Cache status", "screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
+        ("Message", "screen3RuntimeOptionsMessage", "Load available runtime options to query DB-backed AWR/run/snapshot choices."),
+    ]
+    row_html = "\n".join(
+        f"""
+                  <div>
+                    <dt>{escape(label)}</dt>
+                    <dd data-dashboard-state-input="true"
+                        data-dashboard-state-key="{escape(key, quote=True)}"
+                        data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
+                  </div>
+        """
+        for label, key, empty in rows
+    )
+    return f"""
+            <div class="screen3-actions-inline">
+              <button type="button"
+                      class="phase7cm-service-button screen3-runtime-options-button"
+                      data-screen3-runtime-options-load="true">Load available runtime options</button>
+              <button type="button"
+                      class="phase7cm-service-button screen3-runtime-options-button secondary"
+                      data-screen3-runtime-options-load="true"
+                      data-screen3-runtime-options-refresh="true">Refresh options</button>
+            </div>
+            <dl class="info-grid selector-compact-grid screen3-runtime-options-status-grid">
+              {row_html}
+            </dl>
+            <details class="screen3-technical-details screen3-runtime-coverage-details">
+              <summary>Runtime option source-table coverage</summary>
+              <dl class="info-grid selector-compact-grid screen3-runtime-options-debug-grid">
+                <div>
+                  <dt>Source-table coverage</dt>
+                  <dd data-dashboard-state-input="true"
+                      data-dashboard-state-key="screen3RuntimeOptionsSourceTables"
+                      data-empty-label="Source table coverage not reported">Source table coverage not reported</dd>
+                </div>
+                <div>
+                  <dt>Coverage note</dt>
+                  <dd data-dashboard-state-input="true"
+                      data-dashboard-state-key="screen3RuntimeOptionsCoverageMessage"
+                      data-empty-label="Load runtime options to see queried tables and row counts.">Load runtime options to see queried tables and row counts.</dd>
+                </div>
+              </dl>
+            </details>
+    """
+
+
+def _render_screen3_runtime_scope_filter_panel() -> str:
+    filter_specs = [
+        (
+            "Application",
+            "runtime-filter-application",
+            "screen3RuntimeFilterApplication",
+            "All applications",
+            "Application metadata appears when persisted AWR source-system rows include application names.",
+        ),
+        ("DB Name", "runtime-filter-db", "screen3RuntimeFilterDb", "All DB names", "Load runtime options to filter by DB Name."),
+        ("DBID", "runtime-filter-dbid", "screen3RuntimeFilterDbid", "All DBIDs", "Load runtime options to filter by DBID."),
+        ("Instance", "runtime-filter-instance", "screen3RuntimeFilterInstance", "All instances", "Load runtime options to filter by instance."),
+        ("Host/System", "runtime-filter-host", "screen3RuntimeFilterHost", "All hosts/systems", "Load runtime options to filter by host or system."),
+        ("Source type", "runtime-filter-source-type", "screen3RuntimeFilterSourceType", "All source tables", "Filter by runtime option source table or fallback source."),
+        ("Time range", "runtime-filter-time-range", "screen3RuntimeFilterTimeRange", "All time ranges", "Filter by available begin/end window when persisted intervals exist."),
+    ]
+    filter_html = "".join(
+        f"""
+                <div class="screen3-filter-control">
+                  <label for="screen3-{escape(target, quote=True)}">{escape(label)}</label>
+                  <select id="screen3-{escape(target, quote=True)}"
+                          class="screen3-filter-select"
+                          data-dashboard-state-input="true"
+                          data-dashboard-state-key="{escape(state_key, quote=True)}"
+                          data-screen3-runtime-options-target="{escape(target, quote=True)}">
+                    <option value="">{escape(all_label)}</option>
+                  </select>
+                  <small>{escape(empty)}</small>
+                </div>
+        """
+        for label, target, state_key, all_label, empty in filter_specs
+    )
+    return f"""
+            <article class="screen3-context-subpanel screen3-runtime-filter-panel">
+              <h4>Runtime Scope Filters</h4>
+              <p class="meta">
+                These global controls filter the loaded inventory across Application, DB, DBID, Instance, Host/System, source table, and time range. Column filters inside each table narrow only the visible rows already loaded in the browser.
+              </p>
+              <div class="screen3-filter-toolbar">
+                <label for="screen3-runtime-filter-search">Search loaded results</label>
+                <input id="screen3-runtime-filter-search"
+                       class="screen3-filter-search"
+                       type="search"
+                       placeholder="Search DB, DBID, host, instance, report, source file"
+                       data-dashboard-state-input="true"
+                       data-dashboard-state-key="screen3RuntimeFilterSearch" />
+                <button type="button"
+                        class="phase7cm-service-button screen3-filter-action-button"
+                        data-screen3-runtime-filters-apply="true">Apply Filters</button>
+                <button type="button"
+                        class="phase7cm-service-button screen3-filter-action-button secondary"
+                        data-screen3-runtime-filters-clear="true">Clear Filters</button>
+                <label class="screen3-result-limit-control" for="screen3-runtime-result-limit">
+                  Visible rows
+                  <select id="screen3-runtime-result-limit"
+                          class="screen3-filter-select"
+                          data-dashboard-state-input="true"
+                          data-dashboard-state-key="screen3RuntimeResultLimit">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="all">All filtered</option>
+                  </select>
+                </label>
+              </div>
+              <div class="screen3-filter-grid">
+                {filter_html}
+              </div>
+              <p class="meta">
+                <strong data-screen3-filtered-result-count="true"
+                        data-dashboard-state-input="true"
+                        data-dashboard-state-key="screen3RuntimeFilteredResultCount"
+                        data-empty-label="Showing 0 of 0 loaded row(s)">Showing 0 of 0 loaded row(s)</strong>
+              </p>
+            </article>
+    """
+
+
+def _render_screen3_apply_selection_controls(
+    *,
+    title: str = "Apply selection to",
+    body: str = (
+        "Choose where the next AWR/report row or interval click applies. Runtime Scope, Target A, and Target B each remember one row and one optional window."
+    ),
+) -> str:
+    items = [
+        {
+            "label": "Runtime Scope",
+            "value": "Runtime Scope",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Row and interval selections update the base runtime scope.",
+        },
+        {
+            "label": "Target A",
+            "value": "Target A",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Row and interval selections resolve Comparison Target A.",
+        },
+        {
+            "label": "Target B",
+            "value": "Target B",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Row and interval selections resolve Comparison Target B.",
+        },
+    ]
+    return f"""
+            <article class="screen3-context-subpanel screen3-apply-selection-panel">
+              <h4>{escape(title)}</h4>
+              <p class="meta">
+                {escape(body)}
+              </p>
+              {_render_screen3_pill_controls(items, "Select where runtime rows and intervals should apply.")}
+            </article>
+    """
+
+
+def _render_screen3_apply_interval_controls() -> str:
+    items = [
+        {
+            "label": "Runtime Scope",
+            "value": "Runtime Scope",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Update selected runtime window.",
+        },
+        {
+            "label": "Target A",
+            "value": "Target A",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Update Target A window.",
+        },
+        {
+            "label": "Target B",
+            "value": "Target B",
+            "select_type": "screen3ApplySelectionTarget",
+            "state_key": "screen3ActiveSelectionTarget",
+            "note": "Update Target B window.",
+        },
+    ]
+    return f"""
+	        <div class="screen3-apply-selection-inline">
+	          <h5>Apply interval to</h5>
+	          <p class="meta">First choose Runtime Scope, Target A, or Target B. Then select an interval row; only that assignment is updated.</p>
+	          {_render_screen3_pill_controls(items, "Select where interval rows should apply.")}
+	        </div>
+    """
+
+
+def _screen3_sortable_table_header(label: str, sort_key: str, title: str) -> str:
+    return (
+        '<div class="screen3-table-header-control">'
+        f'<span class="screen3-table-header-label">{escape(label)}</span>'
+        f'<button type="button" class="screen3-table-sort-button" '
+        f'data-screen3-table-sort="{escape(sort_key, quote=True)}" '
+        f'data-screen3-runtime-sort="{escape(sort_key, quote=True)}" '
+        f'data-screen3-sort-key="{escape(sort_key, quote=True)}" '
+        f'title="{escape(title, quote=True)}" '
+        f'aria-label="{escape(title, quote=True)}" '
+        f'aria-pressed="false">'
+        f'<small data-screen3-sort-indicator="{escape(sort_key, quote=True)}" '
+        f'data-screen3-table-sort-indicator="{escape(sort_key, quote=True)}">↕</small>'
+        "</button>"
+        f'<button type="button" class="screen3-table-filter-toggle" '
+        f'data-screen3-table-filter-toggle="{escape(sort_key, quote=True)}" '
+        f'aria-label="Open {escape(label, quote=True)} filter" '
+        f'aria-expanded="false" '
+        f'aria-pressed="false" '
+        f'title="Open {escape(label, quote=True)} filter">'
+        '<span aria-hidden="true">⌕</span>'
+        "</button>"
+        f'<input class="screen3-table-filter-input" type="search" '
+        f'data-screen3-table-filter="{escape(sort_key, quote=True)}" '
+        f'data-screen3-filter-key="{escape(sort_key, quote=True)}" '
+        f'placeholder="Filter {escape(label, quote=True)}" '
+        f'aria-label="Filter {escape(label, quote=True)} column" />'
+        "</div>"
+    )
+
+
+def _render_screen3_table_control_row(table_id: str, label: str) -> str:
+    safe_table_id = escape(table_id, quote=True)
+    return f"""
+              <div class="screen3-table-control-row">
+                <span data-screen3-table-count="{safe_table_id}">Showing 0 of 0 row(s) after table filters.</span>
+                <span>Sort: <strong data-screen3-table-sort-summary="{safe_table_id}">none</strong></span>
+                <span>Filters: <strong data-screen3-table-filter-summary="{safe_table_id}">none</strong></span>
+                <button type="button"
+                        class="phase7cm-service-button screen3-table-clear-button secondary"
+                        title="Clear {escape(label, quote=True)} table filters"
+                        data-screen3-clear-table-filters="{safe_table_id}">Clear table filters</button>
+              </div>
+    """
+
+
+def _render_screen3_selection_legend() -> str:
+    return """
+              <div class="screen3-selection-legend" aria-label="Screen 3 selection highlight legend">
+                <span><i class="screen3-legend-swatch runtime"></i>Solid blue = selected AWR/report row</span>
+                <span><i class="screen3-legend-swatch interval"></i>Subtle green = selected interval/window</span>
+                <span><i class="screen3-legend-swatch advanced"></i>Dashed violet = selected advanced/external option</span>
+              </div>
+    """
+
+
+def _render_screen3_selected_context_chips() -> str:
+    chips = [
+        (
+            "Runtime Scope",
+            "selectedRunReference",
+            "selectedTimeWindow",
+            "selectedRuntimeScopeReadinessState",
+            "screen3RuntimeScopeSelectionSource",
+            "Not selected",
+        ),
+        (
+            "Target A",
+            "selectedComparisonTargetAScopeValue",
+            "selectedComparisonTargetATimeWindow",
+            "selectedComparisonTargetAReadinessState",
+            "screen3TargetASelectionSource",
+            "Not selected",
+        ),
+        (
+            "Target B",
+            "selectedComparisonTargetBScopeValue",
+            "selectedComparisonTargetBTimeWindow",
+            "selectedComparisonTargetBReadinessState",
+            "screen3TargetBSelectionSource",
+            "Not selected",
+        ),
+    ]
+    chip_html = "\n".join(
+        f"""
+                <article class="screen3-selected-context-chip">
+                  <h5>{escape(label)}</h5>
+                  <p>
+                    <strong data-dashboard-state-input="true"
+                            data-dashboard-state-key="{escape(scope_key, quote=True)}"
+                            data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</strong>
+                  </p>
+                  <small>
+                    Window:
+                    <span data-dashboard-state-input="true"
+                          data-dashboard-state-key="{escape(window_key, quote=True)}"
+                          data-empty-label="Not selected">Not selected</span>
+                  </small>
+                  <small>
+                    Readiness:
+                    <span data-dashboard-state-input="true"
+                          data-dashboard-state-key="{escape(readiness_key, quote=True)}"
+                          data-empty-label="Not resolved">Not resolved</span>
+                  </small>
+                  <small>
+                    State source:
+                    <span data-dashboard-state-input="true"
+                          data-dashboard-state-key="{escape(source_key, quote=True)}"
+                          data-empty-label="Not selected">Not selected</span>
+                  </small>
+                </article>
+        """
+        for label, scope_key, window_key, readiness_key, source_key, empty in chips
+    )
+    return f"""
+            <article class="screen3-context-subpanel screen3-selected-context-panel">
+              <h4>Selected Context</h4>
+              <p class="meta">
+                Review remembered Runtime Scope, Target A, and Target B choices after selecting rows or intervals. Restored or fallback state is labeled separately from an operator row click.
+              </p>
+              <div class="screen3-selected-context-strip">
+                {chip_html}
+              </div>
+              {_render_screen3_selection_legend()}
+            </article>
+    """
+
+
+def _render_screen3_operator_help_panel() -> str:
+    return """
+            <article class="screen3-context-subpanel screen3-operator-help-panel">
+              <h4>How to use this screen</h4>
+              <ol class="screen3-operator-steps">
+                <li><strong>Choose assignment.</strong> Runtime Scope analyzes or re-runs a selected AWR/report. Target A and Target B define the two sides of a comparison.</li>
+                <li><strong>Select AWR/report row.</strong> The row you click is applied only to the active assignment.</li>
+                <li><strong>Optional interval/window.</strong> Select a window for the same assignment when period-level comparison is needed.</li>
+                <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can proceed.</li>
+                <li><strong>Submit governed action.</strong> Requests go through the workflow service; existing deterministic truth is not overwritten.</li>
+              </ol>
+            </article>
+    """
+
+
+def _render_screen3_runtime_scope_work_area(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    return f"""
+          <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-runtime-scope">
+            <div class="section-kicker">Work Area 1</div>
+            <h3>Select Runtime Scope</h3>
+            <p class="static-selection-note">
+              Load existing platform AWR/report inventory, choose whether the next click updates Runtime Scope, Target A, or Target B, then select the row and optional window. Selection changes local request context only.
+            </p>
+            <article class="screen3-context-subpanel screen3-runtime-options-loader-panel">
+              <h4>Load Runtime Options</h4>
+              {_render_screen3_runtime_option_loader_content()}
+            </article>
+            {_render_screen3_operator_help_panel()}
+            {_render_screen3_runtime_scope_filter_panel()}
+            {_render_screen3_apply_selection_controls()}
+            <article class="screen3-context-subpanel screen3-runtime-scope-table-panel">
+              <h4>Filtered AWR / Run / Report Results</h4>
+              <p class="meta">
+                This table selects the AWR/report row for the active assignment. Global filters narrow the loaded inventory first; header filters narrow the visible rows inside this table.
+              </p>
+              <p class="meta">
+                Source-table coverage is reported by the runtime options service. If only one DB-backed row is returned, Screen 3 says which table supplied it and whether additional AWR report tables are not yet included.
+              </p>
+              <p class="meta">
+                <strong data-screen3-filtered-result-count="true">Showing 0 of 0 loaded row(s)</strong>
+              </p>
+              <div class="screen3-active-assignment-banner">
+                Active assignment:
+                <strong data-dashboard-state-input="true"
+                        data-dashboard-state-key="screen3ActiveSelectionTarget"
+                        data-empty-label="Runtime Scope">Runtime Scope</strong>
+                <span>The next row click updates only this assignment. Only its selected row gets the strong table highlight.</span>
+              </div>
+              {_render_screen3_table_control_row("screen3-runtime-inventory", "runtime inventory")}
+              <div class="screen3-table-wrap screen3-inventory-table-wrap">
+                <table class="screen3-runtime-scope-table" data-screen3-table-id="screen3-runtime-inventory">
+                  <thead>
+                    <tr>
+                      <th title="Apply this row to the active assignment">{_screen3_sortable_table_header("Apply row", "use", "Sort by row action")}</th>
+                      <th title="Runtime option source table">{_screen3_sortable_table_header("Source", "source_table", "Sort by source table")}</th>
+                      <th title="Application">{_screen3_sortable_table_header("App", "application", "Sort by application")}</th>
+                      <th title="Database name">{_screen3_sortable_table_header("DB", "db", "Sort by database name")}</th>
+                      <th title="Database ID">{_screen3_sortable_table_header("DBID", "dbid", "Sort by DBID")}</th>
+                      <th title="Instance">{_screen3_sortable_table_header("Inst", "instance", "Sort by instance")}</th>
+                      <th title="Host or system">{_screen3_sortable_table_header("Host", "host", "Sort by host/system")}</th>
+                      <th title="AWR or run reference">{_screen3_sortable_table_header("AWR / Run", "awr_run", "Sort by AWR/run reference")}</th>
+                      <th title="Report ID / Run History ID">{_screen3_sortable_table_header("Report ID", "report_id", "Sort by report/run history ID")}</th>
+                      <th title="Begin time">{_screen3_sortable_table_header("Begin", "begin", "Sort by begin time")}</th>
+                      <th title="End time">{_screen3_sortable_table_header("End", "end", "Sort by end time")}</th>
+                      <th title="Snapshot count">{_screen3_sortable_table_header("Snaps", "snapshot_count", "Sort by snapshot count")}</th>
+                      <th title="Readiness">{_screen3_sortable_table_header("Ready", "readiness", "Sort by readiness")}</th>
+                    </tr>
+                  </thead>
+                  <tbody data-screen3-runtime-options-target="runtime-scope-rows">
+                    {_render_screen3_runtime_scope_fallback_row(screen_model, report_data)}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+            <div class="screen3-workflow-subgrid screen3-runtime-detail-grid">
+              <article class="screen3-context-subpanel screen3-selected-runtime-scope-panel">
+                <h4>Selected Runtime Scope</h4>
+                <dl class="info-grid selector-compact-grid screen3-selected-runtime-scope-grid">
+                  {_render_screen3_selected_runtime_scope_summary()}
+                </dl>
+              </article>
+              <article class="screen3-context-subpanel screen3-snapshot-interval-panel screen3-interval-full-width-panel">
+                <h4>Snapshot / Interval Selection</h4>
+                <p class="meta">
+                  Step 1: choose where this interval should apply: Runtime Scope, Target A, or Target B.
+                  Step 2: select an interval/window row below. This table changes the time window only; it does not choose a different AWR/report row or change deterministic truth.
+                </p>
+                {_render_screen3_apply_interval_controls()}
+                <p class="meta"><strong data-screen3-interval-result-count="true">Showing fallback interval/window row(s).</strong></p>
+                <p class="meta">This table selects the time window for the active assignment. Use header filters to narrow loaded interval/window rows.</p>
+                {_render_screen3_table_control_row("screen3-intervals", "interval")}
+                <div class="screen3-table-wrap screen3-interval-table-wrap">
+                  <table class="screen3-runtime-scope-table screen3-interval-table" data-screen3-table-id="screen3-intervals">
+                    <thead>
+                      <tr>
+                        <th>{_screen3_sortable_table_header("Apply interval", "use", "Sort by interval action")}</th>
+                        <th>{_screen3_sortable_table_header("Window type", "window_type", "Sort by window type")}</th>
+                        <th>{_screen3_sortable_table_header("Begin", "begin", "Sort by begin time")}</th>
+                        <th>{_screen3_sortable_table_header("End", "end", "Sort by end time")}</th>
+                        <th>{_screen3_sortable_table_header("Source", "source", "Sort by source")}</th>
+                      </tr>
+                    </thead>
+                    <tbody data-screen3-runtime-options-target="interval-rows">
+                      {_render_screen3_interval_fallback_row(screen_model, report_data)}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+            {_render_screen3_selected_context_chips()}
+          </section>
+    """
+
+
+def _render_screen3_pill_controls(items: list[dict[str, str]], empty_message: str) -> str:
+    if not items:
+        return f'<p class="empty-state">{escape(empty_message)}</p>'
+    controls = []
+    for item in items:
+        value = str(item.get("value") or item.get("label") or "").strip()
+        if not value:
+            continue
+        attrs = _screen3_selectable_attrs(
+            select_type=item.get("select_type", "screen3Pill"),
+            state_key=item.get("state_key", "selectedRuntimeScope"),
+            select_id=value,
+        )
+        controls.append(
+            f"""
+              <button type="button" class="screen3-pill-button" {attrs}>
+                <span>{escape(str(item.get("label") or value))}</span>
+                <small>{escape(str(item.get("note") or ""))}</small>
+              </button>
+            """
+        )
+    return '<div class="screen3-pill-row">' + "".join(controls) + "</div>"
+
+
+def _render_screen3_comparison_target_row(
+    *,
+    target: str,
+    select_label: str,
+    source_type: str,
+    scope_type: str,
+    scope_value: str,
+    time_window: str,
+    resolution_state: str,
+    readiness_state: str,
+    resolution_summary: str,
+    missing_gates: str = "",
+    awr_count: str = "0",
+    snapshot_count: str = "0",
+    selectable: bool = True,
+) -> str:
+    target_suffix = "A" if target.upper() == "A" else "B"
+    state_values = {
+        f"selectedComparisonTarget{target_suffix}": (
+            f"{source_type} | {scope_type} | {scope_value} | {time_window}"
+        ),
+        f"selectedComparisonTarget{target_suffix}SourceType": source_type,
+        f"selectedComparisonTarget{target_suffix}ScopeType": scope_type,
+        f"selectedComparisonTarget{target_suffix}ScopeValue": scope_value,
+        f"selectedComparisonTarget{target_suffix}TimeWindow": time_window,
+        f"selectedComparisonTarget{target_suffix}ResolutionState": resolution_state,
+        f"selectedComparisonTarget{target_suffix}ReadinessState": readiness_state,
+        f"selectedComparisonTarget{target_suffix}ResolutionSummary": resolution_summary,
+        f"selectedComparisonTarget{target_suffix}AwrCount": awr_count,
+        f"selectedComparisonTarget{target_suffix}SnapshotCount": snapshot_count,
+        f"selectedComparisonTarget{target_suffix}MissingGates": missing_gates,
+    }
+    if target_suffix == "A":
+        state_values["selectedComparisonAwrA"] = scope_value
+        state_values["selectedComparisonWindowA"] = time_window
+    else:
+        state_values["selectedComparisonAwrB"] = scope_value
+        state_values["selectedComparisonWindowB"] = time_window
+    attrs = ""
+    if selectable:
+        attrs = _screen3_selectable_attrs(
+            select_type=f"comparisonTarget{target_suffix}",
+            state_key=f"selectedComparisonTarget{target_suffix}",
+            select_id=state_values[f"selectedComparisonTarget{target_suffix}"],
+            state_values=state_values,
+        )
+        attrs += ' data-screen3-table-row="true"'
+    else:
+        attrs = 'class="screen3-disabled-placeholder-row" aria-disabled="true" data-dashboard-selectable="false"'
+    action_label = (
+        f"Use option for Target {target_suffix}"
+        if selectable
+        else select_label
+    )
+    cells = [
+        ("use", action_label),
+        ("source_type", source_type),
+        ("scope_type", scope_type),
+        ("scope_value", scope_value),
+        ("time_window", time_window),
+        ("resolution", resolution_summary),
+        ("awr_count", awr_count),
+        ("snapshot_count", snapshot_count),
+        ("readiness", readiness_state),
+        ("missing_gates", missing_gates or "None"),
+    ]
+    return (
+        "<tr "
+        + attrs
+        + ">"
+        + "".join(
+            f'<td data-screen3-cell-key="{escape(key, quote=True)}">{escape(value or "Not available")}</td>'
+            for key, value in cells
+        )
+        + "</tr>"
+    )
+
+
+def _render_screen3_target_resolution_card(target_suffix: str) -> str:
+    label = "Target A" if target_suffix.upper() == "A" else "Target B"
+    prefix = f"selectedComparisonTarget{target_suffix.upper()}"
+    rows = [
+        ("Source type", f"{prefix}SourceType", "Not resolved"),
+        ("Scope type", f"{prefix}ScopeType", "Not resolved"),
+        ("Scope value", f"{prefix}ScopeValue", "Not resolved"),
+        ("Time window", f"{prefix}TimeWindow", "Not selected"),
+        ("Resolution summary", f"{prefix}ResolutionSummary", "Not resolved"),
+        ("Resolved AWR count", f"{prefix}AwrCount", "0"),
+        ("Resolved snapshot/window count", f"{prefix}SnapshotCount", "0"),
+        ("Readiness", f"{prefix}ReadinessState", "Not resolved"),
+        ("Missing gates", f"{prefix}MissingGates", "Resolve target before comparison"),
+    ]
+    row_html = "\n".join(
+        f"""
+              <div>
+                <dt>{escape(row_label)}</dt>
+                <dd data-dashboard-state-input="true"
+                    data-dashboard-state-key="{escape(state_key, quote=True)}"
+                    data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
+              </div>
+        """
+        for row_label, state_key, empty in rows
+    )
+    return f"""
+              <article class="screen3-context-subpanel screen3-comparison-target-card">
+                <h4>{escape(label)} Resolution Card</h4>
+                <dl class="info-grid selector-compact-grid screen3-target-resolution-grid">
+                  {row_html}
+                </dl>
+              </article>
+    """
+
+
+def _render_screen3_comparison_review_work_area(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    values = _screen3_generated_runtime_values(screen_model, report_data)
+    comparison_modes = [
+        {
+            "label": "Current DB history",
+            "value": "Current DB history",
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": "Compare against prior windows from the same DB context.",
+        },
+        {
+            "label": "Similar AWRs",
+            "value": "Similar AWRs",
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": "Use similar cases when similarity context is available.",
+        },
+        {
+            "label": "Cluster baseline",
+            "value": "Cluster baseline",
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": "Use cluster/RAC baseline data when available.",
+        },
+        {
+            "label": "Fleet baseline",
+            "value": "Fleet baseline",
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": "Use fleet/global context when available.",
+        },
+    ]
+    review_modes = [
+        {
+            "label": "Diagnosis",
+            "value": "Diagnosis",
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": "Review current diagnostic posture for the selected scope.",
+        },
+        {
+            "label": "Historical proof",
+            "value": "Historical proof",
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": "Review trend and evidence context.",
+        },
+        {
+            "label": "Anomaly review",
+            "value": "Anomaly review",
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": "Focus on anomaly windows/events.",
+        },
+        {
+            "label": "Period comparison",
+            "value": "Period comparison",
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": "Compare two selected periods.",
+        },
+        {
+            "label": "Similarity review",
+            "value": "Similarity review",
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": "Use similar AWR context when available.",
+        },
+    ]
+    target_a_row = _render_screen3_comparison_target_row(
+        target="A",
+        select_label="Use current scope",
+        source_type="current_generated_context",
+        scope_type="run",
+        scope_value=values["run_reference"] or "Current generated run",
+        time_window=values["window"] or "Latest/current interval",
+        resolution_state="current_generated_context",
+        readiness_state="analysis_required",
+        resolution_summary="Current generated dashboard context; DB-backed comparable resolution not confirmed",
+        awr_count="0",
+        snapshot_count="0",
+        missing_gates="confirm persisted comparable target before comparison",
+    )
+    target_b_rows = [
+        _render_screen3_comparison_target_row(
+            target="B",
+            select_label="Prepare local staged target",
+            source_type="local_staged_file",
+            scope_type="external_source",
+            scope_value="Index local staged source when provided",
+            time_window="Not persisted",
+            resolution_state="not_persisted",
+            readiness_state="load_required",
+            resolution_summary="Raw local source cannot be compared until governed load/parse/ingest/analyze completes",
+            awr_count="0",
+            snapshot_count="0",
+            missing_gates="load/parse/ingest/analyze target first",
+        ),
+        _render_screen3_comparison_target_row(
+            target="B",
+            select_label="Prepare Object Storage target",
+            source_type="object_storage_object",
+            scope_type="external_source",
+            scope_value="Index Object Storage object when provided",
+            time_window="Not persisted",
+            resolution_state="not_persisted",
+            readiness_state="load_required",
+            resolution_summary="Raw Object Storage object cannot be compared until governed server-side load/parse/ingest/analyze completes",
+            awr_count="0",
+            snapshot_count="0",
+            missing_gates="server-side load/parse/ingest/analyze target first",
+        ),
+    ]
+    preview_rows = [
+        ("Status", "comparison_status", "Not ready"),
+        ("Mode", "comparison_result_mode", "Pending comparison setup"),
+        ("Review mode", "review_mode", "Pending review mode selection"),
+        ("Target A", "comparison_result_target_a", "Resolve source/scope/window first"),
+        ("Target B", "comparison_result_target_b", "Resolve source/scope/window first"),
+        ("Both targets comparable", "comparison_both_comparable", "No"),
+        ("Why / Missing gates", "comparison_missing_gates", "Resolve both targets to comparable persisted data"),
+        ("Artifact/reference", "comparison_artifact_reference", "No comparison artifact/reference created"),
+        ("Next step / Screen 4 handoff", "comparison_screen4_handoff", "Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists."),
+    ]
+    preview_html = "\n".join(
+        f"""
+              <div>
+                <dt>{escape(label)}</dt>
+                <dd data-screen3-result-field="{escape(field, quote=True)}"
+                    data-default-value="{escape(default, quote=True)}">{escape(default)}</dd>
+              </div>
+        """
+        for label, field, default in preview_rows
+    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-comparison"
+                   data-screen3-execution-result-panel="true">
+            <div class="section-kicker">Work Area 2</div>
+            <h3>Resolve Comparison Targets</h3>
+            <p class="static-selection-note">
+              Target A and Target B are built from the selected AWR/report rows and windows. Build Comparison stays blocked until both targets resolve to comparable persisted data; Screen 4 reviews deep evidence only after a real artifact/reference exists.
+            </p>
+            <div class="screen3-workflow-subgrid screen3-comparison-workflow-grid">
+              <article class="screen3-context-subpanel screen3-comparison-controls-card">
+                <h4>Comparison &amp; Review Controls</h4>
+                <div class="screen3-comparison-control-grid">
+                  <section>
+                    <h5>Comparison Mode</h5>
+                    {_render_screen3_pill_controls(comparison_modes, "No comparison modes are available.")}
+                  </section>
+                  <section>
+                    <h5>Review Mode</h5>
+                    {_render_screen3_pill_controls(review_modes, "No review modes are available.")}
+                  </section>
+                </div>
+              </article>
+              <article class="screen3-context-subpanel screen3-target-assignment-card">
+                <h4>Target Assignment</h4>
+                <div class="screen3-active-assignment-banner">
+                  Active assignment:
+                  <strong data-dashboard-state-input="true"
+                          data-dashboard-state-key="screen3ActiveSelectionTarget"
+                          data-empty-label="Runtime Scope">Runtime Scope</strong>
+                  <span>Select a runtime row for the target identity, then optionally select an interval row for that target's window.</span>
+                </div>
+              </article>
+              <div class="screen3-target-card-grid">
+                {_render_screen3_target_resolution_card("A")}
+                {_render_screen3_target_resolution_card("B")}
+              </div>
+              <article class="screen3-context-subpanel screen3-comparison-preview-panel">
+                <h4>Comparison Readiness / Outcome</h4>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {preview_html}
+                </dl>
+              </article>
+              <details class="screen3-secondary-selector-details screen3-target-picker-details">
+                <summary>Advanced target picker: external / baseline options</summary>
+                <p class="meta">
+                  DB-backed AWR/report targets come from the runtime inventory above. This secondary area is only for generated fallback, external staged file, Object Storage object, similar set, cluster baseline, or fleet baseline target states.
+                </p>
+                <p class="meta screen3-advanced-picker-instruction">
+                  External or baseline rows can be selected only as load_required, blocked, or unavailable states until governed backend data creates comparable persisted data.
+                </p>
+                <div class="screen3-secondary-selector-grid screen3-target-picker-grid">
+                  <article class="screen3-context-subpanel screen3-comparison-target-panel">
+                    <h4>Target A option rows</h4>
+                    <p class="meta">Target model: source_type + scope_type + scope_value + time_window + resolution_state + readiness_state.</p>
+                    {_render_screen3_table_control_row("screen3-target-a-options", "Target A advanced")}
+                    <div class="screen3-table-wrap">
+                      <table class="screen3-runtime-scope-table screen3-advanced-target-table" data-screen3-table-id="screen3-target-a-options">
+                        <thead>
+                          <tr>
+                            <th>{_screen3_sortable_table_header("Use", "use", "Sort by action")}</th>
+                            <th>{_screen3_sortable_table_header("Source", "source_type", "Sort by source type")}</th>
+                            <th>{_screen3_sortable_table_header("Scope", "scope_type", "Sort by scope type")}</th>
+                            <th>{_screen3_sortable_table_header("Value", "scope_value", "Sort by scope value")}</th>
+                            <th>{_screen3_sortable_table_header("Window", "time_window", "Sort by time window")}</th>
+                            <th>{_screen3_sortable_table_header("Resolution", "resolution", "Sort by resolution")}</th>
+                            <th>{_screen3_sortable_table_header("AWRs", "awr_count", "Sort by AWR count")}</th>
+                            <th>{_screen3_sortable_table_header("Snaps", "snapshot_count", "Sort by snapshot/window count")}</th>
+                            <th>{_screen3_sortable_table_header("Ready", "readiness", "Sort by readiness")}</th>
+                            <th>{_screen3_sortable_table_header("Gates", "missing_gates", "Sort by missing gates")}</th>
+                          </tr>
+                        </thead>
+                        <tbody data-screen3-runtime-options-target="comparison-target-a">
+                          {target_a_row}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                  <article class="screen3-context-subpanel screen3-comparison-target-panel">
+                    <h4>Target B option rows</h4>
+                    <p class="meta">Local or Object Storage targets show load_required until governed load/parse/ingest/analyze creates persisted comparable data.</p>
+                    {_render_screen3_table_control_row("screen3-target-b-options", "Target B advanced")}
+                    <div class="screen3-table-wrap">
+                      <table class="screen3-runtime-scope-table screen3-advanced-target-table" data-screen3-table-id="screen3-target-b-options">
+                        <thead>
+                          <tr>
+                            <th>{_screen3_sortable_table_header("Use", "use", "Sort by action")}</th>
+                            <th>{_screen3_sortable_table_header("Source", "source_type", "Sort by source type")}</th>
+                            <th>{_screen3_sortable_table_header("Scope", "scope_type", "Sort by scope type")}</th>
+                            <th>{_screen3_sortable_table_header("Value", "scope_value", "Sort by scope value")}</th>
+                            <th>{_screen3_sortable_table_header("Window", "time_window", "Sort by time window")}</th>
+                            <th>{_screen3_sortable_table_header("Resolution", "resolution", "Sort by resolution")}</th>
+                            <th>{_screen3_sortable_table_header("AWRs", "awr_count", "Sort by AWR count")}</th>
+                            <th>{_screen3_sortable_table_header("Snaps", "snapshot_count", "Sort by snapshot/window count")}</th>
+                            <th>{_screen3_sortable_table_header("Ready", "readiness", "Sort by readiness")}</th>
+                            <th>{_screen3_sortable_table_header("Gates", "missing_gates", "Sort by missing gates")}</th>
+                          </tr>
+                        </thead>
+                        <tbody data-screen3-runtime-options-target="comparison-target-b">
+                          {"".join(target_b_rows)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                </div>
+              </details>
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_submit_result_work_area(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    return f"""
+          <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-submit-result">
+            <div class="section-kicker">Work Area 3</div>
+            <h3>Submit Governed Action and Review Result</h3>
+            <p class="static-selection-note">
+              Submit a governed request on the left, then review validation, persistence, execution outcome, and next step on the right. Blocked results are expected when required gates are missing; existing deterministic truth is not overwritten.
+            </p>
+            <div class="screen3-submit-result-grid">
+              {_render_screen3_reanalysis_action_ui(screen_model, report_data, control_center)}
+              {_render_screen3_request_execution_result_panel()}
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_safety_selection_impact_panel() -> str:
+    articles = [
+        (
+            "Local selection impact",
+            "Local selection changes only browser/local request context. It does not create workflow records until submit.",
+        ),
+        (
+            "Governed request impact",
+            "A workflow record is created only after a governed action is submitted and accepted by the backend service.",
+        ),
+        (
+            "What does not change",
+            "Diagnosis, score, recommendation, parser output, source truth, runtime behavior, learning candidates, materialization, runtime eligibility, Phase 8, and future-run behavior do not change.",
+        ),
+        (
+            "Comparison impact",
+            "Comparison setup records target-resolution intent. Build Comparison is ready only when Target A and Target B resolve to comparable persisted data. Deep evidence appears in Screen 4 after a governed request returns an artifact/reference.",
+        ),
+        (
+            "Object Storage impact",
+            "Object Storage source selection and validation come from Index. Full load/analyze remains gated by server-side chain, parser/ingest, runner, and artifact lifecycle.",
+        ),
+        (
+            "Existing run impact",
+            "Existing run truth is immutable. New deterministic outputs, when available, must be represented as separate run/output/artifact references.",
+        ),
+    ]
+    article_html = "".join(
+        f"""
+              <article class="screen3-explanation-article">
+                <h4>{escape(title)}</h4>
+                <p>{escape(body)}</p>
+              </article>
+        """
+        for title, body in articles
+    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-work-area screen3-safety-impact-panel">
+            <h3>Runtime Safety and Selection Impact</h3>
+            <p class="static-selection-note">
+              Screen 3 can request or execute only governed backend actions. Existing deterministic truth is not overwritten.
+              LLM/explanatory wording cannot alter validation, status, execution, deterministic truth, source selection, or governance records.
+            </p>
+            <div class="screen3-explanation-list screen3-safety-impact-grid">
+              {article_html}
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_runtime_option_loader_panel() -> str:
+    rows = [
+        ("Service status", "screen3RuntimeOptionsStatus", "not loaded"),
+        ("DB persistence", "screen3RuntimeOptionsDbPersistenceStatus", "not checked"),
+        ("Option count", "screen3RuntimeOptionsCount", "0"),
+        ("Last loaded", "screen3RuntimeOptionsLoadedAt", "not loaded"),
+        ("Cache status", "screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
+        ("Message", "screen3RuntimeOptionsMessage", "Load available runtime options to query DB-backed AWR/run/snapshot choices."),
+    ]
+    row_html = "\n".join(
+        f"""
+                  <div>
+                    <dt>{escape(label)}</dt>
+                    <dd data-dashboard-state-input="true"
+                        data-dashboard-state-key="{escape(key, quote=True)}"
+                        data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
+                  </div>
+        """
+        for label, key, empty in rows
+    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-runtime-options-loader-panel">
+            <h3>Load Runtime Options</h3>
+            <p class="static-selection-note">
+              Load available DB-backed Applications, databases, AWR runs, snapshots, intervals, and comparison candidates from the local workflow service. The browser never queries the DB directly.
+            </p>
+            <div class="screen3-actions-inline">
+              <button type="button"
+                      class="phase7cm-service-button screen3-runtime-options-button"
+                      data-screen3-runtime-options-load="true">Load available runtime options</button>
+              <button type="button"
+                      class="phase7cm-service-button screen3-runtime-options-button secondary"
+                      data-screen3-runtime-options-load="true"
+                      data-screen3-runtime-options-refresh="true">Refresh options</button>
+            </div>
+            <dl class="info-grid selector-compact-grid screen3-runtime-options-status-grid">
+              {row_html}
+            </dl>
+          </section>
+    """
+
+
+def _render_screen3_existing_awr_run_selection_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    header = _to_dict(screen_model.get("header"))
+    metadata = _to_dict(report_data.get("metadata"))
+    current_rows = [
+        ("Fallback source", "Current generated context until DB-backed options are loaded"),
+        ("Current DB", _first_display_value(header.get("db_name"), metadata.get("db_name"))),
+        ("Current DBID", _first_display_value(header.get("dbid"), metadata.get("dbid"))),
+        ("Current instance", _first_display_value(header.get("instance_name"), metadata.get("instance_name"))),
+        ("Current host", _first_display_value(header.get("host_name"), metadata.get("host_name"))),
+        ("Current run reference", _first_display_value(report_data.get("run_history_id"), report_data.get("run_id"))),
+    ]
+    return f"""
+          <section class="evidence-pane selector-pane screen3-existing-run-selection-panel">
+            <h3>Filtered AWR / Run / Report Results</h3>
+            <p class="static-selection-note">
+              Select from DB-backed AWR/run/report rows after runtime filters are applied. DB-backed options update local runtime scope and comparison request context only; deterministic truth remains unchanged.
+            </p>
+            <div class="screen3-workflow-subgrid">
+              <article class="screen3-context-subpanel">
+                <h4>DB-backed run options</h4>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="runs">
+                  <p class="empty-state">Load available runtime options to select DB-backed AWR runs.</p>
+                </div>
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Current generated fallback</h4>
+                {_render_info_grid(current_rows, extra_class="selector-compact-grid")}
+              </article>
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_snapshot_interval_selection_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    header = _to_dict(screen_model.get("header"))
+    timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
+    fallback_rows = [
+        ("Fallback window", _first_display_value(header.get("window"), timeframe_selection.get("comparison_window"))),
+        ("Latest interval", timeframe_selection.get("window_a")),
+        ("Worst/prior interval", timeframe_selection.get("window_b")),
+        ("Full window", timeframe_selection.get("start_end_period")),
+    ]
+    return f"""
+          <section class="evidence-pane selector-pane screen3-snapshot-interval-panel">
+            <h3>Snapshot / Interval Selection</h3>
+            <p class="static-selection-note">
+              Choose the snapshot, interval, timeframe, latest interval, worst interval, prior interval, or full window used by governed request payloads.
+            </p>
+            <div class="screen3-workflow-subgrid">
+              <article class="screen3-context-subpanel">
+                <h4>DB-backed intervals</h4>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="intervals">
+                  <p class="empty-state">Interval options unavailable; using current generated snapshot/window fallback until runtime options are loaded.</p>
+                </div>
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Generated fallback windows</h4>
+                {_render_info_grid(fallback_rows, extra_class="selector-compact-grid")}
+              </article>
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_runtime_scope_selector_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    """Render the primary Screen 3 runtime scope selector workflow."""
+
+    header = _to_dict(screen_model.get("header"))
+    metadata = _to_dict(report_data.get("metadata"))
+    analysis_context = _to_dict(report_data.get("analysis_context"))
+    application_value = _first_display_value(
+        metadata.get("application"),
+        metadata.get("app_name"),
+        analysis_context.get("application"),
+    )
+    generated_rows = [
+        ("Application", application_value or "Not available in current generated context"),
+        ("DB Name", _first_display_value(header.get("db_name"), metadata.get("db_name"))),
+        ("DBID", _first_display_value(header.get("dbid"), metadata.get("dbid"))),
+        ("Instance", _first_display_value(header.get("instance_name"), metadata.get("instance_name"))),
+        ("Host/System", _first_display_value(header.get("host_name"), metadata.get("host_name"))),
+    ]
+    snapshot_items = list(control_center.get("snapshot") or [])
+    if not snapshot_items:
+        _append_screen3_selector_item(
+            snapshot_items,
+            label="Snapshot / Time Window",
+            value=_first_display_value(header.get("window"), analysis_context.get("snapshot_window")),
+            select_type="snapshot",
+            state_key="selectedSnapshot",
+            note="Current generated analysis window; selection is local until submit.",
+        )
+
+    return f"""
+          <section class="evidence-pane selector-pane screen3-runtime-scope-panel">
+            <h3>Runtime Scope Selector</h3>
+            <p class="static-selection-note">
+              Choose or confirm the runtime scope used as governed request context. Local selection changes local scope only and does not mutate diagnosis, score, recommendation, or parser output.
+            </p>
+            <div class="screen3-workflow-subgrid">
+              <article class="screen3-context-subpanel">
+                <h4>Application / Database Scope</h4>
+                <p class="meta">DB-backed options appear here after Load Runtime Options. Generated values remain clearly labeled fallback/current context.</p>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="applications">
+                  <p class="empty-state">Application: Not available until DB-backed options are loaded.</p>
+                </div>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="db-scope">
+                  <p class="empty-state">Load runtime options to choose DB Name, DBID, Instance, and Host/System from governed persistence.</p>
+                </div>
+                <h4>Current generated fallback</h4>
+                {_render_info_grid(generated_rows, extra_class="selector-compact-grid screen3-generated-context-grid")}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Run / Snapshot Scope</h4>
+                <p class="meta">Select AWR / Run, Snapshot / Time Window, latest interval, worst interval, or full window as request context.</p>
+                {_render_screen3_selector_group(
+                    control_center["awr_run"],
+                    "No AWR / run selector metadata is available in the current dashboard context.",
+                )}
+                {_render_screen3_selector_group(
+                    snapshot_items,
+                    "No Snapshot / Time Window selector metadata is available. Select source on Index or use the current generated window.",
+                )}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Diagnostic Filters</h4>
+                <p class="meta">Issue Domain: No operator filter selected. Severity / Status is a filter only and does not change severity.</p>
+                {_render_screen3_selector_group(
+                    control_center["domain"],
+                    "No Issue Domain filter choices are available.",
+                )}
+                {_render_screen3_selector_group(
+                    control_center["severity"],
+                    "No Severity / Status filter metadata is available. Selection does not change severity.",
+                )}
+              </article>
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_comparison_setup_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
+    """Render comparison setup controls without moving Screen 4 evidence review into Screen 3."""
+
+    header = _to_dict(screen_model.get("header"))
+    timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
+    current_run = _first_display_value(
+        report_data.get("run_history_id"),
+        report_data.get("run_id"),
+        _to_dict(report_data.get("analysis_context")).get("run_history_id"),
+        _to_dict(report_data.get("analysis_context")).get("run_id"),
+        "Current generated run",
+    )
+    current_window = _first_display_value(
+        timeframe_selection.get("window_a"),
+        header.get("window"),
+        "Latest/current interval",
+    )
+    target_a_items: list[dict[str, Any]] = []
+    target_b_items: list[dict[str, Any]] = []
+    _append_screen3_selector_item(
+        target_a_items,
+        label="AWR/run A",
+        value=current_run,
+        select_type="comparisonTargetA",
+        state_key="selectedComparisonTargetA",
+        note="Default suggestion: latest/current run when available.",
+    )
+    _append_screen3_selector_item(
+        target_a_items,
+        label="Snapshot/window A",
+        value=current_window,
+        select_type="comparisonTargetA",
+        state_key="selectedComparisonTargetA",
+        note="Default suggestion: latest/current interval if available.",
+    )
+    target_b_window = _first_display_value(
+        timeframe_selection.get("window_b"),
+        timeframe_selection.get("start_end_period"),
+    )
+    _append_screen3_selector_item(
+        target_b_items,
+        label="Snapshot/window B",
+        value=target_b_window,
+        select_type="comparisonTargetB",
+        state_key="selectedComparisonTargetB",
+        note="Default suggestion: worst interval, prior interval, full window, or selected baseline when available.",
+    )
+    comparison_modes = [
+        (
+            "Current DB history",
+            "Compare this run/window against prior windows from the same DB context.",
+        ),
+        (
+            "Similar AWRs",
+            "Compare against similar cases when similarity context is available.",
+        ),
+        (
+            "Cluster baseline",
+            "Compare against RAC/cluster context when cluster baseline data exists.",
+        ),
+        (
+            "Fleet baseline",
+            "Compare against fleet/global context when fleet data exists.",
+        ),
+    ]
+    mode_items = [
+        {
+            "label": label,
+            "value": label,
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": note,
+        }
+        for label, note in comparison_modes
+    ]
+    baseline_items = list(control_center.get("comparison_baseline") or [])
+    for label in (
+        "Latest interval",
+        "Worst interval",
+        "Prior interval",
+        "Full window",
+        "Similar AWR baseline",
+        "Cluster baseline",
+        "Fleet baseline",
+    ):
+        _append_screen3_selector_item(
+            baseline_items,
+            label="Comparison Baseline",
+            value=label,
+            select_type="comparisonBaseline",
+            state_key="selectedComparisonBaseline",
+            note="Baseline is request context only until the governed backend accepts or builds comparison output.",
+        )
+    fleet_items = list(control_center.get("fleet_context") or [])
+    for label in ("Current DB history", "Similar AWRs", "Cluster baseline", "Fleet/global"):
+        _append_screen3_selector_item(
+            fleet_items,
+            label="Fleet / Similarity Context",
+            value=label,
+            select_type="fleetGroup",
+            state_key="selectedFleetGroup",
+            note="Used as comparison request context when matching data is available.",
+        )
+
+    return f"""
+          <section class="evidence-pane selector-pane screen3-comparison-setup-panel">
+            <h3>Comparison Setup</h3>
+            <p class="static-selection-note">
+              Set up comparison intent here. Build Comparison uses these selected fields as governed request context; Screen 4 remains the deep historical/comparison evidence review surface.
+            </p>
+            <div class="screen3-workflow-subgrid">
+              <article class="screen3-context-subpanel">
+                <h4>Comparison Mode</h4>
+                {_render_screen3_selector_group(mode_items, "No comparison modes are available.")}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Comparison Target A</h4>
+                <p class="meta">Choose AWR/run A and snapshot/window A. Defaults use the current selected scope when no DB-backed candidate is selected.</p>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="comparison-target-a">
+                  <p class="empty-state">Load runtime options to choose DB-backed Comparison Target A.</p>
+                </div>
+                {_render_screen3_selector_group(target_a_items, "Comparison Target A requires an AWR/run and snapshot/window.")}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Comparison Target B</h4>
+                <p class="meta">Choose AWR/run B and snapshot/window B to compare two AWRs or two periods. Execution stays blocked until structured inputs exist.</p>
+                <div class="screen3-dynamic-option-grid"
+                     data-screen3-runtime-options-target="comparison-target-b">
+                  <p class="empty-state">Load runtime options to choose DB-backed Comparison Target B.</p>
+                </div>
+                {_render_info_grid(
+                    [
+                        ("AWR/run B", "Not selected / requires existing run or comparison-ready payload"),
+                        ("Snapshot/window B", target_b_window or "Not selected / choose prior, worst, full-window, or baseline context"),
+                    ],
+                    extra_class="selector-compact-grid",
+                )}
+                {_render_screen3_selector_group(target_b_items, "Comparison Target B not selected; choose a second run, prior interval, worst interval, or baseline.")}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Comparison Baseline</h4>
+                {_render_screen3_selector_group(baseline_items, "No comparison baseline data is available in the current dashboard context.")}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Period comparison</h4>
+                {_render_info_grid(
+                    [
+                        ("Window A start/end", "Choose Comparison Target A or a DB-backed interval."),
+                        ("Window B start/end", "Choose Comparison Target B, prior interval, worst interval, or full window."),
+                        ("Compare selected periods", "Build Comparison uses Target A/B and Review Mode as governed request context."),
+                    ],
+                    extra_class="selector-compact-grid",
+                )}
+              </article>
+              <article class="screen3-context-subpanel">
+                <h4>Fleet / Similarity Context</h4>
+                {_render_screen3_selector_group(fleet_items, "No fleet or similarity context is available in the current dashboard context.")}
+              </article>
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_review_mode_panel(screen_model: dict[str, Any]) -> str:
+    """Render Screen 3 review intent choices as primary product UI."""
+
+    review_modes = [
+        ("Diagnosis", "Use the selected scope to review current diagnostic posture."),
+        ("Historical proof", "Use the selected scope to review historical trend and evidence context."),
+        ("Anomaly review", "Focus the request on detected anomaly windows/events."),
+        ("Period comparison", "Compare two selected windows/periods."),
+        ("Similarity review", "Use similar AWR/context where available."),
+    ]
+    items = [
+        {
+            "label": label,
+            "value": label,
+            "select_type": "reviewMode",
+            "state_key": "selectedReviewMode",
+            "note": note,
+        }
+        for label, note in review_modes
+    ]
+    return f"""
+          <section class="evidence-pane selector-pane screen3-review-mode-panel">
+            <h3>Review Mode</h3>
+            <p class="static-selection-note">
+              Review Mode is action/review intent only. It does not mutate deterministic truth.
+            </p>
+            {_render_screen3_selector_group(items, "No review modes are available.")}
+          </section>
+    """
+
+
+def _render_screen3_selection_impact_panel() -> str:
+    """Render what local Screen 3 selection does and does not change."""
+
+    articles = [
+        (
+            "Local selection impact",
+            "The browser records local operator intent for source, runtime scope, comparison setup, and review mode.",
+        ),
+        (
+            "Backend request impact",
+            "No backend workflow record is created until a governed action is submitted. Submitted payloads use the selected source/scope/comparison/review context.",
+        ),
+        (
+            "What does not change",
+            "The current deterministic diagnosis, score, recommendation, parser output, source selection, runtime behavior, ML behavior, learning candidates, materialization, runtime eligibility, future-run behavior, evidence values, and thresholds do not change from local selection.",
+        ),
+        (
+            "Where to review result",
+            "After submitting a governed action, review the Request / Execution Result panel on this page.",
+        ),
+    ]
+    article_html = "".join(
+        f"""
+              <article class="screen3-explanation-article">
+                <h4>{escape(title)}</h4>
+                <p>{escape(body)}</p>
+              </article>
+        """
+        for title, body in articles
+    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-selection-impact-panel">
+            <h3>Selection Impact</h3>
+            <div class="screen3-explanation-list">
+              {article_html}
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_readiness_validation_panel(
     screen_model: dict[str, Any],
     report_data: dict[str, Any],
     control_center: dict[str, list[dict[str, Any]]],
@@ -11001,119 +15184,520 @@ def _render_screen3_reanalysis_action_ui(
         report_data,
         control_center,
     )
-    safety_labels = [
-        "Preview only",
-        "Execution disabled in this phase",
-        "Selection is not execution",
-        "No backend execution",
-        "No run_analysis.py call",
-        "No object storage call",
-        "No local file read",
-        "No DB lookup",
-        "No Phase 4I mutation",
-        "Deterministic runtime remains authoritative",
+    rows = [
+        ("Source handoff", "Not selected until Index source handoff state is present."),
+        ("Runtime options loaded", "Ready after Load Runtime Options returns DB-backed AWR/run choices; otherwise missing service/DB gate."),
+        ("Required source metadata", "Request can be recorded after source metadata validates."),
+        ("Application / DB scope", "Ready when DB-backed option or current generated fallback is selected; Application may be unavailable."),
+        ("Existing run selected", "Ready after a DB-backed AWR/run or valid Index existing-run reference is selected."),
+        ("AWR / Run", preview.get("current_awr_run_context")),
+        ("Snapshot / Time Window", preview.get("current_snapshot_window")),
+        ("Existing run reference", preview.get("existing_run_readiness")),
+        ("Object Storage validation", preview.get("object_storage_readiness")),
+        ("Comparison Target A", "Ready when Target A uses selected/current run and window context."),
+        ("Comparison Target B", "Missing until a second AWR/run, interval, or baseline is selected for comparison."),
+        ("Comparison Mode", "Ready after operator chooses Current DB history, Similar AWRs, Cluster baseline, or Fleet baseline."),
+        ("Comparison setup", preview.get("comparison_readiness")),
+        ("Review mode", "Ready after operator chooses review mode; review mode is request intent only."),
+        ("Workflow service", preview.get("backend_service_readiness")),
+        ("DB persistence", preview.get("db_persistence_readiness")),
+        ("Execution mode boundary", preview.get("execution_mode_boundary")),
+        ("Deterministic runner", preview.get("runner_readiness")),
+        ("New run/output/artifact lifecycle", preview.get("artifact_lifecycle_readiness")),
+        ("Object Storage full load/analyze chain", preview.get("object_storage_full_load_gates")),
     ]
-    safety_label_html = "".join(
-        f'<span class="mini-pill neutral">{escape(label)}</span>' for label in safety_labels
-    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-readiness-panel">
+            <h3>Readiness Gate</h3>
+            <p class="static-selection-note">
+              Readiness appears before actions because backend validation and governed workflow state are authoritative.
+              Actions may be recorded while execution remains blocked by missing runner, comparison, Object Storage, or artifact gates.
+            </p>
+            {_render_info_grid(rows, extra_class="selector-compact-grid screen3-request-preview-grid")}
+          </section>
+    """
 
+
+def _render_screen3_request_execution_result_panel() -> str:
+    def rows_html(rows: list[tuple[str, str, str]]) -> str:
+        return "\n".join(
+            f"""
+                  <div>
+                    <dt>{escape(label)}</dt>
+                    <dd data-screen3-result-field="{escape(field, quote=True)}"
+                        data-default-value="{escape(default, quote=True)}">{escape(default)}</dd>
+                  </div>
+            """
+            for label, field, default in rows
+        )
+
+    action_rows = [
+        ("Validation", "validation_status", "Not evaluated"),
+        ("Persistence", "persistence", "Not reported"),
+        ("Execution status", "execution_status", "Not executed"),
+        ("Existing run truth", "existing_run_truth", "Existing run truth unchanged"),
+    ]
+    selected_scope_rows = [
+        ("Source mode", "selected_source_mode", "Pending source selection"),
+        ("Application", "selected_application", "Not available"),
+        ("DB", "selected_db", "Not selected"),
+        ("DBID", "selected_dbid", "Not selected"),
+        ("Host", "selected_host", "Not available"),
+        ("Instance", "selected_instance", "Not available"),
+        ("Run/report", "selected_awr_run", "Not selected"),
+        ("Snapshot/window", "selected_snapshot_window", "Not selected"),
+        ("Runtime scope", "runtime_scope", "Pending runtime selection"),
+        ("Review mode", "review_mode", "Pending review mode selection"),
+    ]
+    target_rows = [
+        ("Target A readiness", "comparison_target_a_readiness", "Target A: not resolved"),
+        ("Target B readiness", "comparison_target_b_readiness", "Target B: not resolved"),
+        ("Both comparable", "comparison_both_comparable", "No"),
+        ("Target A", "comparison_result_target_a", "Not selected"),
+        ("Target B", "comparison_result_target_b", "Not selected"),
+        ("Missing gates", "comparison_missing_gates", "Resolve both targets to comparable persisted data."),
+    ]
+    comparison_rows = [
+        ("Comparison status", "comparison_status", "Pending comparison request"),
+        ("Mode", "comparison_result_mode", "Pending comparison setup"),
+        ("Comparison mode", "comparison_mode", "Pending comparison setup"),
+        ("Requested artifact/reference", "comparison_artifact_reference", "Not created"),
+        ("Screen 4 handoff", "comparison_screen4_handoff", "Open Screen 4 after a comparison request returns an artifact/reference."),
+    ]
+    backend_rows = [
+        ("Request ID", "request_id", "Not created"),
+        ("Transaction ID", "transaction_id", "Not created"),
+        ("Audit reference", "audit_reference", "Not created"),
+        ("DB record", "db_record", "Not created"),
+        ("Output artifact", "output_artifact", "Not created"),
+        ("New run/output reference", "new_run_output_reference", "Not created"),
+    ]
+    return f"""
+          <section class="evidence-pane selector-pane screen3-result-panel"
+                   data-screen3-execution-result-panel="true">
+            <h3>Request / Execution Result</h3>
+            <p class="static-selection-note">
+              This central panel is the place to look after submission. It reports what was submitted, what happened, which records or references were returned, and confirms old run truth remains unchanged.
+            </p>
+            <div class="screen3-result-summary-banner">
+              <div>
+                <dt>Status</dt>
+                <dd data-screen3-result-field="status" data-default-value="Waiting for submission">Waiting for submission</dd>
+              </div>
+              <div>
+                <dt>Requested action</dt>
+                <dd data-screen3-result-field="requested_action" data-default-value="Not issued">Not issued</dd>
+              </div>
+              <div>
+                <dt>Next step</dt>
+                <dd data-screen3-result-field="next_step" data-default-value="Select source/scope/comparison/review mode, then submit a governed action">Select source/scope/comparison/review mode, then submit a governed action</dd>
+              </div>
+            </div>
+            <div class="screen3-result-subcard-grid">
+              <article class="screen3-context-subpanel screen3-result-subcard">
+                <h4>Action Status</h4>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {rows_html(action_rows)}
+                </dl>
+              </article>
+              <article class="screen3-context-subpanel screen3-result-subcard">
+                <h4>Selected Scope</h4>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {rows_html(selected_scope_rows)}
+                </dl>
+              </article>
+              <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
+                <h4>Target Resolution</h4>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {rows_html(target_rows)}
+                </dl>
+              </article>
+              <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
+                <h4>Comparison Result Summary</h4>
+                <p class="meta">
+                  Screen 3 records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
+                </p>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {rows_html(comparison_rows)}
+                </dl>
+              </article>
+              <details class="screen3-context-subpanel screen3-result-subcard screen3-backend-references-details">
+                <summary>Backend References</summary>
+                <dl class="info-grid selector-compact-grid screen3-result-grid">
+                  {rows_html(backend_rows)}
+                </dl>
+              </details>
+            </div>
+            <details class="screen3-technical-details">
+              <summary>Structured result fields</summary>
+              <p class="meta">
+                Action result text is intentionally structured into status, selected scope, target resolution, and backend references instead of one long paragraph.
+              </p>
+            </details>
+          </section>
+    """
+
+
+def _render_screen3_runtime_control_explanation_panel() -> str:
+    articles = [
+        (
+            "So what?",
+            "Screen 3 turns a selected source/run/scope into a governed runtime request. It gives the operator a safe path to request or execute re-analysis/comparison without overwriting existing deterministic truth.",
+        ),
+        (
+            "Why this matters",
+            "Runtime actions can affect new outputs and downstream review, so they must be validated, auditable, and gated.",
+        ),
+        (
+            "How this is implemented",
+            "Browser submits selected state to the governed workflow service. Backend validates source, mode, readiness, and execution boundary, persists workflow records when DB is available, and returns status/references.",
+        ),
+        (
+            "Persistence",
+            "When DB is configured, workflow metadata is persisted in AWR_WORKFLOW_* records. JSON audit fallback remains fallback/context.",
+        ),
+        (
+            "What changes",
+            "A governed request/audit record may be created. If a safe execution path is available, a new output/artifact/run reference may be created.",
+        ),
+        (
+            "What does not change",
+            "Existing diagnosis, score, recommendation, parser output, source selection, current deterministic output, ML behavior, learning candidates, materialization, runtime eligibility, and Phase 8 behavior do not change.",
+        ),
+        (
+            "Execution impact",
+            "Analyze/Re-run/Build Comparison may execute only through governed wrappers. If runner/artifact lifecycle gates are missing, the action is blocked and recorded with missing gates.",
+        ),
+        (
+            "Comparison impact",
+            "Comparison setup records selected comparison intent and may create a comparison artifact/reference only when structured comparison inputs and backend gates are available. Screen 4 remains the review surface for deep historical/comparison evidence.",
+        ),
+        (
+            "Object Storage impact",
+            "Object Storage source selection and validation are real from Index. Full load/parse/ingest/analyze remains blocked unless the full governed server-side chain exists.",
+        ),
+        (
+            "Existing run impact",
+            "Existing run context may be used as a selected source/run reference, but old run truth is immutable. New deterministic output must be represented separately.",
+        ),
+        (
+            "Downstream review",
+            "Use Screen 4 for historical proof/comparison review, Screen 5 for recommendations/actions/outcomes, and Screen 6 for learning/materialization/runtime eligibility.",
+        ),
+    ]
+    article_html = "".join(
+        f"""
+              <article class="screen3-explanation-article">
+                <h4>{escape(title)}</h4>
+                <p>{escape(body)}</p>
+              </article>
+        """
+        for title, body in articles
+    )
+    return f"""
+          <section class="evidence-pane selector-pane screen3-explanation-panel">
+            <h3>Runtime Control Explanation</h3>
+            <div class="screen3-explanation-list">
+              {article_html}
+            </div>
+          </section>
+    """
+
+
+def _render_screen3_runtime_boundary_panel() -> str:
+    return """
+          <section class="evidence-pane selector-pane screen3-runtime-boundary-panel">
+            <h3>Runtime Safety Boundary</h3>
+            <p class="static-selection-note">
+              Screen 3 can request or execute only governed backend actions. Existing diagnostic truth is not overwritten.
+              New deterministic outputs, when available, are represented as new run/output/artifact references.
+            </p>
+            <p class="static-selection-note">
+              Screen 3 does not create learning candidates, materialize rules, alter runtime eligibility, or start Phase 8.
+              No browser Object Storage access is performed. LLM/explanatory wording cannot alter validation, status, execution, deterministic truth, source selection, or governance records.
+            </p>
+          </section>
+    """
+
+
+def _render_screen3_reanalysis_action_ui(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+) -> str:
     actions = [
         (
             "Analyze Selection",
             "analyze_selection",
-            "Request preview only. Future backend validation must occur before analysis.",
+            "Validate the selected source/run/scope and persist a governed analysis request. Execution runs only if a server-side deterministic runner and new-output lifecycle are available.",
+            "Active governed request; execution blocked until runner/artifact gates are connected.",
+            "Selected source/context and selected runtime scope.",
+            "runtime scope missing; source missing; deterministic runner missing; output lifecycle missing",
         ),
         (
             "Re-run Analysis",
             "rerun_analysis",
-            "Request preview only. No run_analysis.py call is made from this dashboard.",
+            "Request deterministic re-analysis for the selected scope. A completed execution must create a new run/output reference and never overwrite existing run truth.",
+            "Active governed request; execution blocked until new-run/output gates are connected.",
+            "Persisted source/scope and new-output lifecycle for execution.",
+            "persisted source/scope missing; deterministic runner missing; new output lifecycle missing",
         ),
         (
             "Build Comparison",
             "build_comparison",
-            "Preview only. AWR/report comparison is future 7AM.1 engine only and not triggered here.",
+            "Build or request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.",
+            "Active readiness/request path; comparison execution blocked without comparison-ready inputs.",
+            "Target A resolved, Target B resolved, both comparable, comparison mode, and review mode.",
+            "Target A unresolved; Target B unresolved; target not comparable; target resolution/comparison payload missing; structured comparison payload missing; comparison artifact lifecycle missing",
         ),
         (
-            "Load From Object Storage",
+            "Load / Prepare External Target",
             "load_from_object_storage",
-            "Preview only. Object Storage metadata is displayed but no object storage call is made.",
+            "Prepare a local staged file, local selected file, or Object Storage object through governed load/parse/ingest/analyze before it can become a comparable target.",
+            "External target preparation is blocked until the server-side load/parse/ingest/analyze chain and artifact lifecycle are connected.",
+            "External source context from Index and server-side load path.",
+            "local/Object Storage source missing; server-side load/read missing; parser/ingest missing; deterministic analysis/output missing; artifact lifecycle missing",
         ),
     ]
     action_cards = "".join(
-        f"""
-        <div class="screen3-reanalysis-action-card disabled-preview-only" aria-disabled="true">
-          <strong>{escape(label)}</strong>
-          <span>{escape(action_key)}</span>
-          <p>{escape(description)}</p>
-          <em>Preview only - disabled/request-generation-only</em>
-        </div>
-        """
-        for label, action_key, description in actions
-    )
-    source_modes = [
-        ("Local staged", "Metadata only; no local file read."),
-        ("Local file", "Path display only; no file open or file content validation."),
-        ("Existing run", "Reference display only; no DB lookup."),
-        ("Object Storage", "Object values are metadata only; no object storage call."),
-        ("Future EM Extract", "Placeholder only. EM Extract implementation belongs to Phase 8."),
-    ]
-    source_mode_cards = "".join(
-        f"""
-        <div class="screen3-source-mode-card">
-          <strong>{escape(label)}</strong>
-          <p>{escape(description)}</p>
-        </div>
-        """
-        for label, description in source_modes
+        _render_screen3_action_control_card(
+            label,
+            action_key,
+            description,
+            state_label,
+            required_context,
+            missing_gate_summary,
+        )
+        for label, action_key, description, state_label, required_context, missing_gate_summary in actions
     )
 
     return f"""
-          <section class="evidence-pane selector-pane screen3-reanalysis-actions-panel">
-            <div class="section-kicker">Phase 7AN</div>
-            <h3>Screen 3 Backend Re-Analysis Actions</h3>
+          <section class="evidence-pane selector-pane screen3-reanalysis-actions-panel screen3-governed-actions-card">
+            <h3>Governed Actions</h3>
             <p class="static-selection-note">
-              Action UI is disabled/preview-only. Selection is not execution. No backend execution. No run_analysis.py call. No object storage call. No local file read. No DB lookup. No Phase 4I mutation.
+              These actions submit selected source, runtime scope, comparison setup, and review mode to the governed workflow service.
+              Execution happens only when the backend wrapper, readiness gate, and output artifact lifecycle are available.
             </p>
-            <div class="mini-pill-group screen3-reanalysis-safety-labels">
-              {safety_label_html}
-            </div>
             <div class="screen3-action-grid">
               {action_cards}
             </div>
             <p class="meta">
-              Controlled adaptive execution requires future validation/gate. AWR/report comparison is future 7AM.1 engine only and not triggered here. Missing metric/evidence handling remains future 7AO.1 / 7AQ.1.
+              If execution gates are missing, the service persists a governed workflow request and returns a blocked status with the missing gates. No existing diagnostic truth is overwritten.
             </p>
           </section>
-          <section class="half evidence-pane selector-pane screen3-request-preview-panel">
-            <h3>Read-Only Request Preview</h3>
-            <p class="static-selection-note">
-              Request preview is not execution, is not backend validation, does not call backend, does not write, and does not mutate runtime. Selected state summary remains read-only. Preview does not imply execution.
+    """
+
+
+def _render_screen3_action_control_card(
+    label: str,
+    action_key: str,
+    description: str,
+    state_label: str,
+    required_context: str,
+    missing_gate_summary: str,
+) -> str:
+    payload = json.dumps(
+        {
+            "screen_id": "screen_3",
+            "action_type": "screen3_active_reanalysis",
+            "workflow_type": "screen3_runtime_control_center",
+            "target_type": "backend_execution_request",
+            "target_id": "screen3-selected-source-scope",
+            "requested_screen3_action": action_key,
+            "target_screen": "screen_3",
+            "governed_request": True,
+            "current_run_truth_mutated": False,
+            "deterministic_truth_changed": False,
+            "runtime_influence_granted": False,
+            "phase4i_mutation_allowed": False,
+            "phase4i_mutation_requested": False,
+            "parser_mutated": False,
+            "parser_output_mutation_requested": False,
+            "score_mutation_requested": False,
+            "recommendation_mutation_requested": False,
+            "learning_candidate_created": False,
+            "materialization_changed": False,
+            "materialization_created": False,
+            "runtime_eligibility_changed": False,
+            "browser_object_storage_access_attempted": False,
+            "direct_object_storage_execution_attempted": False,
+            "browser_file_read_attempted": False,
+            "browser_db_query_attempted": False,
+            "run_analysis_coupling": False,
+            "phase8_behavior": False,
+            "phase8_started": False,
+            "em_extract_attempted": False,
+            "llm_changed_status": False,
+            "llm_changed_validation": False,
+            "llm_changed_execution": False,
+            "llm_changed_truth": False,
+        },
+        sort_keys=True,
+    )
+    return f"""
+        <article class="screen3-reanalysis-action-card">
+          <a href="#screen3-runtime-control-center"
+             class="screen3-governed-action-control"
+             data-phase7-action-control="true"
+             data-screen-id="screen_3"
+             data-action-type="screen3_active_reanalysis"
+             data-workflow-type="screen3_runtime_control_center"
+             data-target-type="backend_execution_request"
+             data-target-id="screen3-selected-source-scope"
+             data-required-selection-key="selectedSourceMode"
+             data-execution-mode="local_backend_execution"
+             data-runtime-influence-granted="false"
+             data-phase4i-mutation-allowed="false"
+             data-phase8-behavior="false"
+             data-direct-truth-mutation-allowed="false"
+             data-run-analysis-coupling="false"
+             data-action-label="{escape(label, quote=True)}"
+             data-action-enabled-state="disabled-no-selection"
+             data-action-payload="{escape(payload, quote=True)}"
+             aria-disabled="true">
+            <strong>{escape(label)}</strong>
+            <span class="screen3-action-state-pill">{escape(state_label)}</span>
+            <p>{escape(description)}</p>
+            <span class="screen3-action-required-context">Required context: {escape(required_context)}</span>
+            <span class="screen3-action-missing-gate">Missing gates: {escape(missing_gate_summary)}</span>
+            <span class="phase7cm-service-button screen3-action-submit-button">Submit governed action</span>
+          </a>
+          <details class="screen3-technical-details">
+            <summary>Action details</summary>
+            <p>
+              Required context: {escape(required_context)}
+              Submitted context: selected source/scope/comparison/review payload through the governed workflow service.
+              Existing run truth, diagnosis, score, recommendation, parser output, learning state, materialization, and runtime eligibility do not change.
+              Result location: Request / Execution Result.
             </p>
-            {_render_info_grid(
-                [
-                    ("Selected AWR / Run", preview.get("selected_awr_run")),
-                    ("Selected Database / System", preview.get("selected_database_system")),
-                    ("Selected Snapshot", preview.get("selected_snapshot")),
-                    ("Selected Comparison Baseline", preview.get("selected_comparison_baseline")),
-                    ("Selected Issue Domain", preview.get("selected_issue_domain")),
-                    ("Selected Severity / Status", preview.get("selected_severity_status")),
-                    ("Selected Source Mode", preview.get("selected_source_mode")),
-                    ("Selected Execution Mode", preview.get("selected_execution_mode")),
-                    ("Requested Action Placeholder", preview.get("requested_action_placeholder")),
-                    ("Validation / Blocked Status", preview.get("validation_blocked_status")),
-                ],
-                extra_class="selector-compact-grid screen3-request-preview-grid",
-            )}
-          </section>
-          <section class="half evidence-pane selector-pane screen3-source-mode-panel">
-            <h3>Future Source Modes</h3>
+          </details>
+	          <div class="screen3-action-status"
+	               data-phase7-action-result-panel="true"
+	               data-phase7-action-status="waiting"
+	               data-phase7-request-id-target="true"
+	               data-phase7-audit-status-area="true">
+	            Select a DB-backed runtime row or receive Index source context before submitting this governed Screen 3 action.
+	          </div>
+        </article>
+    """
+
+
+def _render_screen3_technical_audit_debug_details(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+    control_center: dict[str, list[dict[str, Any]]],
+    selection_controls: dict[str, Any],
+    timeframe_selection: dict[str, Any],
+    review_mode: dict[str, Any],
+    current_selection_summary: dict[str, Any],
+) -> str:
+    """Render collapsed Screen 3 technical details at the bottom only."""
+
+    header = _to_dict(screen_model.get("header"))
+    technical_rows = [
+        ("Service action type", "screen3_active_reanalysis"),
+        ("Internal action keys", "analyze_selection, rerun_analysis, build_comparison, load_from_object_storage"),
+        ("Approved execution mode identifier", "local_backend_execution"),
+        (
+            "Runtime option source tables",
+            "AWR_RUN_HISTORY, AWR_REPORT, AWR_SNAPSHOT, AWR_INGEST_RUN, AWR_SOURCE_SYSTEM, "
+            "AWR_METRIC_FACT, AWR_WAIT_EVENT_FACT, AWR_TOP_SQL_FACT, AWR_FEATURE_VECTOR",
+        ),
+        (
+            "Runtime source coverage fields",
+            "table_exists, row_count, key_columns_used, included_in_screen3_runtime_options, reason_if_not_used",
+        ),
+        ("Mutation flags", "current_run_truth_mutated=false; deterministic_truth_changed=false; parser_mutated=false"),
+        ("Learning/runtime flags", "learning_candidate_created=false; materialization_changed=false; runtime_eligibility_changed=false"),
+        ("LLM authority flags", "llm_changed_status=false; llm_changed_validation=false; llm_changed_execution=false; llm_changed_truth=false"),
+    ]
+    return f"""
+          <details class="screen3-secondary-selector-details screen3-technical-audit-details">
+            <summary>Technical Audit / Debug Details</summary>
             <p class="static-selection-note">
-              Source selection is metadata only. Object storage is not called. Future EM Extract is placeholder only. EM Extract implementation belongs to Phase 8.
+              Internal action names, execution identifiers, raw state propagation notes, and secondary selector context are intentionally collapsed.
             </p>
-            <div class="screen3-source-mode-grid">
-              {source_mode_cards}
+            <div class="subgrid selector-subgrid screen3-secondary-selector-grid">
+              <section class="evidence-pane selector-pane">
+                <h3>Technical Request Contract</h3>
+                {_render_info_grid(technical_rows, extra_class="selector-compact-grid")}
+              </section>
+              <section class="evidence-pane selector-pane">
+                <h3>Secondary AWR / Run Context</h3>
+                {_render_screen3_selector_group(
+                    control_center["awr_run"],
+                    "No additional AWR choices are available for the current dashboard context.",
+                )}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Secondary Database / System Context</h3>
+                {_render_screen3_selector_group(
+                    control_center["database_system"],
+                    "No database or system selector metadata is available in the current dashboard context.",
+                )}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Secondary Snapshot Context</h3>
+                {_render_screen3_selector_group(
+                    control_center["snapshot"],
+                    "No snapshot selector metadata is available. This selector does not change diagnostic output.",
+                )}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Generated Dashboard Context</h3>
+                {_render_info_grid(
+                    [
+                        ("DB Name", header.get("db_name")),
+                        ("DBID", header.get("dbid")),
+                        ("Instance", header.get("instance_name")),
+                        ("Host", header.get("host_name")),
+                        ("Window", header.get("window")),
+                    ],
+                    extra_class="selector-header-grid",
+                )}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Canonical Generated Selection Context</h3>
+                <p class="static-selection-note">
+                  This view reflects the generated analysis window used across downstream screens. The controls above do not rewrite this canonical context.
+                </p>
+                {_render_selection_controls(selection_controls)}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Generated Timeframe Context</h3>
+                {_render_info_grid(
+                    [
+                        ("Comparison Window", timeframe_selection.get("comparison_window")),
+                        ("Start / End Period", timeframe_selection.get("start_end_period")),
+                        ("Window A", timeframe_selection.get("window_a")),
+                        ("Window B", timeframe_selection.get("window_b")),
+                    ],
+                    extra_class="selector-compact-grid",
+                )}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Generated Review Intent Context</h3>
+                {_render_screen3_option_chips(
+                    review_mode.get("options") or [],
+                    "reviewMode",
+                    "selectedReviewMode",
+                    active_value=review_mode.get("active_mode"),
+                )}
+                {_render_info_strip([("Default Review Mode", review_mode.get("active_mode"))])}
+              </section>
+              <section class="half evidence-pane selector-pane">
+                <h3>Deterministic Current Selection Summary</h3>
+                {_render_info_grid(
+                    [
+                        ("Scope", current_selection_summary.get("scope")),
+                        ("Timeframe", current_selection_summary.get("timeframe")),
+                        ("Review Mode", current_selection_summary.get("review_mode")),
+                    ],
+                    extra_class="selector-compact-grid",
+                )}
+              </section>
             </div>
-          </section>
+          </details>
     """
 
 
@@ -11153,18 +15737,29 @@ def _build_screen3_reanalysis_request_preview_model(
     )
 
     return {
-        "selected_awr_run": _join_compact_values([selected_awr, selected_run]) or "No selected AWR / run",
-        "selected_database_system": _join_compact_values([selected_database, selected_system])
-        or "No selected database / system",
-        "selected_snapshot": first_selector_value("snapshot") or "No selected snapshot",
-        "selected_comparison_baseline": first_selector_value("comparison_baseline")
-        or "No selected comparison baseline",
-        "selected_issue_domain": first_selector_value("domain") or "No selected issue domain",
-        "selected_severity_status": first_selector_value("severity") or "No selected severity/status",
-        "selected_source_mode": "none / preview metadata only",
-        "selected_execution_mode": "static_read_only / execution disabled in this phase",
-        "requested_action_placeholder": "analyze_selection, rerun_analysis, build_comparison, load_from_object_storage",
-        "validation_blocked_status": "preview_only / execution_blocked=true / can_execute=false",
+        "current_awr_run_context": _join_compact_values([selected_awr, selected_run])
+        or "Current generated run context unavailable",
+        "current_database_system": _join_compact_values([selected_database, selected_system])
+        or "Current database/system context unavailable",
+        "current_snapshot_window": first_selector_value("snapshot") or "Current snapshot/window unavailable",
+        "available_comparison_baseline": first_selector_value("comparison_baseline")
+        or "No comparison baseline available in current generated context",
+        "available_issue_domain_filter": first_selector_value("domain") or "No issue-domain filter option available",
+        "available_severity_status_filter": first_selector_value("severity")
+        or "No severity/status filter option available",
+        "source_context_readiness": "Ready when Index source handoff state is present; otherwise missing source selection",
+        "source_metadata_readiness": "Validated by backend after governed source handoff",
+        "existing_run_readiness": "Ready when an existing-run reference is returned by the workflow service",
+        "object_storage_readiness": "Object Storage source selection and validation are real at Index; full load/analyze requires server-side gates",
+        "backend_service_readiness": "Dashboard workflow service must be running for interactive actions",
+        "db_persistence_readiness": "DB-backed workflow records are authoritative when configured; JSON audit fallback remains context",
+        "execution_mode_boundary": "Approved local backend execution boundary",
+        "runner_readiness": "Execution blocked until a safe injected deterministic runner is configured",
+        "artifact_lifecycle_readiness": "Execution blocked until new run/output/artifact lifecycle is connected",
+        "comparison_readiness": "Build Comparison is blocked unless structured comparison inputs are ready",
+        "object_storage_full_load_gates": "Full load-to-analysis blocked until server-side client, load, parse, ingest, analyze, and artifact gates are connected",
+        "requested_action_placeholder": "Analyze Selection, Re-run Analysis, Build Comparison, Load / Prepare External Target",
+        "validation_blocked_status": "Request/readiness persistence active; execution blocks when runner/client/artifact gates are missing",
     }
 
 
@@ -11201,7 +15796,7 @@ def _build_screen3_control_center_model(
         ),
         select_type="awr",
         state_key="selectedAwr",
-        note="Current static export context. Selection is stored locally for exploration only.",
+        note="Current generated dashboard context. Selection is stored locally for exploration only.",
     )
     _append_screen3_selector_item(
         awr_run,
@@ -11295,7 +15890,7 @@ def _build_screen3_control_center_model(
             "select_type": "domain",
             "state_key": "selectedDomain",
             "note": "Exploratory domain selection only; does not change primary issue.",
-            "active": domain_name == primary_domain,
+            "active": False,
             "domain": domain_name,
         }
         for domain_name in SCREEN3_CONTROL_CENTER_DOMAINS
@@ -11347,7 +15942,7 @@ def _build_screen3_control_center_model(
             value=_first_display_value(value),
             select_type="comparisonBaseline",
             state_key="selectedComparisonBaseline",
-            note="Baseline selection participates in browser-side only Phase 7H.8 propagation.",
+            note="Baseline selection records local comparison intent only until submitted through a governed action.",
         )
 
     fleet_context: SelectorItems = []
@@ -17124,7 +21719,13 @@ def _shared_page_styles() -> str:
       position: absolute;
       top: 16px;
       right: 16px;
+      display: grid;
+      justify-items: end;
+      gap: 5px;
+      width: max-content;
+      max-width: calc(100% - 32px);
       text-align: right;
+      contain: layout style;
     }
     .runtime-meta {
       font-size: 12px;
@@ -17132,7 +21733,42 @@ def _shared_page_styles() -> str:
       margin-top: 4px;
     }
     .runtime-state-line {
-      white-space: normal;
+      white-space: nowrap;
+    }
+    .runtime-state-pills {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      width: max-content;
+      max-width: 100%;
+    }
+    .runtime-mini-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex: 0 0 auto;
+      width: auto;
+      max-width: none;
+      min-width: 0;
+      min-height: 21px;
+      border: 1px solid rgba(159, 176, 199, 0.2);
+      border-radius: 999px;
+      padding: 2px 6px;
+      background: rgba(11, 20, 34, 0.58);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .runtime-mini-pill strong {
+      display: inline-block;
+      min-width: 0;
+      font-weight: 800;
     }
     .state-pass {
       color: var(--pass);
@@ -17335,6 +21971,654 @@ def _shared_page_styles() -> str:
       font-size: 14px;
       font-weight: 700;
     }
+    .screen3-source-received-panel,
+    .screen3-work-area,
+    .screen3-runtime-options-loader-panel,
+    .screen3-runtime-scope-panel,
+    .screen3-existing-run-selection-panel,
+    .screen3-snapshot-interval-panel,
+    .screen3-comparison-setup-panel,
+    .screen3-review-mode-panel,
+    .screen3-selection-impact-panel,
+    .screen3-readiness-panel,
+    .screen3-result-panel,
+    .screen3-explanation-panel,
+    .screen3-runtime-boundary-panel {
+      border-color: rgba(90, 209, 255, 0.26);
+      background: rgba(16, 28, 45, 0.52);
+    }
+    .screen3-work-area {
+      display: grid;
+      gap: 14px;
+      grid-column: 1 / -1;
+      padding: 16px;
+      border-radius: 12px;
+    }
+    .screen3-work-area > h3 {
+      margin-bottom: 2px;
+    }
+    .screen3-source-scope-stack,
+    .screen3-workflow-subgrid,
+    .screen3-explanation-list {
+      display: grid;
+      gap: 12px;
+    }
+    .screen3-workflow-subgrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .screen3-workflow-subgrid .screen3-context-subpanel:first-child {
+      grid-column: 1 / -1;
+    }
+    .screen3-target-card-grid .screen3-context-subpanel:first-child,
+    .screen3-target-card-grid .screen3-comparison-target-card {
+      grid-column: auto;
+    }
+    .screen3-runtime-detail-grid {
+      grid-template-columns: 1fr;
+    }
+    .screen3-interval-full-width-panel {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+    .screen3-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .screen3-filter-control {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+    .screen3-filter-control h5,
+    .screen3-filter-control label,
+    .screen3-filter-toolbar label,
+    .screen3-apply-selection-inline h5 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-filter-toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto auto minmax(120px, 160px);
+      gap: 8px;
+      align-items: end;
+    }
+    .screen3-filter-toolbar label {
+      grid-column: 1 / -1;
+    }
+    .screen3-filter-select,
+    .screen3-filter-search {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: rgba(8, 15, 26, 0.88);
+      font: inherit;
+    }
+    .screen3-filter-select:focus,
+    .screen3-filter-search:focus {
+      outline: 2px solid rgba(90, 209, 255, 0.4);
+      outline-offset: 2px;
+      border-color: rgba(90, 209, 255, 0.58);
+    }
+    .screen3-filter-action-button {
+      min-height: 38px;
+      white-space: nowrap;
+    }
+    .screen3-result-limit-control {
+      display: grid;
+      gap: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-apply-selection-inline {
+      display: grid;
+      gap: 8px;
+      margin: 10px 0 12px;
+      padding: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 8px;
+      background: rgba(8, 15, 26, 0.34);
+    }
+    .screen3-comparison-target-panel,
+    .screen3-comparison-preview-panel {
+      grid-column: 1 / -1;
+    }
+    .screen3-comparison-controls-card,
+    .screen3-target-assignment-card,
+    .screen3-target-card-grid,
+    .screen3-target-picker-details {
+      grid-column: 1 / -1;
+    }
+    .screen3-comparison-control-grid,
+    .screen3-target-card-grid,
+    .screen3-target-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .screen3-comparison-control-grid section {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .screen3-comparison-control-grid h5 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-comparison-target-card {
+      padding: 10px;
+      min-width: 0;
+    }
+    .screen3-comparison-target-card h4 {
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+    .screen3-target-resolution-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .screen3-target-resolution-grid div {
+      min-width: 0;
+      padding-top: 0;
+    }
+    .screen3-target-resolution-grid dt {
+      font-size: 10px;
+      line-height: 1.25;
+    }
+    .screen3-target-resolution-grid dd {
+      margin: 2px 0 0;
+      font-size: 11px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+    .screen3-context-subpanel,
+    .screen3-explanation-article {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(11, 20, 34, 0.42);
+    }
+    .screen3-context-subpanel h4,
+    .screen3-explanation-article h4 {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-explanation-article p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .screen3-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
+      background: rgba(11, 20, 34, 0.34);
+    }
+    .screen3-inventory-table-wrap {
+      max-height: 520px;
+      overflow: auto;
+    }
+    .screen3-interval-table-wrap {
+      max-height: 320px;
+      overflow: auto;
+    }
+    .screen3-runtime-scope-table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .screen3-runtime-scope-table th,
+    .screen3-runtime-scope-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid rgba(159, 176, 199, 0.12);
+      text-align: left;
+      vertical-align: middle;
+      overflow-wrap: anywhere;
+    }
+    .screen3-runtime-scope-table th {
+      color: var(--accent);
+      background: rgba(15, 27, 45, 0.98);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      box-shadow: 0 1px 0 rgba(159, 176, 199, 0.18);
+    }
+    .screen3-table-header-control {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+    }
+    .screen3-table-header-label {
+      min-width: 0;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .screen3-table-sort-button,
+    .screen3-table-filter-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 6px;
+      padding: 0;
+      color: var(--muted);
+      background: rgba(6, 13, 23, 0.35);
+      font: inherit;
+      cursor: pointer;
+    }
+    .screen3-table-sort-button small {
+      color: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .screen3-table-filter-toggle span {
+      font-size: 12px;
+      line-height: 1;
+    }
+    .screen3-table-sort-button.is-active,
+    .screen3-table-filter-toggle.is-active,
+    .screen3-table-header-control.has-active-filter .screen3-table-filter-toggle {
+      color: #08111d;
+      border-color: rgba(90, 209, 255, 0.72);
+      background: var(--accent);
+    }
+    .screen3-table-sort-button:focus-visible,
+    .screen3-table-filter-toggle:focus-visible,
+    .screen3-table-filter-input:focus-visible {
+      outline: 2px solid rgba(90, 209, 255, 0.48);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .screen3-table-filter-input {
+      display: none;
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 64px;
+      height: 22px;
+      margin-top: 2px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: var(--text);
+      background: rgba(6, 13, 23, 0.78);
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .screen3-table-header-control.is-filter-open .screen3-table-filter-input,
+    .screen3-table-header-control.has-active-filter .screen3-table-filter-input {
+      display: block;
+    }
+    .screen3-table-filter-input::placeholder {
+      color: rgba(159, 176, 199, 0.62);
+    }
+    .screen3-table-control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.38);
+      font-size: 12px;
+    }
+    .screen3-table-clear-button {
+      min-height: 28px;
+      padding: 5px 9px;
+      font-size: 11px;
+    }
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(1),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(1) {
+      width: 118px;
+      min-width: 118px;
+    }
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(2),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(2) {
+      width: 112px;
+      min-width: 112px;
+    }
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(3),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(3),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(4),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(4),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(5),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(5),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(6),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(6),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(12),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(12),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(13),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(13) {
+      white-space: nowrap;
+      overflow-wrap: normal;
+    }
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(5),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(5) {
+      min-width: 96px;
+    }
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(7),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(7),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(8),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(8),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table th:nth-child(9),
+    .screen3-inventory-table-wrap .screen3-runtime-scope-table td:nth-child(9) {
+      min-width: 120px;
+    }
+    .screen3-runtime-scope-table tr[data-dashboard-selectable="true"]:hover {
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-runtime-scope-table tr.is-selected,
+    .screen3-runtime-scope-table tr[data-selected="true"] {
+      background: rgba(90, 209, 255, 0.08);
+      outline: 1px solid rgba(90, 209, 255, 0.28);
+      outline-offset: -1px;
+      box-shadow: inset 2px 0 0 rgba(90, 209, 255, 0.46);
+    }
+    .screen3-runtime-scope-table tr.screen3-selected-runtime-row {
+      background: rgba(90, 209, 255, 0.17);
+      outline-color: rgba(90, 209, 255, 0.66);
+      box-shadow: inset 3px 0 0 rgba(90, 209, 255, 0.8);
+    }
+    .screen3-runtime-scope-table tr.screen3-selected-interval-row {
+      background: rgba(65, 220, 168, 0.11);
+      outline: 1px dashed rgba(65, 220, 168, 0.62);
+      box-shadow: inset 3px 0 0 rgba(65, 220, 168, 0.58);
+    }
+    .screen3-runtime-scope-table tr.screen3-selected-advanced-row {
+      background: rgba(166, 139, 255, 0.1);
+      outline: 1px dashed rgba(166, 139, 255, 0.62);
+      box-shadow: inset 3px 0 0 rgba(166, 139, 255, 0.62);
+    }
+    .screen3-runtime-scope-table tr.is-selected:hover,
+    .screen3-runtime-scope-table tr[data-selected="true"]:hover,
+    .screen3-runtime-scope-table tr.screen3-selected-runtime-row:hover,
+    .screen3-runtime-scope-table tr.screen3-selected-interval-row:hover,
+    .screen3-runtime-scope-table tr.screen3-selected-advanced-row:hover {
+      background: rgba(90, 209, 255, 0.2);
+    }
+    .screen3-disabled-placeholder-row {
+      color: var(--muted);
+      background: rgba(159, 176, 199, 0.05);
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .screen3-runtime-scope-table .empty-state {
+      padding: 12px;
+      color: var(--muted);
+    }
+    .screen3-interval-table {
+      min-width: 0;
+      table-layout: auto;
+    }
+    .screen3-interval-table th:nth-child(1),
+    .screen3-interval-table td:nth-child(1),
+    .screen3-interval-table th:nth-child(2),
+    .screen3-interval-table td:nth-child(2),
+    .screen3-interval-table th:nth-child(5),
+    .screen3-interval-table td:nth-child(5) {
+      white-space: nowrap;
+      overflow-wrap: normal;
+    }
+    .screen3-interval-table th,
+    .screen3-interval-table td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .screen3-active-assignment-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 6px 0 10px;
+      border: 1px solid rgba(90, 209, 255, 0.22);
+      border-radius: 10px;
+      padding: 9px 11px;
+      color: var(--muted);
+      background: rgba(90, 209, 255, 0.07);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen3-active-assignment-banner strong {
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-operator-steps {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen3-operator-steps li + li {
+      margin-top: 5px;
+    }
+    .screen3-selected-context-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .screen3-selected-context-chip {
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(12, 24, 40, 0.58);
+      min-width: 0;
+    }
+    .screen3-selected-context-chip h5,
+    .screen3-selected-context-chip p,
+    .screen3-selected-context-chip small {
+      margin: 0;
+    }
+    .screen3-selected-context-chip h5 {
+      color: var(--accent);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .screen3-selected-context-chip p {
+      margin-top: 6px;
+      color: var(--text);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .screen3-selected-context-chip small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .screen3-selection-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .screen3-selection-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .screen3-legend-swatch {
+      width: 16px;
+      height: 9px;
+      border-radius: 999px;
+      display: inline-block;
+      border: 1px solid rgba(159, 176, 199, 0.2);
+    }
+    .screen3-legend-swatch.runtime {
+      background: rgba(90, 209, 255, 0.2);
+      border-color: rgba(90, 209, 255, 0.7);
+    }
+    .screen3-legend-swatch.interval {
+      background: rgba(65, 220, 168, 0.14);
+      border-style: dashed;
+      border-color: rgba(65, 220, 168, 0.7);
+    }
+    .screen3-legend-swatch.advanced {
+      background: rgba(166, 139, 255, 0.14);
+      border-style: dashed;
+      border-color: rgba(166, 139, 255, 0.72);
+    }
+    .screen3-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .screen3-pill-button {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: 220px;
+      min-height: 54px;
+      padding: 8px 10px;
+      border: 1px solid rgba(90, 209, 255, 0.34);
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(16, 28, 45, 0.72);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .screen3-pill-button span {
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .screen3-pill-button small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .screen3-submit-result-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.86fr) minmax(320px, 1.14fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .screen3-secondary-selector-details {
+      grid-column: 1 / -1;
+      border: 1px solid rgba(159, 176, 199, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(11, 20, 34, 0.36);
+    }
+    .screen3-secondary-selector-details summary {
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .screen3-secondary-selector-grid {
+      margin-top: 12px;
+    }
+    .screen3-target-picker-details .screen3-table-wrap {
+      max-height: 260px;
+      overflow: auto;
+    }
+    .screen3-source-scope-grid dt {
+      color: var(--accent);
+    }
+    .screen3-source-scope-grid dd {
+      overflow-wrap: anywhere;
+    }
+    .screen3-actions-inline {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0 14px;
+    }
+    .screen3-runtime-options-button.secondary {
+      border-color: rgba(90, 209, 255, 0.38);
+      background: rgba(90, 209, 255, 0.1);
+    }
+    .screen3-runtime-options-status-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .screen3-runtime-options-status-grid dd,
+    .screen3-runtime-options-debug-grid dd {
+      overflow-wrap: anywhere;
+    }
+    .screen3-runtime-coverage-details {
+      margin-top: 10px;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(8, 15, 26, 0.3);
+    }
+    .screen3-dynamic-option-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .screen3-runtime-option-card {
+      display: grid;
+      gap: 6px;
+      min-height: 92px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+      color: inherit;
+      overflow-wrap: anywhere;
+    }
+    .screen3-runtime-option-card .selector-card-title {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-runtime-option-card .selector-card-detail {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
     .screen3-selector-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -17375,13 +22659,17 @@ def _shared_page_styles() -> str:
       border-color: rgba(246, 184, 76, 0.34);
       background: rgba(246, 184, 76, 0.06);
     }
-    .screen3-reanalysis-safety-labels {
-      margin: 10px 0 14px;
+    .screen3-governed-actions-card,
+    .screen3-result-panel {
+      border-radius: 12px;
+      border: 1px solid rgba(90, 209, 255, 0.26);
+      padding: 14px;
+      background: rgba(16, 28, 45, 0.56);
     }
     .screen3-action-grid,
     .screen3-source-mode-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 10px;
     }
     .screen3-source-mode-grid {
@@ -17397,6 +22685,17 @@ def _shared_page_styles() -> str:
       padding: 12px;
       background: rgba(16, 28, 45, 0.72);
       color: inherit;
+    }
+    .screen3-governed-action-control {
+      display: grid;
+      gap: 8px;
+      color: inherit;
+      text-decoration: none;
+    }
+    .screen3-governed-action-control.is-disabled,
+    .screen3-governed-action-control[aria-disabled="true"] {
+      opacity: 0.72;
+      cursor: not-allowed;
     }
     .screen3-reanalysis-action-card.disabled-preview-only {
       border-color: rgba(246, 184, 76, 0.42);
@@ -17421,10 +22720,176 @@ def _shared_page_styles() -> str:
     .screen3-source-mode-card p {
       margin: 0;
     }
+    .screen3-action-state-pill,
+    .screen3-action-missing-gate {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 5px 8px;
+      border: 1px solid rgba(246, 184, 76, 0.34);
+      border-radius: 999px;
+      color: #fff6e2;
+      background: rgba(246, 184, 76, 0.08);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .screen3-action-missing-gate {
+      border-color: rgba(159, 176, 199, 0.22);
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.32);
+      font-weight: 600;
+    }
+    .screen3-action-submit-button {
+      justify-content: center;
+      width: fit-content;
+      min-height: 32px;
+      padding: 6px 10px;
+    }
+    .screen3-action-facts {
+      display: grid;
+      gap: 7px;
+      margin: 4px 0 0;
+    }
+    .screen3-action-facts div {
+      display: grid;
+      gap: 3px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(159, 176, 199, 0.14);
+    }
+    .screen3-action-facts dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-action-facts dd {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
     .screen3-reanalysis-action-card em {
       font-style: normal;
       font-weight: 800;
       text-transform: uppercase;
+    }
+    .screen3-technical-details {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .screen3-technical-details summary {
+      cursor: pointer;
+    }
+    .screen3-technical-details p {
+      margin: 6px 0 0;
+    }
+    .screen3-action-status {
+      margin-top: 6px;
+      padding: 9px 10px;
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.48);
+      font-size: 12px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .screen3-result-summary-banner {
+      display: grid;
+      grid-template-columns: minmax(160px, 0.8fr) minmax(180px, 0.8fr) minmax(260px, 1.4fr);
+      gap: 10px;
+      margin: 10px 0 12px;
+      padding: 12px;
+      border: 1px solid rgba(90, 209, 255, 0.24);
+      border-radius: 10px;
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-result-summary-banner div {
+      display: grid;
+      gap: 4px;
+    }
+    .screen3-result-summary-banner dt {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-result-summary-banner dd {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .screen3-result-subcard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .screen3-result-subcard {
+      min-width: 0;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .screen3-result-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .screen3-result-grid dd {
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+    }
+    .screen3-comparison-result-summary,
+    .screen3-backend-references-details {
+      grid-column: 1 / -1;
+    }
+    .screen3-backend-references-details summary {
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .screen3-backend-references-details[open] summary {
+      margin-bottom: 8px;
+    }
+    .screen3-source-handoff-empty {
+      border: 1px solid rgba(246, 184, 76, 0.28);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: rgba(246, 184, 76, 0.08);
+    }
+    .inline-action-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 7px 11px;
+      border: 1px solid rgba(90, 209, 255, 0.42);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .screen3-action-status[data-phase7-action-status="blocked"] {
+      color: #fff6e2;
+      border-color: rgba(246, 184, 76, 0.46);
+    }
+    .screen3-action-status[data-phase7-action-status="accepted"],
+    .screen3-action-status[data-phase7-action-status="completed"] {
+      color: #effbef;
+      border-color: rgba(102, 187, 106, 0.42);
+    }
+    .screen3-action-status[data-phase7-action-status="failed"],
+    .screen3-action-status[data-phase7-action-status="failed_safely"] {
+      color: #fff4f4;
+      border-color: rgba(255, 107, 107, 0.42);
     }
     .scope-chip.active {
       color: #08111d;
@@ -20787,10 +26252,20 @@ def _shared_page_styles() -> str:
       .screen1-operator-workflow,
       .screen2-selector-grid,
       .screen2-review-action-grid,
-      .screen3-selector-grid,
-      .screen3-action-grid,
-      .screen3-source-mode-grid,
-      .screen4-selector-grid,
+	      .screen3-selector-grid,
+	      .screen3-action-grid,
+	      .screen3-source-mode-grid,
+	      .screen3-filter-grid,
+	      .screen3-filter-toolbar,
+	      .screen3-workflow-subgrid,
+	      .screen3-submit-result-grid,
+	      .screen3-comparison-control-grid,
+	      .screen3-target-card-grid,
+	      .screen3-selected-context-strip,
+	      .screen3-target-picker-grid,
+	      .screen3-result-subcard-grid,
+	      .screen3-result-grid,
+	      .screen4-selector-grid,
       .screen4-historical-review-preview-grid,
       .screen5-action-preview-grid,
       .screen5-outcome-preview-grid,
@@ -20845,8 +26320,19 @@ def _shared_page_styles() -> str:
       }
       .runtime-badge {
         position: static;
+        justify-items: start;
         text-align: left;
         margin-bottom: 12px;
+      }
+      .runtime-state-pills {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        width: auto;
+      }
+      .runtime-mini-pill {
+        justify-content: flex-start;
+        min-width: 0;
+        max-width: 100%;
       }
       .nav-link {
         flex: 0 0 auto;
@@ -20861,10 +26347,10 @@ def _shared_page_styles() -> str:
       .index-source-status-grid,
       .index-object-storage-config-grid,
       .index-screen3-handoff-grid,
-      .screen4-verdict-grid,
-      .screen4-topology-grid {
-        grid-template-columns: 1fr;
-      }
+	      .screen4-verdict-grid,
+	      .screen4-topology-grid {
+	        grid-template-columns: 1fr;
+	      }
       h1 { font-size: 28px; }
     }
 """
@@ -26617,6 +32103,10 @@ def _confidence_state_class(value: Any) -> str:
 def _status_semantic_class(value: Any, context: str | None = None) -> str:
     normalized = _normalized_status_token(value)
     context_key = str(context or "").strip().lower()
+    if context_key == "similarity" and (
+        normalized == "UNAVAILABLE" or normalized.startswith("SIMILARITY UNAVAILABLE")
+    ):
+        return "error"
     if context_key == "confidence":
         level = _confidence_level_from_value(value)
         if level == "HIGH":
@@ -26672,6 +32162,8 @@ def _status_semantic_class(value: Any, context: str | None = None) -> str:
         "LOCAL ONLY MODE",
         "MISSING",
         "TUNE FIRST",
+        "DB CONNECTED - SIMILARITY UNAVAILABLE",
+        "GENERATED DB WARNING",
     }:
         return "warning"
     if normalized in {

@@ -24,55 +24,60 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
     def test_01_dashboard_source_compiles(self) -> None:
         ast.parse(read_text(HTML_DASHBOARD_PATH), filename=str(HTML_DASHBOARD_PATH))
 
-    def test_screen3_action_ui_exists(self) -> None:
+    def test_screen3_governed_action_ui_exists(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
         required = (
-            "Screen 3 Backend Re-Analysis Actions",
+            "Governed Actions",
             "Analyze Selection",
             "Re-run Analysis",
             "Build Comparison",
-            "Load From Object Storage",
+            "Load / Prepare External Target",
+            "screen3_active_reanalysis",
+            'data-screen-id="screen_3"',
+            'data-required-selection-key="selectedSourceMode"',
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
 
-    def test_controls_are_disabled_preview_only(self) -> None:
+    def test_controls_are_governed_and_source_gated(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
         required = (
             'aria-disabled="true"',
-            "disabled/preview-only",
-            "Execution disabled in this phase",
-            "Preview only",
-            "Selection is not execution",
+            "Active governed request",
+            "Existing run truth unchanged",
+            "data-execution-mode=\"local_backend_execution\"",
+            "Missing gates:",
+            "Submit governed action",
+            "Action details",
+            "Result location: Request / Execution Result",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
 
-    def test_safety_labels_exist(self) -> None:
+    def test_safety_boundary_exists(self) -> None:
         rendered = self.render_screen3()
 
         required = (
-            "No backend execution",
-            "No run_analysis.py call",
-            "No object storage call",
-            "No local file read",
-            "No DB lookup",
-            "No Phase 4I mutation",
-            "Deterministic runtime remains authoritative",
+            "Runtime Safety and Selection Impact",
+            "Screen 3 can request or execute only governed backend actions",
+            "Existing deterministic truth is not overwritten",
+            "Screen 3 can request or execute only governed backend actions",
+            "learning candidates, materialization, runtime eligibility",
+            "Existing run truth is immutable",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_no_unsafe_backend_calls(self) -> None:
+    def test_no_unsafe_direct_execution_paths(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH).lower()
 
         forbidden = (
@@ -92,55 +97,69 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
         )
         for phrase in forbidden:
             with self.subTest(phrase=phrase):
+                if phrase == "fetch(":
+                    continue
                 self.assertNotIn(phrase, source)
+        self.assertIn("requestbridge(phase7_action_endpoint", source)
+        self.assertNotIn("run_analysis_coupling: true", source)
+        self.assertNotIn("browser_object_storage_access_attempted: true", source)
 
-    def test_source_modes_displayed(self) -> None:
+    def test_index_source_context_displayed(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
         required = (
+            "Source Received From Index",
             "Local staged",
             "Local file",
             "Existing run",
             "Object Storage",
-            "Future EM Extract",
+            "Return to Source Intake",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
+        self.assertNotIn("Future EM Extract", rendered)
 
-    def test_request_preview_exists_and_remains_read_only(self) -> None:
+    def test_readiness_summary_and_source_scope_exist(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
         required = (
-            "Read-Only Request Preview",
-            "Request preview is not execution",
-            "Selected state summary remains read-only",
-            "Preview does not imply execution",
-            "execution_blocked=true",
-            "can_execute=false",
+            "Source Received From Index",
+            "Load Runtime Options",
+            "Select Runtime Scope",
+            "Runtime Scope Filters",
+            "Filtered AWR / Run / Report Results",
+            "Snapshot / Interval Selection",
+            "Resolve Comparison Targets",
+            "Review Mode",
+            "Runtime Safety and Selection Impact",
+            "Request / Execution Result",
+            "DB persistence",
+            "Object Storage validation",
+            "Existing run truth unchanged",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
 
-    def test_future_requirements_visible(self) -> None:
+    def test_missing_execution_gates_visible(self) -> None:
         rendered = self.render_screen3()
 
         required = (
-            "AWR/report comparison is future 7AM.1 engine only and not triggered here",
-            "Missing metric/evidence handling remains future 7AO.1 / 7AQ.1",
-            "EM Extract implementation belongs to Phase 8",
-            "Controlled adaptive execution requires future validation/gate",
+            "execution blocked until runner/artifact gates are connected",
+            "target resolution/comparison payload",
+            "load/parse/ingest/analyze chain",
+            "must be represented as new run/output/artifact references",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_docs_exist_and_contain_required_boundaries(self) -> None:
+    def test_docs_exist_as_historical_boundaries(self) -> None:
         doc_paths = [
             DOCS / "phase7an_screen3_action_ui.md",
             DOCS / "phase7an_screen3_request_preview.md",
@@ -151,13 +170,8 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
 
         combined = "\n".join(read_text(path).lower() for path in doc_paths)
         required = (
-            "no backend execution",
             "no run_analysis.py call",
-            "no object storage call",
-            "no local file read",
-            "no db lookup",
             "no phase 4i mutation",
-            "disabled/preview-only",
             "phase 8 sizing/tco is not implemented",
         )
         for phrase in required:

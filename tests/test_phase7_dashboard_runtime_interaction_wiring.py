@@ -72,7 +72,7 @@ PHASE7CM_UX_FIXTURE = """
     <input value="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageObjectName">
     <input value="us-phoenix-1" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageRegion">
     <button type="button" data-phase7-object-storage-validation-control="true" data-phase7-service-endpoint="object_storage_validate">Validate Object Storage Source</button>
-    <p>Governed workflow service unavailable. Start scripts/dashboard_workflow_service.py and retry.</p>
+    <p>Dashboard workflow service is not running. Start the service to use interactive features.</p>
   </section>
   <section data-phase7-current-selection-panel="true" data-phase7-active-source-configuration="true">
     <h3>Active Source Configuration / Runtime Source State</h3>
@@ -156,6 +156,174 @@ PHASE7CM_UX_FIXTURE = """
 </p>
 """
 
+PHASE7CP_SCREEN3_FIXTURE = """
+<section data-phase7-runtime-interaction-panel="true">
+  <title>Screen 3 - Governed Runtime Control Center</title>
+  <h1>Screen 3 - Governed Runtime Control Center</h1>
+  <h2>Governed Runtime Control Center</h2>
+  <h3>Source Received From Index</h3>
+  <h3>Work Area 1 - Select Runtime Scope</h3>
+  <h3>Load Runtime Options</h3>
+  <button type="button" class="phase7cm-service-button screen3-runtime-options-button" data-screen3-runtime-options-load="true">Load available runtime options</button>
+  <p>Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py.</p>
+  <p>/phase7/dashboard/screen3/options</p>
+  <p>screen3_load_runtime_options</p>
+  <p>screen3-runtime-filter-panel</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-application"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-db"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-dbid"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-instance"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-host"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-source-type"</p>
+  <p>data-screen3-runtime-options-target="runtime-filter-time-range"</p>
+  <p>screen3-filter-select</p>
+  <p>screen3RuntimeFilterSearch</p>
+  <p>Apply Filters</p>
+  <p>Clear Filters</p>
+  <p>data-screen3-filtered-result-count</p>
+  <p>data-screen3-runtime-sort</p>
+  <p>data-screen3-table-sort</p>
+  <p>data-screen3-table-filter</p>
+  <p>data-screen3-table-filter-toggle</p>
+  <p>data-screen3-clear-table-filters</p>
+  <p>data-screen3-table-count</p>
+  <p>data-screen3-table-sort-summary</p>
+  <p>data-screen3-table-filter-summary</p>
+  <p>data-screen3-table-id="screen3-runtime-inventory"</p>
+  <p>data-screen3-table-id="screen3-intervals"</p>
+  <p>data-screen3-table-id="screen3-target-a-options"</p>
+  <p>data-screen3-table-id="screen3-target-b-options"</p>
+  <p>screen3-selection-legend</p>
+  <p>screen3-selected-context-strip</p>
+  <p>screen3-selected-runtime-row</p>
+  <p>screen3-selected-interval-row</p>
+  <p>screen3-selected-advanced-row</p>
+  <p>initializeScreen3Tables</p>
+  <p>data-screen3-sort-indicator</p>
+  <p>screen3SelectedRuntimeScopeRowId</p>
+  <p>screen3SelectedTargetARowId</p>
+  <p>screen3SelectedTargetBRowId</p>
+  <p>screen3RuntimeScopeSelectionSource</p>
+  <p>screen3TargetASelectionSource</p>
+  <p>screen3TargetBSelectionSource</p>
+  <p>State source:</p>
+  <p>screen3RuntimeRowIdentity</p>
+  <p>screen3IntervalRowIdentity</p>
+  <p>screen3-table-sort-button</p>
+  <p>screen3-table-filter-toggle</p>
+  <p>position: sticky</p>
+  <p>screen3-runtime-scope-table</p>
+  <p>data-screen3-runtime-options-target="runtime-scope-rows"</p>
+  <p>data-screen3-runtime-options-target="interval-rows"</p>
+  <p>screen3-interval-full-width-panel</p>
+  <p>screen3ActiveSelectionTarget</p>
+  <p>Application: Not available</p>
+  <h4>Runtime Scope Filters</h4>
+  <h4>Filtered AWR / Run / Report Results</h4>
+  <h4>Selected Runtime Scope</h4>
+  <p>Apply selection to</p>
+  <p>Runtime Scope</p>
+  <h3>Snapshot / Interval Selection</h3>
+  <p>Apply interval to</p>
+  <p>Application / DB Name / DBID / Instance / Host/System</p>
+  <p>AWR / Run and Snapshot / Time Window</p>
+  <h3>Work Area 2 - Resolve Comparison Targets</h3>
+  <p>Target A and Target B are built from the selected AWR/report rows and windows.</p>
+  <p>Only its selected row gets the strong table highlight.</p>
+  <h4>Comparison Target A</h4>
+  <h4>Comparison Target B</h4>
+  <p>Target A Resolution Card</p>
+  <p>Target B Resolution Card</p>
+  <p>source_type + scope_type + scope_value + time_window + resolution_state + readiness_state</p>
+  <p>Source type / Scope type / Scope value / Time window / Resolution / Readiness / Missing gates</p>
+  <p>Resolved AWR count</p>
+  <p>Resolved snapshot/window count</p>
+  <p>Comparison Readiness / Outcome</p>
+  <p>Comparison &amp; Review Controls</p>
+  <p>Both targets comparable</p>
+  <p>load_required</p>
+  <p>Current DB history</p>
+  <p>Similar AWRs</p>
+  <p>Cluster baseline</p>
+  <p>Fleet baseline</p>
+  <h3>Review Mode</h3>
+  <p>Diagnosis</p>
+  <p>Historical proof</p>
+  <p>Anomaly review</p>
+  <p>Period comparison</p>
+  <p>Similarity review</p>
+  <h3>Work Area 3 - Submit Governed Action and Review Result</h3>
+  <h3 class="screen3-governed-actions-card">Governed Actions</h3>
+  <h3>Request / Execution Result</h3>
+  <p>screen3-result-summary-banner</p>
+  <h4>Comparison Result Summary</h4>
+  <dl>
+    <dt>Selected source mode</dt>
+    <dt>Selected application</dt>
+    <dt>Selected DB</dt>
+    <dt>Selected DBID</dt>
+    <dt>Selected host</dt>
+    <dt>Selected instance</dt>
+    <dt>Selected AWR/run</dt>
+    <dt>Selected snapshot/window</dt>
+    <dt>Runtime scope</dt>
+    <dt>Comparison mode</dt>
+    <dt>Comparison Target A</dt>
+    <dt>Comparison Target B</dt>
+    <dt>Target A readiness</dt>
+    <dt>Target B readiness</dt>
+    <dt>Both targets comparable</dt>
+    <dt>Requested artifact/reference</dt>
+    <dt>Screen 4 handoff</dt>
+    <dt>Review mode</dt>
+    <dt>Request ID</dt>
+    <dt>Transaction ID</dt>
+    <dt>Validation status</dt>
+    <dt>Audit ID/reference</dt>
+    <dt>Persistence</dt>
+    <dt>Execution status</dt>
+    <dt>Output artifact</dt>
+    <dt>New run/output reference</dt>
+    <dt>Existing run truth</dt>
+    <dt>Next step</dt>
+  </dl>
+  <h3>Runtime Safety and Selection Impact</h3>
+  <p>Local selection changes only browser/local request context.</p>
+  <details><summary>Technical Audit / Debug Details</summary></details>
+  <p>Existing run truth unchanged</p>
+  <p>Runtime options route unavailable</p>
+  <p>route available</p>
+  <p>No runtime options found</p>
+  <p>Runtime options loaded</p>
+  <p>runtime_options_source_tables</p>
+  <p>table_exists</p>
+  <p>key_columns_used</p>
+  <p>included_in_screen3_runtime_options</p>
+  <p>AWR_SNAPSHOT</p>
+  <p>screen3RuntimeOptionsCache</p>
+  <p>screen3-runtime-options-v1</p>
+  <p>Runtime options restored from browser cache</p>
+  <p>Refresh failed; showing cached runtime options</p>
+  <p>Cache status</p>
+  <p>Generated at build time</p>
+  <p>Workflow Service:</p>
+  <p>data-dashboard-runtime-badge="true"</p>
+  <p>data-dashboard-runtime-workflow-status="true"</p>
+  <p>runtime-badge-hydrated</p>
+  <p>readStoredWorkflowStatus</p>
+  <p>Check with Load Options</p>
+  <p>Advanced target picker: external / baseline options</p>
+  <a data-phase7-action-control="true"
+     data-screen-id="screen_3"
+     data-action-type="screen3_active_reanalysis"
+     data-workflow-type="screen3_runtime_control_center"
+     data-target-type="backend_execution_request"
+     data-target-id="screen3-selected-source-scope"
+     data-required-selection-key="selectedSourceMode"
+     data-execution-mode="local_backend_execution">Analyze Selection</a>
+</section>
+"""
+
 
 def validation_module():
     spec = util.spec_from_file_location(
@@ -190,10 +358,15 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
             for screen_id, action_types in module.REQUIRED_SCREEN_ACTIONS.items()
             for action_type in action_types
         )
-        generated += PHASE7CM_UX_FIXTURE
         for relative_path in module.GENERATED_DASHBOARD_FILES:
+            file_name = Path(relative_path).name
+            content = generated
+            if file_name == "index.html":
+                content += PHASE7CM_UX_FIXTURE
+            if file_name == "screen_3_history_selector.html":
+                content += PHASE7CP_SCREEN3_FIXTURE
             (Path(cls.generated_dir.name) / Path(relative_path).name).write_text(
-                generated,
+                content,
                 encoding="utf-8",
             )
         cls.completed = subprocess.run(
@@ -241,11 +414,16 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_index_source_selection_screen_is_represented(self) -> None:
         screens = self.payload["screens"]
-        self.assertEqual(["index_source_mode"], sorted(screens))
+        self.assertEqual(["index_source_mode", "screen_3"], sorted(screens))
         self.assertEqual("passed", screens["index_source_mode"]["status"])
         self.assertIn(
             "source_selection_handoff",
             screens["index_source_mode"]["present_action_types"],
+        )
+        self.assertEqual("passed", screens["screen_3"]["status"])
+        self.assertIn(
+            "screen3_active_reanalysis",
+            screens["screen_3"]["present_action_types"],
         )
         self.assertEqual(
             "index_source_selection_runtime_workflow",
@@ -460,10 +638,13 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             for screen_id, action_types in module.REQUIRED_SCREEN_ACTIONS.items()
             for action_type in action_types
         )
-        generated += PHASE7CM_UX_FIXTURE
         result = module.validate_dashboard_runtime_interaction(
             source_text=source,
-            generated_texts={"awr_dashboard/index.html": generated},
+            generated_texts={
+                "awr_dashboard/index.html": generated + PHASE7CM_UX_FIXTURE,
+                "awr_dashboard/screen_3_history_selector.html": generated
+                + PHASE7CP_SCREEN3_FIXTURE,
+            },
             service_exists=True,
             contract_exists=True,
         )
@@ -493,6 +674,22 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             )
         )
 
+    def test_generated_screen3_stale_preview_scaffold_blocks_validation(self) -> None:
+        module = validation_module()
+        stale_screen3 = (
+            '<section data-phase7-runtime-interaction-panel="true">'
+            '<div class="section-kicker">Phase 7H.2</div>'
+            "<p>Phase 7H.2 Screen 3 Control Center: read-only selectors only.</p>"
+            "</section>"
+        )
+        result = module.validate_generated_screen3_control_center(
+            {"awr_dashboard/screen_3_history_selector.html": stale_screen3}
+        )
+        self.assertEqual("failed", result["status"])
+        self.assertTrue(
+            any("stale primary Screen 3 preview marker" in offender for offender in result["offenders"])
+        )
+
     def test_service_bridge_smoke_test_accepts_and_queues_request(self) -> None:
         bridge = self.payload["service_bridge"]
         self.assertEqual("passed", bridge["status"])
@@ -505,7 +702,24 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         self.assertIs(bridge["existing_run_lookup_tested"], True)
         self.assertIs(bridge["existing_run_empty_state_tested"], True)
         self.assertIs(bridge["existing_run_unavailable_state_tested"], True)
+        self.assertIs(bridge["screen3_runtime_options_tested"], True)
+        self.assertIs(bridge["screen3_runtime_request_processed"], True)
+        self.assertIn(
+            bridge["screen3_runtime_response"]["status"],
+            {"blocked", "completed", "accepted"},
+        )
+        self.assertIs(
+            bridge["screen3_runtime_response"]["source_summary"]["current_run_truth_mutated"],
+            False,
+        )
+        self.assertIs(
+            bridge["screen3_runtime_response"]["source_summary"]["phase8_started"],
+            False,
+        )
         self.assertEqual("empty", bridge["existing_run_empty_response"]["validation_status"])
+        self.assertTrue(bridge["screen3_runtime_options_response"]["options"]["runs"])
+        self.assertTrue(bridge["screen3_runtime_options_response"]["options"]["databases"])
+        self.assertTrue(bridge["screen3_runtime_options_response"]["options"]["intervals"])
         self.assertEqual("unavailable", bridge["existing_run_unavailable_response"]["validation_status"])
         self.assertIn(
             "No prior runs found in governed persistence",
@@ -646,6 +860,151 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
 
         self.assertEqual("accepted", result["status"])
         self.assertEqual("valid", result["validation_status"])
+
+    def test_screen3_runtime_options_use_service_side_db_boundary(self) -> None:
+        from src.learning.dashboard_runtime_interaction import load_screen3_runtime_options
+
+        module = validation_module()
+        result = load_screen3_runtime_options(
+            module.screen3_runtime_options_smoke_payload(),
+            connection_factory=module.fake_existing_run_connection_factory,
+        )
+
+        self.assertEqual("accepted", result["status"])
+        self.assertTrue(result["runtime_options_loaded"])
+        self.assertFalse(result["browser_db_query_performed"])
+        self.assertFalse(result["current_run_truth_mutated"])
+        self.assertTrue(result["options"]["runs"])
+        self.assertTrue(result["options"]["databases"])
+        self.assertTrue(result["options"]["intervals"])
+        self.assertTrue(result["options"]["target_scope_options"])
+        self.assertTrue(result["options"]["comparison_target_resolutions"])
+        self.assertGreaterEqual(result["run_count"], 4)
+        self.assertIn("OrderService", {item.get("application") for item in result["options"]["applications"]})
+        target = result["options"]["target_scope_options"][0]
+        for key in (
+            "source_type",
+            "scope_type",
+            "scope_value",
+            "time_window",
+            "resolution_state",
+            "readiness_state",
+            "awr_count",
+            "snapshot_count",
+        ):
+            self.assertIn(key, target)
+        self.assertEqual(
+            "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
+            result["target_resolution"]["target_model"],
+        )
+        self.assertIn("both_targets_comparable", result["comparison_readiness"])
+        self.assertIn("similarity candidates unavailable", result["missing_gates"])
+        self.assertEqual("available", result["service_status"])
+        self.assertEqual("available", result["db_persistence_status"])
+        self.assertIn("AWR_RUN_HISTORY", result["metadata"]["source"])
+        self.assertIn("AWR_REPORT", result["metadata"]["source"])
+        self.assertTrue(result["metadata"]["runtime_options_source_tables"])
+        self.assertTrue(result["runtime_options_source_tables"])
+        source_table_names = {
+            item["table_name"]
+            for item in result["runtime_options_source_tables"]
+        }
+        self.assertIn("AWR_RUN_HISTORY", source_table_names)
+        self.assertIn("AWR_REPORT", source_table_names)
+        coverage = {
+            item["table_name"]: item
+            for item in result["runtime_options_source_tables"]
+        }
+        self.assertEqual(3, coverage["AWR_REPORT"]["row_count"])
+        self.assertEqual(3, coverage["AWR_REPORT"]["selectable_row_count"])
+        self.assertEqual(2, coverage["AWR_SOURCE_SYSTEM"]["application_non_null_count"])
+        for item in result["runtime_options_source_tables"]:
+            self.assertIn("table_exists", item)
+            self.assertIn("key_columns_used", item)
+            self.assertIn("columns_found", item)
+            self.assertIn("missing_columns", item)
+            self.assertIn("selectable_row_count", item)
+            self.assertIn("included_in_screen3_runtime_options", item)
+        self.assertIn("runtime_options_rows_returned", result["metadata"])
+        self.assertIn("runtime_options_query_limit", result["metadata"])
+        self.assertIn("runtime_options_source_note", result["metadata"])
+        self.assertFalse(result["llm_changed_status"])
+        self.assertFalse(result["llm_changed_validation"])
+        self.assertFalse(result["llm_changed_execution"])
+        self.assertFalse(result["llm_changed_truth"])
+
+    def test_workflow_service_health_exposes_screen3_runtime_options_route(self) -> None:
+        service_path = ROOT / "scripts" / "dashboard_workflow_service.py"
+        spec = util.spec_from_file_location(
+            "phase7_dashboard_workflow_service_health_test",
+            service_path,
+        )
+        if spec is None or spec.loader is None:
+            raise AssertionError(f"unable to load {service_path}")
+        service = util.module_from_spec(spec)
+        spec.loader.exec_module(service)
+        handler = object.__new__(service.Phase7DashboardWorkflowHandler)
+        handler.server = type(
+            "Phase7HealthTestServer",
+            (),
+            {"server_address": ("127.0.0.1", 8765)},
+        )()
+
+        payload = service.Phase7DashboardWorkflowHandler._health_payload(handler)
+
+        self.assertIn(
+            "/phase7/dashboard/screen3/options",
+            payload["supported_endpoints"],
+        )
+
+    def test_screen3_runtime_options_mark_external_targets_load_required(self) -> None:
+        from src.learning.dashboard_runtime_interaction import load_screen3_runtime_options
+
+        module = validation_module()
+        payload = module.screen3_runtime_options_smoke_payload()
+        payload.update(
+            {
+                "selectedSourceMode": "object_storage",
+                "sourceSelectionMethod": "object_storage_metadata",
+                "objectStorageObjectName": "awr/raw/FINDB/sample.out",
+            }
+        )
+        result = load_screen3_runtime_options(
+            payload,
+            connection_factory=module.fake_existing_run_connection_factory,
+        )
+        external_targets = [
+            target
+            for target in result["options"]["target_scope_options"]
+            if target.get("source_type") == "object_storage_object"
+        ]
+
+        self.assertTrue(external_targets)
+        self.assertEqual("load_required", external_targets[0]["readiness_state"])
+        self.assertIn("load/parse/ingest/analyze", " ".join(external_targets[0]["missing_gates"]))
+
+    def test_run_analysis_requires_screen3_route_before_reusing_service(self) -> None:
+        source = (ROOT / "scripts" / "run_analysis.py").read_text(
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        self.assertIn(
+            "_phase7_dashboard_local_service_supports_required_routes",
+            source,
+        )
+        self.assertIn(
+            "_phase7_dashboard_local_service_supports_screen3_options(host, port)",
+            source,
+        )
+        self.assertIn(
+            "_phase7_dashboard_stop_stale_local_service(host, port)",
+            source,
+        )
+        self.assertIn(
+            "/phase7/dashboard/screen3/options",
+            source,
+        )
 
     def test_service_or_contract_missing_blocks_validation(self) -> None:
         module = validation_module()
@@ -870,6 +1229,212 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             self.assertTrue(
                 envelope["audit"]["future_run_influence_requires_runtime_eligibility"]
             )
+
+    def test_screen3_runtime_action_records_blocked_governed_request(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = process_dashboard_action(
+                {
+                    "screen_id": "screen_3",
+                    "action_type": "screen3_active_reanalysis",
+                    "workflow_type": "screen3_runtime_control_center",
+                    "actor_id": "ACTOR-7CP-UNIT",
+                    "target_type": "backend_execution_request",
+                    "target_id": "SCREEN3-UNIT-ANALYZE",
+                    "execution_mode": "local_backend_execution",
+                    "runtime_influence_granted": False,
+                    "phase4i_mutation_allowed": False,
+                    "phase8_behavior": False,
+                    "run_analysis_coupling": False,
+                    "payload": {
+                        "requested_screen3_action": "analyze_selection",
+                        "target_screen": "screen_3",
+                        "selectedSourceMode": "local_staged",
+                        "sourceSelectionMethod": "backend_path",
+                        "selectedSourcePath": "data/input",
+                        "current_run_truth_mutated": False,
+                        "deterministic_truth_changed": False,
+                        "parser_mutated": False,
+                        "learning_candidate_created": False,
+                        "materialization_changed": False,
+                        "runtime_eligibility_changed": False,
+                        "phase8_started": False,
+                        "browser_file_read_attempted": False,
+                        "browser_object_storage_access_attempted": False,
+                        "browser_db_query_attempted": False,
+                        "em_extract_attempted": False,
+                    },
+                },
+                queue_dir=Path(tempdir),
+                db_persistence_enabled=False,
+            )
+
+        self.assertEqual("blocked", result.status)
+        self.assertTrue(result.queued)
+        self.assertFalse(result.phase4i_mutated)
+        self.assertFalse(result.run_analysis_called)
+        self.assertFalse(result.direct_truth_mutation_performed)
+        self.assertIn("JSON audit fallback", result.message)
+        self.assertEqual("blocked", result.source_summary["execution_status"])
+        self.assertFalse(result.source_summary["current_run_truth_mutated"])
+        self.assertFalse(result.source_summary["phase8_started"])
+        self.assertIn(
+            "capability gap: no injected deterministic runner is configured",
+            " ".join(result.source_summary["missing_execution_gates"]),
+        )
+
+    def test_screen3_object_storage_full_load_is_blocked_without_governed_chain(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = process_dashboard_action(
+                {
+                    "screen_id": "screen_3",
+                    "action_type": "screen3_active_reanalysis",
+                    "workflow_type": "screen3_runtime_control_center",
+                    "actor_id": "ACTOR-7CP-UNIT",
+                    "target_type": "source_execution_request",
+                    "target_id": "SCREEN3-UNIT-OBJECT-STORAGE",
+                    "execution_mode": "local_backend_execution",
+                    "runtime_influence_granted": False,
+                    "phase4i_mutation_allowed": False,
+                    "phase8_behavior": False,
+                    "run_analysis_coupling": False,
+                    "payload": {
+                        "requested_screen3_action": "load_from_object_storage",
+                        "target_screen": "screen_3",
+                        "selectedSourceMode": "object_storage",
+                        "sourceSelectionMethod": "object_storage_metadata",
+                        "objectStorageNamespace": "axxduehrw7lz",
+                        "objectStorageBucket": "agentic-ai-awr-raw",
+                        "objectStorageObjectName": "awr/raw/FINDB/report.out",
+                        "objectStorageRegion": "us-phoenix-1",
+                        "objectStorageValidationStatus": "valid",
+                        "objectStorageValidationMessage": "metadata accepted",
+                        "current_run_truth_mutated": False,
+                        "deterministic_truth_changed": False,
+                        "parser_mutated": False,
+                        "learning_candidate_created": False,
+                        "materialization_changed": False,
+                        "runtime_eligibility_changed": False,
+                        "phase8_started": False,
+                        "browser_file_read_attempted": False,
+                        "browser_object_storage_access_attempted": False,
+                        "browser_db_query_attempted": False,
+                        "em_extract_attempted": False,
+                    },
+                },
+                queue_dir=Path(tempdir),
+                db_persistence_enabled=False,
+            )
+
+        self.assertEqual("blocked", result.status)
+        self.assertTrue(result.queued)
+        self.assertFalse(result.source_summary["current_run_truth_mutated"])
+        self.assertFalse(result.source_summary["phase8_started"])
+        missing_gates = " ".join(result.source_summary["missing_execution_gates"])
+        self.assertIn("external target server-side load client is not configured", missing_gates)
+        self.assertIn("external target load to parser/ingestion chain is not connected", missing_gates)
+
+    def test_screen3_build_comparison_uses_scope_target_readiness_gates(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = process_dashboard_action(
+                {
+                    "screen_id": "screen_3",
+                    "action_type": "screen3_active_reanalysis",
+                    "workflow_type": "screen3_runtime_control_center",
+                    "actor_id": "ACTOR-7CP-UNIT",
+                    "target_type": "backend_execution_request",
+                    "target_id": "SCREEN3-UNIT-BUILD-COMPARISON",
+                    "execution_mode": "local_backend_execution",
+                    "runtime_influence_granted": False,
+                    "phase4i_mutation_allowed": False,
+                    "phase8_behavior": False,
+                    "run_analysis_coupling": False,
+                    "payload": {
+                        "requested_screen3_action": "build_comparison",
+                        "target_screen": "screen_3",
+                        "selectedSourceMode": "existing_run",
+                        "sourceSelectionMethod": "existing_run_reference",
+                        "selectedRunReference": "RUN_HISTORY_ID:9001",
+                        "existingRunLookupStatus": "valid",
+                        "selectedComparisonTargetA": "db_backed | dbid | 123456789 | 2026-03-29T06:00:00 -> 2026-03-29T07:00:00",
+                        "selectedComparisonTargetASourceType": "db_backed",
+                        "selectedComparisonTargetAScopeType": "dbid",
+                        "selectedComparisonTargetAScopeValue": "123456789",
+                        "selectedComparisonTargetATimeWindow": "2026-03-29T06:00:00 -> 2026-03-29T07:00:00",
+                        "selectedComparisonTargetAReadinessState": "comparable",
+                        "current_run_truth_mutated": False,
+                        "deterministic_truth_changed": False,
+                        "parser_mutated": False,
+                        "learning_candidate_created": False,
+                        "materialization_changed": False,
+                        "runtime_eligibility_changed": False,
+                        "phase8_started": False,
+                        "browser_file_read_attempted": False,
+                        "browser_object_storage_access_attempted": False,
+                        "browser_db_query_attempted": False,
+                        "em_extract_attempted": False,
+                    },
+                },
+                queue_dir=Path(tempdir),
+                db_persistence_enabled=False,
+            )
+
+        self.assertEqual("blocked", result.status)
+        missing_gates = " ".join(result.source_summary["missing_execution_gates"])
+        self.assertIn("comparison gap: Target B unresolved", missing_gates)
+        self.assertNotIn("no injected deterministic runner", missing_gates)
+
+    def test_screen3_rejects_unsafe_execution_mode_and_llm_status_mutation(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        base_payload = {
+            "screen_id": "screen_3",
+            "action_type": "screen3_active_reanalysis",
+            "workflow_type": "screen3_runtime_control_center",
+            "actor_id": "ACTOR-7CP-UNIT",
+            "target_type": "backend_execution_request",
+            "target_id": "SCREEN3-UNIT-UNSAFE",
+            "runtime_influence_granted": False,
+            "phase4i_mutation_allowed": False,
+            "phase8_behavior": False,
+            "run_analysis_coupling": False,
+            "payload": {
+                "requested_screen3_action": "analyze_selection",
+                "target_screen": "screen_3",
+                "selectedSourceMode": "local_staged",
+                "sourceSelectionMethod": "backend_path",
+                "selectedSourcePath": "data/input",
+                "current_run_truth_mutated": False,
+                "deterministic_truth_changed": False,
+                "parser_mutated": False,
+                "learning_candidate_created": False,
+                "materialization_changed": False,
+                "runtime_eligibility_changed": False,
+                "phase8_started": False,
+                "browser_file_read_attempted": False,
+                "browser_object_storage_access_attempted": False,
+                "browser_db_query_attempted": False,
+                "em_extract_attempted": False,
+            },
+        }
+
+        unsafe_mode = dict(base_payload)
+        unsafe_mode["execution_mode"] = "direct_run_analysis_subprocess"
+        mode_result = process_dashboard_action(unsafe_mode)
+        self.assertEqual("rejected", mode_result.status)
+        self.assertIn("execution_mode", mode_result.message)
+
+        llm_mutation = json.loads(json.dumps(base_payload))
+        llm_mutation["execution_mode"] = "local_backend_execution"
+        llm_mutation["payload"]["llm_changed_status"] = True
+        llm_result = process_dashboard_action(llm_mutation)
+        self.assertEqual("rejected", llm_result.status)
+        self.assertIn("llm_changed_status", llm_result.message)
 
     def test_contract_rejects_immediate_future_run_activation(self) -> None:
         from src.learning.dashboard_runtime_interaction import process_dashboard_action

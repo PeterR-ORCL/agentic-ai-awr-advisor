@@ -24,10 +24,12 @@ VALIDATION_NAME = "Phase 7CM Index Source Selection Runtime Validation"
 
 REQUIRED_SCREEN_ACTIONS: dict[str, tuple[str, ...]] = {
     "index_source_mode": ("source_selection_handoff",),
+    "screen_3": ("screen3_active_reanalysis",),
 }
 
 GENERATED_DASHBOARD_FILES: tuple[str, ...] = (
     "awr_dashboard/index.html",
+    "awr_dashboard/screen_3_history_selector.html",
 )
 
 TREND_AWARE_SCORING_ARTIFACTS: tuple[str, ...] = (
@@ -125,6 +127,7 @@ def validate_dashboard_runtime_interaction(
         generated_texts,
     )
     index_source_result = validate_index_source_selection_workflow(generated_texts)
+    generated_screen3_result = validate_generated_screen3_control_center(generated_texts)
     preview_context_result = validate_preview_only_context_markers(
         source_text,
         generated_texts,
@@ -160,6 +163,7 @@ def validate_dashboard_runtime_interaction(
         and service_smoke.get("existing_run_lookup_tested") is True
         and service_smoke.get("object_storage_validation_tested") is True
         and service_smoke.get("invalid_object_storage_rejected") is True
+        and service_smoke.get("screen3_runtime_request_processed") is True
     )
     existing_run_lookup_ready = (
         service_smoke.get("existing_run_lookup_tested") is True
@@ -202,10 +206,15 @@ def validate_dashboard_runtime_interaction(
             "Phase 7CM dashboard action contract exists",
         ),
         check_result(
-            "generated_index_source_selection_action_control",
+            "generated_dashboard_action_controls",
             generated_has_7cm
             and all(result["status"] == "passed" for result in generated_screen_results.values()),
-            "generated index dashboard contains the required governed source-selection action control",
+            "generated dashboard contains required governed source-selection and Screen 3 action controls",
+        ),
+        check_result(
+            "generated_screen3_control_center_ready",
+            generated_screen3_result["status"] == "passed",
+            generated_screen3_result["reason"],
         ),
         check_result(
             "service_bridge_accepts_governed_request",
@@ -413,6 +422,7 @@ def validate_dashboard_runtime_interaction(
         "object_storage_validation_ready": object_storage_validation_ready,
         "pipeline_source_summary_ready": pipeline_source_summary_result["status"] == "passed",
         "governed_memory_production_wording_ready": governed_memory_result["status"] == "passed",
+        "generated_screen3_control_center_ready": generated_screen3_result["status"] == "passed",
         "blocker_id": BLOCKER_ID,
         "blocker_active": not source_ready,
         "selection_blocker_id": SELECTION_BLOCKER_ID,
@@ -422,6 +432,7 @@ def validate_dashboard_runtime_interaction(
             "validated": generated_has_7cm,
             "files": sorted(generated_texts),
             "screens": generated_screen_results,
+            "screen3_control_center": generated_screen3_result,
         },
         "service_bridge": service_smoke,
         "deferred_screen_workflow_blocker_id": SELECTION_BLOCKER_ID,
@@ -532,6 +543,7 @@ def run_service_smoke_test() -> dict[str, Any]:
         handler = service_module.Phase7DashboardWorkflowHandler
         endpoint_path = service_module.ENDPOINT_PATH
         existing_runs_endpoint_path = service_module.EXISTING_RUNS_ENDPOINT_PATH
+        screen3_options_endpoint_path = service_module.SCREEN3_OPTIONS_ENDPOINT_PATH
         object_storage_validate_endpoint_path = service_module.OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH
     except Exception as exc:  # pragma: no cover - defensive import report
         return {
@@ -575,6 +587,23 @@ def run_service_smoke_test() -> dict[str, Any]:
                     "request_id": response_payload.get("request_id"),
                 }
             )
+        screen3_payload = screen3_runtime_service_smoke_payload()
+        screen3_response, screen3_status_code = invoke_service_handler(
+            handler,
+            endpoint_path,
+            json.dumps(screen3_payload).encode("utf-8"),
+            queue_dir,
+        )
+        screen3_audit_reference = screen3_response.get("audit_reference")
+        screen3_runtime_request_processed = (
+            screen3_status_code == 202
+            and screen3_response.get("status") in {"blocked", "completed", "accepted"}
+            and bool(screen3_response.get("queued"))
+            and bool(screen3_audit_reference)
+            and Path(screen3_audit_reference).is_file()
+            and screen3_response.get("source_summary", {}).get("current_run_truth_mutated") is False
+            and screen3_response.get("source_summary", {}).get("phase8_started") is False
+        )
         index_source_request_accepted = any(
             result["screen_id"] == "index_source_mode" and result["accepted"]
             for result in request_results
@@ -632,6 +661,46 @@ def run_service_smoke_test() -> dict[str, Any]:
             and existing_unavailable_response.get("validation_status") == "unavailable"
             and "Existing run lookup unavailable. Governed workflow service is not connected to DB"
             in str(existing_unavailable_response.get("message") or "")
+        )
+        screen3_options_response, screen3_options_status_code = invoke_service_handler(
+            handler,
+            screen3_options_endpoint_path,
+            json.dumps(screen3_runtime_options_smoke_payload()).encode("utf-8"),
+            queue_dir,
+            connection_factory=fake_existing_run_connection_factory,
+        )
+        screen3_runtime_options_tested = (
+            screen3_options_status_code == 202
+            and screen3_options_response.get("status") == "accepted"
+            and screen3_options_response.get("runtime_options_loaded") is True
+            and screen3_options_response.get("option_count", 0) >= 1
+            and screen3_options_response.get("service_status") == "available"
+            and screen3_options_response.get("db_persistence_status") == "available"
+            and screen3_options_response.get("options", {}).get("runs")
+            and screen3_options_response.get("options", {}).get("databases")
+            and screen3_options_response.get("options", {}).get("intervals")
+            and screen3_options_response.get("options", {}).get("target_scope_options")
+            and screen3_options_response.get("target_resolution", {}).get("target_model")
+            == "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state"
+            and "both_targets_comparable" in screen3_options_response.get("comparison_readiness", {})
+            and "AWR_RUN_HISTORY" in str(screen3_options_response.get("metadata", {}).get("source") or "")
+            and screen3_options_response.get("metadata", {}).get("runtime_options_source_tables")
+            and screen3_options_response.get("runtime_options_source_tables")
+            and "runtime_options_source_note" in screen3_options_response.get("metadata", {})
+            and Path(screen3_options_response.get("audit_reference") or "").is_file()
+            and screen3_options_response.get("browser_db_query_performed") is False
+            and screen3_options_response.get("current_run_truth_mutated") is False
+        )
+        health_handler = object.__new__(handler)
+        health_handler.server = type(
+            "Phase7SmokeHealthServer",
+            (),
+            {"server_address": ("127.0.0.1", 8765)},
+        )()
+        health_payload = handler._health_payload(health_handler)
+        health_exposes_screen3_options_route = (
+            screen3_options_endpoint_path
+            in set(health_payload.get("supported_endpoints") or [])
         )
         object_storage_response, object_storage_status_code = invoke_service_handler(
             handler,
@@ -694,9 +763,12 @@ def run_service_smoke_test() -> dict[str, Any]:
             and existing_run_lookup_tested
             and existing_run_empty_state_tested
             and existing_run_unavailable_state_tested
+            and screen3_runtime_options_tested
+            and health_exposes_screen3_options_route
             and object_storage_validation_tested
             and invalid_object_storage_rejected
             and invalid_source_requests_rejected
+            and screen3_runtime_request_processed
         )
         return {
             "status": "passed" if passed else "failed",
@@ -715,9 +787,17 @@ def run_service_smoke_test() -> dict[str, Any]:
             "existing_run_unavailable_state_tested": existing_run_unavailable_state_tested,
             "existing_run_unavailable_status_code": existing_unavailable_status_code,
             "existing_run_unavailable_response": existing_unavailable_response,
+            "screen3_runtime_options_tested": screen3_runtime_options_tested,
+            "health_exposes_screen3_options_route": health_exposes_screen3_options_route,
+            "health_supported_endpoints": health_payload.get("supported_endpoints"),
+            "screen3_runtime_options_status_code": screen3_options_status_code,
+            "screen3_runtime_options_response": screen3_options_response,
             "object_storage_validation_tested": object_storage_validation_tested,
             "object_storage_validation_status_code": object_storage_status_code,
             "object_storage_validation_response": object_storage_response,
+            "screen3_runtime_request_processed": screen3_runtime_request_processed,
+            "screen3_runtime_status_code": screen3_status_code,
+            "screen3_runtime_response": screen3_response,
             "invalid_object_storage_rejected": invalid_object_storage_rejected,
             "invalid_source_requests_rejected": invalid_source_requests_rejected,
             "invalid_source_results": invalid_source_results,
@@ -738,6 +818,8 @@ def run_service_smoke_test() -> dict[str, Any]:
             "index_source_request_accepted": False,
             "evidence_dir": str(queue_dir),
             "invalid_request_rejected": False,
+            "screen3_runtime_request_processed": False,
+            "screen3_runtime_options_tested": False,
             "reason": f"service smoke request failed: {exc}",
         }
 
@@ -920,7 +1002,7 @@ def service_smoke_payloads() -> list[dict[str, Any]]:
             "workflow_type": "screen3_active_backend_execution",
             "target_type": "backend_execution_request",
             "target_id": "SCREEN3-VALIDATION-ACTIVE-REANALYSIS",
-            "execution_mode": "governed_screen3_execution_request",
+            "execution_mode": "local_backend_execution",
             "payload": {"validation": "phase7cm_screen3_service_bridge_smoke"},
         }
     )
@@ -955,6 +1037,49 @@ def service_smoke_payloads() -> list[dict[str, Any]]:
         }
     )
     return payloads
+
+
+def screen3_runtime_service_smoke_payload() -> dict[str, Any]:
+    return {
+        "screen_id": "screen_3",
+        "action_type": "screen3_active_reanalysis",
+        "workflow_type": "screen3_runtime_control_center",
+        "actor_id": "ACTOR-7CP-VALIDATION",
+        "target_type": "backend_execution_request",
+        "target_id": "SCREEN3-VALIDATION-ACTIVE-REANALYSIS",
+        "execution_mode": "local_backend_execution",
+        "runtime_influence_granted": False,
+        "phase4i_mutation_allowed": False,
+        "phase8_behavior": False,
+        "direct_truth_mutation_allowed": False,
+        "run_analysis_coupling": False,
+        "payload": {
+            "validation": "phase7cp_screen3_runtime_control_smoke",
+            "requested_screen3_action": "analyze_selection",
+            "target_screen": "screen_3",
+            "selectedSourceMode": "local_staged",
+            "sourceSelectionMethod": "backend_path",
+            "selectedSourcePath": "data/input",
+            "reviewer_actor_id": "ACTOR-7CP-VALIDATION",
+            "current_run_truth_mutated": False,
+            "deterministic_truth_changed": False,
+            "parser_mutated": False,
+            "learning_candidate_created": False,
+            "materialization_changed": False,
+            "runtime_eligibility_changed": False,
+            "phase8_started": False,
+            "llm_changed_status": False,
+            "llm_changed_validation": False,
+            "llm_changed_execution": False,
+            "llm_changed_truth": False,
+            "browser_file_read_attempted": False,
+            "browser_object_storage_access_attempted": False,
+            "browser_db_query_attempted": False,
+            "run_analysis_coupling": False,
+            "phase8_behavior": False,
+            "em_extract_attempted": False,
+        },
+    }
 
 
 def invalid_service_smoke_payload() -> dict[str, Any]:
@@ -1046,6 +1171,31 @@ def existing_run_lookup_smoke_payload() -> dict[str, Any]:
     }
 
 
+def screen3_runtime_options_smoke_payload() -> dict[str, Any]:
+    return {
+        "screen_id": "screen_3",
+        "action_type": "screen3_load_runtime_options",
+        "workflow_type": "screen3_runtime_options_lookup",
+        "target_screen": "screen3",
+        "governance_mode": "governed_request",
+        "limit": 10,
+        "browser_db_query_attempted": False,
+        "browser_object_storage_access_attempted": False,
+        "direct_object_storage_execution_attempted": False,
+        "direct_truth_mutation_allowed": False,
+        "phase4i_mutation_allowed": False,
+        "phase8_behavior": False,
+        "phase8_started": False,
+        "run_analysis_coupling": False,
+        "current_run_truth_mutated": False,
+        "deterministic_truth_changed": False,
+        "parser_mutated": False,
+        "learning_candidate_created": False,
+        "materialization_changed": False,
+        "runtime_eligibility_changed": False,
+    }
+
+
 def object_storage_validation_smoke_payload() -> dict[str, Any]:
     return {
         "screen_id": "index_source_mode",
@@ -1073,8 +1223,9 @@ def invalid_object_storage_validation_smoke_payload() -> dict[str, Any]:
 
 
 class FakeExistingRunCursor:
-    description = (
+    RUN_HISTORY_DESCRIPTION = (
         ("RUN_HISTORY_ID",),
+        ("ANALYSIS_RUN_ID",),
         ("SOURCE_FILE_NAME",),
         ("DB_NAME",),
         ("DBID",),
@@ -1085,6 +1236,169 @@ class FakeExistingRunCursor:
         ("RISK_LEVEL",),
         ("CREATED_AT",),
     )
+    RUN_HISTORY_ROWS = [
+        (
+            9001,
+            "analysis-9001",
+            "adg_awr_snap_06_adg_transport_lag.out",
+            "FINDB",
+            "123456789",
+            "FINDB1",
+            "2026-03-29T06:00:00",
+            "2026-03-29T07:00:00",
+            "review",
+            "medium",
+            "2026-03-29T07:05:00",
+        )
+    ]
+    REPORT_DESCRIPTION = (
+        ("AWR_ID",),
+        ("SOURCE_FILE_NAME",),
+        ("DB_NAME",),
+        ("DBID",),
+        ("INSTANCE_NAME",),
+        ("HOST_NAME",),
+        ("SNAP_TIME_BEGIN",),
+        ("SNAP_TIME_END",),
+        ("PARSE_STATUS",),
+        ("CREATED_AT",),
+        ("SNAP_ID_BEGIN",),
+        ("SNAP_ID_END",),
+        ("APPLICATION_NAME",),
+        ("SOURCE_SYSTEM_CODE",),
+        ("INGEST_RUN_ID",),
+    )
+    REPORT_ROWS = [
+        (
+            108,
+            "sprtrn_awr_108.out",
+            "SPRTRN",
+            "8101005004",
+            "sprtrn1",
+            "sprtrn-db01",
+            "2026-04-02T10:00:00",
+            "2026-04-02T11:00:00",
+            "parsed",
+            "2026-04-02T11:05:00",
+            1201,
+            1202,
+            "OrderService",
+            "sprtrn-db01",
+            701,
+        ),
+        (
+            107,
+            "sprtrn_awr_107.out",
+            "SPRTRN",
+            "8101005004",
+            "sprtrn1",
+            "sprtrn-db01",
+            "2026-04-02T09:00:00",
+            "2026-04-02T10:00:00",
+            "parsed",
+            "2026-04-02T10:05:00",
+            1199,
+            1200,
+            "OrderService",
+            "sprtrn-db01",
+            701,
+        ),
+        (
+            106,
+            "hrdb_awr_106.out",
+            "HRDB",
+            "9200200200",
+            "hrdb1",
+            "hrdb01",
+            "2026-04-01T08:00:00",
+            "2026-04-01T09:00:00",
+            "parsed",
+            "2026-04-01T09:05:00",
+            501,
+            502,
+            None,
+            "hrdb01",
+            702,
+        ),
+    ]
+    TABLE_COUNTS = {
+        "AWR_RUN_HISTORY": len(RUN_HISTORY_ROWS),
+        "AWR_REPORT": len(REPORT_ROWS),
+        "AWR_SNAPSHOT": 0,
+        "AWR_INGEST_RUN": 2,
+        "AWR_SOURCE_SYSTEM": 3,
+        "AWR_RECOMMENDATION_HISTORY": 1,
+        "AWR_ACTION_HISTORY": 1,
+        "AWR_OUTCOME_HISTORY": 1,
+        "AWR_METRIC_FACT": 12,
+        "AWR_WAIT_EVENT_FACT": 4,
+        "AWR_TOP_SQL_FACT": 3,
+        "AWR_FEATURE_VECTOR": 3,
+    }
+    TABLE_COLUMNS = {
+        "AWR_RUN_HISTORY": [item[0] for item in RUN_HISTORY_DESCRIPTION],
+        "AWR_REPORT": [
+            "AWR_ID",
+            "SOURCE_SYSTEM_ID",
+            "SOURCE_FILE_NAME",
+            "DB_NAME",
+            "DBID",
+            "INSTANCE_NAME",
+            "HOST_NAME",
+            "SNAP_ID_BEGIN",
+            "SNAP_ID_END",
+            "SNAP_TIME_BEGIN",
+            "SNAP_TIME_END",
+        ],
+        "AWR_SNAPSHOT": [],
+        "AWR_INGEST_RUN": ["INGEST_RUN_ID", "SOURCE_SYSTEM_ID", "STATUS", "CREATED_AT"],
+        "AWR_SOURCE_SYSTEM": [
+            "SOURCE_SYSTEM_ID",
+            "APPLICATION_NAME",
+            "SOURCE_SYSTEM_CODE",
+            "PRIMARY_HOST_NAME",
+        ],
+        "AWR_RECOMMENDATION_HISTORY": [
+            "RECOMMENDATION_HISTORY_ID",
+            "RUN_HISTORY_ID",
+            "RECOMMENDATION_ID",
+            "CREATED_AT",
+        ],
+        "AWR_ACTION_HISTORY": ["ACTION_HISTORY_ID", "RUN_HISTORY_ID", "ACTION_ID", "CREATED_AT"],
+        "AWR_OUTCOME_HISTORY": ["OUTCOME_HISTORY_ID", "RUN_HISTORY_ID", "OUTCOME_ID", "CREATED_AT"],
+        "AWR_METRIC_FACT": [
+            "AWR_ID",
+            "SOURCE_SYSTEM_ID",
+            "SNAP_TIME_BEGIN",
+            "SNAP_TIME_END",
+            "METRIC_DOMAIN",
+            "METRIC_NAME",
+            "METRIC_VALUE_NUM",
+        ],
+        "AWR_WAIT_EVENT_FACT": [
+            "AWR_ID",
+            "SOURCE_SYSTEM_ID",
+            "SNAP_TIME_BEGIN",
+            "SNAP_TIME_END",
+            "EVENT_NAME",
+            "WAIT_CLASS",
+        ],
+        "AWR_TOP_SQL_FACT": [
+            "AWR_ID",
+            "SOURCE_SYSTEM_ID",
+            "SNAP_TIME_BEGIN",
+            "SNAP_TIME_END",
+            "SQL_ID",
+            "ELAPSED_TIME_SEC",
+        ],
+        "AWR_FEATURE_VECTOR": [
+            "AWR_ID",
+            "SOURCE_SYSTEM_ID",
+            "OBSERVED_AT",
+            "FEATURE_SET_NAME",
+            "VECTOR_STATUS",
+        ],
+    }
 
     def __enter__(self) -> "FakeExistingRunCursor":
         return self
@@ -1092,24 +1406,43 @@ class FakeExistingRunCursor:
     def __exit__(self, *_args: Any) -> None:
         return None
 
-    def execute(self, _sql: str, _params: dict[str, Any]) -> None:
+    def execute(self, sql: str, params: dict[str, Any]) -> None:
+        normalized_sql = " ".join(str(sql or "").upper().split())
+        limit = int(params.get("limit", 100)) if isinstance(params, dict) else 100
+        self.description = self.RUN_HISTORY_DESCRIPTION
+        self._rows: list[tuple[Any, ...]] = []
+        if "USER_TAB_COLUMNS" in normalized_sql:
+            table_name = str(params.get("table_name") or "").upper()
+            self.description = (("COLUMN_NAME",),)
+            self._rows = [(column,) for column in self.TABLE_COLUMNS.get(table_name, [])]
+            return None
+        if "COUNT(*)" in normalized_sql and "APPLICATION_NAME IS NOT NULL" in normalized_sql:
+            self.description = (("COUNT",),)
+            self._rows = [(2,)]
+            return None
+        count_match = re.search(r"COUNT\(\*\)\s+FROM\s+([A-Z0-9_]+)", normalized_sql)
+        if count_match:
+            table_name = count_match.group(1)
+            self.description = (("COUNT",),)
+            self._rows = [(self.TABLE_COUNTS.get(table_name, 0),)]
+            return None
+        if "FROM AWR_REPORT" in normalized_sql:
+            self.description = self.REPORT_DESCRIPTION
+            self._rows = self.REPORT_ROWS[:limit]
+            return None
+        if "FROM AWR_RUN_HISTORY" in normalized_sql:
+            self.description = self.RUN_HISTORY_DESCRIPTION
+            self._rows = self.RUN_HISTORY_ROWS[:limit]
+            return None
+        self._rows = self.RUN_HISTORY_ROWS[:limit]
         return None
 
+    def fetchone(self) -> tuple[Any, ...] | None:
+        rows = getattr(self, "_rows", [])
+        return rows[0] if rows else None
+
     def fetchall(self) -> list[tuple[Any, ...]]:
-        return [
-            (
-                9001,
-                "adg_awr_snap_06_adg_transport_lag.out",
-                "FINDB",
-                "123456789",
-                "FINDB1",
-                "2026-03-29T06:00:00",
-                "2026-03-29T07:00:00",
-                "review",
-                "medium",
-                "2026-03-29T07:05:00",
-            )
-        ]
+        return list(getattr(self, "_rows", self.RUN_HISTORY_ROWS))
 
 
 class FakeExistingRunConnection:
@@ -1165,6 +1498,9 @@ def invoke_service_handler(
         {
             "phase7_queue_dir": queue_dir,
             "phase7_existing_run_connection_factory": staticmethod(connection_factory)
+            if connection_factory is not None
+            else None,
+            "phase7_screen3_options_connection_factory": staticmethod(connection_factory)
             if connection_factory is not None
             else None,
         },
@@ -1555,6 +1891,347 @@ def validate_index_source_selection_workflow(
     return {
         "status": "passed",
         "reason": "index source-selection workflow has current selectable source cards, governed handoff action, result panel, and collapsed historical boundary evidence",
+        "offenders": [],
+    }
+
+
+def validate_generated_screen3_control_center(
+    generated_texts: dict[str, str],
+) -> dict[str, Any]:
+    """Require generated Screen 3 to expose the 7CP Control Center workflow."""
+
+    screen3_text = generated_texts.get("awr_dashboard/screen_3_history_selector.html", "")
+    if not screen3_text:
+        return {
+            "status": "failed",
+            "reason": "generated Screen 3 validation could not find awr_dashboard/screen_3_history_selector.html",
+            "offenders": ["missing screen_3_history_selector.html"],
+        }
+
+    normalized_screen3_text = re.sub(r"\s+", " ", screen3_text)
+    required_markers = (
+        "Governed Runtime Control Center",
+        "Source Received From Index",
+        "Work Area 1",
+        "Select Runtime Scope",
+        "Work Area 2",
+        "Resolve Comparison Targets",
+        "Target A and Target B are built from the selected AWR/report rows and windows",
+        "Work Area 3",
+        "Submit Governed Action and Review Result",
+        "Load Runtime Options",
+        "Runtime Scope Filters",
+        "Filtered AWR / Run / Report Results",
+        "Snapshot / Interval Selection",
+        "Selected Runtime Scope",
+        "Apply selection to",
+        "Runtime Scope",
+        "Review Mode",
+        "Governed Actions",
+        "Request / Execution Result",
+        "Runtime Safety and Selection Impact",
+        "Comparison Result Summary",
+        "Comparison Readiness / Outcome",
+        "Comparison &amp; Review Controls",
+        "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
+        "Source type",
+        "Scope type",
+        "Scope value",
+        "Resolution",
+        "Readiness",
+        "Both targets comparable",
+        "load_required",
+        "Technical Audit / Debug Details",
+        "Application",
+        "DB Name",
+        "DBID",
+        "Instance",
+        "Host/System",
+        "AWR / Run",
+        "Snapshot / Time Window",
+        "Load available runtime options",
+        "phase7cm-service-button screen3-runtime-options-button",
+        "screen3-runtime-filter-panel",
+        "data-screen3-runtime-options-target=\"runtime-filter-application\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-db\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-dbid\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-instance\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-host\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-source-type\"",
+        "data-screen3-runtime-options-target=\"runtime-filter-time-range\"",
+        "screen3-filter-select",
+        "screen3RuntimeFilterSearch",
+        "Apply Filters",
+        "Clear Filters",
+        "data-screen3-filtered-result-count",
+        "screen3ActiveSelectionTarget",
+        "screen3-runtime-scope-table",
+        "data-screen3-runtime-options-target=\"runtime-scope-rows\"",
+        "data-screen3-runtime-options-target=\"interval-rows\"",
+        "screen3-interval-full-width-panel",
+        "Apply interval to",
+        "Runtime options route unavailable",
+        "route available",
+        "No runtime options found",
+        "Runtime options loaded",
+        "/phase7/dashboard/screen3/options",
+        "Target A",
+        "Target B",
+        "Requested artifact/reference",
+        "Screen 4 handoff",
+        "Target A Resolution Card",
+        "Target B Resolution Card",
+        "Resolved AWR count",
+        "Resolved snapshot/window count",
+        "Current DB history",
+        "Similar AWRs",
+        "Cluster baseline",
+        "Fleet baseline",
+        "Diagnosis",
+        "Historical proof",
+        "Anomaly review",
+        "Period comparison",
+        "Similarity review",
+        "Local selection changes only browser/local request context",
+        "Existing run truth unchanged",
+        "screen3-governed-actions-card",
+        "screen3-result-summary-banner",
+        "runtime_options_source_tables",
+        "table_exists",
+        "key_columns_used",
+        "included_in_screen3_runtime_options",
+        "AWR_SNAPSHOT",
+        "screen3RuntimeOptionsCache",
+        "screen3-runtime-options-v1",
+        "Runtime options restored from browser cache",
+        "Refresh failed; showing cached runtime options",
+        "Cache status",
+        "Generated at build time",
+        "Workflow Service:",
+        "data-dashboard-runtime-badge=\"true\"",
+        "data-dashboard-runtime-workflow-status=\"true\"",
+        "runtime-badge-hydrated",
+        "readStoredWorkflowStatus",
+        "Check with Load Options",
+        "State source:",
+        "screen3RuntimeScopeSelectionSource",
+        "screen3TargetASelectionSource",
+        "screen3TargetBSelectionSource",
+        "data-screen3-runtime-sort",
+        "data-screen3-table-sort",
+        "data-screen3-table-filter",
+        "data-screen3-table-filter-toggle",
+        "data-screen3-clear-table-filters",
+        "data-screen3-table-count",
+        "data-screen3-table-sort-summary",
+        "data-screen3-table-filter-summary",
+        "data-screen3-table-id=\"screen3-runtime-inventory\"",
+        "data-screen3-table-id=\"screen3-intervals\"",
+        "data-screen3-table-id=\"screen3-target-a-options\"",
+        "data-screen3-table-id=\"screen3-target-b-options\"",
+        "screen3-selection-legend",
+        "screen3-selected-context-strip",
+        "screen3-selected-runtime-row",
+        "screen3-selected-interval-row",
+        "screen3-selected-advanced-row",
+        "initializeScreen3Tables",
+        "data-screen3-sort-indicator",
+        "screen3SelectedRuntimeScopeRowId",
+        "screen3SelectedTargetARowId",
+        "screen3SelectedTargetBRowId",
+        "screen3RuntimeRowIdentity",
+        "screen3IntervalRowIdentity",
+        "screen3-table-sort-button",
+        "screen3-table-filter-toggle",
+        "position: sticky",
+        "Only its selected row gets the strong table highlight",
+        "Advanced target picker: external / baseline options",
+        "screen3_active_reanalysis",
+        "screen3_load_runtime_options",
+        'data-screen-id="screen_3"',
+        'data-action-type="screen3_active_reanalysis"',
+        'data-execution-mode="local_backend_execution"',
+    )
+    offenders = [
+        f"missing 7CP Screen 3 marker: {marker}"
+        for marker in required_markers
+        if marker not in screen3_text and marker not in normalized_screen3_text
+    ]
+
+    primary_region_end_candidates = [
+        pos
+        for pos in (
+            screen3_text.find("Historical Phase Boundary Evidence"),
+            screen3_text.find("data-phase7-legacy-context"),
+            screen3_text.find("Advanced Debug"),
+        )
+        if pos >= 0
+    ]
+    primary_region_end = min(primary_region_end_candidates) if primary_region_end_candidates else len(screen3_text)
+    primary_region = screen3_text[:primary_region_end]
+    stale_primary_markers = (
+        "Phase 7H.2 Screen 3 Control Center: read-only selectors only.",
+        '<div class="section-kicker">7CP Governed Runtime</div>',
+        '<div class="section-kicker">7CP Runtime Actions</div>',
+        '<div class="section-kicker">Phase 7H.2</div>',
+        '<div class="section-kicker">Phase 7AN</div>',
+        "read-only selectors only",
+        "disabled Phase 7AN action wall",
+        "execution disabled in this phase",
+        "static_read_only / execution disabled in this phase",
+        "preview-only/static export",
+    )
+    lower_primary_region = primary_region.lower()
+    for marker in stale_primary_markers:
+        if marker.lower() in lower_primary_region:
+            offenders.append(
+                "stale primary Screen 3 preview marker still present: " + marker
+            )
+
+    title_markers = (
+        "<title>Screen 3 - History Selector</title>",
+        "<h1>Screen 3 - History Selector</h1>",
+    )
+    for marker in title_markers:
+        if marker in screen3_text:
+            offenders.append("stale Screen 3 page identity still present: " + marker)
+    if "Screen 3 - Governed Runtime Control Center" not in screen3_text:
+        offenders.append(
+            "generated Screen 3 product title is missing: Screen 3 - Governed Runtime Control Center"
+        )
+    if 'class="inline-action-button' in screen3_text:
+        offenders.append(
+            "generated Screen 3 Load Runtime Options buttons still use default/unstyled inline-action-button class"
+        )
+    if "Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py." not in screen3_text:
+        offenders.append(
+            "generated Screen 3 missing stale runtime-options route recovery message"
+        )
+    if "Not available" not in screen3_text or "Application" not in screen3_text:
+        offenders.append(
+            "generated Screen 3 does not truthfully mark unavailable application metadata"
+        )
+    if "Filtered AWR / Run / Report Results" not in screen3_text or "Snapshot / Interval Selection" not in screen3_text:
+        offenders.append(
+            "generated Screen 3 does not expose DB-backed run and interval selection containers"
+        )
+    if "Load Runtime Options to select existing DB-backed AWRs" in screen3_text:
+        offenders.append(
+            "generated Screen 3 uses inconsistent capitalization for runtime option empty state"
+        )
+
+    runtime_scope_pos = screen3_text.find("Select Runtime Scope")
+    comparison_pos = screen3_text.find("Resolve Comparison Targets")
+    submit_pos = screen3_text.find("Submit Governed Action and Review Result")
+    safety_impact_pos = screen3_text.find("Runtime Safety and Selection Impact")
+    technical_pos = screen3_text.find("Technical Audit / Debug Details")
+    if not (
+        0 <= runtime_scope_pos < comparison_pos < submit_pos < safety_impact_pos < technical_pos
+    ):
+        offenders.append(
+            "generated Screen 3 does not use the required primary order: Select Runtime Scope, Resolve Comparison Targets, Submit Governed Action and Review Result, Runtime Safety and Selection Impact, Technical Audit / Debug Details"
+        )
+
+    visible_screen3_text = re.sub(r"<[^>]+>", " ", visible_text(screen3_text))
+    for marker in ("7CP", "Phase 7H.2", "Phase 7AN", "Runtime Selection Context"):
+        if marker in visible_screen3_text:
+            offenders.append(
+                "generated Screen 3 exposes forbidden visible product label: " + marker
+            )
+    misleading_visible_markers = (
+        "Selected Issue Domain",
+        "Selected Execution Mode",
+        "Selected Source Mode",
+        "Available Actions",
+    )
+    for marker in misleading_visible_markers:
+        if marker in visible_screen3_text:
+            offenders.append(
+                "generated Screen 3 still exposes misleading primary operator label: " + marker
+            )
+
+    technical_details_pos = screen3_text.find("Technical Audit / Debug Details")
+    safety_pos = screen3_text.find("Runtime Safety and Selection Impact")
+    if technical_details_pos < 0 or safety_pos < 0 or technical_details_pos < safety_pos:
+        offenders.append(
+            "generated Screen 3 does not keep Technical Audit / Debug Details collapsed at the bottom after Runtime Safety and Selection Impact"
+        )
+
+    result_field_checks = (
+        ("Selected source mode", ("Selected source mode", "Source mode", 'data-screen3-result-field="selected_source_mode"')),
+        ("Selected application", ("Selected application", "Application", 'data-screen3-result-field="selected_application"')),
+        ("Selected DB", ("Selected DB", "DB", 'data-screen3-result-field="selected_db"')),
+        ("Selected DBID", ("Selected DBID", "DBID", 'data-screen3-result-field="selected_dbid"')),
+        ("Selected host", ("Selected host", "Host", 'data-screen3-result-field="selected_host"')),
+        ("Selected instance", ("Selected instance", "Instance", 'data-screen3-result-field="selected_instance"')),
+        ("Selected AWR/run", ("Selected AWR/run", "Run/report", 'data-screen3-result-field="selected_awr_run"')),
+        ("Selected snapshot/window", ("Selected snapshot/window", "Snapshot/window", 'data-screen3-result-field="selected_snapshot_window"')),
+        ("Runtime scope", ("Runtime scope", 'data-screen3-result-field="runtime_scope"')),
+        ("Comparison mode", ("Comparison mode", 'data-screen3-result-field="comparison_mode"')),
+        ("Comparison Target A", ("Comparison Target A", "Target A", 'data-screen3-result-field="comparison_target_a"', 'data-screen3-result-field="comparison_result_target_a"')),
+        ("Comparison Target B", ("Comparison Target B", "Target B", 'data-screen3-result-field="comparison_target_b"', 'data-screen3-result-field="comparison_result_target_b"')),
+        ("Target A readiness", ("Target A readiness", 'data-screen3-result-field="comparison_target_a_readiness"')),
+        ("Target B readiness", ("Target B readiness", 'data-screen3-result-field="comparison_target_b_readiness"')),
+        ("Both targets comparable", ("Both targets comparable", 'data-screen3-result-field="comparison_both_comparable"')),
+        ("Review mode", ("Review mode", 'data-screen3-result-field="review_mode"')),
+        ("Request ID", ("Request ID", 'data-screen3-result-field="request_id"')),
+        ("Transaction ID", ("Transaction ID", 'data-screen3-result-field="transaction_id"')),
+        ("Validation status", ("Validation status", "Validation", 'data-screen3-result-field="validation_status"')),
+        ("Audit ID/reference", ("Audit ID/reference", "Audit reference", 'data-screen3-result-field="audit_reference"')),
+        ("Persistence", ("Persistence", 'data-screen3-result-field="persistence"')),
+        ("Execution status", ("Execution status", 'data-screen3-result-field="execution_status"')),
+        ("Output artifact", ("Output artifact", 'data-screen3-result-field="output_artifact"')),
+        ("New run/output reference", ("New run/output reference", 'data-screen3-result-field="new_run_output_reference"')),
+        ("Existing run truth", ("Existing run truth", 'data-screen3-result-field="existing_run_truth"')),
+        ("Next step", ("Next step", 'data-screen3-result-field="next_step"')),
+    )
+    for field, alternatives in result_field_checks:
+        if not any(
+            alternative in visible_screen3_text or alternative in screen3_text
+            for alternative in alternatives
+        ):
+            offenders.append(
+                "generated Screen 3 Request / Execution Result field missing: " + field
+            )
+
+    action_primary_region_end_candidates = [
+        pos
+        for pos in (
+            screen3_text.find("Technical Audit / Debug Details"),
+            screen3_text.find("Runtime Safety and Selection Impact"),
+        )
+        if pos >= 0
+    ]
+    action_primary_region_end = (
+        min(action_primary_region_end_candidates)
+        if action_primary_region_end_candidates
+        else primary_region_end
+    )
+    visible_action_primary_region = re.sub(
+        r"<[^>]+>",
+        " ",
+        visible_text(screen3_text[:action_primary_region_end]),
+    )
+    for marker in ("analyze_selection", "rerun_analysis", "build_comparison", "load_from_object_storage"):
+        if marker in visible_action_primary_region:
+            offenders.append(
+                "generated Screen 3 exposes technical action key in primary action UI: " + marker
+            )
+    if "screen3-reanalysis-safety-labels" in screen3_text:
+        offenders.append(
+            "generated Screen 3 still includes primary safety-pill wall markup"
+        )
+
+    if offenders:
+        return {
+            "status": "failed",
+            "reason": "generated Screen 3 is not the 7CP governed runtime Control Center: "
+            + "; ".join(offenders[:10]),
+            "offenders": offenders,
+        }
+    return {
+        "status": "passed",
+        "reason": "generated Screen 3 exposes the 7CP governed runtime Control Center and not the stale preview scaffold",
         "offenders": [],
     }
 

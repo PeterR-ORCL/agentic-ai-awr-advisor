@@ -31,81 +31,235 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertTrue(hasattr(dashboard, "_render_screen_3_selector_page"))
         self.assertTrue(hasattr(dashboard, "_build_screen3_control_center_model"))
 
-    def test_screen3_control_center_exists_with_summary_and_safety_labels(self) -> None:
+    def test_screen3_control_center_product_workflow_exists(self) -> None:
         dashboard = dashboard_module()
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
-        self.assertIn("Screen 3 Control Center", source)
-        self.assertIn("Screen 3 Control Center", rendered)
-        self.assertIn("data-dashboard-selected-summary", rendered)
-        self.assertIn("Read-only selection state", rendered)
-        self.assertIn("Exploratory only", rendered)
-        self.assertIn("No backend writes", rendered)
-        self.assertIn("No approval controls", rendered)
-        self.assertIn("No runtime activation", rendered)
-        self.assertIn("Does not change diagnostic truth", rendered)
-        self.assertIn("Does not change recommendation truth", rendered)
+        self.assertIn("Governed Runtime Control Center", source)
+        self.assertIn("Governed Runtime Control Center", rendered)
+        self.assertIn("Existing run truth unchanged", rendered)
+        self.assertIn("Source Received From Index", rendered)
+        self.assertIn("Load Runtime Options", rendered)
+        self.assertIn("Work Area 1", rendered)
+        self.assertIn("Select Runtime Scope", rendered)
+        self.assertIn("Work Area 2", rendered)
+        self.assertIn("Resolve Comparison Targets", rendered)
+        self.assertIn("Target A and Target B are built from the selected AWR/report rows and windows", rendered)
+        self.assertIn("Work Area 3", rendered)
+        self.assertIn("Submit Governed Action and Review Result", rendered)
+        self.assertIn("Runtime Scope Filters", rendered)
+        self.assertIn("screen3-filter-select", rendered)
+        self.assertIn("screen3RuntimeFilterSearch", rendered)
+        self.assertIn("Apply Filters", rendered)
+        self.assertIn("Clear Filters", rendered)
+        self.assertIn("data-screen3-filtered-result-count", rendered)
+        self.assertIn("Filtered AWR / Run / Report Results", rendered)
+        self.assertIn("How to use this screen", rendered)
+        self.assertIn("Selected Context", rendered)
+        self.assertIn("screen3-selected-context-strip", rendered)
+        self.assertIn("screen3-selection-legend", rendered)
+        self.assertIn("data-screen3-table-id=\"screen3-runtime-inventory\"", rendered)
+        self.assertIn("data-screen3-table-id=\"screen3-intervals\"", rendered)
+        self.assertIn("data-screen3-table-id=\"screen3-target-a-options\"", rendered)
+        self.assertIn("data-screen3-table-id=\"screen3-target-b-options\"", rendered)
+        self.assertIn("data-screen3-table-filter", rendered)
+        self.assertIn("data-screen3-table-filter-toggle", rendered)
+        self.assertIn("data-screen3-clear-table-filters", rendered)
+        self.assertIn("data-screen3-table-count", rendered)
+        self.assertIn("data-screen3-table-sort-summary", rendered)
+        self.assertIn("data-screen3-table-filter-summary", rendered)
+        self.assertIn("screen3-table-filter-input", rendered)
+        self.assertIn("screen3-table-filter-toggle", rendered)
+        self.assertIn("data-screen3-runtime-sort", rendered)
+        self.assertIn("data-screen3-table-sort", rendered)
+        self.assertIn("data-screen3-sort-indicator", rendered)
+        self.assertIn("data-screen3-row-id", rendered)
+        self.assertIn("screen3SelectedRuntimeScopeRowId", source)
+        self.assertIn("screen3SelectedTargetARowId", source)
+        self.assertIn("screen3SelectedTargetBRowId", source)
+        self.assertIn("screen3RuntimeOptionsCache", source)
+        self.assertIn("screen3-runtime-options-v1", source)
+        self.assertIn("Runtime options restored from browser cache", source)
+        self.assertIn("Refresh failed; showing cached runtime options", source)
+        self.assertIn("Cache status", rendered)
+        self.assertIn("screen3RuntimeScopeSelectionSource", source)
+        self.assertIn("screen3TargetASelectionSource", source)
+        self.assertIn("screen3TargetBSelectionSource", source)
+        self.assertIn("screen3RuntimeRowIdentity", source)
+        self.assertIn("screen3IntervalRowIdentity", source)
+        self.assertIn("screen3-selected-runtime-row", source)
+        self.assertIn("screen3-selected-interval-row", source)
+        self.assertIn("screen3-selected-advanced-row", source)
+        self.assertIn("initializeScreen3Tables", source)
+        self.assertIn("position: sticky", source)
+        self.assertIn("Check with Load Options", source)
+        self.assertIn("The next row click updates only this assignment", rendered)
+        self.assertIn("Only its selected row gets the strong table highlight", rendered)
+        self.assertIn("Snapshot / Interval Selection", rendered)
+        self.assertIn("Apply interval to", rendered)
+        self.assertIn("Selected Runtime Scope", rendered)
+        self.assertIn("Comparison &amp; Review Controls", rendered)
+        self.assertNotIn("<h4>Comparison Controls</h4>", rendered)
+        self.assertIn("Review Mode", rendered)
+        self.assertIn("Governed Actions", rendered)
+        self.assertIn("Request / Execution Result", rendered)
+        self.assertIn("Runtime Safety and Selection Impact", rendered)
+        self.assertIn("Technical Audit / Debug Details", rendered)
+        self.assertIn("Generated at build time", source)
+        self.assertIn("Workflow Service:", source)
+        self.assertIn("data-dashboard-runtime-badge=\"true\"", source)
+        self.assertIn("data-dashboard-runtime-workflow-status=\"true\"", source)
+        self.assertIn("runtime-badge-hydrated", source)
+        self.assertIn("readStoredWorkflowStatus", source)
+        self.assertIn("Local dashboard workflow service status", source)
+        self.assertNotIn("Live Service", source)
+        self.assertIn("State source:", rendered)
+        self.assertNotIn("Runtime Selection Context", rendered)
+        self.assertNotIn("Selected Issue Domain", rendered)
+
+        results_index = rendered.find("Filtered AWR / Run / Report Results")
+        interval_index = rendered.find("Snapshot / Interval Selection")
+        selected_context_index = rendered.find("Selected Context")
+        self.assertGreater(selected_context_index, results_index)
+        self.assertGreater(selected_context_index, interval_index)
 
     def test_selector_metadata_exists_for_domains_and_run_context(self) -> None:
         rendered = self.render_screen3()
 
         required = (
             'data-dashboard-selectable="true"',
-            'data-dashboard-select-type="domain"',
-            'data-dashboard-select-key="selectedDomain"',
-            'data-dashboard-filter-key="selectedDomain"',
-            'data-dashboard-filter-value="CPU"',
-            'data-dashboard-select-domain="CPU"',
-            'data-dashboard-select-type="awr"',
-            'data-dashboard-select-key="selectedAwr"',
-            'data-dashboard-select-type="run"',
-            'data-dashboard-select-key="selectedRun"',
+            'data-dashboard-select-type="runtimeScope"',
+            'data-dashboard-select-key="selectedRuntimeScope"',
+            'data-dashboard-state-set-selectedDb="ORCL"',
+            'data-dashboard-state-set-selectedDbid="123456"',
+            'data-dashboard-select-type="snapshot"',
+            'data-dashboard-select-key="selectedTimeWindow"',
+            'data-dashboard-state-key="screen3RuntimeFilterSearch"',
+            'data-dashboard-select-type="comparisonMode"',
+            'data-dashboard-select-key="selectedComparisonMode"',
+            'data-dashboard-select-type="reviewMode"',
+            'data-dashboard-select-key="selectedReviewMode"',
+        )
+        for phrase in required:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+        self.assertNotIn("screen3-filter-pill", rendered)
+
+    def test_runtime_scope_table_and_comparison_builder_are_present(self) -> None:
+        rendered = self.render_screen3()
+
+        required = (
+            "screen3-runtime-scope-table",
+            'data-screen3-runtime-options-target="runtime-scope-rows"',
+            'data-screen3-runtime-options-target="interval-rows"',
+            "Application",
+            "DB Name",
+            "DBID",
+            "Instance",
+            "Host/System",
+            "AWR / Run",
+            "Report ID / Run History ID",
+            "Target A",
+            "Target B",
+            "Source type",
+            "Scope type",
+            "Scope value",
+            "Resolution",
+            "Readiness",
+            "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
+            "Comparison Readiness / Outcome",
+            "Both targets comparable",
+            "Current DB history",
+            "Similar AWRs",
+            "Cluster baseline",
+            "Fleet baseline",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_authoritative_domain_controls_are_present(self) -> None:
+    def test_screen3_runtime_selection_uses_active_assignment_only(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        required = (
+            "const isScreen3RuntimeRow = selectType === 'runtimeScope';",
+            "const isScreen3IntervalRow = selectType === 'snapshot';",
+            "const screen3ContextSelected = selectableMatchesScreen3Context(element, value, safeState);",
+            "isSelected = screen3ContextSelected;",
+            "return safeValue === safeStateValue(state.screen3SelectedTargetARowId || '');",
+            "return safeValue === safeStateValue(state.screen3SelectedTargetBRowId || '');",
+            "return safeValue === safeStateValue(state.screen3SelectedRuntimeScopeRowId || '');",
+        )
+        for phrase in required:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, source)
+
+    def test_screen3_table_controls_are_icon_based_and_chained(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
-        for domain in ("CPU", "IO", "MEMORY", "COMMIT", "RAC", "ADG"):
-            with self.subTest(domain=domain):
-                self.assertIn(f'data-dashboard-filter-value="{domain}"', rendered)
-                self.assertIn(f">{domain}</span>", rendered)
+        required_source = (
+            "data-screen3-table-filter-toggle",
+            "screen3-table-filter-toggle",
+            "handleScreen3TableFilterToggleClick",
+            "headerControl.classList.toggle('is-filter-open')",
+            "activeFilters.every(function (key)",
+            "No rows match current table filters.",
+            "Showing ' + String(visibleCount) + ' of ' + String(baselineCount) + ' row(s) after table filters.",
+            "screen3-table-sort-summary",
+            "screen3-table-filter-summary",
+        )
+        for phrase in required_source:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, source)
+
+        required_rendered = (
+            "screen3-table-sort-button",
+            "screen3-table-filter-toggle",
+            "data-screen3-table-filter-toggle",
+            "data-screen3-table-sort-summary",
+            "data-screen3-table-filter-summary",
+            "Clear table filters",
+        )
+        for phrase in required_rendered:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
 
     def test_required_safety_wording_is_rendered(self) -> None:
         rendered = self.render_screen3()
 
         required_phrases = (
-            "Read-only selection state",
-            "Exploratory only",
-            "No backend writes",
-            "Does not change diagnostic truth",
-            "Does not change recommendation truth",
-            "Selection does not change primary issue",
-            "Selection does not change severity",
-            "Cross-Screen Selection Propagation is browser-side only",
-            "URL hash/localStorage state is not authoritative truth",
+            "Local selection changes only browser/local request context",
+            "A workflow record is created only after a governed action is submitted",
+            "Existing run truth unchanged",
+            "Screen 3 can request or execute only governed backend actions",
+            "New deterministic outputs, when available, must be represented as separate run/output/artifact references",
+            "Build Comparison is ready only when Target A and Target B resolve to comparable persisted data",
+            "learning candidates, materialization, runtime eligibility",
+            "LLM/explanatory wording cannot alter validation, status, execution, deterministic truth",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_no_unsafe_controls_or_write_runtime_are_introduced(self) -> None:
+    def test_similarity_unavailable_uses_failure_styling(self) -> None:
+        dashboard = dashboard_module()
+
+        self.assertEqual("state-error", dashboard._similarity_runtime_state_class("Unavailable"))
+
+    def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()
         rendered = self.render_screen3().lower()
         source = read_text(HTML_DASHBOARD_PATH).lower()
         script = dashboard._build_dashboard_interactivity_javascript().lower()
 
         forbidden_controls = (
-            "<button",
             "<form",
             "method=\"post\"",
             "type=\"submit\"",
             "onclick=",
             "data-action=",
-            "role=\"button\"",
             "approval-control",
             "write-control",
             "learning-approval-control",
@@ -115,7 +269,6 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
                 self.assertNotIn(control, rendered)
 
         forbidden_writes = (
-            "fetch(",
             "xmlhttprequest",
             "sendbeacon",
             "/api/write",
@@ -130,6 +283,9 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, script)
                 self.assertNotIn(phrase, source)
+        self.assertIn("requestbridge(phase7_action_endpoint", script)
+        self.assertIn("screen3_active_reanalysis", rendered)
+        self.assertNotIn("run_analysis_coupling: true", source)
 
     def test_no_screen2_or_screen5_truth_drift(self) -> None:
         dashboard = dashboard_module()
@@ -141,7 +297,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "selectedSemanticItem",
             "learning candidate selection",
             "semantic selection",
-            "Screen 3 Control Center",
+            "Governed Runtime Control Center",
         )
         for phrase in forbidden:
             with self.subTest(screen="screen_2", phrase=phrase):
@@ -182,17 +338,12 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
                 self.assertNotIn("Screen 3 Control Center", text)
                 self.assertNotIn("DashboardInteractivityFoundation", text)
 
-    def test_documentation_exists_and_contains_required_boundaries(self) -> None:
+    def test_documentation_exists_and_contains_historical_boundaries(self) -> None:
         doc_path = DOCS / "phase7_screen3_control_center.md"
         self.assertTrue(doc_path.is_file())
         text = read_text(doc_path).lower()
 
         required_phrases = (
-            "read-only",
-            "exploratory only",
-            "no backend writes",
-            "no approval controls",
-            "no write controls",
             "does not change diagnostic truth",
             "does not change recommendation truth",
             "does not change primary issue",

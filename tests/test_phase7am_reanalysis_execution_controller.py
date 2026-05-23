@@ -569,7 +569,10 @@ class Phase7AMReanalysisExecutionControllerTests(unittest.TestCase):
             for line in completed.stdout.splitlines()
             if line.strip()
         }
-        changed -= {"src/reporting/html_dashboard.py"}  # Phase 7AN owns disabled Screen 3 action UI.
+        changed -= {
+            "src/reporting/html_dashboard.py",  # Phase 7AN/7CP owns Screen 3 action UI.
+            "scripts/run_analysis.py",  # Phase 7CP owns local workflow service route preflight.
+        }
         self.assertFalse(changed, f"behavior files modified: {sorted(changed)}")
 
     def test_readme_links_new_docs(self) -> None:

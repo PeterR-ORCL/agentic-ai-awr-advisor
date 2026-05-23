@@ -4,6 +4,7 @@ import re
 import html
 import hashlib
 import math
+import signal
 import socket
 import subprocess
 import sys
@@ -127,7 +128,7 @@ def _phase7_dashboard_local_service_running(host: str, port: int) -> bool:
         return False
 
 
-def _phase7_dashboard_local_service_supports_health(host: str, port: int) -> bool:
+def _phase7_dashboard_local_service_health_payload(host: str, port: int) -> dict[str, Any]:
     request = (
         f"GET /phase7/dashboard/health HTTP/1.1\r\n"
         f"Host: {host}:{port}\r\n"
@@ -138,13 +139,73 @@ def _phase7_dashboard_local_service_supports_health(host: str, port: int) -> boo
         with socket.create_connection((host, port), timeout=0.8) as connection:
             connection.settimeout(1.2)
             connection.sendall(request)
-            response = connection.recv(512).decode("utf-8", errors="ignore")
+            chunks: list[bytes] = []
+            while True:
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
     except OSError:
-        return False
-    return " 200 " in response and "dashboard_workflow_service" in response
+        return {}
+    response = b"".join(chunks).decode("utf-8", errors="ignore")
+    if " 200 " not in response:
+        return {}
+    body = response.split("\r\n\r\n", 1)[-1]
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _phase7_dashboard_local_service_post_json_payload(
+    host: str,
+    port: int,
+    path: str,
+    payload: dict[str, Any],
+) -> tuple[int | None, dict[str, Any]]:
+    body = json.dumps(payload).encode("utf-8")
+    request = (
+        f"POST {path} HTTP/1.1\r\n"
+        f"Host: {host}:{port}\r\n"
+        "Content-Type: application/json\r\n"
+        f"Content-Length: {len(body)}\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    ).encode("utf-8") + body
+    try:
+        with socket.create_connection((host, port), timeout=1.5) as connection:
+            connection.settimeout(8.0)
+            connection.sendall(request)
+            chunks: list[bytes] = []
+            while True:
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+    except OSError:
+        return None, {}
+    response = b"".join(chunks).decode("utf-8", errors="ignore")
+    status_match = re.match(r"HTTP/\d(?:\.\d)?\s+(\d{3})", response)
+    status_code = int(status_match.group(1)) if status_match else None
+    body_text = response.split("\r\n\r\n", 1)[-1]
+    try:
+        response_payload = json.loads(body_text)
+    except json.JSONDecodeError:
+        response_payload = {}
+    return status_code, response_payload if isinstance(response_payload, dict) else {}
+
+
+def _phase7_dashboard_local_service_supports_health(host: str, port: int) -> bool:
+    payload = _phase7_dashboard_local_service_health_payload(host, port)
+    return payload.get("service") == "dashboard_workflow_service"
 
 
 def _phase7_dashboard_local_service_supports_screen2_explanation(host: str, port: int) -> bool:
+    health_payload = _phase7_dashboard_local_service_health_payload(host, port)
+    supported_endpoints = set(health_payload.get("supported_endpoints") or [])
+    if "/phase7/dashboard/screen2/explanation" in supported_endpoints:
+        return True
     payload = {
         "screen_id": "screen_2",
         "request_type": "screen2_focused_explanation",
@@ -178,6 +239,119 @@ def _phase7_dashboard_local_service_supports_screen2_explanation(host: str, port
     return " 200 " in response
 
 
+def _phase7_dashboard_local_service_supports_screen3_options(host: str, port: int) -> bool:
+    health_payload = _phase7_dashboard_local_service_health_payload(host, port)
+    supported_endpoints = set(health_payload.get("supported_endpoints") or [])
+    if "/phase7/dashboard/screen3/options" not in supported_endpoints:
+        return False
+    status_code, payload = _phase7_dashboard_local_service_post_json_payload(
+        host,
+        port,
+        "/phase7/dashboard/screen3/options",
+        {
+            "screen_id": "screen_3",
+            "action_type": "screen3_load_runtime_options",
+            "workflow_type": "screen3_runtime_options_lookup",
+            "target_screen": "screen3",
+            "governance_mode": "governed_request",
+            "limit": 1,
+            "browser_db_query_attempted": False,
+            "browser_object_storage_access_attempted": False,
+            "direct_object_storage_execution_attempted": False,
+            "direct_truth_mutation_allowed": False,
+            "phase4i_mutation_allowed": False,
+            "phase8_behavior": False,
+            "phase8_started": False,
+            "run_analysis_coupling": False,
+            "current_run_truth_mutated": False,
+            "deterministic_truth_changed": False,
+            "parser_mutated": False,
+            "learning_candidate_created": False,
+            "materialization_changed": False,
+            "runtime_eligibility_changed": False,
+        },
+    )
+    if status_code not in {202, 503}:
+        return False
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    source_tables = payload.get("runtime_options_source_tables") or metadata.get(
+        "runtime_options_source_tables"
+    )
+    target_resolution = payload.get("target_resolution")
+    return bool(source_tables) and isinstance(target_resolution, dict)
+
+
+def _phase7_dashboard_local_service_supports_required_routes(host: str, port: int) -> bool:
+    return (
+        _phase7_dashboard_local_service_supports_health(host, port)
+        and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
+        and _phase7_dashboard_local_service_supports_screen3_options(host, port)
+    )
+
+
+def _phase7_dashboard_port_process_ids(port: int) -> list[int]:
+    try:
+        completed = subprocess.run(
+            ["lsof", "-ti", f"tcp:{port}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if completed.returncode not in {0, 1}:
+        return []
+    process_ids: list[int] = []
+    for line in completed.stdout.splitlines():
+        try:
+            process_ids.append(int(line.strip()))
+        except ValueError:
+            continue
+    return process_ids
+
+
+def _phase7_dashboard_process_command(process_id: int) -> str:
+    try:
+        completed = subprocess.run(
+            ["ps", "-p", str(process_id), "-o", "command="],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if completed.returncode != 0:
+        return ""
+    return completed.stdout.strip()
+
+
+def _phase7_dashboard_stop_stale_local_service(host: str, port: int) -> bool:
+    """Stop a stale local workflow service only when it is clearly our service."""
+
+    process_ids = _phase7_dashboard_port_process_ids(port)
+    service_process_ids = [
+        process_id
+        for process_id in process_ids
+        if "dashboard_workflow_service.py" in _phase7_dashboard_process_command(process_id)
+    ]
+    if not service_process_ids:
+        return False
+
+    for process_id in service_process_ids:
+        try:
+            os.kill(process_id, signal.SIGTERM)
+        except OSError:
+            continue
+
+    for _ in range(20):
+        if not _phase7_dashboard_local_service_running(host, port):
+            return True
+        time.sleep(0.1)
+    return not _phase7_dashboard_local_service_running(host, port)
+
+
 def _ensure_dashboard_workflow_service() -> None:
     """Start the local governed service for browser-facing source workflow demos."""
 
@@ -199,18 +373,27 @@ def _ensure_dashboard_workflow_service() -> None:
     host = str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1"))
     port = int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765"))
     if _phase7_dashboard_local_service_running(host, port):
-        if (
-            _phase7_dashboard_local_service_supports_health(host, port)
-            and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
-        ):
+        if _phase7_dashboard_local_service_supports_required_routes(host, port):
             print(f"Dashboard workflow service is running at http://{host}:{port}")
             print("Keep this service running for interactive dashboard features.")
+            return
+        if _phase7_dashboard_stop_stale_local_service(host, port):
+            print(
+                "Dashboard workflow service is already listening at "
+                f"http://{host}:{port}, but it does not expose the current "
+                "required runtime routes: /phase7/dashboard/health and "
+                "/phase7/dashboard/screen2/explanation and "
+                "/phase7/dashboard/screen3/options. A stale local "
+                "dashboard_workflow_service.py process was stopped; starting "
+                "the current service now."
+            )
         else:
             print(
                 "Dashboard workflow service is already listening at "
                 f"http://{host}:{port}, but it does not expose the current "
                 "required runtime routes: /phase7/dashboard/health and "
-                "/phase7/dashboard/screen2/explanation. This usually means "
+                "/phase7/dashboard/screen2/explanation and "
+                "/phase7/dashboard/screen3/options. This usually means "
                 "an older service process is still running. Stop the stale "
                 f"process on port {port} (for example: lsof -i :{port}, "
                 "then terminate that PID) and restart with: python3 "
@@ -219,7 +402,7 @@ def _ensure_dashboard_workflow_service() -> None:
                 "viewable, but interactive features are unavailable until "
                 "the current workflow service is running."
             )
-        return
+            return
 
     queue_dir = Path(
         os.getenv(
@@ -267,8 +450,7 @@ def _ensure_dashboard_workflow_service() -> None:
             return
         if (
             _phase7_dashboard_local_service_running(host, port)
-            and _phase7_dashboard_local_service_supports_health(host, port)
-            and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
+            and _phase7_dashboard_local_service_supports_required_routes(host, port)
         ):
             print(
                 "Dashboard workflow service: started local demo service at "

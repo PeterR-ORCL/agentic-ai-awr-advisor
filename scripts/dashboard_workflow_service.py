@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.learning.dashboard_runtime_interaction import (
+    load_screen3_runtime_options,
     lookup_existing_runs,
     process_dashboard_action,
     validate_object_storage_source,
@@ -27,6 +28,7 @@ from src.learning.dashboard_runtime_interaction import (
 
 ENDPOINT_PATH = "/phase7/dashboard/actions"
 EXISTING_RUNS_ENDPOINT_PATH = "/phase7/dashboard/existing-runs"
+SCREEN3_OPTIONS_ENDPOINT_PATH = "/phase7/dashboard/screen3/options"
 OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH = "/phase7/dashboard/object-storage/validate"
 SCREEN2_EXPLANATION_ENDPOINT_PATH = "/phase7/dashboard/screen2/explanation"
 HEALTH_ENDPOINT_PATH = "/phase7/dashboard/health"
@@ -34,6 +36,7 @@ SCREEN2_EXPLANATION_PROVIDER_MODES = frozenset({"off", "mock", "local", "oci"})
 SUPPORTED_ENDPOINT_PATHS = (
     ENDPOINT_PATH,
     EXISTING_RUNS_ENDPOINT_PATH,
+    SCREEN3_OPTIONS_ENDPOINT_PATH,
     OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH,
     SCREEN2_EXPLANATION_ENDPOINT_PATH,
     HEALTH_ENDPOINT_PATH,
@@ -173,6 +176,26 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
                 status_code = 503
             self._send_json(result_payload, status_code=status_code)
             return
+        if self.path == SCREEN3_OPTIONS_ENDPOINT_PATH:
+            connection_factory = getattr(
+                self.server,
+                "phase7_screen3_options_connection_factory",
+                None,
+            ) or getattr(
+                self.server,
+                "phase7_existing_run_connection_factory",
+                None,
+            )
+            result_payload = load_screen3_runtime_options(
+                payload,
+                queue_dir=queue_dir,
+                connection_factory=connection_factory,
+            )
+            status_code = 202 if result_payload.get("status") == "accepted" else 400
+            if result_payload.get("status") == "pending":
+                status_code = 503
+            self._send_json(result_payload, status_code=status_code)
+            return
         if self.path == OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH:
             result_payload = validate_object_storage_source(payload, queue_dir=queue_dir)
             status_code = 202 if result_payload.get("status") == "accepted" else 400
@@ -194,7 +217,7 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
             connection_factory=governance_connection_factory,
             db_persistence_enabled=True,
         )
-        status_code = 202 if result.status == "accepted" else 400
+        status_code = 202 if result.status in {"accepted", "blocked", "completed"} else 400
         self._send_json(result.to_dict(), status_code=status_code)
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002

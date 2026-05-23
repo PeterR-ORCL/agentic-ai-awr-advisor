@@ -297,7 +297,7 @@ PAGE_DEFINITIONS = (
     ("screen_3", "3 Analysis", "screen_3_analysis.html"),
     ("screen_4", "4 Review", "screen_4_historical_review.html"),
     ("screen_5", "5 Action", "screen_5_recommendation_action.html"),
-    ("screen_6", "6 Fleet", "screen_6_fleet_overview.html"),
+    ("screen_6", "6 Learning", "screen_6_fleet_overview.html"),
 )
 
 TIME_SERIES_GROUP_DEFINITIONS = (
@@ -819,7 +819,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
         ),
         "screen_5_recommendation_action.html": _build_page_html(
             page_key="screen_5",
-            page_title="Screen 5 - Recommendation / Action",
+            page_title="Screen 5 - Recommendation Action & Outcome",
             report_data=report_data,
             content_html=_render_screen_5_page(
                 screen_models.get("screen_5_recommendation_action") or {},
@@ -831,7 +831,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
         ),
         "screen_6_fleet_overview.html": _build_page_html(
             page_key="screen_6",
-            page_title="Screen 6 - Fleet Overview",
+            page_title="Screen 6 - Learning Governance",
             report_data=report_data,
             content_html=_render_screen_6_page(
                 screen_6_model,
@@ -6795,8 +6795,8 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
         "screen_2": "Screen 2 - Runtime Scope & Analysis Control",
         "screen_3": "Screen 3 - Diagnostic Snapshot",
         "screen_4": "Screen 4 - Historical Review",
-        "screen_5": "Screen 5 - Recommendation / Action",
-        "screen_6": "Screen 6 - Fleet Overview",
+        "screen_5": "Screen 5 - Recommendation Action & Outcome",
+        "screen_6": "Screen 6 - Learning Governance",
     }.get(page_key, product.get("title") or "Dashboard")
 
 
@@ -7804,7 +7804,7 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 5 - Recommendation / Action",
+            "Screen 5 - Recommendation Action & Outcome",
             "screen_5_recommendation_action.html",
             [
                 ("Recommendation Count", len(recommendations)),
@@ -7816,7 +7816,7 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 6 - Fleet / Governance / Semantic Visibility",
+            "Screen 6 - Learning Governance",
             "screen_6_fleet_overview.html",
             [
                 ("Similar AWRs", fleet_summary.get("similar_awrs")),
@@ -16886,8 +16886,8 @@ def _render_screen5_recommendation_action_exploration(
     )
     return f"""
       <section class="card secondary screen5-recommendation-action-exploration">
-        <div class="section-kicker">Screen 5 Recommendation/Action Exploration</div>
-        <h2>Screen 5 Recommendation/Action Exploration</h2>
+        <div class="section-kicker">Screen 5 Recommendation Action & Outcome Exploration</div>
+        <h2>Screen 5 Recommendation Action & Outcome Exploration</h2>
         <p class="meta">
           Read-only recommendation/action exploration. Exploratory only. No backend writes.
           Does not change recommendation truth. Does not change recommendation priority.
@@ -18822,10 +18822,10 @@ def _render_screen6_fleet_governance_learning_exploration(
     )
     return f"""
       <section class="card secondary screen6-fleet-governance-learning-exploration">
-        <div class="section-kicker">Screen 6 Fleet / Governance / Semantic / Learning Exploration</div>
-        <h2>Screen 6 Fleet / Governance / Semantic / Learning Exploration</h2>
+        <div class="section-kicker">Screen 6 Learning Governance Exploration</div>
+        <h2>Screen 6 Learning Governance Exploration</h2>
         <p class="meta">
-          Read-only fleet/governance/semantic/learning exploration. Exploratory only.
+          Read-only learning governance, materialization, runtime eligibility, semantic, and fleet-context exploration. Exploratory only.
           No backend writes. Does not change fleet posture. Does not change governance state.
           Does not classify unknown signals. Does not materialize artifacts.
           Does not change diagnostic truth. Does not change recommendation truth.
@@ -18842,7 +18842,7 @@ def _render_screen6_fleet_governance_learning_exploration(
           <section class="evidence-pane selector-pane screen6-selected-panel">
             <h3>Selected Screen 6 Summary</h3>
             <p class="screen6-selected-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Read-only fleet/governance/semantic/learning exploration: no local selection. Selection is local and read-only. Fleet, governance, semantic, and learning output remains unchanged.
+              Read-only learning governance exploration: no local selection. Selection is local and read-only. Learning, materialization, runtime eligibility, semantic, and fleet-context output remains unchanged.
             </p>
             <div class="meta">
               Selection does not change fleet posture, governance state, candidate status, unknown signal classification, artifact state, diagnostic truth, historical truth, recommendation truth, runtime_influence=false, or requires_human_review=true.
@@ -19623,10 +19623,10 @@ def _render_screen_6_page(
     if not screen_model.get("similarity_enabled") and not similar_cases:
         return f"""
     <div class="grid">
-      <!-- Screen 6 = fleet overview / clusters / outliers / repeated issues. -->
+      <!-- Screen 6 = learning governance, materialization review, runtime eligibility, and supporting fleet context. -->
       <section class="card prominent">
         <div class="section-kicker">Screen 6</div>
-        <h2>Fleet Overview</h2>
+        <h2>Learning Governance</h2>
         {_render_info_grid(
             [
                 ("Scope", header.get("scope_label")),
@@ -19657,10 +19657,10 @@ def _render_screen_6_page(
     """
     return f"""
     <div class="grid">
-      <!-- Screen 6 = fleet overview / clusters / outliers / repeated issues. -->
+      <!-- Screen 6 = learning governance, materialization review, runtime eligibility, and supporting fleet context. -->
       <section class="card prominent">
         <div class="section-kicker">Screen 6</div>
-        <h2>Fleet Intelligence Preview</h2>
+        <h2>Learning Governance Context Preview</h2>
         <p class="meta fleet-preview-note">
           Nearest-neighbor similarity is informative only; validated fleet patterns require more distinct historical cases.
         </p>

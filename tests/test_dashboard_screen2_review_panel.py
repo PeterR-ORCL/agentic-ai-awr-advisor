@@ -10,7 +10,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs" / "architecture"
 HTML_DASHBOARD_PATH = ROOT / "src" / "reporting" / "html_dashboard.py"
-GENERATED_SCREEN2_PATH = ROOT / "awr_dashboard" / "screen_2_analysis.html"
+GENERATED_SCREEN2_PATH = ROOT / "awr_dashboard" / "screen_3_analysis.html"
 PANEL_DOC = DOCS / "phase7as_screen2_review_panel.md"
 PREVIEW_DOC = DOCS / "phase7as_screen2_review_request_preview.md"
 

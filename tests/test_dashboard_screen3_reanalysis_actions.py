@@ -67,9 +67,9 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
 
         required = (
             "Runtime Safety and Selection Impact",
-            "Screen 3 can request or execute only governed backend actions",
+            "Screen 2 Control can request or execute only governed backend actions",
             "Existing deterministic truth is not overwritten",
-            "Screen 3 can request or execute only governed backend actions",
+            "Screen 2 Control can request or execute only governed backend actions",
             "learning candidates, materialization, runtime eligibility",
             "Existing run truth is immutable",
         )

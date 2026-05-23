@@ -57,7 +57,7 @@ def _runtime_isolation_static_check() -> bool:
 
 def _dashboard_semantic_visibility_check() -> bool:
     screen_6 = _read_text("awr_dashboard/screen_6_fleet_overview.html")
-    screen_2 = _read_text("awr_dashboard/screen_2_analysis.html")
+    screen_2 = _read_text("awr_dashboard/screen_3_analysis.html")
     screen_5 = _read_text("awr_dashboard/screen_5_recommendation_action.html")
     return (
         "Semantic Recall Visibility" in screen_6

@@ -92,7 +92,7 @@ class DashboardInteractivityPhase7HAcceptanceTests(unittest.TestCase):
         source = read_text(HTML_DASHBOARD_PATH)
         required_markers = (
             "Dashboard Interactivity Foundation",
-            "Screen 3 Control Center",
+            "Screen 2 Control",
             "Interactive Evidence Focus",
             "Screen 4 Historical Review Exploration",
             "Screen 5 Recommendation/Action Exploration",

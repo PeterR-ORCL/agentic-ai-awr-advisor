@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-SCREEN2_HTML = ROOT / "awr_dashboard" / "screen_2_analysis.html"
+SCREEN2_HTML = ROOT / "awr_dashboard" / "screen_3_analysis.html"
 HTML_DASHBOARD = ROOT / "src" / "reporting" / "html_dashboard.py"
 RUNTIME_CONTRACT = ROOT / "src" / "learning" / "dashboard_runtime_interaction.py"
 WORKFLOW_SERVICE = ROOT / "scripts" / "dashboard_workflow_service.py"

@@ -22,7 +22,7 @@ class DashboardIndexScreen3HandoffPanelTests(unittest.TestCase):
     def test_panel_exists(self) -> None:
         rendered = self.render_home()
         self.assertIn('id="index-screen3-handoff-panel"', rendered)
-        self.assertIn("Index to Screen 3 Selection Handoff Preview", rendered)
+        self.assertIn("Index to Screen 2 Control Selection Handoff Preview", rendered)
         self.assertIn('data-phase="7BT"', rendered)
         self.assertIn('data-preview-only="true"', rendered)
 
@@ -31,7 +31,7 @@ class DashboardIndexScreen3HandoffPanelTests(unittest.TestCase):
         for phrase in (
             "Preview only",
             "Handoff is not active in this phase",
-            "No Screen 3 state update",
+            "No Screen 2 Control state update",
             "No backend request created",
             "No object storage call",
             "No local file read",
@@ -39,7 +39,7 @@ class DashboardIndexScreen3HandoffPanelTests(unittest.TestCase):
             "No run_analysis.py call",
             "Future EM Extract belongs to Phase 8",
             "Phase 8 sizing/TCO not implemented",
-            "Screen 3 Control Center",
+            "Screen 2 Control",
             "handoff_supported",
             "handoff_performed",
             "screen3_state_updated",

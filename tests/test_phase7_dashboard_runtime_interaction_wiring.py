@@ -127,20 +127,20 @@ PHASE7CM_UX_FIXTURE = """
     <dd data-dashboard-state-input="true" data-dashboard-state-key="objectStorageValidationMessage">Object Storage metadata accepted by governed backend validation.</dd>
   </dl>
   </details>
-  <a href="screen_3_history_selector.html">Open Screen 3</a>
+  <a href="screen_2_control.html">Open Screen 2 Control</a>
 </section>
 <details id="index-source-mode-entry-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BQ Source Mode Entry</summary><p>Legacy 7BQ Read-Only Context.</p></details>
 <details id="index-source-status-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BR Source Status</summary><p>Legacy 7BR Read-Only Context.</p></details>
 <details id="index-object-storage-config-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BS Object Storage Configuration</summary><p>Legacy 7BS Read-Only Context.</p></details>
-<details id="index-screen3-handoff-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 3 Handoff Preview</summary><p>Legacy 7BT Read-Only Context. In this legacy evidence only, no backend request is created.</p></details>
+<details id="index-screen3-handoff-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 2 Control Handoff Preview</summary><p>Legacy 7BT Read-Only Context. In this legacy evidence only, no backend request is created.</p></details>
 <section data-phase7-selection-workflow="true">
   <h3>Selection Workflow</h3>
   <ol>
     <li>Step 1: Select source mode or source context</li>
-    <li>Step 2: Review source readiness and Screen 3 handoff target</li>
+    <li>Step 2: Review source readiness and Screen 2 Control handoff target</li>
     <li>Step 3: Choose governed source-selection handoff</li>
     <li>Step 4: Submit governed source handoff request</li>
-    <li>Step 5: Review result, request ID, audit ID, and Open Screen 3</li>
+    <li>Step 5: Review result, request ID, audit ID, and Open Screen 2 Control</li>
   </ol>
 </section>
 <a data-phase7-action-control="true"
@@ -158,14 +158,14 @@ PHASE7CM_UX_FIXTURE = """
 
 PHASE7CP_SCREEN3_FIXTURE = """
 <section data-phase7-runtime-interaction-panel="true">
-  <title>Screen 3 - Governed Runtime Control Center</title>
-  <h1>Screen 3 - Governed Runtime Control Center</h1>
-  <h2>Governed Runtime Control Center</h2>
+  <title>Screen 2 - Runtime Scope & Analysis Control</title>
+  <h1>Screen 2 - Runtime Scope & Analysis Control</h1>
+  <h2>Screen 2 - Runtime Scope & Analysis Control</h2>
   <h3>Source Received From Index</h3>
   <h3>Work Area 1 - Select Runtime Scope</h3>
   <h3>Load Runtime Options</h3>
   <button type="button" class="phase7cm-service-button screen3-runtime-options-button" data-screen3-runtime-options-load="true">Load available runtime options</button>
-  <p>Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py.</p>
+  <p>Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.</p>
   <p>/phase7/dashboard/screen3/options</p>
   <p>screen3_load_runtime_options</p>
   <p>screen3-runtime-filter-panel</p>
@@ -363,7 +363,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
             content = generated
             if file_name == "index.html":
                 content += PHASE7CM_UX_FIXTURE
-            if file_name == "screen_3_history_selector.html":
+            if file_name == "screen_2_control.html":
                 content += PHASE7CP_SCREEN3_FIXTURE
             (Path(cls.generated_dir.name) / Path(relative_path).name).write_text(
                 content,
@@ -642,7 +642,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             source_text=source,
             generated_texts={
                 "awr_dashboard/index.html": generated + PHASE7CM_UX_FIXTURE,
-                "awr_dashboard/screen_3_history_selector.html": generated
+                "awr_dashboard/screen_2_control.html": generated
                 + PHASE7CP_SCREEN3_FIXTURE,
             },
             service_exists=True,
@@ -683,7 +683,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             "</section>"
         )
         result = module.validate_generated_screen3_control_center(
-            {"awr_dashboard/screen_3_history_selector.html": stale_screen3}
+            {"awr_dashboard/screen_2_control.html": stale_screen3}
         )
         self.assertEqual("failed", result["status"])
         self.assertTrue(
@@ -1119,7 +1119,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
                     'data-required-selection-key="selectedSourceMode" '
                     'data-phase7-action-result-panel="true" '
                     'data-phase7-request-id-target="true" '
-                    'href="screen_3_history_selector.html">Submit</a>'
+                    'href="screen_2_control.html">Submit</a>'
                     "</section>"
                 )
             }

@@ -35,7 +35,7 @@ class DashboardIndexObjectStorageConfigPanelTests(unittest.TestCase):
             "No object storage call",
             "No bucket listing",
             "No object download",
-            "No Screen 3 handoff in this phase",
+            "No Screen 2 Control handoff in this phase",
             "No run_analysis.py call",
             "Phase 8 EM Extract not implemented",
             "Phase 8 sizing/TCO not implemented",

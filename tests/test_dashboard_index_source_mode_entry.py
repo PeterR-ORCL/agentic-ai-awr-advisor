@@ -54,7 +54,7 @@ class DashboardIndexSourceModeEntryTests(unittest.TestCase):
             "No object storage call",
             "No DB lookup",
             "No run_analysis.py call",
-            "No Screen 3 handoff in this phase",
+            "No Screen 2 Control handoff in this phase",
             "Future EM Extract belongs to Phase 8",
             "Phase 8 sizing/TCO is not implemented",
             "Deterministic runtime remains authoritative",

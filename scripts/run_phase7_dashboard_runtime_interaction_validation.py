@@ -29,7 +29,7 @@ REQUIRED_SCREEN_ACTIONS: dict[str, tuple[str, ...]] = {
 
 GENERATED_DASHBOARD_FILES: tuple[str, ...] = (
     "awr_dashboard/index.html",
-    "awr_dashboard/screen_3_history_selector.html",
+    "awr_dashboard/screen_2_control.html",
 )
 
 TREND_AWARE_SCORING_ARTIFACTS: tuple[str, ...] = (
@@ -938,7 +938,7 @@ def index_service_smoke_payloads() -> list[dict[str, Any]]:
                     "browser_file_upload_performed": False,
                     "browser_object_storage_access_attempted": False,
                     "em_extract_attempted": False,
-                    "next_step": "screen_3_history_selector.html",
+                    "next_step": "screen_2_control.html",
                     **source_metadata,
                 },
             }
@@ -1668,7 +1668,7 @@ def validate_index_source_selection_workflow(
         'data-dashboard-state-key="selectedLocalFolderValidationStatus"',
         'data-dashboard-state-key="selectedLocalFileValidationStatus"',
         'data-dashboard-state-key="awrSignatureValidation"',
-        'screen_3_history_selector.html',
+        'screen_2_control.html',
         "Choose the input source context",
         "Submit governed source handoff request",
         "Your browser may label this as Upload",
@@ -1898,19 +1898,19 @@ def validate_index_source_selection_workflow(
 def validate_generated_screen3_control_center(
     generated_texts: dict[str, str],
 ) -> dict[str, Any]:
-    """Require generated Screen 3 to expose the 7CP Control Center workflow."""
+    """Require the runtime-control file to expose the 7CQ visible Screen 2 workflow."""
 
-    screen3_text = generated_texts.get("awr_dashboard/screen_3_history_selector.html", "")
+    screen3_text = generated_texts.get("awr_dashboard/screen_2_control.html", "")
     if not screen3_text:
         return {
             "status": "failed",
-            "reason": "generated Screen 3 validation could not find awr_dashboard/screen_3_history_selector.html",
-            "offenders": ["missing screen_3_history_selector.html"],
+            "reason": "generated runtime-control validation could not find awr_dashboard/screen_2_control.html",
+            "offenders": ["missing screen_2_control.html"],
         }
 
     normalized_screen3_text = re.sub(r"\s+", " ", screen3_text)
     required_markers = (
-        "Governed Runtime Control Center",
+        "Screen 2 - Runtime Scope & Analysis Control",
         "Source Received From Index",
         "Work Area 1",
         "Select Runtime Scope",
@@ -2053,7 +2053,7 @@ def validate_generated_screen3_control_center(
         'data-execution-mode="local_backend_execution"',
     )
     offenders = [
-        f"missing 7CP Screen 3 marker: {marker}"
+        f"missing runtime-control marker: {marker}"
         for marker in required_markers
         if marker not in screen3_text and marker not in normalized_screen3_text
     ]
@@ -2095,17 +2095,17 @@ def validate_generated_screen3_control_center(
     for marker in title_markers:
         if marker in screen3_text:
             offenders.append("stale Screen 3 page identity still present: " + marker)
-    if "Screen 3 - Governed Runtime Control Center" not in screen3_text:
+    if "Screen 2 - Runtime Scope & Analysis Control" not in screen3_text:
         offenders.append(
-            "generated Screen 3 product title is missing: Screen 3 - Governed Runtime Control Center"
+            "generated runtime-control product title is missing: Screen 2 - Runtime Scope & Analysis Control"
         )
     if 'class="inline-action-button' in screen3_text:
         offenders.append(
             "generated Screen 3 Load Runtime Options buttons still use default/unstyled inline-action-button class"
         )
-    if "Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py." not in screen3_text:
+    if "Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py." not in screen3_text:
         offenders.append(
-            "generated Screen 3 missing stale runtime-options route recovery message"
+            "generated runtime-control page missing runtime-options route recovery message"
         )
     if "Not available" not in screen3_text or "Application" not in screen3_text:
         offenders.append(
@@ -2258,7 +2258,7 @@ def validate_selection_workflow_ux(generated_texts: dict[str, str]) -> dict[str,
         "Selection state: not selected",
         "Request ID",
         "Audit record",
-        "Open Screen 3",
+        "Open Screen 2 Control",
     )
     missing = [marker for marker in required_markers if marker not in combined]
     generic_only_markers = (

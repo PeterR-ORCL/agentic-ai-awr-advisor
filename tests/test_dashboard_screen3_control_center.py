@@ -36,8 +36,18 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
-        self.assertIn("Governed Runtime Control Center", source)
-        self.assertIn("Governed Runtime Control Center", rendered)
+        self.assertIn("Screen 2 - Runtime Scope & Analysis Control", source)
+        self.assertIn("Screen 2 - Runtime Scope & Analysis Control", rendered)
+        self.assertIn(
+            '("screen_2", "2 Control", "screen_2_control.html")',
+            source,
+        )
+        self.assertIn(
+            '("screen_3", "3 Analysis", "screen_3_analysis.html")',
+            source,
+        )
+        self.assertIn('"screen_2": "Screen 2 - Runtime Scope & Analysis Control"', source)
+        self.assertIn('"screen_3": "Screen 3 - Diagnostic Snapshot"', source)
         self.assertIn("Existing run truth unchanged", rendered)
         self.assertIn("Source Received From Index", rendered)
         self.assertIn("Load Runtime Options", rendered)
@@ -233,7 +243,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "Local selection changes only browser/local request context",
             "A workflow record is created only after a governed action is submitted",
             "Existing run truth unchanged",
-            "Screen 3 can request or execute only governed backend actions",
+            "Screen 2 Control can request or execute only governed backend actions",
             "New deterministic outputs, when available, must be represented as separate run/output/artifact references",
             "Build Comparison is ready only when Target A and Target B resolve to comparable persisted data",
             "learning candidates, materialization, runtime eligibility",
@@ -297,7 +307,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "selectedSemanticItem",
             "learning candidate selection",
             "semantic selection",
-            "Governed Runtime Control Center",
+            "Screen 2 - Runtime Scope & Analysis Control",
         )
         for phrase in forbidden:
             with self.subTest(screen="screen_2", phrase=phrase):

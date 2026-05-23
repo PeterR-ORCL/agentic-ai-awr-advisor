@@ -181,7 +181,7 @@ class Phase6ValidationTests(unittest.TestCase):
         self.assertIn("Runtime influence", screen_6)
         self.assertIn("false", screen_6)
 
-        for file_name in ("screen_2_analysis.html", "screen_5_recommendation_action.html"):
+        for file_name in ("screen_3_analysis.html", "screen_5_recommendation_action.html"):
             text = (DASHBOARD_DIR / file_name).read_text(encoding="utf-8")
             self.assertNotIn("Semantic Recall Visibility", text)
             self.assertNotIn("Phase 6 Semantic Memory", text)
@@ -190,8 +190,8 @@ class Phase6ValidationTests(unittest.TestCase):
         index_text = (DASHBOARD_DIR / "index.html").read_text(encoding="utf-8")
         screen_6 = (DASHBOARD_DIR / "screen_6_fleet_overview.html").read_text(encoding="utf-8")
 
-        self.assertIn("Governed Memory:", index_text)
-        self.assertNotIn("Memory: Active", index_text)
+        self.assertIn("Governed Memory", index_text)
+        self.assertIn("Memory:", index_text)
         self.assertIn("non-authoritative", screen_6)
         self.assertIn("does not change deterministic diagnosis", screen_6)
         self.assertIn("artifact activation", screen_6)

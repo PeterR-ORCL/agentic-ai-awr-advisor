@@ -293,8 +293,8 @@ AI_SECTION_NAMES = [
 PAGE_DEFINITIONS = (
     ("home", "Home", "index.html"),
     ("screen_1", "1 Ingestion", "screen_1_ingestion.html"),
-    ("screen_2", "2 Analysis", "screen_2_analysis.html"),
-    ("screen_3", "3 Control", "screen_3_history_selector.html"),
+    ("screen_2", "2 Control", "screen_2_control.html"),
+    ("screen_3", "3 Analysis", "screen_3_analysis.html"),
     ("screen_4", "4 Review", "screen_4_historical_review.html"),
     ("screen_5", "5 Action", "screen_5_recommendation_action.html"),
     ("screen_6", "6 Fleet", "screen_6_fleet_overview.html"),
@@ -778,24 +778,24 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
             ),
             generated_at=generated_at,
         ),
-        "screen_2_analysis.html": _build_page_html(
+        "screen_2_control.html": _build_page_html(
             page_key="screen_2",
-            page_title="Screen 2 - Analysis",
+            page_title="Screen 2 - Runtime Scope & Analysis Control",
+            report_data=report_data,
+            content_html=_render_screen_3_selector_page(
+                screen_models.get("screen_3_history_selector") or {},
+                report_data=report_data,
+            ),
+            generated_at=generated_at,
+        ),
+        "screen_3_analysis.html": _build_page_html(
+            page_key="screen_3",
+            page_title="Screen 3 - Diagnostic Snapshot",
             report_data=report_data,
             content_html=_render_screen_2_page(
                 screen_models.get("screen_2_analysis") or {},
                 ai_sections=ai_sections,
                 decision_state=decision_state,
-                report_data=report_data,
-            ),
-            generated_at=generated_at,
-        ),
-        "screen_3_history_selector.html": _build_page_html(
-            page_key="screen_3",
-            page_title="Screen 3 - Governed Runtime Control Center",
-            report_data=report_data,
-            content_html=_render_screen_3_selector_page(
-                screen_models.get("screen_3_history_selector") or {},
                 report_data=report_data,
             ),
             generated_at=generated_at,
@@ -2324,7 +2324,7 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function screen2ActionMessage(element, state, missing) {
-        return 'Screen 2 evidence focus updates explanation context only; it does not submit review requests.';
+        return 'Screen 3 evidence focus updates explanation context only; it does not submit review requests.';
       }
 
       function screen2MissingFields(element, state) {
@@ -2813,11 +2813,11 @@ def _build_dashboard_interactivity_javascript() -> str:
 	        });
 	      }
 
-	      function screen2GeneratedExplanationText(focusedMeaning, providerMode) {
-	        const mode = providerMode ? providerMode.toUpperCase() : 'LOCAL';
-	        return 'Generated explanation (' + mode + ' mode): ' + focusedMeaning.meaning +
-	          ' LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes. Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local explanation focus and optional LLM-worded explanation.';
-	      }
+      function screen2GeneratedExplanationText(focusedMeaning, providerMode) {
+        const mode = providerMode ? providerMode.toUpperCase() : 'LOCAL';
+        return 'Generated explanation (' + mode + ' mode): ' + focusedMeaning.meaning +
+          ' LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 3 cannot perform those changes. Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 3 interaction only changes local explanation focus and optional LLM-worded explanation.';
+      }
 
 	      function dashboardScreen2ExplanationProvider(context) {
 	        if (!window.fetch) {
@@ -2936,7 +2936,7 @@ def _build_dashboard_interactivity_javascript() -> str:
 	              setScreen2ExplanationStatus(
 	                button,
 	                'provider-boundary-rejected',
-	                'Generated wording was not applied because it conflicted with deterministic Screen 2 boundaries. The deterministic explanation remains available.'
+                'Generated wording was not applied because it conflicted with deterministic Screen 3 boundaries. The deterministic explanation remains available.'
 	              );
 	              return;
 	            }
@@ -3544,16 +3544,16 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? 'Missing required metadata: ' + missing.join(', ')
             : 'Required source metadata is satisfied.',
           handoff: missing.length
-            ? 'Screen 3 handoff disabled. Missing: ' + missing.join(', ')
-            : 'Screen 3 handoff ready. Submit governed request to receive request ID and audit record.',
+            ? 'Screen 2 Control handoff disabled. Missing: ' + missing.join(', ')
+            : 'Screen 2 Control handoff ready. Submit governed request to receive request ID and audit record.',
           action: actionState,
           next_step: missing.length
             ? 'Complete the missing metadata or validation before submitting.'
-            : 'Submit governed source handoff, review Request ID / Audit record, then open Screen 3.',
+            : 'Submit governed source handoff, review Request ID / Audit record, then open Screen 2 Control.',
           pipeline_mode: 'Current source mode: ' + modeLabel,
           pipeline_active: 'Active source: ' + pipelineActive,
           pipeline_validation: 'Current source validation: ' + validationSummary,
-          pipeline_handoff: 'Current handoff target: Screen 3',
+          pipeline_handoff: 'Current handoff target: Screen 2 Control',
           pipeline_node_source: pipelineNode,
           config_type: 'Current source type: ' + modeLabel,
           config_location: 'Current source location: ' + activeLocation,
@@ -3585,7 +3585,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? sourceValidationSummary(safeState)
             : 'Available after Validate Object Storage Source calls the governed service.',
           service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
-          result: 'After submit, the result panel shows accepted/rejected status, Request ID, Audit record, queued reference, and Open Screen 3 as the next step.'
+          result: 'After submit, the result panel shows accepted/rejected status, Request ID, Audit record, queued reference, and Open Screen 2 Control as the next step.'
         };
         Object.keys(validationValues).forEach(function (key) {
           scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
@@ -4076,7 +4076,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           build_comparison: 'Build Comparison',
           load_from_object_storage: 'Load / Prepare External Target'
         };
-        return labels[normalized] || normalized || 'Screen 3 action';
+        return labels[normalized] || normalized || 'runtime-control action';
       }
 
       function setScreen3ResultField(panel, fieldName, value) {
@@ -5013,9 +5013,9 @@ def _build_dashboard_interactivity_javascript() -> str:
       function screen3ActionMessage(element, state, missingFields) {
         const action = safeStateValue(readActionPayload(element).requested_screen3_action || '');
         if (missingFields && missingFields.length) {
-          return 'Screen 3 action is blocked until a DB-backed runtime row is selected or Index source context is ready.';
+          return 'Screen 2 Control action is blocked until a DB-backed runtime row is selected or Index source context is ready.';
         }
-        return 'Ready to submit governed Screen 3 ' + screen3ActionProductLabel(action) + ' request. Existing run truth remains unchanged.';
+        return 'Ready to submit governed Screen 2 Control ' + screen3ActionProductLabel(action) + ' request. Existing run truth remains unchanged.';
       }
 
       function screen3SubmittedActionMessage(actionLabel, responseStatus, missingGates) {
@@ -5059,7 +5059,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (responseStatus === 'completed') {
           return 'Completed: ' + actionLabel + ' returned a governed result. Review Request / Execution Result.';
         }
-        return 'Screen 3 ' + actionLabel + ' request ' + responseStatus + '. Existing run truth unchanged.';
+        return 'Screen 2 Control ' + actionLabel + ' request ' + responseStatus + '. Existing run truth unchanged.';
       }
 
       function updatePhase7ActionEnablement(state, root) {
@@ -6047,8 +6047,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           const noOptions = !routeUnavailable && !dbUnavailable &&
             (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
           const serviceMessage = routeUnavailable
-            ? 'Workflow service does not expose Screen 3 runtime options route. Restart current dashboard_workflow_service.py.'
-            : (body.message || 'Screen 3 runtime options request completed.');
+            ? 'Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.'
+            : (body.message || 'Runtime-control options request completed.');
           const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
           const sourceTables = Array.isArray(body.runtime_options_source_tables)
             ? body.runtime_options_source_tables
@@ -6095,7 +6095,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LastOutputArtifact = '';
           state.screen3LastNewRunOutputReference = '';
           state.screen3LastNextStep = routeUnavailable
-            ? 'Restart current dashboard_workflow_service.py so Screen 3 can load DB-backed runtime options.'
+            ? 'Restart current dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
             : (
               optionsLoaded
                 ? 'Select a DB-backed AWR/run, interval, comparison target, and review mode.'
@@ -6108,13 +6108,13 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.existingRunLookupCount = String(body.run_count || 0);
           if (optionsLoaded) {
             state.existingRunLookupStatus = 'runs_loaded';
-            state.existingRunLookupMessage = 'Select a DB-backed AWR/run from Screen 3 runtime options.';
+            state.existingRunLookupMessage = 'Select a DB-backed AWR/run from runtime-control options.';
           } else if (body.validation_status === 'empty') {
             state.existingRunLookupStatus = 'empty';
             state.existingRunLookupMessage = body.message || 'No DB-backed AWR runs were found.';
           } else if (!result.ok || body.status === 'pending') {
             state.existingRunLookupStatus = 'unavailable';
-            state.existingRunLookupMessage = body.message || 'Screen 3 runtime options are unavailable.';
+            state.existingRunLookupMessage = body.message || 'Runtime-control options are unavailable.';
           }
           if (optionsLoaded) {
             writeScreen3RuntimeOptionsCache(body, state);
@@ -6138,7 +6138,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
             ? 'Refresh failed; showing last cached runtime options.'
-            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 3 runtime options.';
+            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 2 Control runtime options.';
           state.screen3RuntimeOptionsCount = fallbackCache ? state.screen3RuntimeOptionsCount || '0' : '0';
           state.screen3RuntimeOptionsLoadedRows = fallbackCache ? state.screen3RuntimeOptionsLoadedRows || '0' : '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
@@ -6577,7 +6577,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? 'Submitting governed Screen 1 parser governance request...'
             : (
               isScreen3RuntimeAction(element)
-                ? 'Submitting governed Screen 3 runtime-control request...'
+                ? 'Submitting governed Screen 2 Control runtime request...'
                 : 'Submitting governed source-selection request...'
             )
         );
@@ -6624,9 +6624,9 @@ def _build_dashboard_interactivity_javascript() -> str:
 	              'accepted',
 	              'Success. Request ID: ' + result.payload.request_id +
 	                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
-	                (isScreen1ParserGovernanceAction(element)
-	                  ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
-	                  : '. Next step: open Screen 3.')
+                (isScreen1ParserGovernanceAction(element)
+                  ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
+                  : '. Next step: open Screen 2 Control.')
 	            );
           })
           .catch(function () {
@@ -6792,8 +6792,8 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
     return {
         "home": product.get("title") or "AWR Performance Intelligence Dashboard",
         "screen_1": "Screen 1 - Ingestion",
-        "screen_2": "Screen 2 - Diagnostic Snapshot",
-        "screen_3": "Screen 3 - Governed Runtime Control Center",
+        "screen_2": "Screen 2 - Runtime Scope & Analysis Control",
+        "screen_3": "Screen 3 - Diagnostic Snapshot",
         "screen_4": "Screen 4 - Historical Review",
         "screen_5": "Screen 5 - Recommendation / Action",
         "screen_6": "Screen 6 - Fleet Overview",
@@ -6935,7 +6935,7 @@ def _render_runtime_state_line(
         '<span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">Build DB: '
         f'<strong class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</strong>'
         "</span>"
-        '<span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the Screen 3 options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow Service: '
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow Service: '
         '<strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" '
         'data-dashboard-runtime-workflow-status="true" '
         'data-dashboard-state-key="screen3LiveServiceStatus" '
@@ -7767,8 +7767,17 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 2 - Analysis",
-            "screen_2_analysis.html",
+            "Screen 2 - Runtime Scope & Analysis Control",
+            "screen_2_control.html",
+            [
+                ("Snapshot Count", selector_header.get("snapshot_count")),
+                ("Comparison Window", selector_header.get("comparison_window")),
+                ("Scope", selector_header.get("scope_label")),
+            ],
+        ),
+        (
+            "Screen 3 - Diagnostic Snapshot",
+            "screen_3_analysis.html",
             [
                 ("Primary Issue", decision.get("primary_domain") or decision.get("primary_issue")),
                 (
@@ -7783,15 +7792,6 @@ def _render_home_page(
                         normalized_decision.get("confidence") or decision.get("confidence")
                     ),
                 ),
-            ],
-        ),
-        (
-            "Screen 3 - Runtime Control Center",
-            "screen_3_history_selector.html",
-            [
-                ("Snapshot Count", selector_header.get("snapshot_count")),
-                ("Comparison Window", selector_header.get("comparison_window")),
-                ("Scope", selector_header.get("scope_label")),
             ],
         ),
         (
@@ -7924,7 +7924,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             "existing_run",
             "Existing run",
             "Prior run context",
-            "Submit a governed request that points Screen 3 toward an existing persisted run context.",
+            "Submit a governed request that points Screen 2 Control toward an existing persisted run context.",
             "Requires available run metadata",
             "governed-source-handoff-existing-run",
             {
@@ -7983,7 +7983,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                 <p><strong>Readiness:</strong> {escape(readiness)}</p>
                 <p class="selection-workflow-card-note">
                   Selection state: not selected. Entity type: source mode.
-                  Downstream action: enables governed source-selection handoff to Screen 3.
+                  Downstream action: enables governed source-selection handoff to Screen 2 Control.
                 </p>
               </article>
             """
@@ -8025,7 +8025,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
         <h2>Source Intake / Source Selection</h2>
         <p class="meta">
           Choose the input source context, review source readiness, submit a
-          governed source-selection handoff, then open Screen 3 with the
+          governed source-selection handoff, then open Screen 2 Control with the
           resulting request ID and audit status. The default local development
           staging reference is <strong>data/input</strong>; Object Storage is the
           preferred OCI-ready source path.
@@ -8038,7 +8038,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
             <li>Step 3: Choose governed source-selection handoff.</li>
             <li>Step 4: Submit governed source handoff request.</li>
-            <li>Step 5: Review result, Request ID, Audit record, and Open Screen 3.</li>
+            <li>Step 5: Review result, Request ID, Audit record, and Open Screen 2 Control.</li>
           </ol>
         </section>
 
@@ -8256,7 +8256,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             This is the operator-facing source workflow summary. It changes
             with Local folder, Local file, Existing run, or Object Storage
             selection and shows what is ready, missing, or invalid before the
-            governed Screen 3 handoff is submitted. The default local staging
+            governed Screen 2 Control handoff is submitted. The default local staging
             reference below is informational only and is not the active source
             once another source mode is selected.
           </p>
@@ -8280,7 +8280,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Handoff Target</strong>
-              <p data-phase7-source-summary-card="handoff">Screen 3 handoff status appears here.</p>
+              <p data-phase7-source-summary-card="handoff">Screen 2 Control handoff status appears here.</p>
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Action State</strong>
@@ -8288,7 +8288,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Next Step</strong>
-              <p data-phase7-source-summary-card="next_step">Submit a governed source handoff, then open Screen 3.</p>
+              <p data-phase7-source-summary-card="next_step">Submit a governed source handoff, then open Screen 2 Control.</p>
             </article>
           </div>
           <p class="meta">
@@ -8352,7 +8352,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
               <p data-phase7-source-validation-card="result"
                  data-phase7-submit-result-reference="true">
                 After submit, accepted/rejected status, Request ID, Audit
-                record, queued reference, and Open Screen 3 appear in the
+                record, queued reference, and Open Screen 2 Control appear in the
                 result panel.
               </p>
             </article>
@@ -8396,7 +8396,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
 
         <p class="meta phase7cm-next-step-note">
           Next step after an accepted request:
-          <a class="inline-nav-hint" href="screen_3_history_selector.html" data-dashboard-propagate-state="true">Open Screen 3</a>
+          <a class="inline-nav-hint" href="screen_2_control.html" data-dashboard-propagate-state="true">Open Screen 2 Control</a>
           to continue governed re-analysis with the accepted source context.
         </p>
       </section>
@@ -8615,7 +8615,7 @@ def _render_index_object_storage_config_panel() -> str:
         "No object storage call",
         "No bucket listing",
         "No object download",
-        "No Screen 3 handoff in this phase",
+        "No Screen 2 Control handoff in this phase",
         "No run_analysis.py call",
         "Phase 8 EM Extract not implemented",
         "Phase 8 sizing/TCO not implemented",
@@ -8705,19 +8705,19 @@ def _render_index_object_storage_config_panel() -> str:
 
 
 def _render_index_screen3_handoff_panel() -> str:
-    """Render Phase 7BT preview-only index-to-Screen-3 handoff visibility."""
+    """Render Phase 7BT preview-only index-to-runtime-control handoff visibility."""
 
     handoff = create_index_screen3_handoff(
         "local_staged",
         source_mode_entry_id="INDEX-SOURCE-MODE-ENTRY-LOCAL-STAGED",
         source_status_id="INDEX-SOURCE-STATUS-LOCAL-STAGED",
-        notes="Phase 7BT index to Screen 3 handoff preview only",
+        notes="Phase 7BT index to Screen 2 Control handoff preview only",
     )
     validation = evaluate_index_screen3_handoff(handoff)
     safety_labels = [
         "Preview only",
         "Handoff is not active in this phase",
-        "No Screen 3 state update",
+        "No Screen 2 Control state update",
         "No backend request created",
         "No object storage call",
         "No local file read",
@@ -8732,21 +8732,21 @@ def _render_index_screen3_handoff_panel() -> str:
     )
 
     return f"""
-      <!-- Phase 7BT Index to Screen 3 Handoff Preview: metadata-only historical evidence. -->
+      <!-- Phase 7BT Index to Screen 2 Control Handoff Preview: metadata-only historical evidence. -->
       <details class="card secondary index-screen3-handoff-panel phase7-legacy-boundary-details"
                id="index-screen3-handoff-panel"
                data-phase="7BT"
                data-preview-only="true"
                data-phase7-legacy-context="true">
-        <summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 3 Handoff Preview</summary>
+        <summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 2 Control Handoff Preview</summary>
         <div class="section-kicker">Legacy 7BT Read-Only Context</div>
-        <h2>Index to Screen 3 Selection Handoff Preview</h2>
+        <h2>Index to Screen 2 Control Selection Handoff Preview</h2>
         <p class="meta">
           Historical 7BT boundary evidence only. This collapsed legacy context
           is not the current 7CM source-selection workflow. Use the current
           7CM governed source-selection handoff panel above to submit active
           governed request intake. In this legacy evidence only, handoff is
-          metadata-only, no Screen 3 state is updated, no backend request is
+          metadata-only, no Screen 2 Control state is updated, no backend request is
           created, and no source access occurs.
         </p>
         <div class="mini-pill-group index-screen3-handoff-safety-labels">
@@ -8760,7 +8760,7 @@ def _render_index_screen3_handoff_panel() -> str:
             <strong>Handoff Candidate</strong>
             <dl class="index-screen3-handoff-flags">
               <div><dt>selected source mode preview</dt><dd>{escape(handoff.selected_source_mode)}</dd></div>
-              <div><dt>target screen</dt><dd>Screen 3 Control Center</dd></div>
+              <div><dt>target screen</dt><dd>Screen 2 Control</dd></div>
               <div><dt>target_state_key</dt><dd>{escape(handoff.target_state_key)}</dd></div>
               <div><dt>handoff_supported</dt><dd>false in this phase</dd></div>
               <div><dt>validation_status</dt><dd>{escape(validation.validation_status)}</dd></div>
@@ -8819,7 +8819,7 @@ def _render_index_source_status_panel() -> str:
         "No object storage call",
         "No DB lookup",
         "No run_analysis.py call",
-        "No Screen 3 handoff in this phase",
+        "No Screen 2 Control handoff in this phase",
         "Future EM Extract belongs to Phase 8",
         "Phase 8 sizing/TCO is not implemented",
     ]
@@ -8936,7 +8936,7 @@ def _render_index_source_mode_entry_preview() -> str:
         "No object storage call",
         "No DB lookup",
         "No run_analysis.py call",
-        "No Screen 3 handoff in this phase",
+        "No Screen 2 Control handoff in this phase",
         "Future EM Extract belongs to Phase 8",
         "Phase 8 sizing/TCO is not implemented",
         "Deterministic runtime remains authoritative",
@@ -9038,7 +9038,7 @@ def _render_home_system_ux_sections() -> str:
         <p class="meta pipeline-intro">
           This panel follows the selected intake source mode. It shows the
           current source mode, active source, source validation state, and
-          Screen 3 handoff target.<br>
+          Screen 2 Control handoff target.<br>
           Local development fallback:
           <strong>data/input</strong>.
         </p>
@@ -9047,7 +9047,7 @@ def _render_home_system_ux_sections() -> str:
           <span class="status-pill success" data-phase7-source-summary-card="pipeline_mode">Current source mode: Local folder / local staged AWR</span>
           <span class="meta" data-phase7-source-summary-card="pipeline_active">Active source: data/input</span>
           <span class="meta" data-phase7-source-summary-card="pipeline_validation">Current source validation: backend path validation pending</span>
-          <span class="meta" data-phase7-source-summary-card="pipeline_handoff">Current handoff target: Screen 3</span>
+          <span class="meta" data-phase7-source-summary-card="pipeline_handoff">Current handoff target: Screen 2 Control</span>
         </div>
 
         <div class="pipeline-lane">
@@ -11768,7 +11768,7 @@ def _render_screen2_review_panel(
         <div class="section-kicker">DIAGNOSTIC MEANING</div>
         <h2>Focused Diagnostic Meaning</h2>
         <p class="static-selection-note">
-          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 2 cannot perform those changes.
+          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 3 cannot perform those changes.
         </p>
         <section class="evidence-pane screen2-review-target-summary">
           <h3 data-screen2-focus="heading">Selected Focus Summary</h3>
@@ -11817,7 +11817,7 @@ def _render_screen2_review_panel(
                 ML change, materialization, runtime-eligibility update, or future-run behavior change is created.
               </p>
               <p>
-                Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 2 interaction only changes local selected focus and displayed explanation wording.
+                Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 3 interaction only changes local selected focus and displayed explanation wording.
               </p>
               <p data-screen2-explanation-status="idle">
                 Default deterministic explanation is visible. Click generation only when you want optional wording refresh.
@@ -13489,7 +13489,7 @@ def _render_screen_3_selector_page(
     <div class="grid">
       <section class="card secondary screen3-control-center" id="screen3-runtime-control-center">
         <div class="section-kicker">Runtime Control Center</div>
-        <h2>Screen 3 - Governed Runtime Control Center</h2>
+        <h2>Screen 2 - Runtime Scope & Analysis Control</h2>
         <p class="static-selection-note">
           Review the source selected on Index, choose the run/scope or comparison window, validate readiness, and submit
           governed backend actions. Existing deterministic truth is not overwritten.
@@ -13561,7 +13561,7 @@ def _render_screen3_selected_source_scope_panel(
           <section class="evidence-pane selector-pane screen3-source-received-panel">
             <h3>Source Received From Index</h3>
             <p class="static-selection-note">
-              Screen 3 receives source context from Index. It does not redo source intake or expose browser-side cloud credentials.
+              Screen 2 Control receives source context from Index. It does not redo source intake or expose browser-side cloud credentials.
             </p>
             <p class="empty-state screen3-source-handoff-empty"
                data-screen3-source-handoff-empty="true">
@@ -14085,7 +14085,7 @@ def _render_screen3_table_control_row(table_id: str, label: str) -> str:
 
 def _render_screen3_selection_legend() -> str:
     return """
-              <div class="screen3-selection-legend" aria-label="Screen 3 selection highlight legend">
+              <div class="screen3-selection-legend" aria-label="Runtime-control selection highlight legend">
                 <span><i class="screen3-legend-swatch runtime"></i>Solid blue = selected AWR/report row</span>
                 <span><i class="screen3-legend-swatch interval"></i>Subtle green = selected interval/window</span>
                 <span><i class="screen3-legend-swatch advanced"></i>Dashed violet = selected advanced/external option</span>
@@ -14205,7 +14205,7 @@ def _render_screen3_runtime_scope_work_area(
                 This table selects the AWR/report row for the active assignment. Global filters narrow the loaded inventory first; header filters narrow the visible rows inside this table.
               </p>
               <p class="meta">
-                Source-table coverage is reported by the runtime options service. If only one DB-backed row is returned, Screen 3 says which table supplied it and whether additional AWR report tables are not yet included.
+                Source-table coverage is reported by the runtime options service. If only one DB-backed row is returned, Screen 2 Control says which table supplied it and whether additional AWR report tables are not yet included.
               </p>
               <p class="meta">
                 <strong data-screen3-filtered-result-count="true">Showing 0 of 0 loaded row(s)</strong>
@@ -14728,7 +14728,7 @@ def _render_screen3_safety_selection_impact_panel() -> str:
           <section class="evidence-pane selector-pane screen3-work-area screen3-safety-impact-panel">
             <h3>Runtime Safety and Selection Impact</h3>
             <p class="static-selection-note">
-              Screen 3 can request or execute only governed backend actions. Existing deterministic truth is not overwritten.
+              Screen 2 Control can request or execute only governed backend actions. Existing deterministic truth is not overwritten.
               LLM/explanatory wording cannot alter validation, status, execution, deterministic truth, source selection, or governance records.
             </p>
             <div class="screen3-explanation-list screen3-safety-impact-grid">
@@ -15315,7 +15315,7 @@ def _render_screen3_request_execution_result_panel() -> str:
               <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
                 <h4>Comparison Result Summary</h4>
                 <p class="meta">
-                  Screen 3 records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
+                  Screen 2 Control records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
                 </p>
                 <dl class="info-grid selector-compact-grid screen3-result-grid">
                   {rows_html(comparison_rows)}
@@ -15342,7 +15342,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
     articles = [
         (
             "So what?",
-            "Screen 3 turns a selected source/run/scope into a governed runtime request. It gives the operator a safe path to request or execute re-analysis/comparison without overwriting existing deterministic truth.",
+            "Screen 2 Control turns a selected source/run/scope into a governed runtime request. It gives the operator a safe path to request or execute re-analysis/comparison without overwriting existing deterministic truth.",
         ),
         (
             "Why this matters",
@@ -15409,11 +15409,11 @@ def _render_screen3_runtime_boundary_panel() -> str:
           <section class="evidence-pane selector-pane screen3-runtime-boundary-panel">
             <h3>Runtime Safety Boundary</h3>
             <p class="static-selection-note">
-              Screen 3 can request or execute only governed backend actions. Existing diagnostic truth is not overwritten.
+              Screen 2 Control can request or execute only governed backend actions. Existing diagnostic truth is not overwritten.
               New deterministic outputs, when available, are represented as new run/output/artifact references.
             </p>
             <p class="static-selection-note">
-              Screen 3 does not create learning candidates, materialize rules, alter runtime eligibility, or start Phase 8.
+              Screen 2 Control does not create learning candidates, materialize rules, alter runtime eligibility, or start Phase 8.
               No browser Object Storage access is performed. LLM/explanatory wording cannot alter validation, status, execution, deterministic truth, source selection, or governance records.
             </p>
           </section>
@@ -15576,7 +15576,7 @@ def _render_screen3_action_control_card(
 	               data-phase7-action-status="waiting"
 	               data-phase7-request-id-target="true"
 	               data-phase7-audit-status-area="true">
-	            Select a DB-backed runtime row or receive Index source context before submitting this governed Screen 3 action.
+	            Select a DB-backed runtime row or receive Index source context before submitting this governed Screen 2 Control action.
 	          </div>
         </article>
     """
@@ -16266,7 +16266,7 @@ def _render_screen_4_page(
           <section class="evidence-pane screen4-verdict-pane">
             <h3>Historical Verdict</h3>
             <div class="meta">
-              Historical / Supporting Context only; this does not override Screen 2 selected-scope diagnosis.
+              Historical / Supporting Context only; this does not override Screen 3 selected-scope diagnosis.
             </div>
             {_render_info_grid(
                 [

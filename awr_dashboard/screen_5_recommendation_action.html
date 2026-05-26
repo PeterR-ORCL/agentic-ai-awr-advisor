@@ -129,6 +129,9 @@
       contain: layout style;
     }
     .runtime-meta {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
       font-size: 12px;
       color: var(--muted);
       margin-top: 4px;
@@ -138,7 +141,7 @@
     }
     .runtime-state-pills {
       display: flex;
-      justify-content: flex-end;
+      justify-content: center;
       align-items: center;
       gap: 4px;
       flex-wrap: nowrap;
@@ -147,7 +150,7 @@
     }
     .runtime-mini-pill {
       display: inline-flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: center;
       gap: 4px;
       flex: 0 0 auto;
@@ -161,7 +164,7 @@
       background: rgba(11, 20, 34, 0.58);
       color: var(--muted);
       font-size: 11px;
-      line-height: 1.2;
+      line-height: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -170,6 +173,9 @@
       display: inline-block;
       min-width: 0;
       font-weight: 800;
+      line-height: 1;
+      position: relative;
+      top: -0.5px;
     }
     .state-pass {
       color: var(--pass);
@@ -5040,7 +5046,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 25, 2026, 9:46 PM">
+<body data-dashboard-generated-at="May 26, 2026, 1:33 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5067,7 +5073,7 @@
       <div class="runtime-badge" data-dashboard-runtime-badge="true">
         <span class="status-pill success">FULL DB MODE</span>
         <div class="runtime-meta">
-          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">Build DB: <strong class="state-pass">Connected</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow Service: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Check with Load Options">Check with Load Options</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-pass">Available</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-pass">Active</strong></span></span>
+          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-pass">Connected</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Check with Load Options">Check with Load Options</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-pass">Enabled</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-pass">Available</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-pass">Active</strong></span></span>
         </div>
       </div>
 
@@ -5175,7 +5181,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 25, 2026, 9:46 PM</div>
+        <div class="hero-meta">Generated: May 26, 2026, 1:33 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link active" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5212,7 +5218,7 @@
               POSTURE
             </span>
             <span class="status-insight-note">
-              Before scaling, validate and tune.
+              Validate and tune prior to scaling.
             </span>
           </div>
 
@@ -5248,7 +5254,7 @@
         <div class="action-summary-grid">
         <section class="evidence-pane action-summary-pane">
           <h3>Action Rationale</h3>
-          <div class="supportive-panel compact-supportive-panel"><ul><li>TUNE FIRST posture means that validation and tuning should precede scaling.</li><li>No canonical recommendation object was emitted for the selected scope.</li><li>Low confidence indicates limited evidence coverage, not a scaling trigger.</li></ul></div>
+          <div class="supportive-panel compact-supportive-panel"><ul><li>TUNE FIRST posture means that validation and tuning should precede scaling.</li><li>For the selected scope, no canonical recommendation object was emitted.</li><li>Low confidence indicates limited evidence coverage and is not a scaling trigger.</li></ul></div>
         </section>
         <section class="evidence-pane action-summary-pane">
           <h3>Validation Plan</h3>
@@ -5259,22 +5265,22 @@
             <div class="validation-plan-groups">
             <div class="validation-plan-group">
               <strong>SQL / Access Path</strong>
-              <ul><li>Where applicable, review SQL and access-path efficiency.</li><li>Investigate contributors to User I/O (db file sequential read).</li></ul>
+              <ul><li>Where applicable, review SQL and access-path efficiency.</li><li>Investigate User I/O contributors: db file sequential read.</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>Commit / Transaction Behavior</strong>
-              <ul><li>Validate commit latency behavior related to log file sync.</li></ul>
+              <ul><li>Validate commit latency behavior for log file sync.</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>RAC / Data Guard Context</strong>
-              <ul><li>Evaluate RAC coordination separately from CPU pressure.</li><li>Review the Data Guard replication context if present.</li></ul>
+              <ul><li>Evaluate RAC coordination independently of CPU pressure.</li><li>If Data Guard replication context is present, review it.</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>Evidence Completeness</strong>
-              <ul><li>Validate the coverage and completeness of CPU signals.</li><li>Do not make scaling decisions until tuning validation is complete.</li></ul>
+              <ul><li>Validate the coverage and completeness of CPU signals.</li><li>Complete tuning validation before any scaling decision.</li></ul>
             </div>
             </div>
           </div>
@@ -5291,7 +5297,7 @@
             <article class="item evidence-checklist-item">
               <h3>Anomalies</h3>
               <ul class="compact-list"><li>Commit / log file sync: Commit / log file sync spiked from a baseline of 18.10 to 68.10.</li><li>User I/O: User I/O spiked from a baseline of 11.72 to 31.10.</li><li>User I/O: User I/O spiked from a baseline of 10.24 to 37.00.</li><li>User I/O: User I/O spiked from a baseline of 10.24 to 48.64.</li><li>Commit / log file sync: Commit / log file sync spiked from a baseline of 22.35 to 51.70.</li></ul>
-              <div class="meta">Additional anomaly windows are available in Screen 4 Historical Review.</div>
+              <div class="meta">Screen 4 Historical Review provides access to additional anomaly windows.</div>
             </article>
 
             <article class="item evidence-checklist-item warning-note">
@@ -5856,7 +5862,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 25, 2026, 9:46 PM</div>
+    <div class="footer">Generated at May 26, 2026, 1:33 PM</div>
   </div>
 
   <script>
@@ -7577,9 +7583,9 @@
           return {
             path: 'New Source Artifact',
             readiness: 'completed_artifact_ready',
-            nextStep: runtimeOptionsLoaded ? 'Continue to Analysis' : 'Load Runtime Options / Continue to Analysis',
-            handoff: 'Ready for Analysis / Review / Action / Learning',
-            guidance: 'Screen 1 completed the governed artifact handoff. Screen 2 can load DB-backed runtime options and select scope.'
+            nextStep: runtimeOptionsLoaded ? 'Confirm Handoff Scope on Screen 2' : 'Load Runtime Options for Governed Handoff',
+            handoff: 'Artifact Ready for Governed Handoff',
+            guidance: 'Current artifact readiness is confirmed; downstream use still requires valid evidence handoff.'
           };
         }
 

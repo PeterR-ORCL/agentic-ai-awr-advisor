@@ -13,6 +13,17 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def read_dashboard_source_text() -> str:
+    source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
+        encoding="utf-8",
+        errors="ignore",
+    )
+    styles_path = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
+    if styles_path.is_file():
+        source += "\n" + styles_path.read_text(encoding="utf-8", errors="ignore")
+    return source
+
+
 def load_screen1_validator():
     path = ROOT / "scripts" / "run_phase7_screen1_parser_governance_workflow_validation.py"
     spec = importlib.util.spec_from_file_location("phase7_screen1_validator", path)
@@ -81,10 +92,7 @@ def valid_screen1_request() -> dict:
 
 class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
     def test_primary_workflow_markup_exists_in_generator(self) -> None:
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         self.assertIn('data-screen1-backlog-review="true"', source)
         self.assertIn("Parser Governance Backlog Review", source)
         self.assertIn(
@@ -290,10 +298,7 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         validator = load_screen1_validator()
         from src.reporting.html_dashboard import _render_screen_1_page
 
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         contract = (ROOT / "src" / "learning" / "dashboard_runtime_interaction.py").read_text(
             encoding="utf-8",
             errors="ignore",
@@ -649,10 +654,7 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         )
         self.assertIn(
             "Queued for parser governance review. If accepted for implementation, this should proceed to Screen 6 learning/materialization governance before any future-run influence. No current runtime behavior changed.",
-            (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-                encoding="utf-8",
-                errors="ignore",
-            ),
+            read_dashboard_source_text(),
         )
         self.assertNotIn('data-action-type="knowledge_artifact_review"', primary)
         self.assertNotIn('data-action-type="knowledge_artifact_approve"', primary)

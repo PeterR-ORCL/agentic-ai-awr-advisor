@@ -164,6 +164,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def run_validation(*, generated_dir: Path | None = None) -> dict[str, Any]:
     source = read_text(ROOT / "src" / "reporting" / "html_dashboard.py")
+    styles_path = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
+    if styles_path.is_file():
+        source = source + "\n" + read_text(styles_path)
     contract = read_text(ROOT / "src" / "learning" / "dashboard_runtime_interaction.py")
     service_exists = (ROOT / "scripts" / "dashboard_workflow_service.py").is_file()
     generated_root = generated_dir or ROOT / "awr_dashboard"

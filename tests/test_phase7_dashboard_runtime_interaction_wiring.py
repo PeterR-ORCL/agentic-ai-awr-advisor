@@ -14,6 +14,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "run_phase7_dashboard_runtime_interaction_validation.py"
+
+
+def read_dashboard_source_text() -> str:
+    source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
+        encoding="utf-8",
+        errors="ignore",
+    )
+    styles_path = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
+    if styles_path.is_file():
+        source += "\n" + styles_path.read_text(encoding="utf-8", errors="ignore")
+    return source
+
+
 PHASE7CM_UX_FIXTURE = """
 <section id="phase7cm-source-intake-panel" data-phase7-index-source-selection="true" data-dashboard-default-state="{&quot;selectedSourceMode&quot;:&quot;local_staged&quot;,&quot;selectedSourcePath&quot;:&quot;data/input&quot;,&quot;sourceSelectionMethod&quot;:&quot;backend_path&quot;}">
   <h2>What do you want to work with?</h2>
@@ -651,10 +664,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_index_source_card_selection_state_keys_are_supported(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         supported_keys = module.extract_dashboard_state_keys(source)
 
         self.assertIn("selectedSourceMode", supported_keys)
@@ -703,10 +713,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_index_source_card_selection_click_path_contract_is_validated(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         result = module.validate_index_source_selection_behavior_contract(
             source,
             PHASE7CR_INDEX_AND_SCREEN1_FIXTURES,
@@ -729,10 +736,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_os_file_and_folder_picker_support_is_validated(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         result = module.validate_picker_source_selection_support(
             source,
             PHASE7CR_INDEX_AND_SCREEN1_FIXTURES,
@@ -754,10 +758,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("local_folder", failed["reason"])
 
     def test_screen1_source_intake_uses_pollable_operator_feedback_contract(self) -> None:
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
 
         self.assertIn("PHASE7_ACTION_STATUS_ENDPOINT", source)
         self.assertIn("PHASE7_HEALTH_ENDPOINT", source)
@@ -771,10 +772,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_pipeline_source_summary_is_compact_and_overflow_safe(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
 
         result = module.validate_pipeline_source_summary(
             source,
@@ -817,10 +815,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_html_awr_is_not_advertised_as_phase7_supported_input(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
 
         self.assertIn("PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out'])", source)
         self.assertIn("PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out'])", source)
@@ -864,10 +859,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
 
     def test_generated_dashboard_controls_are_validated_when_present(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         generated = "\n".join(
             (
                 '<section data-phase7-runtime-interaction-panel="true">'
@@ -906,10 +898,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
 
     def test_generated_dashboard_evidence_is_required(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         result = module.validate_dashboard_runtime_interaction(
             source_text=source,
             generated_texts={},
@@ -1468,10 +1457,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
 
     def test_service_or_contract_missing_blocks_validation(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         generated = "\n".join(
             (
                 '<section data-phase7-runtime-interaction-panel="true">'
@@ -1511,10 +1497,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
 
     def test_contradictory_operational_text_blocks_validation(self) -> None:
         module = validation_module()
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         generated = (
             PHASE7CR_INDEX_FIXTURE.replace(
                 '<section id="phase7cr-platform-entry-panel"',
@@ -1638,10 +1621,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         )
 
     def test_dashboard_source_does_not_wire_buttons_to_run_analysis(self) -> None:
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
         action_text = validation_module().action_control_text(source)
         self.assertNotIn("scripts/run_analysis.py", action_text)
         self.assertNotIn("run_analysis_coupling=true", action_text)
@@ -1649,10 +1629,7 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         self.assertNotIn('data-phase8-behavior="true"', source)
 
     def test_dashboard_endpoint_is_configurable_for_oci_api(self) -> None:
-        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = read_dashboard_source_text()
 
         self.assertIn("window.PHASE7_DASHBOARD_ACTION_ENDPOINT", source)
         self.assertIn("derivePhase7Endpoint", source)

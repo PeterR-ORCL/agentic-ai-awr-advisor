@@ -90,8 +90,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def run_validation(*, generated_dir: Path | None = None) -> dict[str, Any]:
-    source_path = ROOT / "src" / "reporting" / "html_dashboard.py"
-    source_text = read_text(source_path)
+    source_text = read_dashboard_source_text()
     generated_paths = dashboard_generated_paths(generated_dir)
     generated_texts = {
         path: read_text(real_path)
@@ -104,6 +103,14 @@ def run_validation(*, generated_dir: Path | None = None) -> dict[str, Any]:
         service_exists=(ROOT / "scripts" / "dashboard_workflow_service.py").is_file(),
         contract_exists=(ROOT / "src" / "learning" / "dashboard_runtime_interaction.py").is_file(),
     )
+
+
+def read_dashboard_source_text() -> str:
+    source = read_text(ROOT / "src" / "reporting" / "html_dashboard.py")
+    styles_path = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
+    if styles_path.is_file():
+        source = source + "\n" + read_text(styles_path)
+    return source
 
 
 def validate_dashboard_runtime_interaction(

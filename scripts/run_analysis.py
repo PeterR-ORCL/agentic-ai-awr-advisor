@@ -283,7 +283,8 @@ def _phase7_dashboard_local_service_supports_screen3_options(host: str, port: in
     )
     if status_code not in {202, 503}:
         return False
-    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    metadata_value = payload.get("metadata")
+    metadata: dict[str, Any] = metadata_value if isinstance(metadata_value, dict) else {}
     source_tables = payload.get("runtime_options_source_tables") or metadata.get(
         "runtime_options_source_tables"
     )

@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 SCREEN2_HTML = ROOT / "awr_dashboard" / "screen_3_analysis.html"
 HTML_DASHBOARD = ROOT / "src" / "reporting" / "html_dashboard.py"
+DASHBOARD_STYLES = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
 RUNTIME_CONTRACT = ROOT / "src" / "learning" / "dashboard_runtime_interaction.py"
 WORKFLOW_SERVICE = ROOT / "scripts" / "dashboard_workflow_service.py"
 
@@ -91,7 +92,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def run_validation() -> dict[str, Any]:
     generated_text = read_text(SCREEN2_HTML)
-    source_text = read_text(HTML_DASHBOARD)
+    source_text = "\n".join((read_text(HTML_DASHBOARD), read_text(DASHBOARD_STYLES)))
     contract_text = read_text(RUNTIME_CONTRACT)
     service_text = read_text(WORKFLOW_SERVICE)
     result = validate_screen2_diagnostic_review(

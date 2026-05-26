@@ -312,6 +312,10 @@ class Phase7Screen2DiagnosticReviewRuntimeWorkflowTest(unittest.TestCase):
             encoding="utf-8",
             errors="ignore",
         )
+        styles = (ROOT / "src" / "reporting" / "dashboard" / "styles.py").read_text(
+            encoding="utf-8",
+            errors="ignore",
+        )
         contract = (ROOT / "src" / "learning" / "dashboard_runtime_interaction.py").read_text(
             encoding="utf-8",
             errors="ignore",
@@ -322,7 +326,7 @@ class Phase7Screen2DiagnosticReviewRuntimeWorkflowTest(unittest.TestCase):
         )
         result = validator.validate_screen2_diagnostic_review(
             generated_text=self.render_screen2(),
-            source_text=source,
+            source_text="\n".join((source, styles)),
             contract_text=contract,
             service_text=service,
             generated_exists=True,

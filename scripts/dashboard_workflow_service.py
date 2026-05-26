@@ -21,6 +21,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.dashboard_runtime_explanation_contract import (
+    RUNTIME_EXPLANATION_GLOBAL_FORBIDDEN_FIELDS,
+    RUNTIME_EXPLANATION_PROVIDER_MODES,
+    normalize_runtime_explanation_provider_mode,
+    normalize_runtime_explanation_response,
+    runtime_explanation_violates_boundary,
+    validate_runtime_explanation_payload,
+)
 from src.learning.dashboard_runtime_interaction import (
     DASHBOARD_RUNTIME_ACTION_TYPES,
     SCREEN_REQUIRED_ACTION_TYPES,
@@ -39,7 +47,7 @@ OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH = "/phase7/dashboard/object-storage/valida
 SCREEN2_EXPLANATION_ENDPOINT_PATH = "/phase7/dashboard/screen2/explanation"
 HEALTH_ENDPOINT_PATH = "/phase7/dashboard/health"
 ACTION_STATUS_ENDPOINT_PATH = "/phase7/dashboard/actions/status"
-SCREEN2_EXPLANATION_PROVIDER_MODES = frozenset({"off", "mock", "local", "oci"})
+SCREEN2_EXPLANATION_PROVIDER_MODES = RUNTIME_EXPLANATION_PROVIDER_MODES
 SUPPORTED_ENDPOINT_PATHS = (
     ENDPOINT_PATH,
     EXISTING_RUNS_ENDPOINT_PATH,
@@ -49,39 +57,7 @@ SUPPORTED_ENDPOINT_PATHS = (
     HEALTH_ENDPOINT_PATH,
     ACTION_STATUS_ENDPOINT_PATH,
 )
-SCREEN2_EXPLANATION_FORBIDDEN_FIELDS = frozenset(
-    {
-        "action_type",
-        "workflow_type",
-        "audit_record",
-        "audit_path",
-        "audit_id",
-        "request_id",
-        "governance_record",
-        "review_record",
-        "feedback_record",
-        "diagnosis_update",
-        "primary_issue_update",
-        "score_update",
-        "severity_update",
-        "confidence_update",
-        "recommendation_update",
-        "parser_mutation",
-        "runtime_action",
-        "runtime_execution",
-        "materialization_action",
-        "runtime_eligibility_action",
-        "learning_candidate_action",
-        "future_run_behavior_action",
-        "create_audit_record",
-        "create_review_record",
-        "create_governance_record",
-        "create_feedback_record",
-        "create_learning_candidate",
-        "create_materialization_candidate",
-        "create_runtime_eligibility_record",
-    }
-)
+SCREEN2_EXPLANATION_FORBIDDEN_FIELDS = RUNTIME_EXPLANATION_GLOBAL_FORBIDDEN_FIELDS
 
 
 class DashboardWorkflowHTTPServer(ThreadingHTTPServer):
@@ -640,40 +616,49 @@ def generate_screen2_explanation(payload: dict[str, Any]) -> dict[str, Any]:
 
     validation_error = _validate_screen2_explanation_payload(payload)
     if validation_error:
-        return {
-            "status": "rejected",
-            "message": validation_error,
-            "records_created": False,
-            "audit_reference": None,
-            "_http_status": 400,
-        }
+        return normalize_runtime_explanation_response(
+            {
+                "status": "rejected",
+                "message": validation_error,
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 400,
+            },
+            boundary_validation_result="request_rejected",
+        )
 
-    provider_mode = str(payload.get("provider_mode") or "off").strip().lower()
+    provider_mode = normalize_runtime_explanation_provider_mode(payload.get("provider_mode"))
     if provider_mode == "off":
-        return {
-            "status": "provider_off",
-            "provider_mode": "off",
-            "message": "Explanation generation is disabled for this run. The deterministic explanation remains available.",
-            "explanation": "",
-            "records_created": False,
-            "audit_reference": None,
-            "_http_status": 200,
-        }
+        return normalize_runtime_explanation_response(
+            {
+                "status": "provider_off",
+                "provider_mode": "off",
+                "message": "Explanation generation is disabled for this run. The deterministic explanation remains available.",
+                "explanation": "",
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 200,
+            },
+            boundary_validation_result="not_applicable",
+        )
     if provider_mode in {"mock", "local"}:
-        return {
-            "status": "generated",
-            "provider_mode": provider_mode,
-            "message": (
-                "Mock explanation generated from deterministic context. "
-                if provider_mode == "mock"
-                else "Local placeholder explanation generated from deterministic context. "
-            )
-            + "Deterministic values remain unchanged.",
-            "explanation": _screen2_canned_explanation(payload, provider_mode=provider_mode),
-            "records_created": False,
-            "audit_reference": None,
-            "_http_status": 200,
-        }
+        return normalize_runtime_explanation_response(
+            {
+                "status": "generated",
+                "provider_mode": provider_mode,
+                "message": (
+                    "Mock explanation generated from deterministic context. "
+                    if provider_mode == "mock"
+                    else "Local placeholder explanation generated from deterministic context. "
+                )
+                + "Deterministic values remain unchanged.",
+                "explanation": _screen2_canned_explanation(payload, provider_mode=provider_mode),
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 200,
+            },
+            boundary_validation_result="passed",
+        )
     if provider_mode == "oci":
         try:
             from src.analysis.ai_provider_adapter import generate_ai_response
@@ -686,44 +671,56 @@ def generate_screen2_explanation(payload: dict[str, Any]) -> dict[str, Any]:
             )
             explanation = _sanitize_screen2_provider_text(str(result.get("content") or ""))
         except Exception:
-            return {
-                "status": "provider_failed",
-                "provider_mode": "oci",
-                "message": "OCI GenAI explanation request failed. The deterministic explanation remains available.",
-                "explanation": "",
-                "records_created": False,
-                "audit_reference": None,
-                "_http_status": 502,
-            }
+            return normalize_runtime_explanation_response(
+                {
+                    "status": "provider_failed",
+                    "provider_mode": "oci",
+                    "message": "OCI GenAI explanation request failed. The deterministic explanation remains available.",
+                    "explanation": "",
+                    "records_created": False,
+                    "audit_reference": None,
+                    "_http_status": 502,
+                },
+                boundary_validation_result="not_checked",
+            )
         if not explanation or _screen2_explanation_violates_boundary(explanation):
-            return {
-                "status": "provider_rejected",
+            return normalize_runtime_explanation_response(
+                {
+                    "status": "provider_rejected",
+                    "provider_mode": "oci",
+                    "message": (
+                        "OCI GenAI returned wording that was empty or conflicted with Screen 2 boundaries. "
+                        "The deterministic explanation remains available."
+                    ),
+                    "explanation": "",
+                    "records_created": False,
+                    "audit_reference": None,
+                    "_http_status": 502,
+                },
+                boundary_validation_result="rejected",
+            )
+        return normalize_runtime_explanation_response(
+            {
+                "status": "generated",
                 "provider_mode": "oci",
-                "message": (
-                    "OCI GenAI returned wording that was empty or conflicted with Screen 2 boundaries. "
-                    "The deterministic explanation remains available."
-                ),
-                "explanation": "",
+                "message": "OCI GenAI explanation generated server-side. Deterministic values remain unchanged.",
+                "explanation": explanation,
                 "records_created": False,
                 "audit_reference": None,
-                "_http_status": 502,
-            }
-        return {
-            "status": "generated",
-            "provider_mode": "oci",
-            "message": "OCI GenAI explanation generated server-side. Deterministic values remain unchanged.",
-            "explanation": explanation,
+                "_http_status": 200,
+            },
+            boundary_validation_result="passed",
+        )
+    return normalize_runtime_explanation_response(
+        {
+            "status": "rejected",
+            "message": "Unsupported Screen 2 explanation provider mode.",
             "records_created": False,
             "audit_reference": None,
-            "_http_status": 200,
-        }
-    return {
-        "status": "rejected",
-        "message": "Unsupported Screen 2 explanation provider mode.",
-        "records_created": False,
-        "audit_reference": None,
-        "_http_status": 400,
-    }
+            "_http_status": 400,
+        },
+        boundary_validation_result="request_rejected",
+    )
 
 
 def _validate_screen2_explanation_payload(payload: dict[str, Any]) -> str:
@@ -733,7 +730,7 @@ def _validate_screen2_explanation_payload(payload: dict[str, Any]) -> str:
         return "Screen 2 explanation request must use screen_id=screen_2."
     if payload.get("non_mutating_explanation_only") is not True:
         return "Screen 2 explanation request must be marked non-mutating."
-    provider_mode = str(payload.get("provider_mode") or "off").strip().lower()
+    provider_mode = normalize_runtime_explanation_provider_mode(payload.get("provider_mode"))
     if provider_mode not in SCREEN2_EXPLANATION_PROVIDER_MODES:
         return "Unsupported Screen 2 explanation provider mode."
     present_forbidden = sorted(key for key in SCREEN2_EXPLANATION_FORBIDDEN_FIELDS if key in payload)
@@ -741,6 +738,17 @@ def _validate_screen2_explanation_payload(payload: dict[str, Any]) -> str:
         return "Screen 2 explanation request cannot include mutation/workflow fields: " + ", ".join(
             present_forbidden
         )
+    shared_validation_error = validate_runtime_explanation_payload(
+        payload,
+        expected_screen_id="screen_2",
+        forbidden_fields=SCREEN2_EXPLANATION_FORBIDDEN_FIELDS,
+    )
+    if shared_validation_error == "Runtime explanation request cannot create records.":
+        return "Screen 2 explanation request cannot create records."
+    if shared_validation_error == "Runtime explanation request cannot provide an audit reference.":
+        return "Screen 2 explanation request cannot provide an audit reference."
+    if shared_validation_error:
+        return shared_validation_error
     for key in (
         "selected_focus",
         "target_type",
@@ -816,38 +824,7 @@ def _sanitize_screen2_provider_text(value: str) -> str:
 
 
 def _screen2_explanation_violates_boundary(explanation: str) -> bool:
-    lowered = explanation.lower()
-    unsafe_markers = (
-        "changed the diagnosis",
-        "changes the diagnosis",
-        "updated the diagnosis",
-        "updates the diagnosis",
-        "changed the score",
-        "changes the score",
-        "updated the score",
-        "updates the score",
-        "changed confidence",
-        "updates confidence",
-        "updated the recommendation",
-        "changes the recommendation",
-        "runtime behavior changed",
-        "changes runtime behavior",
-        "materialized",
-        "runtime eligible",
-        "normal runtime eligibility",
-        "runtime eligibility aligns",
-        "runtime eligibility is normal",
-        "created audit",
-        "created governance",
-        "created review",
-        "trained the model",
-        "future runs will",
-        "below concern threshold",
-        "below concern thresholds",
-        "above concern threshold",
-        "above concern thresholds",
-    )
-    return any(marker in lowered for marker in unsafe_markers)
+    return runtime_explanation_violates_boundary(explanation)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

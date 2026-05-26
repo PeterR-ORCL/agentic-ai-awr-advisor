@@ -9446,7 +9446,8 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         <h2>New Source Intake / Validation Workflow</h2>
         <p class="meta">
           For new sources, configure and validate source metadata here, then
-          continue ingestion, parser review, and source governance. Existing
+          continue ingestion, parser review, and source governance. Screen 1
+          prepares artifact readiness and governed handoff eligibility. Existing
           platform evidence runtime scope is controlled on Screen 2.
         </p>
 
@@ -9457,7 +9458,7 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
             <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
             <li>Step 3: Submit a governed backend source intake request.</li>
             <li>Step 4: Review request state, Request ID, and Audit record.</li>
-            <li>Step 5: After backend completion, generated run evidence and the file/report table become available.</li>
+            <li>Step 5: After backend completion, generated run evidence and the file/report table become available for Screen 1 review and governed handoff eligibility.</li>
           </ol>
         </section>
 
@@ -9727,9 +9728,9 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
               <strong>Request / Audit Result</strong>
               <p data-phase7-source-validation-card="result"
                  data-phase7-submit-result-reference="true">
-                After submit, accepted/running/completed/failed status, Request ID,
-	                Audit record, and generated artifact readiness appear in the
-	                result panel.
+	                After submit, accepted/running/completed/failed status, Request ID,
+		                Audit record, and generated artifact readiness appear in the
+		                result panel. File existence alone is not active downstream evidence.
               </p>
             </article>
           </div>
@@ -9774,8 +9775,10 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         <p class="meta phase7cm-truth-boundary-note">
           After submit, governed source intake results appear here. Generated
           run evidence updates only after the backend analysis/generation path
-          produces a new dashboard artifact. Browser-side source intake does
-          not mutate deterministic truth.
+          produces a new dashboard artifact and current readiness is confirmed.
+          A generated file alone is not active downstream evidence; downstream
+          screens remain gated until a valid current handoff exists.
+          Browser-side source intake does not mutate deterministic truth.
         </p>
 
         <p class="meta phase7cm-next-step-note">
@@ -11034,12 +11037,16 @@ def _render_screen1_run_intake_report_section(screen_model: dict[str, Any]) -> s
           created by the unsent source workflow above. Browser-side source
           intake records governed execution intent only. Generated evidence updates only
           after a governed backend generation path produces or selects an
-          artifact.
+          artifact. Artifact existence alone is not active downstream evidence;
+          Screen 1 shows governed artifact readiness and evidence-handoff
+          eligibility after explicit current readiness is confirmed.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true">
           No generated run evidence is available yet. Complete source validation
-          and run/regenerate through the governed backend path.
+          and run/regenerate through the governed backend path. Downstream
+          screens remain gated until explicit current readiness or Screen 2
+          existing-evidence handoff is valid.
         </div>
         <div data-screen1-artifact-ready-content="true"
              data-screen1-generated-evidence-content="true"
@@ -11075,8 +11082,9 @@ def _render_screen1_parser_health_primary_section(
         <div class="section-kicker">PARSER HEALTH</div>
         <h2>Parse Confidence</h2>
         <p class="meta">
-          Parser health reflects generated parser output. It appears only after a
-          governed backend source intake run produces or selects an artifact.
+          Parser health reflects generated parser output, not a diagnostic
+          conclusion. It appears only after a governed backend source intake run
+          produces or selects an artifact.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true">
@@ -11143,8 +11151,9 @@ def _render_screen1_full_report_table_section(screen_model: dict[str, Any]) -> s
         <h2>Full File / Report Table</h2>
         <p class="meta">
           Complete file-level intake table for generated report rows after a
-          generated artifact is selected or ready. This is operational intake
-          evidence, not historical/debug evidence.
+          generated artifact is explicitly ready. This is operational intake
+          evidence and handoff context, not active downstream evidence by file
+          existence alone.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true"
@@ -11342,7 +11351,8 @@ def _render_screen1_parser_review_unknown_signals_section(
         <h2>Unknown Signals</h2>
         <p class="meta">
           Unknown-signal review reflects generated parser output for the selected
-          artifact. Persisted parser memory is shown only after artifact-ready
+          artifact. These signals are ingestion/parser evidence, not diagnostic
+          conclusions. Persisted parser memory is shown only after artifact-ready
           state confirms a current run or selected artifact.
         </p>
         <div class="screen1-generated-evidence-empty-state"
@@ -11374,7 +11384,8 @@ def _render_screen1_parser_review_unknown_signals_section(
             </section>
             <p class="meta screen1-unknown-signals-handoff-note">
               Use Parser Governance Backlog Review below to decide how this
-              persisted signal should be handled.
+              persisted signal should be handled. The review records governed
+              intent only; it does not change parser output by itself.
             </p>
           </div>
         </template>
@@ -11540,6 +11551,9 @@ def _render_screen1_parser_governance_runtime_workflow(
         <p class="meta">
           Review parser signals for the current generated artifact and submit a
           governed backlog review request after source intake execution completes.
+          This records reviewer intent and backlog context; it does not change
+          parser output, diagnosis, scoring, recommendations, learning, or
+          runtime eligibility.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true">
@@ -11575,6 +11589,7 @@ def _render_screen1_parser_governance_runtime_workflow(
             <p>
               <strong>Meaning:</strong>
               This is not a new runtime parser failure. It is a persisted parser governance backlog item.
+              It is ingestion/parser governance evidence, not a diagnostic conclusion.
             </p>
             <p>
               <strong>Why it matters:</strong>
@@ -11702,7 +11717,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 	        <section class="screen1-governance-boundary">
 		          <h3>Governance Boundary</h3>
 		          <p>
-		            Submitting a parser governance review records reviewer context as DB-backed governed workflow state when the configured database is available, and also records a JSON audit envelope. It may create governed input for downstream learning/materialization review, but it does not change the current parser output, diagnosis, scoring, recommendations, runtime decisions, approvals, ML behavior, learning candidates, materialization state, runtime eligibility, or dashboard truth. Future-run influence is possible only if a later governed <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> path approves, materializes, and marks a parser change runtime-eligible.
+		            Submitting a parser governance review records reviewer context as DB-backed governed workflow state when the configured database is available, and also records a JSON audit envelope. It may create governed input for downstream learning/materialization review, but it does not change the current parser output, diagnosis, scoring, recommendations, runtime decisions, approvals, ML behavior, learning candidates, materialization state, runtime eligibility, or dashboard truth. Future-run influence is possible only if a later governed <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> path approves, materializes, and marks a parser change runtime-eligible. The wording on this panel is static product explanation; the review does not invoke a Screen 1 LLM route, prompt, provider, or runtime call.
 		          </p>
 	          <p>
 	            This protects current diagnostic truth while still allowing parser improvements
@@ -11715,15 +11730,17 @@ def _render_screen1_parser_governance_runtime_workflow(
 		        <div class="screen1-governance-explanation">
 		          <article>
 		            <strong>So what?</strong>
-		            <p>
-		              This review turns repeated parser uncertainty into governed parser-improvement input. It gives the parser backlog an auditable path from operator review to possible downstream learning/materialization governance.
-		            </p>
+			            <p>
+			              This review turns repeated parser uncertainty into governed parser-improvement input. It gives the parser backlog an auditable path from operator review to possible downstream learning/materialization governance.
+			              It records meaning and reviewer intent without reclassifying unknowns or changing parser behavior.
+			            </p>
 		          </article>
 		          <article>
 		            <strong>Why this matters</strong>
-		            <p>
-		              Parser governance backlog items identify parser gaps, missing expected sections, or unmapped evidence patterns that may affect evidence completeness. In this case, the parser repeatedly observed an expected optional I/O section missing from AWR reports, so the operator decides whether that is normal for this source profile, a parser expectation gap, a source/report gap, or not applicable. Better parser coverage can improve the quality of future deterministic analysis after governed approval.
-		            </p>
+			            <p>
+			              Parser governance backlog items identify parser gaps, missing expected sections, or unmapped evidence patterns that may affect evidence completeness. In this case, the parser repeatedly observed an expected optional I/O section missing from AWR reports, so the operator decides whether that is normal for this source profile, a parser expectation gap, a source/report gap, or not applicable. Better parser coverage can improve the quality of future deterministic analysis after governed approval.
+			              These items are parser/ingestion review signals, not diagnostic conclusions.
+			            </p>
 		          </article>
 	          <article>
 		            <strong>How this is implemented</strong>
@@ -11733,6 +11750,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 		              request. The browser posts that request to the governed dashboard workflow
 		              service, which validates it, persists DB-backed governed workflow metadata
 		              when configured database connectivity is available, and records a JSON audit envelope.
+		              The explanatory wording here is static dashboard copy, not dynamic LLM behavior.
 		            </p>
 		          </article>
 	          <article>
@@ -11744,7 +11762,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 	          <article>
 		            <strong>What changes</strong>
 		            <p>
-		              A governed parser-review workflow/audit record is created for the selected backlog item through the dashboard service path. When DB connectivity is available, that record is persisted in the governed workflow database tables.
+		              A governed parser-review workflow/audit record is created for the selected backlog item through the dashboard service path. When DB connectivity is available, that record is persisted in the governed workflow database tables. No parser output, unknown classification, or deterministic result changes in Screen 1.
 		            </p>
 		          </article>
 	          <article>
@@ -11755,6 +11773,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 	              runtime eligibility, and dashboard truth remain unchanged. Diagnosis, scoring,
 	              and recommendation changes require deterministic analysis or governed downstream
 	              workflows; this Screen 1 review only records parser-governance context.
+	              Static explanatory copy cannot override deterministic output or governed state.
 	            </p>
 	          </article>
 		          <article>
@@ -11820,7 +11839,7 @@ def _render_screen1_knowledge_artifact_context_section(
             <strong>No knowledge artifacts are available for the current selected run/source context.</strong>
             <p>
               Knowledge artifacts are optional reviewer-assist context. When available, they may
-              help explain parser governance background, parser decisions, or mapping rationale.
+              help explain parser governance background, review decisions, or mapping rationale.
               They do not change parser behavior, diagnosis, scoring, recommendations, runtime
               eligibility, ML behavior, or dashboard truth.
             </p>

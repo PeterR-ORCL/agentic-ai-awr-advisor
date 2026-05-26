@@ -2807,9 +2807,9 @@ def _build_dashboard_interactivity_javascript() -> str:
           return {
             path: 'New Source Artifact',
             readiness: 'completed_artifact_ready',
-            nextStep: runtimeOptionsLoaded ? 'Continue to Analysis' : 'Load Runtime Options / Continue to Analysis',
-            handoff: 'Ready for Analysis / Review / Action / Learning',
-            guidance: 'Screen 1 completed the governed artifact handoff. Screen 2 can load DB-backed runtime options and select scope.'
+            nextStep: runtimeOptionsLoaded ? 'Confirm Handoff Scope on Screen 2' : 'Load Runtime Options for Governed Handoff',
+            handoff: 'Artifact Ready for Governed Handoff',
+            guidance: 'Current artifact readiness is confirmed; downstream use still requires valid evidence handoff.'
           };
         }
 

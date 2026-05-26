@@ -2818,8 +2818,8 @@ def _build_dashboard_interactivity_javascript() -> str:
             return {
               path: 'Existing Platform Evidence',
               readiness: 'Runtime scope selected',
-              handoff: 'Ready for Analysis / Review / Action / Learning',
-              guidance: 'Existing platform evidence has a selected runtime scope/window/assignment for downstream workflow.'
+              handoff: 'Existing Evidence Scope Ready for Downstream Review',
+              guidance: 'Current existing evidence scope, window, and target assignment are selected for governed downstream review.'
             };
           }
           if (runtimeOptionsLoaded) {
@@ -16050,7 +16050,7 @@ def _render_screen3_operator_help_panel() -> str:
             <article class="screen3-context-subpanel screen3-operator-help-panel">
               <h4>How to use this screen</h4>
               <ol class="screen3-operator-steps">
-                <li><strong>Choose assignment.</strong> Runtime Scope analyzes or re-runs a selected AWR/report. Target A and Target B define the two sides of a comparison.</li>
+                <li><strong>Choose assignment.</strong> Runtime Scope prepares a selected AWR/report for a governed analysis or re-run request. Target A and Target B define the two sides of a comparison.</li>
                 <li><strong>Select AWR/report row.</strong> The row you click is applied only to the active assignment.</li>
                 <li><strong>Optional interval/window.</strong> Select a window for the same assignment when period-level comparison is needed.</li>
                 <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can proceed.</li>

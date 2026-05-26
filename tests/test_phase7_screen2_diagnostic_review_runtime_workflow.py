@@ -261,6 +261,13 @@ class Phase7Screen2DiagnosticReviewRuntimeWorkflowTest(unittest.TestCase):
         self.assertFalse(result["records_created"])
         self.assertIsNone(result["audit_reference"])
         self.assertIn("COMMIT", result["explanation"])
+        self.assertIn("active Screen 3 diagnostic explanation focus", result["explanation"])
+        self.assertIn("already-computed deterministic analysis", result["explanation"])
+        self.assertIn("does not load evidence, parse AWR content, compare evidence", result["explanation"])
+        self.assertIn("select runtime scope", result["explanation"])
+        self.assertIn("assign Target A/B", result["explanation"])
+        self.assertIn("decide comparison readiness", result["explanation"])
+        self.assertNotIn("active Screen 2 explanation focus", result["explanation"])
         self.assertIn("Deterministic values remain unchanged", result["message"])
 
         rejected = service.generate_screen2_explanation({**payload, "action_type": "diagnostic_review"})

@@ -612,7 +612,7 @@ def _tail_text(value: Any, limit: int = 4000) -> str:
 
 
 def generate_screen2_explanation(payload: dict[str, Any]) -> dict[str, Any]:
-    """Generate Screen 2 wording only; never create workflow/audit/governance records."""
+    """Explain already-computed Screen 3 diagnostic analysis through the legacy Screen 2 route."""
 
     validation_error = _validate_screen2_explanation_payload(payload)
     if validation_error:
@@ -689,7 +689,7 @@ def generate_screen2_explanation(payload: dict[str, Any]) -> dict[str, Any]:
                     "status": "provider_rejected",
                     "provider_mode": "oci",
                     "message": (
-                        "OCI GenAI returned wording that was empty or conflicted with Screen 2 boundaries. "
+                        "OCI GenAI returned wording that was empty or conflicted with Screen 3 diagnostic boundaries. "
                         "The deterministic explanation remains available."
                     ),
                     "explanation": "",
@@ -774,26 +774,32 @@ def _screen2_canned_explanation(payload: dict[str, Any], *, provider_mode: str) 
     facts = str(payload.get("deterministic_facts") or "deterministic evidence context").strip()
     mode_label = provider_mode.upper()
     return (
-        f"{mode_label} explanation: {selected_focus} is the active Screen 2 explanation focus "
+        f"{mode_label} explanation: {selected_focus} is the active Screen 3 diagnostic explanation focus "
+        "for already-computed deterministic analysis "
         f"({target_type}; inferred domain: {inferred_domain}). Deterministic facts used: {facts}. "
         f"The decision posture remains {posture}, confidence remains {confidence}, and primary issue/domain remains "
         f"{primary_issue}. Diagnosis, score, confidence, recommendation, parser output, runtime behavior, ML behavior, "
         f"learning candidates, materialization, runtime eligibility, future-run behavior, evidence values, thresholds, "
-        f"and DB/governance/audit state are unchanged."
+        f"and DB/governance/audit state are unchanged. This wording-only explanation does not load evidence, parse "
+        f"AWR content, compare evidence, select runtime scope, assign Target A/B, decide comparison readiness, or "
+        f"mutate deterministic analysis output."
     )
 
 
 def _screen2_explanation_system_role() -> str:
     return (
         "You write concise operator-facing Oracle AWR diagnostic explanation text. "
-        "The deterministic engine decides. You explain already-decided Screen 2 diagnostic meaning only. "
+        "The deterministic engine decides. You explain already-computed product Screen 3 deterministic analysis only. "
+        "You do not load evidence, parse AWR content, compare evidence, select runtime scope, assign Target A/B, "
+        "decide comparison readiness, or mutate deterministic analysis output. "
         "Return plain text only, with no Markdown headings, no bullets, and no leading # characters."
     )
 
 
 def _screen2_explanation_prompt(payload: dict[str, Any]) -> str:
     return (
-        "Generate one concise plain-text paragraph for the Screen 2 Focused Diagnostic Meaning panel. "
+        "Generate one concise plain-text paragraph for the product Screen 3 Focused Diagnostic Meaning panel. "
+        "Explain already-computed deterministic analysis only. "
         "Do not use Markdown, heading markers, bullet lists, or leading # characters.\n"
         "Use only these deterministic values:\n"
         f"- Active explanation focus: {payload.get('selected_focus')}\n"
@@ -804,12 +810,14 @@ def _screen2_explanation_prompt(payload: dict[str, Any]) -> str:
         f"- Severity: {payload.get('severity')}\n"
         f"- Confidence: {payload.get('confidence')}\n"
         f"- Deterministic facts: {payload.get('deterministic_facts')}\n\n"
-        "Boundary: Screen 2 selection and Generate Focused Explanation change only local selected focus and displayed "
+        "Boundary: product Screen 3 selection and Generate Focused Explanation change only local selected focus and displayed "
         "explanation wording. Do not say or imply that diagnosis, primary issue/domain, score, severity, confidence, "
         "recommendation, parser output, runtime behavior, ML behavior, learning candidates, materialization, runtime "
         "eligibility, future-run behavior, evidence values, thresholds, or DB/governance/audit state changed. "
+        "Do not say or imply that this path loads evidence, parses AWR content, compares evidence, selects runtime "
+        "scope, assigns Target A/B, decides comparison readiness, or performs deterministic analysis. "
         "Do not mention threshold status unless a threshold value is provided. Do not describe runtime eligibility "
-        "except to say that Screen 2 does not change it."
+        "except to say that this Screen 3 diagnostic explanation path does not change it."
     )
 
 

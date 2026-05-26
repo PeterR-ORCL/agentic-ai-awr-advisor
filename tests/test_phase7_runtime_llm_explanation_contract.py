@@ -190,6 +190,12 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertIsNone(result["audit_reference_expected"])
         self.assertEqual(result["provider_output_status"], "generated")
         self.assertEqual(result["boundary_validation_result"], "passed")
+        self.assertIn("active Screen 3 diagnostic explanation focus", result["explanation"])
+        self.assertIn("already-computed deterministic analysis", result["explanation"])
+        self.assertIn("does not load evidence, parse AWR content, compare evidence", result["explanation"])
+        self.assertIn("assign Target A/B", result["explanation"])
+        self.assertIn("decide comparison readiness", result["explanation"])
+        self.assertNotIn("active Screen 2 explanation focus", result["explanation"])
 
         rejected = service.generate_screen2_explanation(
             {**payload, "create_audit_record": True}

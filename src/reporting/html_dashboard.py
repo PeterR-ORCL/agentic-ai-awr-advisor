@@ -9457,10 +9457,10 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         <div class="section-kicker">Screen 1 Source Workflow</div>
         <h2>New Source Intake / Validation Workflow</h2>
         <p class="meta">
-          For new sources, configure and validate source metadata here, then
-          continue ingestion, parser review, and source governance. Screen 1
-          prepares artifact readiness and governed handoff eligibility. Existing
-          platform evidence runtime scope is controlled on Screen 2.
+          Use Screen 1 for new-source metadata, validation, generated artifact
+          review, parser health, and source governance. Completing this workflow
+          prepares governed handoff eligibility; existing platform evidence and
+          runtime scope remain controlled on Screen 2.
         </p>
 
         <section class="evidence-pane" data-phase7-selection-workflow="true">
@@ -9470,7 +9470,7 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
             <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
             <li>Step 3: Submit a governed backend source intake request.</li>
             <li>Step 4: Review request state, Request ID, and Audit record.</li>
-            <li>Step 5: After backend completion, generated run evidence and the file/report table become available for Screen 1 review and governed handoff eligibility.</li>
+            <li>Step 5: After backend completion, review generated run evidence and the file/report table here. Downstream screens still require explicit current handoff readiness.</li>
           </ol>
         </section>
 
@@ -9483,12 +9483,11 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
                  data-phase7-source-configuration="true">
           <h3>Source Configuration</h3>
           <p class="meta">
-            These fields define or confirm where the AWR input comes from. The
-            browser does not read local files, inspect folders, query the DB, or
-            access Object Storage. The values are submitted as governed request
-            metadata for backend-side validation. Local folder/file selection is
-            for local development or upload-style staging; durable source
-            handling is owned by the governed backend path.
+            These fields describe the source reference that may be submitted to
+            the governed backend service. The browser does not read local files,
+            inspect folders, query the DB, or access Object Storage. Local
+            folder/file pickers provide selection metadata only; durable source
+            handling and validation remain backend-owned.
           </p>
           <p class="meta">
             The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter and is not accepted by this governed handoff.
@@ -9646,16 +9645,15 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         <section class="evidence-pane"
                  data-phase7-current-selection-panel="true"
                  data-phase7-active-source-configuration="true">
-	          <h3>Selected Source Summary</h3>
-	          <p class="meta">
-	            <strong>Active Source Selection.</strong>
-	            This is the operator-facing source workflow summary. It changes
-	            with Local folder, Local file, or Object Storage
-	            selection and shows what is ready, missing, or invalid before the
-	            governed handoff is submitted. The default local staging
-	            reference below is informational only and is not the active source
-	            once another source mode is selected.
-	          </p>
+		          <h3>Selected Source Summary</h3>
+		          <p class="meta">
+		            <strong>Active Source Selection.</strong>
+		            This summary shows the current source context that would be sent
+		            to the governed backend service. It changes with Local folder,
+		            Local file, or Object Storage selection and shows what is ready,
+		            missing, or invalid before submit. It is source metadata only
+		            until a governed request succeeds.
+		          </p>
           <div class="phase7cm-source-summary-grid"
                data-phase7-dynamic-source-summary="true">
             <article class="phase7cm-source-summary-card">
@@ -9695,14 +9693,14 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
           </p>
         </section>
 
-	        <section class="evidence-pane" data-phase7-runtime-source-validation="true">
-	          <h3>Validation / Execution Status</h3>
-          <p class="meta">
-            This block separates picker/configuration status from governed
-            backend validation. OS picker selection alone is not staging and
-            does not create a governed request; the request/audit record is
-            created only after the source-specific submit action succeeds.
-          </p>
+		        <section class="evidence-pane" data-phase7-runtime-source-validation="true">
+		          <h3>Validation / Execution Status</h3>
+	          <p class="meta">
+	            This block separates source selection metadata from governed
+	            backend validation and execution. Picker selection alone does not
+	            stage evidence or create a request. The request/audit record and
+	            artifact-readiness result appear only after submit succeeds.
+	          </p>
           <div class="phase7cm-source-summary-grid"
                data-phase7-runtime-source-validation-grid="true">
             <article class="phase7cm-source-summary-card">
@@ -11045,13 +11043,13 @@ def _render_screen1_run_intake_report_section(screen_model: dict[str, Any]) -> s
         <div class="section-kicker">GENERATED EVIDENCE</div>
         <h2>Current Generated Run / Intake Evidence</h2>
         <p class="meta screen1-generated-run-boundary-note">
-          Generated evidence reflects a generated dashboard artifact. It is not
-          created by the unsent source workflow above. Browser-side source
-          intake records governed execution intent only. Generated evidence updates only
-          after a governed backend generation path produces or selects an
-          artifact. Artifact existence alone is not active downstream evidence;
+          Generated evidence reflects a generated dashboard artifact. It is
+          current source-artifact context for Screen 1 review, not proof that
+          downstream evidence is active. Browser-side source intake does not
+          mutate deterministic truth. Generated evidence updates only after a
+          governed backend generation path produces or selects an artifact.
           Screen 1 shows governed artifact readiness and evidence-handoff
-          eligibility after explicit current readiness is confirmed.
+          eligibility only after explicit current readiness is confirmed.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true">
@@ -11162,10 +11160,9 @@ def _render_screen1_full_report_table_section(screen_model: dict[str, Any]) -> s
         <div class="section-kicker">REPORTS</div>
         <h2>Full File / Report Table</h2>
         <p class="meta">
-          Complete file-level intake table for generated report rows after a
-          generated artifact is explicitly ready. This is operational intake
-          evidence and handoff context, not active downstream evidence by file
-          existence alone.
+          File-level report rows from the current generated artifact appear here
+          after artifact readiness is explicit. Use this as Screen 1 intake and
+          parser context; downstream evidence still requires a valid handoff.
         </p>
         <div class="screen1-generated-evidence-empty-state"
              data-screen1-artifact-empty-state="true"
@@ -11852,7 +11849,8 @@ def _render_screen1_knowledge_artifact_context_section(
             <p>
               Knowledge artifacts are optional reviewer-assist context. When available, they may
               help explain parser governance background, review decisions, or mapping rationale.
-              They do not change parser behavior, diagnosis, scoring, recommendations, runtime
+              They are read-only context until governed review records say otherwise, and they do
+              not change parser behavior, diagnosis, scoring, recommendations, runtime
               eligibility, ML behavior, or dashboard truth.
             </p>
           </div>
@@ -11891,8 +11889,9 @@ def _render_screen1_knowledge_artifact_context_section(
         <div class="section-kicker">KNOWLEDGE CONTEXT</div>
         <h2>Artifact Context</h2>
         <p class="meta">
-          Secondary governed-memory context for review only. Parser governance
-          backlog review remains the active Screen 1 workflow.
+          Read-only governed-memory context for source and parser review.
+          Parser governance backlog review remains the active Screen 1 workflow;
+          artifacts shown here are supporting context, not activated behavior.
         </p>
         {context_html}
       </section>

@@ -59,9 +59,9 @@ class DashboardIndexSourceStatusPanelTests(unittest.TestCase):
     def test_status_copy_points_to_screen_1_ownership(self) -> None:
         rendered = " ".join(self.render_screen1().split())
         for phrase in (
-            "For new sources, configure and validate source metadata here",
-            "continue ingestion, parser review, and source governance on Screen 1",
-            "Existing platform evidence runtime scope is controlled on Screen 2",
+            "Use Screen 1 for new-source metadata, validation, generated artifact review, parser health, and source governance",
+            "Completing this workflow prepares governed handoff eligibility",
+            "existing platform evidence and runtime scope remain controlled on Screen 2",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)

@@ -204,7 +204,7 @@ def validate_screen1_parser_governance(
         run_report_index >= 0
         and "Current Generated Run / Intake Evidence" in primary_text
         and "Generated evidence reflects a generated dashboard artifact." in primary_text
-        and "created by the unsent source workflow above" in primary_text
+        and "current source-artifact context for Screen 1 review" in primary_text
         and 'data-screen1-artifact-ready-region="true"' in primary_text
         and 'data-screen1-generated-artifact-ready="false"' in primary_text
         and 'data-screen1-artifact-ready-content="true"' in primary_text

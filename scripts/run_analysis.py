@@ -1301,26 +1301,51 @@ def _dashboard_decision_recommendation_dicts(
 ) -> list[dict[str, Any]]:
     """Adapt decision-driven recommendations for the legacy dashboard renderer."""
 
+    issue_type_by_domain = {
+        "CPU": "cpu_pressure",
+        "IO": "io_pressure",
+        "MEMORY": "memory_pressure",
+        "COMMIT": "commit_pressure",
+        "RAC": "cluster_contention",
+        "ADG": "dg_replication_state",
+    }
     normalized: list[dict[str, Any]] = []
     for recommendation in recommendations:
         recommendation_dict = recommendation.to_dict()
-        issue_type = (
-            "cpu_pressure"
-            if str(recommendation_dict.get("domain") or "").upper() == "CPU"
-            else (
+        issue = str(
+            recommendation_dict.get("issue")
+            or recommendation_dict.get("domain")
+            or ""
+        ).upper()
+        issue_type = issue_type_by_domain.get(
+            issue,
+            (
                 f"{str(recommendation_dict.get('domain') or 'issue').lower()}_"
                 f"{str(recommendation_dict.get('category') or 'action').lower()}"
-            )
+            ),
         )
+        action = str(recommendation_dict.get("action") or "")
         normalized.append(
             {
                 "issue_type": issue_type,
-                "severity": str(recommendation_dict.get("priority") or "low").lower(),
-                "recommendation": recommendation_dict.get("action", ""),
-                "rationale": recommendation_dict.get("rationale", ""),
-                "next_step": recommendation_dict.get("title", ""),
-                "actions": [recommendation_dict.get("action", "")],
-                "evidence": recommendation_dict.get("source_signals", {}),
+                "severity": str(
+                    recommendation_dict.get("impact")
+                    or recommendation_dict.get("priority")
+                    or "low"
+                ).lower(),
+                "recommendation": action,
+                "rationale": str(recommendation_dict.get("rationale") or action),
+                "next_step": str(
+                    recommendation_dict.get("next_step")
+                    or recommendation_dict.get("title")
+                    or action
+                ),
+                "actions": [action] if action else [],
+                "evidence": (
+                    recommendation_dict.get("evidence")
+                    or recommendation_dict.get("source_signals")
+                    or {}
+                ),
             }
         )
     return normalized

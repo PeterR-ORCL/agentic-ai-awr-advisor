@@ -8,11 +8,7 @@ from src.analysis.recommendation_catalog import (
     RECOMMENDATION_TEMPLATES,
 )
 from src.models.decision import AwrDecision
-from src.models.recommendation import Recommendation
-from src.recommendation.recommendation_engine import (
-    Recommendation as Phase6Recommendation,
-    generate_recommendations as generate_phase6_recommendations,
-)
+from src.models.recommendation import ActionRecommendation, Recommendation
 
 RECOMMENDATION_ORDER = (
     "topology_event",
@@ -388,27 +384,47 @@ def _to_float(value: Any) -> float | None:
 
 def generate_decision_recommendations(
     decision: AwrDecision,
-) -> list[Phase6Recommendation]:
-    """Generate deterministic Phase 6 recommendations from one decision object."""
+) -> list[ActionRecommendation]:
+    """Generate deterministic Phase 4I recommendations from one decision object."""
 
-    return generate_phase6_recommendations(
-        primary_issue=decision.primary_issue,
-        secondary_issues=list(decision.secondary_issues),
-        overall_status=decision.overall_status,
-        severity=decision.severity_score,
-        feature_vector=decision.evidence.get("feature_evidence") if decision.evidence else {},
-    )
+    issues = _rank_recommendation_candidates(_ordered_unique_issues(decision), decision)
+    recommendations: list[ActionRecommendation] = []
+    for index, issue in enumerate(issues[:MAX_DECISION_RECOMMENDATIONS], start=1):
+        template = RECOMMENDATION_TEMPLATES[issue]
+        recommendations.append(
+            ActionRecommendation(
+                priority=index,
+                issue=template.issue,
+                action=template.action,
+                impact=template.impact,
+                confidence=_recommendation_confidence(decision.confidence, index),
+                evidence=_recommendation_evidence(decision, issue),
+            )
+        )
+    return recommendations
 
 
 def _ordered_unique_issues(decision: AwrDecision) -> list[str]:
-    requested_issues = [decision.primary_issue] + list(decision.secondary_issues)
-    ordered_issues: list[str] = []
+    primary_issue = _normalize_recommendation_issue(decision.primary_issue)
+    requested_secondaries = {
+        normalized
+        for issue in decision.secondary_issues
+        if (normalized := _normalize_recommendation_issue(issue)) is not None
+    }
+    ordered_secondaries: list[str] = []
     for domain in DECISION_DOMAIN_ORDER:
-        if domain in requested_issues and domain not in ordered_issues:
-            ordered_issues.append(domain)
-    if decision.primary_issue in ordered_issues:
-        ordered_issues.remove(decision.primary_issue)
-    return [decision.primary_issue] + ordered_issues
+        if domain in requested_secondaries and domain != primary_issue:
+            ordered_secondaries.append(domain)
+    if primary_issue is None:
+        return ordered_secondaries
+    return [primary_issue, *ordered_secondaries]
+
+
+def _normalize_recommendation_issue(issue: Any) -> str | None:
+    normalized = str(issue or "").strip().upper()
+    if normalized in RECOMMENDATION_TEMPLATES:
+        return normalized
+    return None
 
 
 def _rank_recommendation_candidates(

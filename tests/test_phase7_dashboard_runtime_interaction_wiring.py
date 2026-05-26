@@ -48,13 +48,13 @@ PHASE7CM_UX_FIXTURE = """
   <summary>Technical Details - Runtime / Truth / Memory Context</summary>
   <section class="evidence-pane pipeline-card" data-phase7-current-runtime-pipeline="true" data-phase7-system-flow-dynamic="true">
     <div class="section-kicker">System Flow</div>
-    <h2>AWR Intelligence Pipeline</h2>
+    <h2>Deterministic Analysis Pipeline</h2>
     <p>Local development fallback: data/input.</p>
     <p data-phase7-source-summary-card="pipeline_mode">Current source mode: Local folder / local staged AWR</p>
     <p data-phase7-source-summary-card="pipeline_active">Active source: data/input</p>
     <p data-phase7-source-summary-card="pipeline_validation">Current source validation: backend path validation pending</p>
     <p data-phase7-source-summary-card="pipeline_handoff">Current handoff target: Screen 3</p>
-    <p>Source selection changes the governed handoff context only. Deterministic parsing, scoring, decision, and recommendation remain authoritative after the accepted backend workflow processes the selected source.</p>
+    <p>Home records path intent only. Screen 1 or Screen 2 prepares valid evidence context. Deterministic parsing, scoring, decision, and recommendation remain authoritative only after the governed backend workflow processes the selected source or selected existing evidence.</p>
     <small data-phase7-source-summary-card="pipeline_node_source">Local staged AWR source. Path: data/input.</small>
   </section>
   <section class="card secondary future-input-card" data-phase7-current-source-context="true" data-phase7-source-configuration-reference="true">
@@ -187,24 +187,27 @@ PHASE7CR_INDEX_FIXTURE = """
 <section id="phase7cr-platform-entry-panel" data-phase7-index-source-selection="true">
   <h1>Platform Entry / Source Intake</h1>
   <h2>What do you want to work with?</h2>
-  <p>Start here. Choose whether to load a new source or work with existing platform evidence. Index is the entry and handoff point; Screen 1 and Screen 2 own the workflow controls.</p>
+  <p>Start here. Choose whether to begin with a new source on Screen 1 or continue with existing platform evidence on Screen 2.</p>
+  <p>Home records source-path intent only. It does not validate sources, load runtime options, select scope, assign targets, decide readiness, generate diagnostics, or compare evidence.</p>
   <div data-phase7-primary-entry-paths="true">
     <a href="screen_1_ingestion.html" data-dashboard-propagate-state="true" data-phase7-entry-path="new_source" data-phase7-entry-source-modes="local_staged local_file object_storage">
       <strong>Load / Ingest New Source</strong>
+      <p>Use this when the operator has a new AWR file, local staged folder, selected file, or Object Storage object metadata.</p>
       <p>Primary handoff: Screen 1 - Ingestion / Parser / Source Governance.</p>
       <span>Open Screen 1 Ingestion</span>
     </a>
     <a href="screen_2_control.html" data-dashboard-propagate-state="true" data-phase7-entry-path="existing_platform_evidence" data-phase7-entry-source-modes="existing_run">
       <strong>Use Existing Platform Evidence</strong>
-      <p>Primary handoff: Screen 2 - Runtime Scope &amp; Analysis Control.</p>
+      <p>Use this when evidence is already available inside the platform. Continue to Screen 2 to load runtime options, select runtime scope, choose target/time window context, and prepare comparison readiness.</p>
+      <p>Primary handoff: Screen 2 - Runtime Scope &amp; Analysis Control. Screen 2 loads runtime options, selects scope/window, and prepares Target A/B comparison readiness.</p>
       <span>Open Screen 2 Control</span>
     </a>
   </div>
 </section>
 <section class="pipeline-card" data-phase7-current-runtime-pipeline="true" data-phase7-system-flow-dynamic="true">
-  <h2>AWR Intelligence Pipeline</h2>
-  <p>Governed source intake flows into deterministic parsing, feature engineering, scoring, decision posture, recommendation generation, and dashboard truth. Screen 1 and Screen 2 own the operational workflow controls.</p>
-  <ol><li class="pipeline-node"><small>Source Intake</small></li></ol>
+  <h2>Deterministic Analysis Pipeline</h2>
+  <p>The platform separates entry, intake, runtime scope, deterministic analysis, and downstream review. Home explains the starting path; Screen 1 owns new-source intake and parser governance; Screen 2 owns existing-evidence runtime scope and comparison preparation; deterministic analysis remains the source of dashboard truth.</p>
+  <ol><li class="pipeline-node"><small>Evidence Context</small></li></ol>
 </section>
 <section><h2>Deterministic Runtime Architecture</h2><p>Runtime orchestration remains governed by backend services.</p></section>
 <section><h2>Deterministic Truth vs AI Explanation</h2><p>Deterministic truth remains authoritative; AI text is explanation only.</p></section>
@@ -787,8 +790,8 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("pipeline_node_source: pipelineNode", source)
 
         generated_with_full_object_in_pipeline = PHASE7CR_INDEX_FIXTURE.replace(
-            "Governed source intake flows into deterministic parsing",
-            "Object Storage: agentic-ai-awr-raw/awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out. Governed source intake flows into deterministic parsing",
+            "The platform separates entry, intake, runtime scope, deterministic",
+            "Object Storage: agentic-ai-awr-raw/awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out. The platform separates entry, intake, runtime scope, deterministic",
         )
         failed = module.validate_pipeline_source_summary(
             source,

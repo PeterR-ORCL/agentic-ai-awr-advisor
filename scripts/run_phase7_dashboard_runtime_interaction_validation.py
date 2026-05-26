@@ -1694,7 +1694,7 @@ def validate_index_source_selection_workflow(
         "Use Existing Platform Evidence",
         "Screen 1 - Ingestion / Parser / Source Governance",
         "Screen 2 - Runtime Scope &amp; Analysis Control",
-        "AWR Intelligence Pipeline",
+        "Deterministic Analysis Pipeline",
         "Deterministic Runtime Architecture",
         "Deterministic Truth vs AI Explanation",
         "Governed Memory &amp; Semantic Recall",
@@ -2803,9 +2803,11 @@ def validate_pipeline_source_summary(
             offenders.append(f"dashboard source missing compact pipeline marker: {marker}")
 
     required_generated_markers = (
-        "AWR Intelligence Pipeline",
-        "Governed source intake flows into deterministic parsing",
-        "Screen 1 and Screen 2 own the operational workflow controls",
+        "Deterministic Analysis Pipeline",
+        "The platform separates entry, intake, runtime scope, deterministic",
+        "Screen 1 owns new-source intake and parser governance",
+        "Screen 2 owns existing-evidence runtime scope and comparison preparation",
+        "Authoritative analysis truth",
         "Deterministic Runtime Architecture",
         "Deterministic Truth vs AI Explanation",
         "Governed Memory &amp; Semantic Recall",
@@ -2930,7 +2932,7 @@ def validate_generated_default_evidence_gating(
         "What do you want to work with?",
         "Load / Ingest New Source",
         "Use Existing Platform Evidence",
-        "AWR Intelligence Pipeline",
+        "Deterministic Analysis Pipeline",
     ):
         if marker not in index_visible:
             offenders.append(f"index missing default entry/platform marker: {marker}")

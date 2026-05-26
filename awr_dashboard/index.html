@@ -5046,7 +5046,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 26, 2026, 2:35 PM">
+<body data-dashboard-generated-at="May 26, 2026, 7:42 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5181,7 +5181,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 26, 2026, 2:35 PM</div>
+        <div class="hero-meta">Generated: May 26, 2026, 7:42 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link active" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5194,13 +5194,13 @@
         <div class="section-kicker">Platform Entry</div>
         <h2>Platform Entry / Source Intake</h2>
         <p>
-          Start here. Choose whether to load or ingest a new source, or work
-          with existing platform evidence.
+          Start here. Choose whether to begin with a new source on Screen 1 or
+          continue with existing platform evidence on Screen 2.
         </p>
         <p class="meta">
-          Index captures governed source intent and handoff context only.
-          Runtime scope selection belongs to Screen 2 Control; diagnostic
-          snapshot review belongs to Screen 3 Analysis.
+          Home records source-path intent only. It does not validate sources,
+          load runtime options, select scope, assign targets, decide readiness,
+          generate diagnostics, or compare evidence.
         </p>
       </section>
 
@@ -5212,8 +5212,9 @@
             <div class="section-kicker">Entry Choice</div>
             <h2>What do you want to work with?</h2>
             <p class="meta">
-              Pick the starting path. Index does not validate sources, submit
-              handoff requests, choose runtime scope, or generate diagnostics.
+              Home records source-path intent only. It does not validate sources,
+              load runtime options, select scope, assign targets, decide readiness,
+              generate diagnostics, or compare evidence.
             </p>
 
             <div class="phase7cm-source-card-grid phase7cr-entry-path-grid"
@@ -5230,7 +5231,7 @@
                   folder, selected file, or Object Storage object metadata.
                 </p>
                 <p><strong>Source modes:</strong> local_staged, local_file, object_storage</p>
-                <p><strong>Handoff:</strong> Screen 1 - Ingestion / Parser / Source Governance</p>
+                <p><strong>Handoff:</strong> Screen 1 - Ingestion / Parser / Source Governance.</p>
                 <span class="inline-nav-hint phase7cr-entry-card-cta">Open Screen 1 Ingestion</span>
               </a>
               <a class="phase7cm-source-card phase7cr-entry-card phase7cr-entry-card-link"
@@ -5241,12 +5242,13 @@
                 <span class="mini-pill success">Existing evidence path</span>
                 <strong>Use Existing Platform Evidence</strong>
                 <p>
-                  Use this when evidence is already available inside the
-                  platform and the operator wants runtime scope, target, time
-                  window, or comparison control.
+                  Use this when evidence is already available inside the platform.
+                  Continue to Screen 2 to load runtime options, select runtime
+                  scope, choose target/time window context, and prepare
+                  comparison readiness.
                 </p>
                 <p><strong>Source mode:</strong> existing_run</p>
-                <p><strong>Handoff:</strong> Screen 2 - Runtime Scope &amp; Analysis Control</p>
+                <p><strong>Handoff:</strong> Screen 2 - Runtime Scope &amp; Analysis Control. Screen 2 loads runtime options, selects scope/window, and prepares Target A/B comparison readiness.</p>
                 <span class="inline-nav-hint phase7cr-entry-card-cta">Open Screen 2 Control</span>
               </a>
             </div>
@@ -5257,59 +5259,61 @@
                data-phase7-current-runtime-pipeline="true"
                data-phase7-system-flow-dynamic="true">
         <div class="section-kicker">System Flow</div>
-        <h2>AWR Intelligence Pipeline</h2>
+        <h2>Deterministic Analysis Pipeline</h2>
         <p class="meta pipeline-intro">
-          Governed source intake flows into deterministic parsing, feature
-          engineering, scoring, decision posture, recommendation generation,
-          and dashboard truth. Index explains the platform path; Screen 1 and
-          Screen 2 own the operational workflow controls.
+          The platform separates entry, intake, runtime scope, deterministic
+          analysis, and downstream review. Home explains the starting path;
+          Screen 1 owns new-source intake and parser governance; Screen 2 owns
+          existing-evidence runtime scope and comparison preparation;
+          deterministic analysis remains the source of dashboard truth.
         </p>
 
         <div class="pipeline-lane">
           <div class="pipeline-lane-header">
-            <strong>Deterministic Runtime Pipeline</strong>
-            <span>Authoritative truth generation</span>
+            <strong>Deterministic Analysis Pipeline</strong>
+            <span>Authoritative analysis truth</span>
           </div>
           <p class="meta pipeline-boundary-note">
-            Source selection changes the governed handoff context only.
-            Deterministic parsing, scoring, decision, and recommendation remain
-            authoritative after the accepted backend workflow processes the
-            selected source.
+            Home records path intent only. Screen 1 or Screen 2 prepares valid
+            evidence context. Deterministic parsing, scoring, decision, and
+            recommendation remain authoritative only after the governed backend
+            workflow processes the selected source or selected existing
+            evidence.
           </p>
           <div class="pipeline-flow runtime-flow" aria-label="Deterministic runtime pipeline">
             <div class="pipeline-node source-node">
-              <span>Ingestion</span>
-              <small data-phase7-source-summary-card="pipeline_node_source">Select a source for governed intake.</small>
+              <span>Evidence Context</span>
+              <small data-phase7-source-summary-card="pipeline_node_source">Prepared by Screen 1 for new sources or Screen 2 for existing evidence.</small>
             </div>
 
             <div class="pipeline-node">
               <span>Parsing</span>
-              <small>Extracts AWR sections, metrics, and unknowns</small>
+              <small>Extracts AWR sections, metrics, discovered elements, and unknowns.</small>
             </div>
 
             <div class="pipeline-node">
               <span>Feature Engineering</span>
-              <small>Builds structured diagnostic signals</small>
+              <small>Builds structured diagnostic signals.</small>
             </div>
 
             <div class="pipeline-node core-node">
               <span>Scoring</span>
-              <small>Computes deterministic domain scores</small>
+              <small>Computes deterministic domain scores.</small>
             </div>
 
             <div class="pipeline-node core-node">
               <span>Decision</span>
-              <small>Determines posture and issue prioritization</small>
+              <small>Determines posture and issue prioritization.</small>
             </div>
 
             <div class="pipeline-node">
               <span>Recommendation</span>
-              <small>Produces deterministic action guidance</small>
+              <small>Produces deterministic action guidance.</small>
             </div>
 
             <div class="pipeline-node">
               <span>Dashboard Truth</span>
-              <small>Renders deterministic evidence and guidance</small>
+              <small>Renders deterministic evidence and guidance.</small>
             </div>
           </div>
         </div>
@@ -5317,12 +5321,12 @@
         <div class="pipeline-support-grid" aria-label="Governed supporting visibility layers">
           <div class="pipeline-side-panel governed-memory-panel">
             <strong>Governed Memory</strong>
-            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing runtime decisions.</p>
+            <p>Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing deterministic analysis truth.</p>
           </div>
 
           <div class="pipeline-side-panel semantic-recall-panel">
             <strong>Parallel Reviewer-Assist Semantic Context</strong>
-            <p>Optional non-authoritative context outside deterministic runtime truth generation.</p>
+            <p>Optional non-authoritative context for review and explanation; it does not change deterministic runtime truth.</p>
           </div>
         </div>
       </section>
@@ -5526,7 +5530,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 26, 2026, 2:35 PM</div>
+    <div class="footer">Generated at May 26, 2026, 7:42 PM</div>
   </div>
 
   <script>
@@ -8814,7 +8818,7 @@
             pipeline_active: 'Active source: none selected',
             pipeline_validation: 'Current source validation: not checked',
             pipeline_handoff: 'Current target: none selected',
-            pipeline_node_source: 'Select a source for governed intake.',
+            pipeline_node_source: 'Prepared by Screen 1 for new sources or Screen 2 for existing evidence.',
             config_type: 'Current source type: none selected',
             config_location: 'Current source location: not selected',
             config_candidates: 'No source metadata selected.',

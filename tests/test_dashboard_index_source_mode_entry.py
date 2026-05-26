@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import unescape
 import importlib
 import py_compile
 import unittest
@@ -35,6 +36,72 @@ class DashboardIndexSourceModeEntryTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+
+    def test_platform_entry_preserves_source_path_explanation_boundaries(self) -> None:
+        rendered = " ".join(unescape(self.render_home()).split())
+
+        for phrase in (
+            "Start here. Choose whether to begin with a new source on Screen 1 or continue with existing platform evidence on Screen 2.",
+            "Home records source-path intent only. It does not validate sources, load runtime options, select scope, assign targets, decide readiness, generate diagnostics, or compare evidence.",
+            "Use this when the operator has a new AWR file, local staged folder, selected file, or Object Storage object metadata",
+            "Screen 1 - Ingestion / Parser / Source Governance.",
+            "Use this when evidence is already available inside the platform. Continue to Screen 2 to load runtime options, select runtime scope, choose target/time window context, and prepare comparison readiness.",
+            "Screen 2 - Runtime Scope & Analysis Control. Screen 2 loads runtime options, selects scope/window, and prepares Target A/B comparison readiness.",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        for forbidden in (
+            "Run Governed Source Intake",
+            "Validate Object Storage Source",
+            "Load Runtime Options",
+            "Assign Target A",
+            "Assign Target B",
+            "Decide Comparison Readiness",
+            "Generate Focused Explanation",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, rendered)
+
+    def test_home_pipeline_copy_preserves_load_parse_analyze_compare_boundary(self) -> None:
+        rendered = " ".join(unescape(self.render_home()).split())
+
+        for phrase in (
+            "The platform separates entry, intake, runtime scope, deterministic analysis, and downstream review. Home explains the starting path; Screen 1 owns new-source intake and parser governance; Screen 2 owns existing-evidence runtime scope and comparison preparation; deterministic analysis remains the source of dashboard truth.",
+            "Deterministic Analysis Pipeline",
+            "Authoritative analysis truth",
+            "Home records path intent only. Screen 1 or Screen 2 prepares valid evidence context. Deterministic parsing, scoring, decision, and recommendation remain authoritative only after the governed backend workflow processes the selected source or selected existing evidence.",
+            "Evidence Context",
+            "Prepared by Screen 1 for new sources or Screen 2 for existing evidence.",
+            "Parsing",
+            "Extracts AWR sections, metrics, discovered elements, and unknowns.",
+            "Feature Engineering",
+            "Builds structured diagnostic signals.",
+            "Scoring",
+            "Computes deterministic domain scores.",
+            "Decision",
+            "Determines posture and issue prioritization.",
+            "Recommendation",
+            "Produces deterministic action guidance.",
+            "Dashboard Truth",
+            "Renders deterministic evidence and guidance.",
+            "Governed Memory",
+            "Persists governed runs, recommendations, actions, outcomes, feedback, unknown signals, approvals, and artifacts without changing deterministic analysis truth.",
+            "Parallel Reviewer-Assist Semantic Context",
+            "Optional non-authoritative context for review and explanation; it does not change deterministic runtime truth.",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        for old_phrase in (
+            "AWR Intelligence Pipeline",
+            "Governed source intake flows into deterministic parsing",
+            "Deterministic Runtime Pipeline",
+            "Authoritative truth generation",
+            "without changing runtime decisions",
+        ):
+            with self.subTest(old_phrase=old_phrase):
+                self.assertNotIn(old_phrase, rendered)
 
     def test_primary_entry_cards_are_full_links(self) -> None:
         rendered = self.render_home()

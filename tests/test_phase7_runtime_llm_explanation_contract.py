@@ -69,6 +69,60 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertIn("create scoring features", forbidden)
         self.assertIn("assign diagnostic domains", forbidden)
 
+    def test_home_source_path_scope_explains_paths_without_workflow_control(self) -> None:
+        allowed = self.contract.RUNTIME_EXPLANATION_ALLOWED_SCOPES["index_source_mode"]
+        forbidden = self.contract.RUNTIME_EXPLANATION_FORBIDDEN_MUTATIONS["index_source_mode"]
+
+        for phrase in (
+            "local source path meaning",
+            "Object Storage source path meaning",
+            "existing platform evidence path meaning",
+            "Screen 1 new-source handoff meaning",
+            "Screen 2 existing-evidence handoff meaning",
+            "generated artifact versus active downstream evidence",
+            "downstream evidence handoff requirements",
+        ):
+            with self.subTest(allowed=phrase):
+                self.assertIn(phrase, allowed)
+
+        for phrase in (
+            "select source path",
+            "validate source availability",
+            "load source",
+            "parse AWR content",
+            "load runtime options",
+            "select existing run",
+            "assign Target A/B",
+            "decide comparison readiness",
+            "set dashboardEvidenceReady",
+            "perform deterministic analysis",
+            "perform comparison",
+            "unlock downstream screens",
+        ):
+            with self.subTest(forbidden=phrase):
+                self.assertIn(phrase, forbidden)
+
+    def test_home_source_path_contract_uses_dashboard_state_without_mutation(self) -> None:
+        envelope = self.contract.build_runtime_explanation_contract(
+            "index_source_mode",
+            truth_source="generated_dashboard_state",
+            provider_mode="mock",
+        )
+
+        self.assertEqual(
+            envelope["screen_role"],
+            "Home / Index - Platform Entry / Source Intake",
+        )
+        self.assertEqual(envelope["truth_source"], "generated_dashboard_state")
+        self.assertEqual(envelope["truth_source_authority"], "presentation_snapshot")
+        self.assertEqual(envelope["provider_mode"], "mock")
+        self.assertTrue(envelope["non_mutating_explanation_only"])
+        self.assertFalse(envelope["records_created_expected"])
+        self.assertIsNone(envelope["audit_reference_expected"])
+        self.assertIn("source-entry paths", envelope["allowed_explanation_scope"])
+        self.assertIn("select source path", envelope["forbidden_mutations"])
+        self.assertIn("set dashboardEvidenceReady", envelope["forbidden_mutations"])
+
     def test_all_product_screens_have_allowed_and_forbidden_scopes(self) -> None:
         expected = {
             "index_source_mode",
@@ -119,6 +173,37 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             validate({**payload, "audit_reference": "AUDIT-1"}, expected_screen_id="screen_2"),
         )
 
+    def test_home_payload_validation_rejects_source_runtime_and_readiness_mutation_fields(self) -> None:
+        validate = self.contract.validate_runtime_explanation_payload
+        payload = {
+            "screen_id": "index_source_mode",
+            "request_type": "home_source_path_explanation",
+            "provider_mode": "mock",
+            "non_mutating_explanation_only": True,
+        }
+
+        self.assertEqual(validate(payload, expected_screen_id="index_source_mode"), "")
+        for field in (
+            "source_selection_update",
+            "source_validation_update",
+            "source_load",
+            "parse_action",
+            "runtime_options_load",
+            "existing_run_selection",
+            "runtime_scope_selection",
+            "target_assignment",
+            "comparison_readiness_decision",
+            "dashboardEvidenceReady_update",
+            "analysis_action",
+            "comparison_action",
+            "action_type",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(
+                    "mutation/workflow fields",
+                    validate({**payload, field: True}, expected_screen_id="index_source_mode"),
+                )
+
     def test_payload_validation_can_allow_explicit_governed_record_context(self) -> None:
         validate = self.contract.validate_runtime_explanation_payload
         payload = {
@@ -143,6 +228,15 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         for text in (
             "The LLM changed the diagnosis.",
             "The provider assigned Target A for comparison.",
+            "The LLM selected the source path.",
+            "The explanation loaded evidence.",
+            "The provider parsed AWR content.",
+            "The provider loaded runtime options.",
+            "The explanation selected existing run context.",
+            "The explanation performed deterministic analysis.",
+            "The provider compared evidence.",
+            "The explanation unlocked downstream screens.",
+            "The explanation set dashboardEvidenceReady.",
             "This explanation activated runtime eligibility.",
             "Phase 8 is active and sizing is active.",
             "Future runs will use the trained model.",

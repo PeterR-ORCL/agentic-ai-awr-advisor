@@ -8322,19 +8322,25 @@ def _render_runtime_state_line(
     status: dict[str, str],
 ) -> str:
     memory_state, memory_class = _memory_runtime_state(report_data)
+    llm_state, llm_class = _llm_runtime_state(report_data)
     db_state = status["db_connectivity"]
     similarity_state = status["similarity_status"]
     return (
         '<span class="runtime-state-line runtime-state-pills">'
-        '<span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">Build DB: '
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: '
         f'<strong class="{escape(_db_runtime_state_class(db_state))}">{escape(db_state)}</strong>'
         "</span>"
-        '<span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow Service: '
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: '
         '<strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" '
         'data-dashboard-runtime-workflow-status="true" '
         'data-dashboard-state-key="screen3LiveServiceStatus" '
         'data-empty-label="Check with Load Options">Check with Load Options</strong>'
         "</span>"
+        '<span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: '
+        f'<strong class="{escape(llm_class)}">{escape(llm_state)}</strong>'
+        "</span>"
+        "</span>"
+        '<span class="runtime-state-line runtime-state-pills">'
         '<span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: '
         f'<strong class="{escape(_similarity_runtime_state_class(similarity_state))}">{escape(similarity_state)}</strong>'
         "</span>"
@@ -8343,6 +8349,12 @@ def _render_runtime_state_line(
         "</span>"
         "</span>"
     )
+
+
+def _llm_runtime_state(report_data: dict[str, Any]) -> tuple[str, str]:
+    llm_explanation = _to_dict(report_data.get("llm_explanation"))
+    state = "Enabled" if bool(llm_explanation.get("enabled")) else "Disabled"
+    return state, _runtime_state_class(state, "llm")
 
 
 def _memory_runtime_state(report_data: dict[str, Any]) -> tuple[str, str]:

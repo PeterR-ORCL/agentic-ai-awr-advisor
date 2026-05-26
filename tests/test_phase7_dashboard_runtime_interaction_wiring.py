@@ -501,7 +501,9 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Cached runtime options are available for continuity only; they are not active evidence.</p>
   <p>Cache Status</p>
   <p>Generated at build time</p>
-  <p>Workflow Service:</p>
+  <p>AI DB:</p>
+  <p>Workflow:</p>
+  <p>LLM:</p>
   <p>data-dashboard-runtime-badge="true"</p>
   <p>data-dashboard-runtime-workflow-status="true"</p>
   <p>runtime-badge-hydrated</p>

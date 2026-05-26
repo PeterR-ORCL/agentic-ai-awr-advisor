@@ -125,6 +125,9 @@ def _shared_page_styles() -> str:
       contain: layout style;
     }
     .runtime-meta {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
       font-size: 12px;
       color: var(--muted);
       margin-top: 4px;
@@ -134,7 +137,7 @@ def _shared_page_styles() -> str:
     }
     .runtime-state-pills {
       display: flex;
-      justify-content: flex-end;
+      justify-content: center;
       align-items: center;
       gap: 4px;
       flex-wrap: nowrap;
@@ -143,7 +146,7 @@ def _shared_page_styles() -> str:
     }
     .runtime-mini-pill {
       display: inline-flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: center;
       gap: 4px;
       flex: 0 0 auto;
@@ -157,7 +160,7 @@ def _shared_page_styles() -> str:
       background: rgba(11, 20, 34, 0.58);
       color: var(--muted);
       font-size: 11px;
-      line-height: 1.2;
+      line-height: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -166,6 +169,9 @@ def _shared_page_styles() -> str:
       display: inline-block;
       min-width: 0;
       font-weight: 800;
+      line-height: 1;
+      position: relative;
+      top: -0.5px;
     }
     .state-pass {
       color: var(--pass);

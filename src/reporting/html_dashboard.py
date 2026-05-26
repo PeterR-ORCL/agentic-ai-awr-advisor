@@ -1622,7 +1622,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',
           cache.cached_at
-        ) + ' Click Refresh options to re-query the workflow service.';
+        ) + ' Cache restores recent UI context only; click Refresh options to re-query the workflow service.';
         state.screen3RuntimeOptionsCount = safeStateValue(cache.option_count || '');
         state.screen3RuntimeOptionsLoadedRows = safeStateValue(cache.loaded_rows || cache.run_count || '');
         state.screen3RuntimeOptionsDbPersistenceStatus = safeStateValue(cache.db_persistence_status || '');
@@ -2648,7 +2648,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           return state || {};
         }
         state.screen3RuntimeOptionsStatus = 'not loaded';
-        state.screen3RuntimeOptionsMessage = 'Load available runtime options to query existing platform evidence through Screen 2 Control.';
+        state.screen3RuntimeOptionsMessage = 'Load existing runtime evidence inventory through the governed backend service; browser cache alone does not create readiness.';
         state.screen3RuntimeOptionsCount = '0';
         state.screen3RuntimeOptionsLoadedRows = '0';
         state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
@@ -5481,7 +5481,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             cell.className = 'empty-state';
             cell.textContent = rows.length
               ? 'No rows match current table filters.'
-              : 'Load available runtime options to populate this table.';
+              : 'Load Runtime Options to query current backend inventory before selecting rows.';
             emptyRow.appendChild(cell);
             tbody.appendChild(emptyRow);
           });
@@ -7185,13 +7185,13 @@ def _build_dashboard_interactivity_javascript() -> str:
         replaceRuntimeOptionNodes(
           'runtime-scope-rows',
           runs.map(createScreen3RuntimeScopeRow),
-          'No DB-backed AWR/run options are loaded yet. Load Runtime Options to populate this table.',
+          'No DB-backed AWR/run options are loaded yet. Load Runtime Options to query the governed backend service; cached rows, if present, remain continuity context only.',
           13
         );
         replaceRuntimeOptionNodes(
           'interval-rows',
           intervals.map(createScreen3IntervalRow),
-          'No interval/window options are loaded yet. Load Runtime Options and select an AWR/report row to populate this table.',
+          'No interval/window options are loaded yet. Load Runtime Options and select a current AWR/report row before assigning a governed review window.',
           5
         );
         // DB-backed AWR/report rows are selected from the main bounded runtime
@@ -7225,7 +7225,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         nextState.screen3LastExecutionStatus = 'Not executed';
         nextState.screen3LastNextStep = 'Waiting for workflow service response.';
         nextState.screen3RuntimeOptionsStatus = 'pending';
-        nextState.screen3RuntimeOptionsMessage = 'Loading DB-backed runtime options through governed workflow service.';
+        nextState.screen3RuntimeOptionsMessage = 'Loading existing runtime evidence inventory through the governed workflow service.';
         nextState.screen3RuntimeOptionsCount = nextState.screen3RuntimeOptionsCount || '0';
         nextState.screen3RuntimeOptionsLoadedRows = nextState.screen3RuntimeOptionsLoadedRows || '0';
         nextState.screen3RuntimeOptionsDbPersistenceStatus = 'checking';
@@ -7346,7 +7346,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? 'Restart current dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
             : (
               optionsLoaded
-                ? 'Select a DB-backed AWR/run, interval, comparison target, and review mode.'
+                ? 'Select a current DB-backed AWR/run, interval, comparison target, and review mode before downstream readiness.'
                 : (
                   dbUnavailable
                     ? 'Restore DB connectivity, wallet, or service configuration, then load runtime options again.'
@@ -7374,8 +7374,8 @@ def _build_dashboard_interactivity_javascript() -> str:
                   ? 'Refresh failed; cached runtime options were not activated'
                   : 'Load failed; cached runtime options were not activated'
               ) + (fallbackCache.cached_at ? ' from ' + fallbackCache.cached_at : '') + '.';
-              state.screen3RuntimeOptionsMessage = cachedMessage + ' Re-query the workflow service to activate DB-backed runtime options.';
-              state.screen3RuntimeOptionsCacheStatus = 'Cached runtime options are available for continuity only; they are not active evidence.';
+              state.screen3RuntimeOptionsMessage = cachedMessage + ' Re-query the workflow service before using runtime options for active evidence readiness.';
+              state.screen3RuntimeOptionsCacheStatus = 'Cached runtime options are available for continuity only; they are not active evidence. A current service response and operator selection are still required.';
               state.screen3RuntimeOptionsCount = '0';
               state.screen3RuntimeOptionsLoadedRows = '0';
               state.screen2RuntimeOptionsLoadRequestId = '';
@@ -7393,8 +7393,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           const fallbackCache = readScreen3RuntimeOptionsCache();
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
-            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service to activate DB-backed runtime options.'
-            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 2 Control runtime options.';
+            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service before using runtime options for active evidence readiness.'
+            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load existing runtime evidence inventory.';
           state.screen3RuntimeOptionsCount = '0';
           state.screen3RuntimeOptionsLoadedRows = '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
@@ -7405,7 +7405,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             : 'Runtime options source tables were not checked because the service was unavailable.';
           state.screen3LiveServiceStatus = 'Error';
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
-            ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are not active evidence.'
+            ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are continuity context only and not active evidence.'
             : 'No runtime options cache is available.';
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
           state.screen3LastActionStatus = 'Runtime options service unavailable';
@@ -7413,7 +7413,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain hidden; retry Refresh options when service is available.'
+            ? 'Workflow service unavailable. Cached runtime options remain hidden as continuity context; retry Refresh options when service is available.'
             : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
           if (fallbackCache) {
             state.screen2RuntimeOptionsLoadRequestId = '';
@@ -15722,7 +15722,7 @@ def _render_screen3_runtime_option_loader_content() -> str:
             "Message",
             _screen2_state_value(
                 "screen3RuntimeOptionsMessage",
-                "Load available runtime options to query existing platform evidence through Screen 2 Control.",
+                "Load existing runtime evidence inventory through the governed backend service; browser cache alone does not create readiness.",
             ),
             "wide",
         ),
@@ -15737,6 +15737,12 @@ def _render_screen3_runtime_option_loader_content() -> str:
                       data-screen3-runtime-options-load="true"
                       data-screen3-runtime-options-refresh="true">Refresh options</button>
             </div>
+            <p class="meta">
+              Load Runtime Options asks the governed backend service for existing platform evidence inventory. The browser does not query the database directly.
+            </p>
+            <p class="meta">
+              Loading options prepares selectable runtime-scope candidates only; active downstream readiness still requires a current row, window, and Runtime Scope or Target assignment.
+            </p>
             {_render_screen2_control_info_grid(rows, extra_class="screen3-runtime-options-status-grid")}
             <details class="screen3-technical-details screen3-runtime-coverage-details">
               <summary>Runtime option source-table coverage</summary>
@@ -15753,13 +15759,14 @@ def _render_screen3_runtime_option_loader_content() -> str:
                           "Coverage note",
                           _screen2_state_value(
                               "screen3RuntimeOptionsCoverageMessage",
-                              "Load runtime options to see queried tables and row counts.",
+                              "Load runtime options to see backend source tables, row counts, and selectable inventory coverage.",
                           ),
                           "wide",
                       ),
                   ],
                   extra_class="screen3-runtime-options-debug-grid",
               )}
+              <p class="meta">Coverage is backend service metadata only; it does not change diagnosis, scoring, recommendations, parser output, learning, materialization, or runtime eligibility.</p>
               <p class="meta">Cache is UI continuity only; DB-backed runtime options remain the authoritative source when the workflow service is available.</p>
             </details>
     """
@@ -15801,7 +15808,7 @@ def _render_screen3_runtime_scope_filter_panel() -> str:
             <article class="screen3-context-subpanel screen3-runtime-filter-panel">
               <h4>Runtime Scope Filters</h4>
               <p class="meta">
-                These global controls filter the loaded inventory across Application, DB, DBID, Instance, Host/System, source table, and time range. Column filters inside each table narrow only the visible rows already loaded in the browser.
+                These global controls filter the current backend runtime option response across Application, DB, DBID, Instance, Host/System, source table, and time range. Column filters inside each table narrow only the visible rows already loaded in the browser.
               </p>
               <div class="screen3-filter-toolbar">
                 <label for="screen3-runtime-filter-search">Search loaded results</label>
@@ -16054,7 +16061,7 @@ def _render_screen3_operator_help_panel() -> str:
                 <li><strong>Select AWR/report row.</strong> The row you click is applied only to the active assignment.</li>
                 <li><strong>Optional interval/window.</strong> Select a window for the same assignment when period-level comparison is needed.</li>
                 <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can proceed.</li>
-                <li><strong>Submit governed action.</strong> Requests go through the workflow service; existing deterministic truth is not overwritten.</li>
+                <li><strong>Submit governed action.</strong> Requests go through the workflow service; Screen 2 does not change diagnosis, scores, recommendations, parser output, learning, materialization, or runtime eligibility.</li>
               </ol>
             </article>
     """
@@ -16070,7 +16077,7 @@ def _render_screen3_runtime_scope_work_area(
             <div class="section-kicker">Work Area 1</div>
             <h3>Select Runtime Scope</h3>
             <p class="static-selection-note">
-              Load existing platform AWR/report inventory, choose whether the next click updates Runtime Scope, Target A, or Target B, then select the row and optional window. Selection changes local request context only.
+              Load existing platform AWR/report inventory from the governed backend service, choose whether the next click updates Runtime Scope, Target A, or Target B, then select the row and optional window. Loading options alone does not create active downstream evidence.
             </p>
             <article class="screen3-context-subpanel screen3-runtime-options-loader-panel">
               <h4>Load Runtime Options</h4>
@@ -16080,10 +16087,10 @@ def _render_screen3_runtime_scope_work_area(
             <article class="screen3-context-subpanel screen3-runtime-scope-table-panel">
               <h4>Filtered AWR / Run / Report Results</h4>
               <p class="meta">
-                This table selects the AWR/report row for the active assignment. Global filters narrow the loaded inventory first; header filters narrow the visible rows inside this table.
+                These rows are existing platform evidence candidates returned by the current runtime option response. Global filters help locate the relevant DB/report row; header filters narrow only the visible rows inside this table.
               </p>
               <p class="meta">
-                Source-table coverage is reported by the runtime options service. If only one DB-backed row is returned, Screen 2 Control says which table supplied it and whether additional AWR report tables are not yet included.
+                Selecting a row prepares operator runtime-scope context for the active assignment. It does not change deterministic diagnosis, scores, recommendations, or persisted run truth.
               </p>
               <p class="meta">
                 <strong data-screen3-filtered-result-count="true">Showing 0 of 0 loaded row(s)</strong>
@@ -16118,7 +16125,7 @@ def _render_screen3_runtime_scope_work_area(
                   </thead>
                   <tbody data-screen3-runtime-options-target="runtime-scope-rows">
                     <tr class="screen3-empty-runtime-row">
-                      <td class="empty-state" colspan="13">No DB-backed AWR/run options are loaded yet. Load Runtime Options to populate this table.</td>
+                      <td class="empty-state" colspan="13">No DB-backed AWR/run options are loaded yet. Load Runtime Options to query the governed backend service; cached rows, if present, remain continuity context only.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -16128,7 +16135,7 @@ def _render_screen3_runtime_scope_work_area(
               <article class="screen3-context-subpanel screen3-selected-runtime-scope-panel">
                 <h4>Selected AWR / Report Row</h4>
                 <p class="meta">
-                  This summarizes the base inventory row selected from the filtered runtime options table before optional interval/window refinement.
+                  This summarizes the base inventory row selected from the current runtime options response before optional interval/window refinement.
                 </p>
                 {_render_screen3_selected_awr_report_row_summary()}
               </article>
@@ -16154,7 +16161,7 @@ def _render_screen3_runtime_scope_work_area(
                     </thead>
                     <tbody data-screen3-runtime-options-target="interval-rows">
                       <tr class="screen3-empty-runtime-row">
-                        <td class="empty-state" colspan="5">No interval/window options are loaded yet. Load Runtime Options and select an AWR/report row to populate this table.</td>
+                        <td class="empty-state" colspan="5">No interval/window options are loaded yet. Load Runtime Options and select a current AWR/report row before assigning a governed review window.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -16163,7 +16170,7 @@ def _render_screen3_runtime_scope_work_area(
               <article class="screen3-context-subpanel screen3-selected-runtime-assignment-panel">
                 <h4>Selected Runtime Scope / Assignment Summary</h4>
                 <p class="meta">
-                  This is the final effective runtime selection after the selected AWR/report row, optional interval/window, and assignment target are applied.
+                  This is the effective operator selection after the selected AWR/report row, optional interval/window, and assignment target are applied.
                 </p>
                 {_render_screen3_selected_runtime_assignment_summary()}
               </article>
@@ -16611,7 +16618,7 @@ def _render_screen3_runtime_option_loader_panel() -> str:
         ("Option count", "screen3RuntimeOptionsCount", "0"),
         ("Last loaded", "screen3RuntimeOptionsLoadedAt", "not loaded"),
         ("Cache status", "screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
-        ("Message", "screen3RuntimeOptionsMessage", "Load available runtime options to query DB-backed AWR/run/snapshot choices."),
+        ("Message", "screen3RuntimeOptionsMessage", "Load existing runtime evidence inventory through the governed backend service."),
     ]
     row_html = "\n".join(
         f"""
@@ -16628,7 +16635,7 @@ def _render_screen3_runtime_option_loader_panel() -> str:
           <section class="evidence-pane selector-pane screen3-runtime-options-loader-panel">
             <h3>Load Runtime Options</h3>
             <p class="static-selection-note">
-              Load available DB-backed Applications, databases, AWR runs, snapshots, intervals, and comparison candidates from the local workflow service. The browser never queries the DB directly.
+              Load existing platform evidence candidates from the governed workflow service. The browser never queries the DB directly, and loading options alone does not create active downstream evidence.
             </p>
             <div class="screen3-actions-inline">
               <button type="button"
@@ -16671,7 +16678,7 @@ def _render_screen3_existing_awr_run_selection_panel(
                 <h4>DB-backed run options</h4>
                 <div class="screen3-dynamic-option-grid"
                      data-screen3-runtime-options-target="runs">
-                  <p class="empty-state">Load available runtime options to select DB-backed AWR runs.</p>
+                  <p class="empty-state">Load Runtime Options to query current backend inventory before selecting DB-backed AWR runs.</p>
                 </div>
               </article>
               <article class="screen3-context-subpanel">

@@ -34,6 +34,18 @@
       color: var(--text);
       line-height: 1.6;
     }
+    [data-dashboard-evidence-gated-content="true"],
+    [data-screen1-artifact-ready-content="true"] {
+      display: none !important;
+    }
+    body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gated-content="true"],
+    [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-ready-content="true"] {
+      display: block !important;
+    }
+    body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gate-empty="true"],
+    [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-empty-state="true"] {
+      display: none !important;
+    }
     .container {
       max-width: 1600px;
       margin: 0 auto;
@@ -204,6 +216,17 @@
     .card.prominent {
       background: linear-gradient(135deg, rgba(20, 36, 58, 0.96), rgba(13, 24, 40, 0.96));
       border-color: rgba(90, 209, 255, 0.34);
+    }
+    .home-product-model-panel {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(90, 209, 255, 0.22), transparent 34%),
+        linear-gradient(135deg, rgba(32, 58, 88, 0.98), rgba(16, 34, 57, 0.98));
+      border-color: rgba(110, 214, 255, 0.58);
+      box-shadow: 0 18px 40px rgba(20, 120, 190, 0.18), 0 10px 24px rgba(0, 0, 0, 0.24);
+    }
+    .home-product-model-panel .nav-card {
+      background: linear-gradient(135deg, rgba(36, 66, 100, 0.82), rgba(21, 42, 70, 0.84));
+      border-color: rgba(124, 219, 255, 0.42);
     }
     .card.compact-card {
       padding: 16px 18px;
@@ -392,6 +415,111 @@
       display: grid;
       gap: 12px;
     }
+    .screen3-source-context-summary {
+      display: grid;
+      gap: 10px;
+    }
+    .screen3-source-context-header {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border: 1px solid rgba(90, 209, 255, 0.24);
+      border-radius: 10px;
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-source-context-header strong {
+      color: var(--text);
+      font-size: 14px;
+    }
+    .screen3-source-context-header span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen3-source-context-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .screen3-source-context-card {
+      min-height: 0;
+      padding: 8px 10px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(16, 28, 45, 0.62);
+    }
+    .screen3-source-context-card.primary {
+      border-color: rgba(90, 209, 255, 0.32);
+      background: rgba(90, 209, 255, 0.1);
+    }
+    .screen3-source-context-card span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen3-source-context-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 11px;
+      line-height: 1.28;
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+    .screen2-control-card-grid-balanced {
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+    .screen2-control-info-box {
+      min-height: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(16, 28, 45, 0.66);
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-info-box.wide {
+      grid-column: span 2;
+    }
+    .screen2-control-info-box.full {
+      grid-column: 1 / -1;
+    }
+    .screen2-control-info-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .screen2-control-info-box div {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-subvalue {
+      display: inline;
+    }
+    .screen2-control-prefix {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .screen2-control-separator {
+      color: var(--muted);
+      margin: 0 4px;
+    }
     .screen3-workflow-subgrid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -509,27 +637,34 @@
       letter-spacing: 0.05em;
     }
     .screen3-comparison-target-card {
-      padding: 10px;
+      display: grid;
+      gap: 8px;
+      padding: 14px;
       min-width: 0;
     }
     .screen3-comparison-target-card h4 {
-      margin-bottom: 6px;
-      font-size: 11px;
+      margin: 0;
+      font-size: 12px;
     }
     .screen3-target-resolution-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 7px;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 8px;
     }
-    .screen3-target-resolution-grid div {
+    .screen3-target-resolution-grid .screen2-control-info-box {
+      display: grid;
+      align-content: start;
       min-width: 0;
-      padding-top: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
     }
-    .screen3-target-resolution-grid dt {
+    .screen3-target-resolution-grid .screen2-control-info-box.wide {
+      grid-column: span 2;
+    }
+    .screen3-target-resolution-grid .screen2-control-info-box strong {
       font-size: 10px;
       line-height: 1.25;
     }
-    .screen3-target-resolution-grid dd {
-      margin: 2px 0 0;
+    .screen3-target-resolution-grid .screen2-control-info-box div {
       font-size: 11px;
       line-height: 1.3;
       overflow-wrap: anywhere;
@@ -1187,9 +1322,7 @@
       overflow-wrap: anywhere;
     }
     .screen3-result-summary-banner {
-      display: grid;
-      grid-template-columns: minmax(160px, 0.8fr) minmax(180px, 0.8fr) minmax(260px, 1.4fr);
-      gap: 10px;
+      display: block;
       margin: 10px 0 12px;
       padding: 12px;
       border: 1px solid rgba(90, 209, 255, 0.24);
@@ -3516,8 +3649,99 @@
       letter-spacing: 0.05em;
       background: rgba(11, 21, 35, 0.7);
     }
+    .screen1-run-intake-report {
+      padding: 14px 16px;
+    }
+    .screen1-run-intake-report h2 {
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+    .screen1-generated-run-boundary-note {
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen1-generated-evidence-group-stack {
+      display: grid;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .screen1-generated-evidence-group {
+      display: grid;
+      gap: 8px;
+    }
+    .screen1-generated-evidence-group h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .screen1-generated-evidence-info-grid {
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 10px;
+    }
+    .screen1-generated-evidence-info-box {
+      min-height: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(20, 36, 58, 0.70);
+    }
+    .screen1-generated-evidence-info-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .screen1-generated-evidence-info-box div {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen1-unknown-signals-compact {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .screen1-unknown-signals-overview {
+      display: grid;
+      gap: 8px;
+    }
+    .screen1-unknown-signals-overview h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .screen1-unknown-signals-summary-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .screen1-unknown-signals-summary-grid .info-box {
+      min-height: 0;
+      padding: 10px 12px;
+    }
+    .screen1-unknown-signals-handoff-note {
+      margin: 0;
+    }
+    .screen1-generated-evidence-empty-state {
+      padding: 10px 12px;
+      border: 1px dashed rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.34);
+      font-size: 13px;
+    }
     .screen1-full-report-table-wrap {
-      overflow-x: visible;
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
     }
     .screen1-full-report-table-compact {
       min-width: 0;
@@ -3533,6 +3757,11 @@
       word-break: break-word;
     }
     .screen1-full-report-table-compact th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: rgba(15, 27, 45, 0.98);
+      box-shadow: 0 1px 0 rgba(159, 176, 199, 0.18);
       font-size: 11px;
       letter-spacing: 0.04em;
     }
@@ -3805,6 +4034,17 @@
       border: 1px solid rgba(159, 176, 199, 0.24);
       border-radius: 10px;
       background: rgba(11, 20, 34, 0.68);
+    }
+
+    .phase7cr-entry-card-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .phase7cr-entry-card-link .phase7cr-entry-card-cta {
+      align-self: end;
+      width: fit-content;
     }
 
     .phase7cm-source-card:hover,
@@ -4080,19 +4320,72 @@
       overflow-wrap: anywhere;
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="accepted"],
-    .screen1-action-status[data-phase7-action-status="accepted"],
-    .screen2-action-status[data-phase7-action-status="accepted"] {
-      color: #effbef;
-      border-color: rgba(102, 187, 106, 0.42);
-    }
+	    .phase7-governed-action-status[data-phase7-action-status="accepted"],
+	    .phase7-governed-action-status[data-phase7-action-status="running"],
+	    .phase7-governed-action-status[data-phase7-action-status="pending"],
+	    .phase7-governed-action-status[data-phase7-action-status="completed_artifact_ready"],
+	    .screen1-action-status[data-phase7-action-status="accepted"],
+	    .screen1-action-status[data-phase7-action-status="running"],
+	    .screen1-action-status[data-phase7-action-status="pending"],
+	    .screen1-action-status[data-phase7-action-status="completed_artifact_ready"],
+	    .screen2-action-status[data-phase7-action-status="accepted"] {
+	      color: #effbef;
+	      border-color: rgba(102, 187, 106, 0.42);
+	    }
 
-    .phase7-governed-action-status[data-phase7-action-status="failed"],
-    .screen1-action-status[data-phase7-action-status="failed"],
-    .screen2-action-status[data-phase7-action-status="failed"] {
-      color: #fff4f4;
-      border-color: rgba(255, 107, 107, 0.42);
-    }
+	    .phase7-governed-action-status[data-phase7-action-status="failed"],
+	    .phase7-governed-action-status[data-phase7-action-status="failed_safely"],
+	    .phase7-governed-action-status[data-phase7-action-status="timed_out"],
+	    .screen1-action-status[data-phase7-action-status="failed"],
+	    .screen1-action-status[data-phase7-action-status="failed_safely"],
+	    .screen1-action-status[data-phase7-action-status="timed_out"],
+	    .screen2-action-status[data-phase7-action-status="failed"] {
+	      color: #fff4f4;
+	      border-color: rgba(255, 107, 107, 0.42);
+	    }
+
+	    .screen1-source-intake-result {
+	      display: grid;
+	      gap: 8px;
+	    }
+
+	    .screen1-source-intake-result > strong {
+	      color: var(--text);
+	      font-size: 13px;
+	      text-transform: uppercase;
+	      letter-spacing: 0.05em;
+	    }
+
+	    .screen1-source-intake-result dl {
+	      display: grid;
+	      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	      gap: 8px;
+	      margin: 0;
+	    }
+
+	    .screen1-source-intake-result div {
+	      min-width: 0;
+	      padding: 7px 9px;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 8px;
+	      background: rgba(16, 28, 45, 0.64);
+	    }
+
+	    .screen1-source-intake-result dt {
+	      color: var(--accent);
+	      font-size: 10px;
+	      font-weight: 850;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+
+	    .screen1-source-intake-result dd {
+	      margin: 3px 0 0;
+	      color: var(--text);
+	      font-size: 12px;
+	      line-height: 1.3;
+	      overflow-wrap: anywhere;
+	    }
 
     .phase7cm-next-step-note {
       margin-top: 10px;
@@ -4639,11 +4932,13 @@
       .semantic-assist-scope-list,
       .screen1-selector-grid,
       .screen1-operator-workflow,
+      .screen2-control-card-grid,
       .screen2-selector-grid,
       .screen2-review-action-grid,
 	      .screen3-selector-grid,
 	      .screen3-action-grid,
 	      .screen3-source-mode-grid,
+	      .screen3-source-context-grid,
 	      .screen3-filter-grid,
 	      .screen3-filter-toolbar,
 	      .screen3-workflow-subgrid,
@@ -4745,7 +5040,7 @@
 
   </style>
 </head>
-<body>
+<body data-dashboard-generated-at="May 25, 2026, 9:46 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -4760,7 +5055,7 @@
     Does not activate learning candidates. No approval controls. No runtime activation.
     Semantic context remains reviewer-assist only.
     Learning candidates remain proposal/review context only.
-    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedDbid, selectedInstance, selectedHost, selectedSystem, selectedReportId, selectedSnapshot, selectedSnapshotBegin, selectedSnapshotEnd, selectedTimeWindow, selectedApplication, selectedRuntimeScope, selectedRuntimeScopeSourceTable, selectedRuntimeScopeAwrCount, selectedRuntimeScopeSnapshotCount, selectedRuntimeScopeResolutionState, selectedRuntimeScopeReadinessState, screen3ActiveSelectionTarget, screen3RuntimeFilterApplication, screen3RuntimeFilterDb, screen3RuntimeFilterDbid, screen3RuntimeFilterInstance, screen3RuntimeFilterHost, screen3RuntimeFilterSourceType, screen3RuntimeFilterTimeRange, screen3RuntimeFilterSearch, screen3RuntimeFilteredResultCount, screen3RuntimeResultLimit, screen3RuntimeSortKey, screen3RuntimeSortDirection, screen3SelectedRuntimeScopeRowId, screen3SelectedTargetARowId, screen3SelectedTargetBRowId, screen3SelectedRuntimeIntervalId, screen3SelectedTargetAIntervalId, screen3SelectedTargetBIntervalId, screen3RuntimeScopeSelectionSource, screen3TargetASelectionSource, screen3TargetBSelectionSource, selectedDomain, selectedSeverity, selectedComparisonMode, selectedComparisonTargetA, selectedComparisonTargetB, selectedComparisonTargetASourceType, selectedComparisonTargetBSourceType, selectedComparisonTargetAScopeType, selectedComparisonTargetBScopeType, selectedComparisonTargetAScopeValue, selectedComparisonTargetBScopeValue, selectedComparisonTargetATimeWindow, selectedComparisonTargetBTimeWindow, selectedComparisonTargetAResolutionState, selectedComparisonTargetBResolutionState, selectedComparisonTargetAReadinessState, selectedComparisonTargetBReadinessState, selectedComparisonTargetAResolutionSummary, selectedComparisonTargetBResolutionSummary, selectedComparisonTargetAAwrCount, selectedComparisonTargetBAwrCount, selectedComparisonTargetASnapshotCount, selectedComparisonTargetBSnapshotCount, selectedComparisonTargetAMissingGates, selectedComparisonTargetBMissingGates, selectedComparisonBothComparable, selectedComparisonAwrA, selectedComparisonAwrB, selectedComparisonSnapshotA, selectedComparisonSnapshotB, selectedComparisonWindowA, selectedComparisonWindowB, selectedReviewMode, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, screen2ActiveFocusKey, screen2ActiveFocusType, screen2ActiveFocusValue, screen2ActiveFocusLabel, screen2ActiveFocusDomain, screen2InferredDomain, screen2ActiveDomainLens, screen2ActiveEvidenceGroup, screen2ActiveMetric, screen2ActiveWaitEvent, screen2ActiveSqlSignal, screen2ActiveDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, screen3RuntimeOptionsStatus, screen3RuntimeOptionsMessage, screen3RuntimeOptionsCount, screen3RuntimeOptionsLoadedRows, screen3RuntimeOptionsIncludedTables, screen3RuntimeOptionsLoadedAt, screen3RuntimeOptionsDbPersistenceStatus, screen3RuntimeOptionsCacheStatus, screen3RuntimeOptionsSourceTables, screen3RuntimeOptionsCoverageMessage, screen3LiveServiceStatus, screen3LastRequestedAction, screen3LastActionStatus, screen3LastRequestId, screen3LastTransactionId, screen3LastValidationStatus, screen3LastAuditReference, screen3LastPersistenceStatus, screen3LastExecutionStatus, screen3LastOutputArtifact, screen3LastNewRunOutputReference, screen3LastNextStep, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage, sourceHandoffRequestId, sourceHandoffAuditStatus.
+    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedDbid, selectedInstance, selectedHost, selectedSystem, selectedReportId, selectedSnapshot, selectedSnapshotBegin, selectedSnapshotEnd, selectedTimeWindow, selectedApplication, selectedRuntimeScope, selectedRuntimeScopeSourceTable, selectedRuntimeScopeAwrCount, selectedRuntimeScopeSnapshotCount, selectedRuntimeScopeResolutionState, selectedRuntimeScopeReadinessState, screen3ActiveSelectionTarget, screen3RuntimeFilterApplication, screen3RuntimeFilterDb, screen3RuntimeFilterDbid, screen3RuntimeFilterInstance, screen3RuntimeFilterHost, screen3RuntimeFilterSourceType, screen3RuntimeFilterTimeRange, screen3RuntimeFilterSearch, screen3RuntimeFilteredResultCount, screen3RuntimeResultLimit, screen3RuntimeSortKey, screen3RuntimeSortDirection, screen3SelectedRuntimeScopeRowId, screen3SelectedTargetARowId, screen3SelectedTargetBRowId, screen3SelectedRuntimeIntervalId, screen3SelectedTargetAIntervalId, screen3SelectedTargetBIntervalId, screen3RuntimeScopeSelectionSource, screen3TargetASelectionSource, screen3TargetBSelectionSource, selectedDomain, selectedSeverity, selectedComparisonMode, selectedComparisonTargetA, selectedComparisonTargetB, selectedComparisonTargetASourceType, selectedComparisonTargetBSourceType, selectedComparisonTargetAScopeType, selectedComparisonTargetBScopeType, selectedComparisonTargetAScopeValue, selectedComparisonTargetBScopeValue, selectedComparisonTargetATimeWindow, selectedComparisonTargetBTimeWindow, selectedComparisonTargetAResolutionState, selectedComparisonTargetBResolutionState, selectedComparisonTargetAReadinessState, selectedComparisonTargetBReadinessState, selectedComparisonTargetAResolutionSummary, selectedComparisonTargetBResolutionSummary, selectedComparisonTargetAAwrCount, selectedComparisonTargetBAwrCount, selectedComparisonTargetASnapshotCount, selectedComparisonTargetBSnapshotCount, selectedComparisonTargetAMissingGates, selectedComparisonTargetBMissingGates, selectedComparisonBothComparable, selectedComparisonAwrA, selectedComparisonAwrB, selectedComparisonSnapshotA, selectedComparisonSnapshotB, selectedComparisonWindowA, selectedComparisonWindowB, selectedReviewMode, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, screen2ActiveFocusKey, screen2ActiveFocusType, screen2ActiveFocusValue, screen2ActiveFocusLabel, screen2ActiveFocusDomain, screen2InferredDomain, screen2ActiveDomainLens, screen2ActiveEvidenceGroup, screen2ActiveMetric, screen2ActiveWaitEvent, screen2ActiveSqlSignal, screen2ActiveDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, screen1GeneratedArtifactReady, screen1GeneratedRunExecuted, screen1SelectedGeneratedArtifactReady, screen1SourceIntakeExecutionStatus, screen1GeneratedArtifactPath, screen1ArtifactEvidenceReady, screen1ArtifactReadyRequestId, generatedArtifactAvailable, currentOperatorEvidenceSession, dashboardEvidenceSessionId, dashboardEvidenceReady, screen2ExistingEvidenceReady, screen2RuntimeOptionsLoadRequestId, screen2RuntimeScopeSelectionEpoch, screen2RuntimeScopeReadyAt, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, screen3RuntimeOptionsStatus, screen3RuntimeOptionsMessage, screen3RuntimeOptionsCount, screen3RuntimeOptionsLoadedRows, screen3RuntimeOptionsIncludedTables, screen3RuntimeOptionsLoadedAt, screen3RuntimeOptionsDbPersistenceStatus, screen3RuntimeOptionsCacheStatus, screen3RuntimeOptionsSourceTables, screen3RuntimeOptionsCoverageMessage, screen3LiveServiceStatus, screen3LastRequestedAction, screen3LastActionStatus, screen3LastRequestId, screen3LastTransactionId, screen3LastValidationStatus, screen3LastAuditReference, screen3LastPersistenceStatus, screen3LastExecutionStatus, screen3LastOutputArtifact, screen3LastNewRunOutputReference, screen3LastNextStep, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, sourceSelectionActivated, sourceSelectionSessionId, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage, sourceHandoffRequestId, sourceHandoffAuditStatus.
     Future selectable metadata hooks: data-dashboard-selectable, data-dashboard-select-type, data-dashboard-select-key, data-dashboard-select-id, data-dashboard-select-domain, data-dashboard-target, data-dashboard-filter-key, data-dashboard-filter-value, data-dashboard-state-input, data-dashboard-state-key.
   -->
   <div class="container">
@@ -4880,12 +5175,23 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 22, 2026, 10:43 PM</div>
+        <div class="hero-meta">Generated: May 25, 2026, 9:46 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link active" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
     </div>
 
+
+    <section class="card prominent dashboard-evidence-empty-state"
+             data-dashboard-evidence-gate-empty="true"
+             data-dashboard-evidence-page="screen_5">
+      <div class="section-kicker">Evidence Readiness</div>
+      <h2>Evidence Handoff Required</h2>
+      <p class="meta">No recommendation/action context is selected yet. Complete analysis handoff before action review.</p>
+    </section>
+    <div data-dashboard-evidence-gated-content="true"
+         data-dashboard-evidence-page="screen_5"
+         hidden>
 
     <div class="grid">
       <!-- Screen 5 = action / decision / sizing guidance. -->
@@ -4906,7 +5212,7 @@
               POSTURE
             </span>
             <span class="status-insight-note">
-              Validate and tune prior to scaling.
+              Before scaling, validate and tune.
             </span>
           </div>
 
@@ -4942,7 +5248,7 @@
         <div class="action-summary-grid">
         <section class="evidence-pane action-summary-pane">
           <h3>Action Rationale</h3>
-          <div class="supportive-panel compact-supportive-panel"><ul><li>The TUNE FIRST posture means validation and tuning should precede scaling.</li><li>No canonical recommendation object was emitted for the selected scope.</li><li>Low confidence indicates limited evidence coverage and is not a scaling trigger.</li></ul></div>
+          <div class="supportive-panel compact-supportive-panel"><ul><li>TUNE FIRST posture means that validation and tuning should precede scaling.</li><li>No canonical recommendation object was emitted for the selected scope.</li><li>Low confidence indicates limited evidence coverage, not a scaling trigger.</li></ul></div>
         </section>
         <section class="evidence-pane action-summary-pane">
           <h3>Validation Plan</h3>
@@ -4953,22 +5259,22 @@
             <div class="validation-plan-groups">
             <div class="validation-plan-group">
               <strong>SQL / Access Path</strong>
-              <ul><li>Where applicable, review SQL and access-path efficiency.</li><li>Investigate User I/O contributors, specifically db file sequential read.</li></ul>
+              <ul><li>Where applicable, review SQL and access-path efficiency.</li><li>Investigate contributors to User I/O (db file sequential read).</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>Commit / Transaction Behavior</strong>
-              <ul><li>Validate commit latency behavior for log file sync.</li></ul>
+              <ul><li>Validate commit latency behavior related to log file sync.</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>RAC / Data Guard Context</strong>
-              <ul><li>Evaluate RAC coordination independently from CPU pressure.</li><li>If Data Guard replication context is present, review it.</li></ul>
+              <ul><li>Evaluate RAC coordination separately from CPU pressure.</li><li>Review the Data Guard replication context if present.</li></ul>
             </div>
 
             <div class="validation-plan-group">
               <strong>Evidence Completeness</strong>
-              <ul><li>Validate the coverage and completeness of CPU signals.</li><li>Complete tuning validation before making a scaling decision.</li></ul>
+              <ul><li>Validate the coverage and completeness of CPU signals.</li><li>Do not make scaling decisions until tuning validation is complete.</li></ul>
             </div>
             </div>
           </div>
@@ -5547,8 +5853,10 @@
 
     </div>
 
+    </div>
 
-    <div class="footer">Generated at May 22, 2026, 10:43 PM</div>
+
+    <div class="footer">Generated at May 25, 2026, 9:46 PM</div>
   </div>
 
   <script>
@@ -5571,9 +5879,10 @@
       // No approval controls. No runtime activation.
       const DASHBOARD_FOUNDATION_LABEL = 'Dashboard Interactivity Foundation';
       const DASHBOARD_PROPAGATION_LABEL = 'Cross-Screen Selection Propagation';
-      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedDbid", "selectedInstance", "selectedHost", "selectedSystem", "selectedReportId", "selectedSnapshot", "selectedSnapshotBegin", "selectedSnapshotEnd", "selectedTimeWindow", "selectedApplication", "selectedRuntimeScope", "selectedRuntimeScopeSourceTable", "selectedRuntimeScopeAwrCount", "selectedRuntimeScopeSnapshotCount", "selectedRuntimeScopeResolutionState", "selectedRuntimeScopeReadinessState", "screen3ActiveSelectionTarget", "screen3RuntimeFilterApplication", "screen3RuntimeFilterDb", "screen3RuntimeFilterDbid", "screen3RuntimeFilterInstance", "screen3RuntimeFilterHost", "screen3RuntimeFilterSourceType", "screen3RuntimeFilterTimeRange", "screen3RuntimeFilterSearch", "screen3RuntimeFilteredResultCount", "screen3RuntimeResultLimit", "screen3RuntimeSortKey", "screen3RuntimeSortDirection", "screen3SelectedRuntimeScopeRowId", "screen3SelectedTargetARowId", "screen3SelectedTargetBRowId", "screen3SelectedRuntimeIntervalId", "screen3SelectedTargetAIntervalId", "screen3SelectedTargetBIntervalId", "screen3RuntimeScopeSelectionSource", "screen3TargetASelectionSource", "screen3TargetBSelectionSource", "selectedDomain", "selectedSeverity", "selectedComparisonMode", "selectedComparisonTargetA", "selectedComparisonTargetB", "selectedComparisonTargetASourceType", "selectedComparisonTargetBSourceType", "selectedComparisonTargetAScopeType", "selectedComparisonTargetBScopeType", "selectedComparisonTargetAScopeValue", "selectedComparisonTargetBScopeValue", "selectedComparisonTargetATimeWindow", "selectedComparisonTargetBTimeWindow", "selectedComparisonTargetAResolutionState", "selectedComparisonTargetBResolutionState", "selectedComparisonTargetAReadinessState", "selectedComparisonTargetBReadinessState", "selectedComparisonTargetAResolutionSummary", "selectedComparisonTargetBResolutionSummary", "selectedComparisonTargetAAwrCount", "selectedComparisonTargetBAwrCount", "selectedComparisonTargetASnapshotCount", "selectedComparisonTargetBSnapshotCount", "selectedComparisonTargetAMissingGates", "selectedComparisonTargetBMissingGates", "selectedComparisonBothComparable", "selectedComparisonAwrA", "selectedComparisonAwrB", "selectedComparisonSnapshotA", "selectedComparisonSnapshotB", "selectedComparisonWindowA", "selectedComparisonWindowB", "selectedReviewMode", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "screen2ActiveFocusKey", "screen2ActiveFocusType", "screen2ActiveFocusValue", "screen2ActiveFocusLabel", "screen2ActiveFocusDomain", "screen2InferredDomain", "screen2ActiveDomainLens", "screen2ActiveEvidenceGroup", "screen2ActiveMetric", "screen2ActiveWaitEvent", "screen2ActiveSqlSignal", "screen2ActiveDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "screen3RuntimeOptionsStatus", "screen3RuntimeOptionsMessage", "screen3RuntimeOptionsCount", "screen3RuntimeOptionsLoadedRows", "screen3RuntimeOptionsIncludedTables", "screen3RuntimeOptionsLoadedAt", "screen3RuntimeOptionsDbPersistenceStatus", "screen3RuntimeOptionsCacheStatus", "screen3RuntimeOptionsSourceTables", "screen3RuntimeOptionsCoverageMessage", "screen3LiveServiceStatus", "screen3LastRequestedAction", "screen3LastActionStatus", "screen3LastRequestId", "screen3LastTransactionId", "screen3LastValidationStatus", "screen3LastAuditReference", "screen3LastPersistenceStatus", "screen3LastExecutionStatus", "screen3LastOutputArtifact", "screen3LastNewRunOutputReference", "screen3LastNextStep", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage", "sourceHandoffRequestId", "sourceHandoffAuditStatus"]);
+      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedDbid", "selectedInstance", "selectedHost", "selectedSystem", "selectedReportId", "selectedSnapshot", "selectedSnapshotBegin", "selectedSnapshotEnd", "selectedTimeWindow", "selectedApplication", "selectedRuntimeScope", "selectedRuntimeScopeSourceTable", "selectedRuntimeScopeAwrCount", "selectedRuntimeScopeSnapshotCount", "selectedRuntimeScopeResolutionState", "selectedRuntimeScopeReadinessState", "screen3ActiveSelectionTarget", "screen3RuntimeFilterApplication", "screen3RuntimeFilterDb", "screen3RuntimeFilterDbid", "screen3RuntimeFilterInstance", "screen3RuntimeFilterHost", "screen3RuntimeFilterSourceType", "screen3RuntimeFilterTimeRange", "screen3RuntimeFilterSearch", "screen3RuntimeFilteredResultCount", "screen3RuntimeResultLimit", "screen3RuntimeSortKey", "screen3RuntimeSortDirection", "screen3SelectedRuntimeScopeRowId", "screen3SelectedTargetARowId", "screen3SelectedTargetBRowId", "screen3SelectedRuntimeIntervalId", "screen3SelectedTargetAIntervalId", "screen3SelectedTargetBIntervalId", "screen3RuntimeScopeSelectionSource", "screen3TargetASelectionSource", "screen3TargetBSelectionSource", "selectedDomain", "selectedSeverity", "selectedComparisonMode", "selectedComparisonTargetA", "selectedComparisonTargetB", "selectedComparisonTargetASourceType", "selectedComparisonTargetBSourceType", "selectedComparisonTargetAScopeType", "selectedComparisonTargetBScopeType", "selectedComparisonTargetAScopeValue", "selectedComparisonTargetBScopeValue", "selectedComparisonTargetATimeWindow", "selectedComparisonTargetBTimeWindow", "selectedComparisonTargetAResolutionState", "selectedComparisonTargetBResolutionState", "selectedComparisonTargetAReadinessState", "selectedComparisonTargetBReadinessState", "selectedComparisonTargetAResolutionSummary", "selectedComparisonTargetBResolutionSummary", "selectedComparisonTargetAAwrCount", "selectedComparisonTargetBAwrCount", "selectedComparisonTargetASnapshotCount", "selectedComparisonTargetBSnapshotCount", "selectedComparisonTargetAMissingGates", "selectedComparisonTargetBMissingGates", "selectedComparisonBothComparable", "selectedComparisonAwrA", "selectedComparisonAwrB", "selectedComparisonSnapshotA", "selectedComparisonSnapshotB", "selectedComparisonWindowA", "selectedComparisonWindowB", "selectedReviewMode", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "screen2ActiveFocusKey", "screen2ActiveFocusType", "screen2ActiveFocusValue", "screen2ActiveFocusLabel", "screen2ActiveFocusDomain", "screen2InferredDomain", "screen2ActiveDomainLens", "screen2ActiveEvidenceGroup", "screen2ActiveMetric", "screen2ActiveWaitEvent", "screen2ActiveSqlSignal", "screen2ActiveDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "screen1GeneratedArtifactReady", "screen1GeneratedRunExecuted", "screen1SelectedGeneratedArtifactReady", "screen1SourceIntakeExecutionStatus", "screen1GeneratedArtifactPath", "screen1ArtifactEvidenceReady", "screen1ArtifactReadyRequestId", "generatedArtifactAvailable", "currentOperatorEvidenceSession", "dashboardEvidenceSessionId", "dashboardEvidenceReady", "screen2ExistingEvidenceReady", "screen2RuntimeOptionsLoadRequestId", "screen2RuntimeScopeSelectionEpoch", "screen2RuntimeScopeReadyAt", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "screen3RuntimeOptionsStatus", "screen3RuntimeOptionsMessage", "screen3RuntimeOptionsCount", "screen3RuntimeOptionsLoadedRows", "screen3RuntimeOptionsIncludedTables", "screen3RuntimeOptionsLoadedAt", "screen3RuntimeOptionsDbPersistenceStatus", "screen3RuntimeOptionsCacheStatus", "screen3RuntimeOptionsSourceTables", "screen3RuntimeOptionsCoverageMessage", "screen3LiveServiceStatus", "screen3LastRequestedAction", "screen3LastActionStatus", "screen3LastRequestId", "screen3LastTransactionId", "screen3LastValidationStatus", "screen3LastAuditReference", "screen3LastPersistenceStatus", "screen3LastExecutionStatus", "screen3LastOutputArtifact", "screen3LastNewRunOutputReference", "screen3LastNextStep", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "sourceSelectionActivated", "sourceSelectionSessionId", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage", "sourceHandoffRequestId", "sourceHandoffAuditStatus"]);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = "agenticAiAwrAdvisor.dashboardInteractivityState.v1";
+      const DASHBOARD_OPERATOR_SESSION_KEY = DASHBOARD_STORAGE_KEY + '.currentOperatorSession';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
@@ -5710,6 +6019,81 @@
           'objectStorageValidationStatus'
         ]
       });
+      const PHASE7CM_SOURCE_SELECTION_STATE_KEYS = Object.freeze([
+        'selectedSourceMode',
+        'selectedSourceContext',
+        'selectedSourcePath',
+        'sourceSelectionMethod',
+        'sourceSelectionSessionId',
+        'selectedLocalFolderFileCount',
+        'selectedLocalFolderOutFileCount',
+        'selectedLocalFolderSampleFiles',
+        'selectedLocalRelativePaths',
+        'selectedLocalTotalBytes',
+        'selectedLocalFileName',
+        'selectedLocalFileSize',
+        'selectedLocalFileType',
+        'selectedLocalFileExtension',
+        'selectedLocalFileValidationStatus',
+        'selectedRunReference',
+        'existingRunLookupStatus',
+        'existingRunLookupMessage',
+        'existingRunLookupCount',
+        'selectedLocalFolderCandidateCount',
+        'selectedLocalFolderAwrCandidateCount',
+        'selectedLocalFolderRejectedCount',
+        'selectedLocalFolderValidationStatus',
+        'selectedLocalFolderValidationMessages',
+        'awrSignatureValidation',
+        'objectStorageNamespace',
+        'objectStorageBucket',
+        'objectStorageObjectName',
+        'objectStorageRegion',
+        'objectStorageValidationStatus',
+        'objectStorageValidationMessage',
+        'sourceHandoffRequestId',
+        'sourceHandoffAuditStatus',
+        'selectedDb',
+        'selectedDbid',
+        'selectedHost',
+        'selectedInstance',
+        'selectedSystem',
+        'selectedAwr',
+        'selectedRun',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetB',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonBothComparable',
+        'screen1GeneratedArtifactReady',
+        'screen1GeneratedRunExecuted',
+        'screen1SelectedGeneratedArtifactReady',
+        'screen1SourceIntakeExecutionStatus',
+        'screen1GeneratedArtifactPath',
+        'screen1ArtifactEvidenceReady',
+        'screen1ArtifactReadyRequestId',
+        'generatedArtifactAvailable',
+        'currentOperatorEvidenceSession',
+        'dashboardEvidenceSessionId',
+        'dashboardEvidenceReady',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeOptionsLoadRequestId',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt'
+      ]);
       const PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out']);
       const PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out']);
       let dashboardInteractivityInitialized = false;
@@ -5848,6 +6232,27 @@
         return state;
       }
 
+      function sourceSelectionIsCurrent(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          dashboardStateFlagIsReady(safeState.sourceSelectionActivated) &&
+          safeState.sourceSelectionSessionId &&
+          operatorSessionTokenMatches('sourceSelectionSessionId', safeState.sourceSelectionSessionId)
+        );
+      }
+
+      function withoutInactiveSourceSelection(state) {
+        const nextState = sanitizeDashboardState(state || {});
+        if (sourceSelectionIsCurrent(nextState)) {
+          return nextState;
+        }
+        PHASE7CM_SOURCE_SELECTION_STATE_KEYS.forEach(function (key) {
+          delete nextState[key];
+        });
+        nextState.sourceSelectionActivated = '';
+        return sanitizeDashboardState(nextState);
+      }
+
       function parseHashState(hashValue) {
         const state = {};
         const rawHash = typeof hashValue === 'string' ? hashValue : window.location.hash;
@@ -5867,6 +6272,29 @@
           return {};
         }
         return state;
+      }
+
+      function isScreen2ControlPage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\/)screen_2_control\.html$/.test(path);
+      }
+
+      function isScreen1IngestionPage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\/)screen_1_ingestion\.html$/.test(path);
+      }
+
+      function isDownstreamEvidencePage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\/)(screen_3_analysis|screen_4_historical_review|screen_5_recommendation_action|screen_6_fleet_overview)\.html$/.test(path);
+      }
+
+      function hasExplicitDashboardHandoffState() {
+        return Object.keys(parseHashState(window.location.hash)).length > 0;
+      }
+
+      function screen2ShouldHydrateFromPersistentState() {
+        return false;
       }
 
       function readLocalStorageState() {
@@ -5895,6 +6323,14 @@
       function screen3RuntimeOptionsCacheStatusText(prefix, cachedAt) {
         const timestamp = safeStateValue(cachedAt || '');
         return prefix + (timestamp ? ' from ' + timestamp : '') + '.';
+      }
+
+      function screen2RuntimeOptionsProductMessage(value) {
+        return safeStateValue(value)
+          .replace(new RegExp('Screen 3 ' + 'runtime options', 'gi'), 'Screen 2 runtime options')
+          .replace(new RegExp('Screen 3 ' + 'Control Center', 'gi'), 'Screen 2 Control')
+          .replace(new RegExp('Screen 3 ' + 'Control', 'gi'), 'Screen 2 Control')
+          .replace(new RegExp('History ' + 'Selector', 'gi'), 'Runtime Scope & Analysis Control');
       }
 
       function readScreen3RuntimeOptionsCache() {
@@ -6108,17 +6544,12 @@
 
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
-        const cachedRuntimeOptions = readScreen3RuntimeOptionsCache();
-        const cachedRuntimeOptionsState = screen3RuntimeOptionsStateFromCache(cachedRuntimeOptions);
+        const hashState = parseHashState(window.location.hash);
         const explicitState = Object.assign(
           {},
-          readLocalStorageState(),
-          parseHashState(window.location.hash)
+          hashState
         );
-        let state = Object.assign({}, defaultState, cachedRuntimeOptionsState, explicitState);
-        if (cachedRuntimeOptions) {
-          state = screen3ReconcileCachedSelectionState(state, cachedRuntimeOptions);
-        }
+        let state = Object.assign({}, defaultState, explicitState);
         if (
           explicitState.selectedSourceMode &&
           explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
@@ -6126,7 +6557,8 @@
         ) {
           delete state.selectedSourcePath;
         }
-        return sanitizeDashboardState(state);
+        state = withoutInactiveSourceSelection(state);
+        return enforceCurrentScreen2EvidenceState(state);
       }
 
       function serializeDashboardState(state) {
@@ -6661,12 +7093,12 @@
 
       function sourceSubmitLabel(mode) {
         const labels = {
-          local_staged: 'Submit Local Folder Source Handoff',
-          local_file: 'Submit Local File Source Handoff',
-          existing_run: 'Submit Existing Run Source Handoff',
-          object_storage: 'Submit Object Storage Source Handoff'
+          local_staged: 'Run Local Folder Source Intake',
+          local_file: 'Run Local File Source Intake',
+          existing_run: 'Continue Existing Platform Evidence',
+          object_storage: 'Run Object Storage Source Intake'
         };
-        return labels[mode] || 'Submit Governed Source Handoff';
+        return labels[mode] || 'Run Governed Source Intake';
       }
 
       function sourceActionStateMessage(state, missing) {
@@ -6677,18 +7109,18 @@
         }
         if (!missing.length) {
           if (mode === 'local_staged') {
-            return 'Ready to submit Local Folder source handoff.';
+            return 'Ready to submit governed backend Local Folder source intake.';
           }
           if (mode === 'local_file') {
-            return 'Ready to submit Local File source handoff.';
+            return 'Ready to submit governed backend Local File source intake.';
           }
           if (mode === 'existing_run') {
-            return 'Ready to submit Existing Run source handoff.';
+            return 'Ready to continue with existing platform evidence on Screen 2 Control.';
           }
           if (mode === 'object_storage') {
-            return 'Ready to submit Object Storage source handoff.';
+            return 'Ready to submit governed Object Storage source intake metadata.';
           }
-          return 'Ready to submit governed source handoff.';
+          return 'Ready to submit governed source intake.';
         }
         if (mode === 'local_staged') {
           return 'Choose a folder or use backend path fallback. Missing: ' + missing.join(', ') + '.';
@@ -6709,6 +7141,575 @@
           return 'Complete Object Storage metadata and validate configured defaults. Missing: ' + missing.join(', ') + '.';
         }
         return 'Source configuration incomplete. Missing: ' + missing.join(', ') + '.';
+      }
+
+      function sourceSelectionMethodLabel(method) {
+        const labels = {
+          backend_path: 'Backend-visible path',
+          os_folder_picker: 'Folder picker metadata',
+          os_file_picker: 'File picker metadata',
+          existing_run_reference: 'Existing platform evidence',
+          object_storage_metadata: 'Object Storage metadata'
+        };
+        return labels[method] || safeStateValue(method || 'Not selected');
+      }
+
+      function screen3SourceContextExecutionSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (screen1GeneratedArtifactReady(safeState)) {
+          return 'Generated artifact ready from governed backend source intake.';
+        }
+        if (safeState.sourceHandoffRequestId) {
+          return 'Source intake request submitted; artifact readiness is not confirmed on this page.';
+        }
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'existing_run') {
+          return safeState.selectedRunReference
+            ? 'Existing platform evidence selected for Screen 2 runtime control.'
+            : 'Load or select existing platform evidence before runtime control.';
+        }
+        if (mode) {
+          return 'Run source intake on Screen 1 before using this new source for runtime control.';
+        }
+        return 'No source or evidence context selected.';
+      }
+
+      function screen3SourceContextGuidance(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+        return readiness.guidance;
+      }
+
+      function screen3NumericStateValue(value) {
+        const parsed = parseInt(safeStateValue(value || '0'), 10);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function newDashboardEvidenceSessionId(prefix) {
+        return [
+          safeStateValue(prefix || 'evidence'),
+          String(Date.now()),
+          Math.random().toString(36).slice(2, 8)
+        ].join('-');
+      }
+
+      function readOperatorSession() {
+        try {
+          const rawValue = window.sessionStorage.getItem(DASHBOARD_OPERATOR_SESSION_KEY);
+          const buildToken = safeStateValue(
+            document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+          );
+          if (!rawValue) {
+            return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+          }
+          const parsed = JSON.parse(rawValue);
+          if (!parsed || typeof parsed !== 'object') {
+            return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+          }
+          if (buildToken && safeStateValue(parsed.dashboardGeneratedAt || '') !== buildToken) {
+            const resetSession = { dashboardGeneratedAt: buildToken };
+            try {
+              window.sessionStorage.setItem(DASHBOARD_OPERATOR_SESSION_KEY, JSON.stringify(resetSession));
+            } catch (innerError) {
+              return resetSession;
+            }
+            return resetSession;
+          }
+          if (buildToken && !parsed.dashboardGeneratedAt) {
+            parsed.dashboardGeneratedAt = buildToken;
+          }
+          return parsed;
+        } catch (error) {
+          const buildToken = safeStateValue(
+            document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+          );
+          return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+        }
+      }
+
+      function writeOperatorSessionValue(key, value) {
+        if (!key) {
+          return '';
+        }
+        const session = readOperatorSession();
+        const safeValue = safeStateValue(value || '');
+        const buildToken = safeStateValue(
+          document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+        );
+        if (buildToken) {
+          session.dashboardGeneratedAt = buildToken;
+        }
+        if (safeValue) {
+          session[key] = safeValue;
+        } else {
+          delete session[key];
+        }
+        try {
+          window.sessionStorage.setItem(DASHBOARD_OPERATOR_SESSION_KEY, JSON.stringify(session));
+        } catch (error) {
+          return safeValue;
+        }
+        return safeValue;
+      }
+
+      function issueOperatorSessionToken(key, prefix) {
+        const token = newDashboardEvidenceSessionId(prefix || key || 'operator');
+        writeOperatorSessionValue(key, token);
+        return token;
+      }
+
+      function operatorSessionTokenMatches(key, value) {
+        const safeValue = safeStateValue(value || '');
+        if (!key || !safeValue) {
+          return false;
+        }
+        return safeStateValue(readOperatorSession()[key]) === safeValue;
+      }
+
+      function screen3RuntimeOptionsLiveLoaded(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const rows = screen3NumericStateValue(safeState.screen3RuntimeOptionsLoadedRows);
+        return Boolean(
+          rows > 0 &&
+          safeState.screen2RuntimeOptionsLoadRequestId &&
+          operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
+          safeStateValue(safeState.screen3RuntimeOptionsCacheStatus || '').toLowerCase().indexOf('live-loaded') >= 0
+        );
+      }
+
+      function screen3RuntimeOptionsAreLoaded(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return screen3RuntimeOptionsLiveLoaded(safeState);
+      }
+
+      function screen3RuntimeScopeIsSelected(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          screen3RuntimeOptionsAreLoaded(safeState) &&
+          safeState.screen2RuntimeScopeSelectionEpoch &&
+          operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch) &&
+          safeState.selectedRuntimeScope &&
+          (
+            safeState.selectedRuntimeScopeSourceTable ||
+            safeState.selectedTimeWindow ||
+            safeState.selectedSnapshot ||
+            safeState.screen3SelectedRuntimeScopeRowId ||
+            safeState.selectedRuntimeScopeResolutionState
+          )
+        );
+      }
+
+      function screen1ArtifactEvidenceReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const requestBound = Boolean(
+          safeState.screen1ArtifactReadyRequestId ||
+          safeState.sourceHandoffRequestId ||
+          safeState.screen1GeneratedArtifactPath
+        );
+        return sourceSelectionIsCurrent(safeState) &&
+          requestBound &&
+          safeState.currentOperatorEvidenceSession === 'screen1_artifact_ready' &&
+          safeState.screen1ArtifactReadyRequestId &&
+          operatorSessionTokenMatches('screen1ArtifactReadyRequestId', safeState.screen1ArtifactReadyRequestId) &&
+          (
+          dashboardStateFlagIsReady(safeState.screen1ArtifactEvidenceReady) ||
+          dashboardStateFlagIsReady(safeState.screen1GeneratedArtifactReady) ||
+          dashboardStateFlagIsReady(safeState.screen1GeneratedRunExecuted) ||
+          dashboardStateFlagIsReady(safeState.screen1SelectedGeneratedArtifactReady)
+        );
+      }
+
+      function screen2ExistingEvidenceReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          sourceSelectionIsCurrent(safeState) &&
+          safeState.selectedSourceMode === 'existing_run' &&
+          safeState.screen2RuntimeOptionsLoadRequestId &&
+          operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
+          screen3RuntimeOptionsAreLoaded(safeState) &&
+          screen3RuntimeScopeIsSelected(safeState) &&
+          safeState.screen2RuntimeScopeReadyAt &&
+          operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch)
+        );
+      }
+
+      function dashboardEvidenceIsReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          safeState.currentOperatorEvidenceSession &&
+          (screen1ArtifactEvidenceReady(safeState) || screen2ExistingEvidenceReady(safeState))
+        );
+      }
+
+      function dashboardEvidenceReadyReason(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (screen1ArtifactEvidenceReady(safeState)) {
+          return 'screen1_artifact_ready';
+        }
+        if (screen2ExistingEvidenceReady(safeState)) {
+          return 'screen2_existing_evidence_ready';
+        }
+        return '';
+      }
+
+      function clearScreen2ExistingEvidenceState(state, options) {
+        if (!state) {
+          return state;
+        }
+        const opts = options || {};
+        state.screen2ExistingEvidenceReady = '';
+        state.screen2RuntimeScopeSelectionEpoch = '';
+        state.screen2RuntimeScopeReadyAt = '';
+        writeOperatorSessionValue('screen2RuntimeScopeSelectionEpoch', '');
+        if (opts.clearRuntimeOptions) {
+          state.screen2RuntimeOptionsLoadRequestId = '';
+          state.screen3RuntimeOptionsLoadedRows = '';
+          state.screen3RuntimeOptionsCount = '';
+          state.screen3RuntimeOptionsCacheStatus = '';
+          writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+        }
+        [
+          'selectedRuntimeScope',
+          'selectedRuntimeScopeSourceTable',
+          'selectedRuntimeScopeAwrCount',
+          'selectedRuntimeScopeSnapshotCount',
+          'selectedRuntimeScopeResolutionState',
+          'selectedRuntimeScopeReadinessState',
+          'screen3SelectedRuntimeScopeRowId',
+          'screen3SelectedRuntimeIntervalId',
+          'selectedComparisonTargetA',
+          'selectedComparisonTargetB',
+          'selectedComparisonTargetAReadinessState',
+          'selectedComparisonTargetBReadinessState',
+          'selectedComparisonBothComparable',
+          'screen3LastOutputArtifact',
+          'screen3LastNewRunOutputReference'
+        ].forEach(function (key) {
+          state[key] = '';
+        });
+        if (!screen1ArtifactEvidenceReady(state)) {
+          state.currentOperatorEvidenceSession = '';
+          state.dashboardEvidenceReady = '';
+          state.dashboardEvidenceSessionId = '';
+        }
+        return state;
+      }
+
+      function updateScreen2ExistingEvidenceReadiness(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        if (screen2ExistingEvidenceReady(state)) {
+          state.screen2ExistingEvidenceReady = 'true';
+          state.currentOperatorEvidenceSession = 'screen2_existing_evidence_ready';
+          state.dashboardEvidenceReady = 'screen2_existing_evidence_ready';
+          state.dashboardEvidenceSessionId = state.dashboardEvidenceSessionId || newDashboardEvidenceSessionId('screen2');
+        } else if (!screen1ArtifactEvidenceReady(state)) {
+          state.screen2ExistingEvidenceReady = '';
+          state.currentOperatorEvidenceSession = '';
+          state.dashboardEvidenceReady = '';
+          state.dashboardEvidenceSessionId = '';
+        }
+        return state;
+      }
+
+      function resetScreen2RuntimeOptionsDisplayState(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        state.screen3RuntimeOptionsStatus = 'not loaded';
+        state.screen3RuntimeOptionsMessage = 'Load available runtime options to query existing platform evidence through Screen 2 Control.';
+        state.screen3RuntimeOptionsCount = '0';
+        state.screen3RuntimeOptionsLoadedRows = '0';
+        state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        state.screen3RuntimeOptionsLoadedAt = 'not loaded';
+        state.screen3RuntimeOptionsIncludedTables = 'not checked';
+        state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
+        state.screen3RuntimeOptionsCoverageMessage = 'Load runtime options to see queried tables and row counts.';
+        state.screen3RuntimeOptionsCacheStatus = 'No runtime options cache restored.';
+        state.screen3LastRequestedAction = '';
+        state.screen3LastActionStatus = '';
+        state.screen3LastValidationStatus = '';
+        state.screen3LastPersistenceStatus = '';
+        state.screen3LastExecutionStatus = '';
+        state.screen3LastOutputArtifact = '';
+        state.screen3LastNewRunOutputReference = '';
+        state.screen3LastNextStep = '';
+        state.screen3LastRequestId = '';
+        state.screen3LastTransactionId = '';
+        return state;
+      }
+
+      function resetScreen2TargetAndComparisonState(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        [
+          'selectedApplication',
+          'selectedDb',
+          'selectedDbid',
+          'selectedHost',
+          'selectedSystem',
+          'selectedInstance',
+          'selectedAwr',
+          'selectedRun',
+          'selectedRunReference',
+          'selectedReportId',
+          'selectedSnapshot',
+          'selectedTimeWindow',
+          'selectedRuntimeScope',
+          'selectedRuntimeScopeSummary',
+          'selectedRuntimeScopeSourceTable',
+          'selectedRuntimeScopeAwrCount',
+          'selectedRuntimeScopeSnapshotCount',
+          'selectedRuntimeScopeResolutionState',
+          'selectedRuntimeScopeReadinessState',
+          'selectedDomain',
+          'selectedSeverity',
+          'screen3RuntimeScopeSelectionSource',
+          'screen3TargetASelectionSource',
+          'screen3TargetBSelectionSource',
+          'screen3SelectedRuntimeScopeRowId',
+          'screen3SelectedTargetARowId',
+          'screen3SelectedTargetBRowId',
+          'screen3SelectedRuntimeIntervalId',
+          'screen3SelectedTargetAIntervalId',
+          'screen3SelectedTargetBIntervalId',
+          'selectedComparisonMode',
+          'selectedReviewMode',
+          'selectedComparisonTargetA',
+          'selectedComparisonTargetB',
+          'selectedComparisonTargetASourceType',
+          'selectedComparisonTargetBSourceType',
+          'selectedComparisonTargetAScopeType',
+          'selectedComparisonTargetBScopeType',
+          'selectedComparisonTargetAScopeValue',
+          'selectedComparisonTargetBScopeValue',
+          'selectedComparisonTargetATimeWindow',
+          'selectedComparisonTargetBTimeWindow',
+          'selectedComparisonTargetAResolutionState',
+          'selectedComparisonTargetBResolutionState',
+          'selectedComparisonTargetAReadinessState',
+          'selectedComparisonTargetBReadinessState',
+          'selectedComparisonTargetAResolutionSummary',
+          'selectedComparisonTargetBResolutionSummary',
+          'selectedComparisonTargetAAwrCount',
+          'selectedComparisonTargetBAwrCount',
+          'selectedComparisonTargetASnapshotCount',
+          'selectedComparisonTargetBSnapshotCount',
+          'selectedComparisonTargetAMissingGates',
+          'selectedComparisonTargetBMissingGates',
+          'selectedComparisonAwrA',
+          'selectedComparisonAwrB',
+          'selectedComparisonWindowA',
+          'selectedComparisonWindowB',
+          'selectedComparisonBothComparable'
+        ].forEach(function (key) {
+          state[key] = '';
+        });
+        state.screen3ActiveSelectionTarget = 'Runtime Scope';
+        return state;
+      }
+
+      function enforceCurrentScreen2EvidenceState(state) {
+        const nextState = sanitizeDashboardState(state || {});
+        if (!isScreen2ControlPage()) {
+          return nextState;
+        }
+        if (!screen3RuntimeOptionsLiveLoaded(nextState)) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
+          resetScreen2RuntimeOptionsDisplayState(nextState);
+          resetScreen2TargetAndComparisonState(nextState);
+          return updateScreen2ExistingEvidenceReadiness(nextState);
+        }
+        if (!screen3RuntimeScopeIsSelected(nextState)) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
+          resetScreen2TargetAndComparisonState(nextState);
+          return updateScreen2ExistingEvidenceReadiness(nextState);
+        }
+        return updateScreen2ExistingEvidenceReadiness(nextState);
+      }
+
+      function screen3RuntimeOptionsSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const rows = safeState.screen3RuntimeOptionsLoadedRows || safeState.screen3RuntimeOptionsCount || '';
+        if (!screen3RuntimeOptionsAreLoaded(safeState)) {
+          return 'Not loaded';
+        }
+        return rows ? rows + ' DB-backed row(s) available' : 'Loaded';
+      }
+
+      function screen3RuntimeScopeCompactSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (!screen3RuntimeScopeIsSelected(safeState)) {
+          return 'Not selected';
+        }
+        const dbLabel = [
+          safeState.selectedDb,
+          safeState.selectedDbid ? 'DBID: ' + safeState.selectedDbid : ''
+        ].filter(Boolean).join(' / ');
+        const hostLabel = [
+          safeState.selectedHost && safeState.selectedHost !== 'Not available' ? safeState.selectedHost : '',
+          safeState.selectedInstance ? 'Instance: ' + safeState.selectedInstance : ''
+        ].filter(Boolean).join(' / ');
+        const windowText = safeState.selectedTimeWindow || safeState.selectedSnapshot || '';
+        return [dbLabel, hostLabel, windowText].filter(Boolean).join(' · ') || 'Selected row';
+      }
+
+      function screen3RuntimeEvidencePathReadiness(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
+        const sourceCurrent = sourceSelectionIsCurrent(safeState);
+        const artifactReady = screen1GeneratedArtifactReady(safeState);
+        const runtimeOptionsLoaded = screen3RuntimeOptionsAreLoaded(safeState);
+        const runtimeScopeSelected = screen3RuntimeScopeIsSelected(safeState);
+
+        if (!sourceCurrent) {
+          return {
+            path: 'None selected',
+            readiness: 'No valid runtime evidence path yet',
+            nextStep: 'Choose a path from Platform Entry',
+            guidance: 'Choose Load / Ingest New Source or Use Existing Platform Evidence from Platform Entry.'
+          };
+        }
+
+        if (artifactReady && mode !== 'existing_run') {
+          return {
+            path: 'New Source Artifact',
+            readiness: 'completed_artifact_ready',
+            nextStep: runtimeOptionsLoaded ? 'Continue to Analysis' : 'Load Runtime Options / Continue to Analysis',
+            handoff: 'Ready for Analysis / Review / Action / Learning',
+            guidance: 'Screen 1 completed the governed artifact handoff. Screen 2 can load DB-backed runtime options and select scope.'
+          };
+        }
+
+        if (mode === 'existing_run') {
+          if (runtimeScopeSelected) {
+            return {
+              path: 'Existing Platform Evidence',
+              readiness: 'Runtime scope selected',
+              handoff: 'Ready for Analysis / Review / Action / Learning',
+              guidance: 'Existing platform evidence has a selected runtime scope/window/assignment for downstream workflow.'
+            };
+          }
+          if (runtimeOptionsLoaded) {
+            return {
+              path: 'Existing Platform Evidence',
+              readiness: 'Runtime options loaded; row/scope selection required',
+              nextStep: 'Select AWR / Report Row',
+              guidance: 'DB-backed runtime options are loaded. Select an AWR/report row and scope/window before downstream handoff.'
+            };
+          }
+          return {
+            path: 'Existing Platform Evidence',
+            readiness: 'Runtime options not loaded',
+            nextStep: 'Load Runtime Options',
+            guidance: 'Platform Entry selected the existing evidence path. Load DB-backed runtime options to choose scope.'
+          };
+        }
+
+        if (mode === 'object_storage') {
+          return {
+            path: 'Object Storage Metadata',
+            readiness: 'Screen 1 validation/intake required',
+            nextStep: 'Complete governed source intake on Screen 1',
+            guidance: 'Object Storage metadata is not runtime evidence until Screen 1 validates, ingests, and produces an artifact.'
+          };
+        }
+
+        if (mode === 'local_staged' || mode === 'local_file') {
+          return {
+            path: 'New Source',
+            readiness: 'Screen 1 intake required',
+            nextStep: 'Complete Screen 1 source intake',
+            guidance: 'New local source selection must complete Screen 1 source intake before Screen 2 can hand off runtime evidence.'
+          };
+        }
+
+        return {
+          path: 'None selected',
+          readiness: 'No valid runtime evidence path yet',
+          nextStep: 'Choose a path from Platform Entry',
+          guidance: 'Choose Load / Ingest New Source or Use Existing Platform Evidence from Platform Entry.'
+        };
+      }
+
+      function screen3SourceContextEntries(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+        const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
+        const rows = [];
+        function add(label, value, fallback, options) {
+          const opts = options || {};
+          const text = safeStateValue(value || '');
+          if (!text && opts.optional) {
+            return;
+          }
+          rows.push({
+            label: label,
+            value: text || fallback || 'Not selected',
+            emphasis: opts.emphasis === true
+          });
+        }
+        add('Path', readiness.path, 'None selected', { emphasis: true });
+        add('Readiness', readiness.readiness, 'No valid runtime evidence path yet', { emphasis: true });
+        if (readiness.handoff) {
+          add('Handoff / Next Step', readiness.handoff, '', { emphasis: true });
+        } else if (readiness.nextStep) {
+          add('Handoff / Next Step', readiness.nextStep, '', { emphasis: true });
+        }
+        if (mode === 'existing_run' || screen3RuntimeOptionsAreLoaded(safeState)) {
+          add('Runtime Options', screen3RuntimeOptionsSummary(safeState), 'Not loaded');
+        }
+        if (screen3RuntimeScopeIsSelected(safeState)) {
+          add('Runtime Scope', screen3RuntimeScopeCompactSummary(safeState), 'Not selected');
+        }
+        if (mode === 'existing_run') {
+          add('Evidence Reference', safeState.selectedRunReference, 'Runtime row not selected', {
+            optional: !safeState.selectedRunReference && !screen3RuntimeScopeIsSelected(safeState)
+          });
+        }
+        return rows;
+      }
+
+      function updateScreen3SourceContextSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        scope.querySelectorAll('[data-screen3-source-context-summary="true"]').forEach(function (container) {
+          if (!sourceSelectionIsCurrent(safeState)) {
+            container.innerHTML = '';
+            container.setAttribute('data-screen3-source-context-mode', 'none');
+            return;
+          }
+          const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : 'unknown');
+          const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+          const rows = screen3SourceContextEntries(safeState);
+          const cards = rows.map(function (row) {
+            return '<article class="info-box screen2-control-info-box screen3-source-context-card' + (row.emphasis ? ' primary' : '') + '">' +
+              '<strong>' + escapeHtml(row.label) + '</strong>' +
+              '<div>' + escapeHtml(row.value) + '</div>' +
+              '</article>';
+          }).join('');
+          container.innerHTML =
+            '<div class="screen3-source-context-header">' +
+              '<strong>' + escapeHtml(readiness.path || sourceModeLabel(mode)) + '</strong>' +
+              '<span>' + escapeHtml(screen3SourceContextGuidance(safeState)) + '</span>' +
+            '</div>' +
+            '<div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced screen3-source-context-grid">' + cards + '</div>';
+          container.setAttribute('data-screen3-source-context-mode', mode);
+        });
+      }
+
+      function updateScreen2RuntimeDependentGates(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        const ready = isScreen2ControlPage() && screen3RuntimeScopeIsSelected(safeState);
+        scope.querySelectorAll('[data-screen2-runtime-scope-required-content="true"]').forEach(function (element) {
+          element.hidden = !ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-scope-empty-state="true"]').forEach(function (element) {
+          element.hidden = ready;
+        });
       }
 
       function isScreen1ParserGovernanceAction(element) {
@@ -6813,6 +7814,98 @@
           return 'Ready to submit governed knowledge artifact rejection request for ' + selectedTarget + '.';
         }
         return 'Ready to submit governed Screen 1 parser governance request for ' + selectedTarget + '.';
+      }
+
+      function dashboardStateFlagIsReady(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        return (
+          normalized === 'true' ||
+          normalized === '1' ||
+          normalized === 'yes' ||
+          normalized === 'ready' ||
+          normalized === 'available' ||
+          normalized === 'selected' ||
+          normalized === 'executed' ||
+          normalized === 'artifact_ready' ||
+          normalized === 'generated_artifact_ready' ||
+          normalized === 'completed_artifact_ready'
+        );
+      }
+
+      function screen1GeneratedArtifactReady(state) {
+        return screen1ArtifactEvidenceReady(state || readDashboardState());
+      }
+
+      function clearScreen1GeneratedArtifactState(state) {
+        if (!state) {
+          return state;
+        }
+        state.screen1GeneratedArtifactReady = '';
+        state.screen1GeneratedRunExecuted = '';
+        state.screen1SelectedGeneratedArtifactReady = '';
+        state.screen1ArtifactEvidenceReady = '';
+        state.screen1ArtifactReadyRequestId = '';
+        state.screen1GeneratedArtifactPath = '';
+        state.dashboardEvidenceReady = '';
+        state.dashboardEvidenceSessionId = '';
+        state.currentOperatorEvidenceSession = '';
+        state.generatedArtifactAvailable = '';
+        writeOperatorSessionValue('screen1ArtifactReadyRequestId', '');
+        clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: true });
+        return state;
+      }
+
+      function mountScreen1ArtifactTemplate(region) {
+        if (!region || region.getAttribute('data-screen1-artifact-template-mounted') === 'true') {
+          return;
+        }
+        const content = region.querySelector('[data-screen1-artifact-ready-content="true"]');
+        const template = region.querySelector('template[data-screen1-artifact-template="true"]');
+        if (!content || !template || !template.content) {
+          return;
+        }
+        content.appendChild(template.content.cloneNode(true));
+        region.setAttribute('data-screen1-artifact-template-mounted', 'true');
+      }
+
+      function updateScreen1GeneratedArtifactGate(state, root) {
+        const scope = root || document;
+        const ready = screen1GeneratedArtifactReady(state);
+        scope.querySelectorAll('[data-screen1-artifact-ready-region="true"]').forEach(function (region) {
+          const emptyState = region.querySelector('[data-screen1-artifact-empty-state="true"]');
+          const content = region.querySelector('[data-screen1-artifact-ready-content="true"]');
+          region.setAttribute('data-screen1-generated-artifact-ready', ready ? 'true' : 'false');
+          if (ready) {
+            mountScreen1ArtifactTemplate(region);
+            applyScreen3TableStates(region);
+          }
+          if (emptyState) {
+            emptyState.hidden = ready;
+          }
+          if (content) {
+            content.hidden = !ready;
+          }
+        });
+      }
+
+      function updateDashboardEvidenceGate(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        const ready = dashboardEvidenceIsReady(safeState);
+        if (document.body) {
+          document.body.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+        }
+        scope.querySelectorAll('[data-dashboard-evidence-gate-empty="true"]').forEach(function (element) {
+          element.hidden = ready;
+          element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+        });
+        scope.querySelectorAll('[data-dashboard-evidence-gated-content="true"]').forEach(function (element) {
+          element.hidden = !ready;
+          element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+          if (ready) {
+            applyScreen3TableStates(element);
+          }
+        });
       }
 
       function screen1MissingFields(element, state) {
@@ -8038,6 +9131,56 @@
       function updateSourceWorkflowSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
+        if (!sourceSelectionIsCurrent(safeState)) {
+          const values = {
+            active: 'No source selected',
+            metadata: 'Select a source mode or choose a folder/file before submitting.',
+            validation: 'Not checked',
+            missing: 'Select a source to see required metadata.',
+            handoff: 'No execution target selected.',
+            action: 'Select a source to continue.',
+            next_step: 'Choose a source mode, then configure source metadata.',
+            pipeline_mode: 'Current source mode: none selected',
+            pipeline_active: 'Active source: none selected',
+            pipeline_validation: 'Current source validation: not checked',
+            pipeline_handoff: 'Current target: none selected',
+            pipeline_node_source: 'Select a source for governed intake.',
+            config_type: 'Current source type: none selected',
+            config_location: 'Current source location: not selected',
+            config_candidates: 'No source metadata selected.',
+            config_rejected: 'No validation result yet.',
+            config_validation: 'Current source validation: not checked',
+            config_handoff: 'Current source intake status: select a source to continue.'
+          };
+          Object.keys(values).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
+              element.textContent = values[key];
+              element.setAttribute('data-phase7-source-summary-status', 'not-selected');
+              if (key.indexOf('pipeline_') === 0) {
+                element.setAttribute('title', 'No active source selection.');
+              }
+            });
+          });
+          const validationValues = {
+            local_folder: 'Local folder validation appears after Choose Folder or backend path metadata is submitted.',
+            local_file: 'Local file validation appears after Choose File or backend file metadata is submitted.',
+            existing_run: 'Existing platform evidence lookup belongs to Screen 2 Control.',
+            object_storage: 'Object Storage metadata validation appears after Validate Object Storage Source.',
+            service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
+            result: 'No source intake request has been submitted.'
+          };
+          Object.keys(validationValues).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
+              element.textContent = validationValues[key];
+              element.setAttribute('data-phase7-source-validation-status', 'not-selected');
+            });
+          });
+          scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
+            element.textContent = sourceSubmitLabel('');
+          });
+          updateScreen1ParserGovernanceSummary(safeState, scope);
+          return;
+        }
         const missing = sourceSelectionMissingFields(safeState);
         const modeLabel = sourceModeLabel(safeState.selectedSourceMode || '');
         const activeLocation = sourceActiveLocationSummary(safeState);
@@ -8045,6 +9188,9 @@
         const pipelineNode = sourcePipelineNodeSummary(safeState);
         const validationSummary = sourceValidationSummary(safeState);
         const actionState = sourceActionStateMessage(safeState, missing);
+        const handoffTarget = safeState.selectedSourceMode === 'existing_run'
+          ? 'Screen 2 Control'
+          : 'Screen 1 Ingestion';
         const values = {
           active: modeLabel,
           metadata: sourceMetadataSummary(safeState),
@@ -8053,23 +9199,23 @@
             ? 'Missing required metadata: ' + missing.join(', ')
             : 'Required source metadata is satisfied.',
           handoff: missing.length
-            ? 'Screen 2 Control handoff disabled. Missing: ' + missing.join(', ')
-            : 'Screen 2 Control handoff ready. Submit governed request to receive request ID and audit record.',
+            ? handoffTarget + ' source intake disabled. Missing: ' + missing.join(', ')
+            : handoffTarget + ' source intake ready. Submit governed request to receive request ID and audit record.',
           action: actionState,
           next_step: missing.length
             ? 'Complete the missing metadata or validation before submitting.'
-            : 'Submit governed source handoff, review Request ID / Audit record, then open Screen 2 Control.',
+            : 'Submit governed source intake, review Request ID / Audit record, then continue to ' + handoffTarget + '.',
           pipeline_mode: 'Current source mode: ' + modeLabel,
           pipeline_active: 'Active source: ' + pipelineActive,
           pipeline_validation: 'Current source validation: ' + validationSummary,
-          pipeline_handoff: 'Current handoff target: Screen 2 Control',
+          pipeline_handoff: 'Current target: ' + handoffTarget,
           pipeline_node_source: pipelineNode,
           config_type: 'Current source type: ' + modeLabel,
           config_location: 'Current source location: ' + activeLocation,
           config_candidates: sourceCandidateSummary(safeState),
           config_rejected: sourceRejectedSummary(safeState),
           config_validation: 'Current source validation: ' + validationSummary,
-          config_handoff: 'Current handoff status: ' + actionState
+          config_handoff: 'Current source intake status: ' + actionState
         };
         Object.keys(values).forEach(function (key) {
           scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
@@ -8094,7 +9240,7 @@
             ? sourceValidationSummary(safeState)
             : 'Available after Validate Object Storage Source calls the governed service.',
           service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
-          result: 'After submit, the result panel shows accepted/rejected status, Request ID, Audit record, queued reference, and Open Screen 2 Control as the next step.'
+          result: 'After submit, the result panel shows accepted/running/completed/failed status, Request ID, Audit record, and generated artifact readiness.'
         };
         Object.keys(validationValues).forEach(function (key) {
           scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
@@ -8111,17 +9257,23 @@
       function updateScreen3SourceHandoffEmptyState(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
-        const hasSourceContext = Boolean(
+        const hasSourceContext = sourceSelectionIsCurrent(safeState) && Boolean(
           safeState.selectedSourceMode ||
           safeState.selectedRunReference ||
           safeState.objectStorageNamespace ||
           safeState.selectedSourcePath ||
-          safeState.selectedLocalFileName
+          safeState.selectedLocalFileName ||
+          safeState.sourceHandoffRequestId
         );
         scope.querySelectorAll('[data-screen3-source-handoff-empty="true"]').forEach(function (element) {
           element.hidden = hasSourceContext;
           element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
         });
+        scope.querySelectorAll('[data-screen3-source-handoff-content="true"]').forEach(function (element) {
+          element.hidden = !hasSourceContext;
+          element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
+        });
+        updateScreen3SourceContextSummary(safeState, scope);
       }
 
       function isStaticDashboardHref(rawHref) {
@@ -8173,7 +9325,7 @@
       function applyDashboardState(state, root) {
         const explicitState = sanitizeDashboardState(state);
         const defaultState = readDefaultDashboardState(root || document);
-        const safeState = Object.assign({}, defaultState, explicitState);
+        let safeState = Object.assign({}, defaultState, explicitState);
         if (
           explicitState.selectedSourceMode &&
           explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
@@ -8181,13 +9333,18 @@
         ) {
           delete safeState.selectedSourcePath;
         }
+        safeState = withoutInactiveSourceSelection(safeState);
+        safeState = enforceCurrentScreen2EvidenceState(safeState);
         markSelectedElement(safeState, root);
         markReadOnlyFilterPlaceholders(safeState, root);
         updateDashboardStateInputs(safeState, root);
         updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
+        updateScreen1GeneratedArtifactGate(safeState, root);
+        updateDashboardEvidenceGate(safeState, root);
         updateScreen3SourceHandoffEmptyState(safeState, root);
+        updateScreen2RuntimeDependentGates(safeState, root);
         updateScreen3RuntimeFilters(safeState, root);
         applyScreen3TableStates(root);
         updateScreen3RowApplyLabels(safeState, root);
@@ -8305,6 +9462,10 @@
             });
           }
           screen3SetActiveSelectionSource(nextState, screen3RuntimeRowSelectionSource(element, nextState));
+          if (!screen3ActiveTargetSuffix(nextState) && screen3RuntimeOptionsAreLoaded(nextState)) {
+            nextState.screen2RuntimeScopeSelectionEpoch = issueOperatorSessionToken('screen2RuntimeScopeSelectionEpoch', 'screen2-scope');
+            nextState.screen2RuntimeScopeReadyAt = new Date().toISOString();
+          }
         } else if (selectType === 'snapshot') {
           const selectedIntervalId = valueForSelectable(element);
           const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
@@ -8332,6 +9493,10 @@
             });
           }
           screen3SetActiveSelectionSource(nextState, 'Selected from interval table');
+          if (!screen3ActiveTargetSuffix(nextState) && screen3RuntimeOptionsAreLoaded(nextState)) {
+            nextState.screen2RuntimeScopeSelectionEpoch = nextState.screen2RuntimeScopeSelectionEpoch || issueOperatorSessionToken('screen2RuntimeScopeSelectionEpoch', 'screen2-scope');
+            nextState.screen2RuntimeScopeReadyAt = new Date().toISOString();
+          }
         }
         if (selectType === 'comparisonTargetA') {
           nextState.screen3TargetASelectionSource = 'Selected from advanced/external option';
@@ -8339,6 +9504,9 @@
           nextState.screen3TargetBSelectionSource = 'Selected from advanced/external option';
         }
         if (key === 'selectedSourceMode') {
+          clearScreen1GeneratedArtifactState(nextState);
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
           nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
           nextState.selectedLocalFolderFileCount = '';
@@ -8368,6 +9536,7 @@
           nextState.objectStorageValidationStatus = '';
           nextState.objectStorageValidationMessage = '';
         }
+        updateScreen2ExistingEvidenceReadiness(nextState);
         return writeDashboardState(nextState);
       }
 
@@ -8388,22 +9557,38 @@
         const configMode = safeStateValue(element.getAttribute('data-source-config-mode'));
         if (configMode) {
           nextState.selectedSourceMode = configMode;
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key === 'selectedSourcePath' && nextState.selectedSourceMode) {
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'backend_path';
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key === 'selectedRunReference') {
           nextState.selectedSourceMode = 'existing_run';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'existing_run_reference';
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key.indexOf('objectStorage') === 0) {
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           if (key !== 'objectStorageValidationStatus' && key !== 'objectStorageValidationMessage') {
             nextState.objectStorageValidationStatus = 'pending';
             nextState.objectStorageValidationMessage = 'Metadata changed; validate Object Storage source before submitting.';
           }
         }
+        if (key.indexOf('screen3RuntimeFilter') === 0) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
+        }
+        updateScreen2ExistingEvidenceReadiness(nextState);
         writeDashboardState(nextState);
       }
 
@@ -8419,6 +9604,7 @@
         const files = Array.prototype.slice.call(picker.files || []);
         const nextState = readDashboardState();
         if (pickerType === 'local_folder') {
+          const stagedPathField = document.querySelector('[data-phase7-source-path-field="local_staged"]');
           const relativePaths = files.map(function (file) {
             return safeStateValue(file.webkitRelativePath || file.name || '');
           }).filter(Boolean);
@@ -8441,7 +9627,12 @@
                 : 'No .out candidate AWR files found. HTML AWR input is planned for a future parser/source adapter.'
             );
           nextState.selectedSourceMode = 'local_staged';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'os_folder_picker';
+          nextState.selectedSourcePath = safeStateValue(
+            (stagedPathField && (stagedPathField.value || stagedPathField.getAttribute('value'))) || 'data/input'
+          );
           nextState.selectedLocalFolderFileCount = String(files.length);
           nextState.selectedLocalFolderOutFileCount = String(outFiles.length);
           nextState.selectedLocalFolderSampleFiles = candidateFiles.slice(0, 5).join(', ');
@@ -8455,6 +9646,7 @@
           nextState.awrSignatureValidation = candidateFiles.length
             ? 'backend_validation_pending'
             : 'failed';
+          clearScreen1GeneratedArtifactState(nextState);
           writeDashboardState(nextState);
           updateSourcePickerSummary(
             picker,
@@ -8476,11 +9668,14 @@
         if (pickerType === 'local_file') {
           const file = files[0];
           nextState.selectedSourceMode = 'local_file';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'os_file_picker';
           if (file) {
             const extension = fileExtension(file.name || '');
             const extensionValid = isAllowedLocalFileName(file.name || '');
             nextState.selectedLocalFileName = safeStateValue(file.name || '');
+            nextState.selectedSourcePath = safeStateValue(nextState.selectedSourcePath || file.name || '');
             nextState.selectedLocalFileSize = String(Number(file.size) || 0);
             nextState.selectedLocalFileType = safeStateValue(file.type || extension);
             nextState.selectedLocalFileExtension = extension;
@@ -8491,6 +9686,7 @@
               ? 'backend_validation_pending'
               : 'failed';
           } else {
+            nextState.selectedSourcePath = '';
             nextState.selectedLocalFileName = '';
             nextState.selectedLocalFileSize = '';
             nextState.selectedLocalFileType = '';
@@ -8498,11 +9694,12 @@
             nextState.selectedLocalFileValidationStatus = 'invalid';
             nextState.awrSignatureValidation = 'failed';
           }
+          clearScreen1GeneratedArtifactState(nextState);
           writeDashboardState(nextState);
           updateSourcePickerSummary(
             picker,
             file
-              ? 'File selected. Nothing has been submitted yet. Backend validation is pending until Submit Governed Source Handoff is clicked. File: ' + (file.name || 'unnamed') +
+              ? 'File selected. Nothing has been submitted yet. Backend validation is pending until Run Governed Source Intake is clicked. File: ' + (file.name || 'unnamed') +
                 '. Size: ' + (Number(file.size) || 0) +
                 ' bytes. Type/extension: ' + (file.type || fileExtension(file.name || '') || 'unknown') +
                 '. Extension validation: ' + (isAllowedLocalFileName(file.name || '') ? 'valid' : 'invalid') +
@@ -8534,6 +9731,16 @@
         window.PHASE7_DASHBOARD_OBJECT_STORAGE_VALIDATE_ENDPOINT ||
         derivePhase7Endpoint('/phase7/dashboard/object-storage/validate')
       );
+      const PHASE7_ACTION_STATUS_ENDPOINT = (
+        window.PHASE7_DASHBOARD_ACTION_STATUS_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/actions/status')
+      );
+      const PHASE7_HEALTH_ENDPOINT = (
+        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/health')
+      );
+      const SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS = 2500;
+      const SCREEN1_SOURCE_INTAKE_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
       function readActionPayload(element) {
         const rawPayload = element.getAttribute('data-action-payload') || '{}';
@@ -8604,6 +9811,9 @@
 
       function screen3RuntimeScopeSummary(state) {
         const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (!screen3RuntimeScopeIsSelected(safeState)) {
+          return 'Not selected';
+        }
         const parts = [
           safeState.selectedApplication,
           safeState.selectedDb,
@@ -9378,7 +10588,7 @@
           setScreen3ResultField(panel, 'comparison_mode', screen3ComparisonSummary(safeState));
           setScreen3ResultField(panel, 'comparison_target_a', screen3TargetShortSummary(safeState, 'A'));
           setScreen3ResultField(panel, 'comparison_target_b', screen3TargetShortSummary(safeState, 'B'));
-          setScreen3ResultField(panel, 'comparison_status', safeState.screen3LastRequestedAction === 'Build Comparison' ? (safeState.screen3LastActionStatus || 'Comparison request pending') : 'Pending comparison request');
+          setScreen3ResultField(panel, 'comparison_status', safeState.screen3LastRequestedAction === 'Build Comparison' ? (safeState.screen3LastActionStatus || 'Comparison request pending') : 'Not submitted');
           setScreen3ResultField(panel, 'comparison_result_mode', screen3ComparisonSummary(safeState));
           setScreen3ResultField(panel, 'comparison_target_a_readiness', safeState.selectedComparisonTargetAReadinessState || 'Target A: not resolved');
           setScreen3ResultField(panel, 'comparison_target_b_readiness', safeState.selectedComparisonTargetBReadinessState || 'Target B: not resolved');
@@ -9512,6 +10722,57 @@
         );
       }
 
+      function isScreen1SourceIntakeExecutionAction(element) {
+        return (
+          safeStateValue(element.getAttribute('data-screen-id')) === 'screen_1' &&
+          safeStateValue(element.getAttribute('data-action-type')) === 'screen1_source_intake_execute'
+        );
+      }
+
+      function screen1SourceIntakeMissingFields(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const missing = sourceSelectionMissingFields(safeState).slice();
+        const mode = safeState.selectedSourceMode || '';
+        if ((mode === 'local_staged' || mode === 'local_file') && !safeState.selectedSourcePath) {
+          missing.push('selectedSourcePath');
+        }
+        return missing.filter(function (value, index, list) {
+          return value && list.indexOf(value) === index;
+        });
+      }
+
+      function setScreen1GeneratedArtifactReadyState(ready, responsePayload) {
+        const nextState = readDashboardState();
+        const payload = responsePayload || {};
+        const summary = payload.source_summary || {};
+        const readyValue = ready ? 'completed_artifact_ready' : '';
+        nextState.sourceSelectionActivated = nextState.sourceSelectionActivated || (ready ? 'true' : '');
+        if (ready && !nextState.sourceSelectionSessionId) {
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+        }
+        nextState.screen1GeneratedArtifactReady = readyValue;
+        nextState.screen1GeneratedRunExecuted = readyValue;
+        nextState.screen1SelectedGeneratedArtifactReady = readyValue;
+        nextState.screen1ArtifactEvidenceReady = readyValue;
+        nextState.screen1ArtifactReadyRequestId = ready ? safeStateValue(payload.request_id || nextState.sourceHandoffRequestId || '') : '';
+        if (ready && nextState.screen1ArtifactReadyRequestId) {
+          writeOperatorSessionValue('screen1ArtifactReadyRequestId', nextState.screen1ArtifactReadyRequestId);
+        }
+        nextState.generatedArtifactAvailable = ready ? 'true' : '';
+        nextState.currentOperatorEvidenceSession = ready ? 'screen1_artifact_ready' : '';
+        nextState.dashboardEvidenceReady = ready ? 'screen1_artifact_ready' : '';
+        nextState.dashboardEvidenceSessionId = ready ? newDashboardEvidenceSessionId('screen1') : '';
+        nextState.screen1SourceIntakeExecutionStatus = ready
+          ? 'completed_artifact_ready'
+          : safeStateValue(summary.execution_status || payload.status || '');
+        nextState.sourceHandoffRequestId = safeStateValue(payload.request_id || '');
+        nextState.sourceHandoffAuditStatus = safeStateValue(payload.audit_reference || '');
+        nextState.screen1GeneratedArtifactPath = safeStateValue(summary.dashboard_artifact_path || '');
+        writeDashboardState(nextState);
+        updateScreen1GeneratedArtifactGate(nextState, document);
+        return nextState;
+      }
+
       function isScreen3RuntimeAction(element) {
         return (
           safeStateValue(element.getAttribute('data-screen-id')) === 'screen_3' &&
@@ -9577,9 +10838,13 @@
         scope.querySelectorAll(PHASE7_ACTION_SELECTOR).forEach(function (element) {
           const key = requiredSelectionKey(element);
           const selectedValue = selectionValueForAction(element, safeState);
-          const missingSourceFields = (isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element))
-            ? sourceSelectionMissingFields(safeState)
-            : [];
+          const missingSourceFields = isScreen1SourceIntakeExecutionAction(element)
+            ? screen1SourceIntakeMissingFields(safeState)
+            : (
+              (isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element))
+                ? sourceSelectionMissingFields(safeState)
+                : []
+            );
           const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
             ? screen1MissingFields(element, safeState)
             : [];
@@ -9609,7 +10874,9 @@
                     isScreen3RuntimeAction(element)
                       ? screen3ActionMessage(element, safeState, missingSourceFields)
                       : sourceActionStateMessage(safeState, missingSourceFields) +
-                        ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                        (isScreen1SourceIntakeExecutionAction(element)
+                          ? ' Submitting a valid source sends a governed backend intake request.'
+                          : ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.')
                   )
               );
             } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
@@ -9641,9 +10908,14 @@
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         const isScreen1Action = isScreen1ParserGovernanceAction(element);
+        const isScreen1SourceAction = isScreen1SourceIntakeExecutionAction(element);
         const isScreen3Action = isScreen3RuntimeAction(element);
-        const requestPrefix = isScreen1Action ? 'PHASE7CN' : (isScreen3Action ? 'SCREEN3' : 'PHASE7CM');
-        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : (isScreen3Action ? 'screen3' : 'phase7cm');
+        const requestPrefix = isScreen1Action
+          ? 'PHASE7CN'
+          : (isScreen1SourceAction ? 'SCREEN1-SOURCE' : (isScreen3Action ? 'SCREEN3' : 'PHASE7CM'));
+        const idempotencyPrefix = isScreen1Action
+          ? 'phase7cn'
+          : (isScreen1SourceAction ? 'screen1-source' : (isScreen3Action ? 'screen3' : 'phase7cm'));
         const idempotencyKey = [
           idempotencyPrefix,
           screenId,
@@ -9724,8 +10996,10 @@
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
-            target_screen: isScreen1Action ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
-            source_request_contract_version: isScreen1Action ? '' : '7CM.index_source_selection.v1',
+            target_screen: (isScreen1Action || isScreen1SourceAction) ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
+            source_request_contract_version: isScreen1SourceAction
+              ? '7CR.screen1_source_intake_execute.v1'
+              : (isScreen1Action ? '' : '7CM.index_source_selection.v1'),
             screen1_parser_governance_contract_version: isScreen1Action
               ? '7CN.screen1_parser_governance.v1'
               : '',
@@ -9816,12 +11090,12 @@
             governance_intent: payload.governance_intent || (
               isScreen1Action
                 ? 'screen1_parser_governance_review'
-                : ''
+                : (isScreen1SourceAction ? 'screen1_source_intake_execute' : '')
             ),
             governance_status: payload.governance_status || (
               isScreen1Action
                 ? 'review_requested'
-                : ''
+                : (isScreen1SourceAction ? 'execution_requested' : '')
             ),
             future_run_influence_gated: true,
             future_run_influence_granted: false,
@@ -9829,6 +11103,7 @@
             runtime_activation_requested: false,
             runtime_activation_granted: false,
             runtime_execution_requested: false,
+            backend_source_intake_execution_requested: isScreen1SourceAction,
             parser_output_mutation_requested: false,
             parser_output_mutation_allowed: false,
             direct_parser_mutation_allowed: false,
@@ -9914,6 +11189,225 @@
           return response.json().then(function (body) {
             return { ok: response.ok, status: response.status, body: body };
           });
+        });
+      }
+
+      function invokePhase7Get(endpoint) {
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          return Promise.reject(new Error('browser request bridge unavailable'));
+        }
+        return requestBridge(endpoint, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            return { ok: response.ok, status: response.status, body: body };
+          });
+        });
+      }
+
+      function screen1SourceIntakeStatusEndpoint(requestId) {
+        const separator = PHASE7_ACTION_STATUS_ENDPOINT.indexOf('?') >= 0 ? '&' : '?';
+        return PHASE7_ACTION_STATUS_ENDPOINT + separator + 'request_id=' +
+          encodeURIComponent(safeStateValue(requestId));
+      }
+
+      function screen1SourceIntakeServiceRestartCommand() {
+        return 'PYTHONPATH=. .venv/bin/python scripts/dashboard_workflow_service.py --host 127.0.0.1 --port 8765';
+      }
+
+      function screen1SourceIntakeStatusMarkup(status, rows) {
+        const safeStatus = safeStateValue(status || 'status');
+        const items = (Array.isArray(rows) ? rows : []).filter(function (row) {
+          return row && row.label;
+        });
+        return '<div class="screen1-source-intake-result">' +
+          '<strong>' + escapeHtml(safeStatus.replace(/_/g, ' ')) + '</strong>' +
+          '<dl>' + items.map(function (row) {
+            return '<div><dt>' + escapeHtml(row.label) + '</dt><dd>' +
+              escapeHtml(row.value || 'Not reported') + '</dd></div>';
+          }).join('') + '</dl>' +
+          '</div>';
+      }
+
+      function setScreen1SourceIntakeStatusMarkup(element, status, rows) {
+        setActionStatusMarkup(
+          element,
+          status,
+          screen1SourceIntakeStatusMarkup(status, rows)
+        );
+      }
+
+      function screen1ActionRequestRows(actionRequest, extraRows) {
+        const payload = actionRequest.payload || {};
+        const rows = [
+          { label: 'Action type', value: actionRequest.action_type },
+          { label: 'Request ID', value: actionRequest.request_id },
+          { label: 'Source mode', value: payload.selectedSourceMode || payload.source_mode },
+          { label: 'Source path', value: payload.selectedSourcePath || payload.backend_visible_path },
+          { label: 'Service endpoint', value: PHASE7_ACTION_ENDPOINT },
+          { label: 'Status endpoint', value: PHASE7_ACTION_STATUS_ENDPOINT }
+        ];
+        return rows.concat(Array.isArray(extraRows) ? extraRows : []);
+      }
+
+      function responseRows(actionRequest, responsePayload, extraRows) {
+        const payload = responsePayload || {};
+        const summary = payload.source_summary || {};
+        const rows = screen1ActionRequestRows(actionRequest, [
+          { label: 'Service status', value: payload.status || summary.execution_status },
+          { label: 'Audit record', value: payload.audit_reference },
+          { label: 'Artifact ready', value: summary.artifact_ready === true ? 'yes' : 'no' },
+          { label: 'Dashboard regenerated', value: summary.dashboard_regenerated === true ? 'yes' : 'no' },
+          { label: 'Message', value: payload.message || summary.runner_message }
+        ]);
+        return rows.concat(Array.isArray(extraRows) ? extraRows : []);
+      }
+
+      function verifyScreen1SourceIntakeService() {
+        return invokePhase7Get(PHASE7_HEALTH_ENDPOINT).then(function (result) {
+          const body = result.body || {};
+          const supportedActions = Array.isArray(body.supported_action_types)
+            ? body.supported_action_types
+            : [];
+          const supportedScreenActions = body.supported_screen_action_types || {};
+          const screen1Actions = Array.isArray(supportedScreenActions.screen_1)
+            ? supportedScreenActions.screen_1
+            : [];
+          const supported = supportedActions.indexOf('screen1_source_intake_execute') >= 0 &&
+            screen1Actions.indexOf('screen1_source_intake_execute') >= 0;
+          if (!result.ok || body.status !== 'ok' || !supported) {
+            throw new Error(
+              'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute. Command: ' +
+              screen1SourceIntakeServiceRestartCommand()
+            );
+          }
+          return body;
+        });
+      }
+
+      function screen1SourceIntakeResponseArtifactReady(payload) {
+        const body = payload || {};
+        const summary = body.source_summary || {};
+        return (
+          body.status === 'completed_artifact_ready' ||
+          summary.artifact_ready === true ||
+          safeStateValue(summary.execution_status) === 'completed_artifact_ready'
+        );
+      }
+
+      function completeScreen1SourceIntake(element, actionRequest, payload) {
+        setScreen1GeneratedArtifactReadyState(true, payload);
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          'completed_artifact_ready',
+          responseRows(actionRequest, payload, [
+            { label: 'Next step', value: 'Reloading the regenerated dashboard artifact.' }
+          ])
+        );
+        if (!window.__screen1SourceIntakeReloadScheduled) {
+          window.__screen1SourceIntakeReloadScheduled = true;
+          setTimeout(function () {
+            window.location.reload();
+          }, 500);
+        }
+      }
+
+      function failScreen1SourceIntake(element, actionRequest, status, payload, message) {
+        const safePayload = payload || {};
+        setScreen1GeneratedArtifactReadyState(false, safePayload);
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          status || safePayload.status || 'failed_safely',
+          responseRows(actionRequest, safePayload, [
+            { label: 'Reason', value: message || safePayload.message || 'Source intake failed safely.' },
+            { label: 'Next step', value: 'Fix the source/service issue and submit again. Generated evidence remains empty.' }
+          ])
+        );
+      }
+
+      function pollScreen1SourceIntakeStatus(element, actionRequest, startedAt) {
+        const requestId = safeStateValue(actionRequest.request_id);
+        if (!requestId) {
+          failScreen1SourceIntake(
+            element,
+            actionRequest,
+            'failed_safely',
+            {},
+            'Cannot poll Screen 1 source intake status because no Request ID was issued.'
+          );
+          return;
+        }
+        if (Date.now() - startedAt > SCREEN1_SOURCE_INTAKE_POLL_TIMEOUT_MS) {
+          failScreen1SourceIntake(
+            element,
+            actionRequest,
+            'timed_out',
+            {
+              status: 'timed_out',
+              request_id: requestId,
+              source_summary: { execution_status: 'timed_out', artifact_ready: false }
+            },
+            'Backend source intake is still not complete after the local polling timeout. Check the audit/status record or restart the workflow service.'
+          );
+          return;
+        }
+        invokePhase7Get(screen1SourceIntakeStatusEndpoint(requestId)).then(function (result) {
+          const body = result.body || {};
+          const status = safeStateValue(body.status || '');
+          if (screen1SourceIntakeResponseArtifactReady(body)) {
+            completeScreen1SourceIntake(element, actionRequest, body);
+            return;
+          }
+          if (!result.ok && status !== 'running' && status !== 'pending' && status !== 'accepted') {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status || 'failed_safely',
+              body,
+              body.message || 'Screen 1 source intake status endpoint returned a failure.'
+            );
+            return;
+          }
+          if (status === 'failed' || status === 'failed_safely' || status === 'rejected' || status === 'blocked') {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status,
+              body,
+              body.message || 'Screen 1 source intake did not produce an artifact-ready result.'
+            );
+            return;
+          }
+          setScreen1GeneratedArtifactReadyState(false, body);
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            status || 'running',
+            responseRows(actionRequest, body, [
+              { label: 'Polling', value: 'Backend intake/generation is still running. This page will keep checking.' }
+            ])
+          );
+          setTimeout(function () {
+            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
+          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+        }).catch(function (error) {
+          setScreen1GeneratedArtifactReadyState(false, {
+            status: 'running',
+            request_id: requestId,
+            source_summary: { execution_status: 'running', artifact_ready: false }
+          });
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            'running',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Status check', value: 'Could not reach status endpoint yet: ' + safeStateValue(error && error.message) },
+              { label: 'Next check', value: 'Retrying automatically.' }
+            ])
+          );
+          setTimeout(function () {
+            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
+          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
         });
       }
 
@@ -10461,13 +11955,13 @@
         replaceRuntimeOptionNodes(
           'runtime-scope-rows',
           runs.map(createScreen3RuntimeScopeRow),
-          'No DB-backed AWR/run options were returned. Use the current generated fallback row or restore DB-backed run history.',
+          'No DB-backed AWR/run options are loaded yet. Load Runtime Options to populate this table.',
           13
         );
         replaceRuntimeOptionNodes(
           'interval-rows',
           intervals.map(createScreen3IntervalRow),
-          'Interval options unavailable; use current generated snapshot/window fallback.',
+          'No interval/window options are loaded yet. Load Runtime Options and select an AWR/report row to populate this table.',
           5
         );
         // DB-backed AWR/report rows are selected from the main bounded runtime
@@ -10494,6 +11988,7 @@
         event.preventDefault();
         const refreshRequested = control.hasAttribute('data-screen3-runtime-options-refresh');
         const nextState = readDashboardState();
+        clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
         nextState.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
         nextState.screen3LastActionStatus = 'Loading runtime options';
         nextState.screen3LastValidationStatus = 'pending';
@@ -10557,7 +12052,7 @@
             (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
           const serviceMessage = routeUnavailable
             ? 'Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.'
-            : (body.message || 'Runtime-control options request completed.');
+            : screen2RuntimeOptionsProductMessage(body.message || 'Runtime-control options request completed.');
           const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
           const sourceTables = Array.isArray(body.runtime_options_source_tables)
             ? body.runtime_options_source_tables
@@ -10583,6 +12078,20 @@
           state.screen3RuntimeOptionsCacheStatus = optionsLoaded
             ? 'Runtime options live-loaded at ' + state.screen3RuntimeOptionsLoadedAt + '.'
             : 'No runtime options cache update was made.';
+          state.screen2RuntimeOptionsLoadRequestId = optionsLoaded
+            ? writeOperatorSessionValue(
+                'screen2RuntimeOptionsLoadRequestId',
+                safeStateValue(body.request_id || newDashboardEvidenceSessionId('screen2-options'))
+              )
+            : '';
+          state.screen2ExistingEvidenceReady = '';
+          state.screen2RuntimeScopeSelectionEpoch = '';
+          state.screen2RuntimeScopeReadyAt = '';
+          if (!screen1ArtifactEvidenceReady(state)) {
+            state.currentOperatorEvidenceSession = '';
+            state.dashboardEvidenceReady = '';
+            state.dashboardEvidenceSessionId = '';
+          }
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
           state.screen3LastActionStatus = routeUnavailable
             ? 'Runtime options route unavailable'
@@ -10632,10 +12141,18 @@
             if (fallbackCache) {
               const cachedMessage = (
                 refreshRequested
-                  ? 'Refresh failed; showing cached runtime options'
-                  : 'Load failed; showing cached runtime options'
+                  ? 'Refresh failed; cached runtime options were not activated'
+                  : 'Load failed; cached runtime options were not activated'
               ) + (fallbackCache.cached_at ? ' from ' + fallbackCache.cached_at : '') + '.';
-              showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, cachedMessage);
+              state.screen3RuntimeOptionsMessage = cachedMessage + ' Re-query the workflow service to activate DB-backed runtime options.';
+              state.screen3RuntimeOptionsCacheStatus = 'Cached runtime options are available for continuity only; they are not active evidence.';
+              state.screen3RuntimeOptionsCount = '0';
+              state.screen3RuntimeOptionsLoadedRows = '0';
+              state.screen2RuntimeOptionsLoadRequestId = '';
+              writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+              clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
+              writeDashboardState(state);
+              updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
               return;
             }
           }
@@ -10646,10 +12163,10 @@
           const fallbackCache = readScreen3RuntimeOptionsCache();
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
-            ? 'Refresh failed; showing last cached runtime options.'
+            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service to activate DB-backed runtime options.'
             : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 2 Control runtime options.';
-          state.screen3RuntimeOptionsCount = fallbackCache ? state.screen3RuntimeOptionsCount || '0' : '0';
-          state.screen3RuntimeOptionsLoadedRows = fallbackCache ? state.screen3RuntimeOptionsLoadedRows || '0' : '0';
+          state.screen3RuntimeOptionsCount = '0';
+          state.screen3RuntimeOptionsLoadedRows = '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
           state.screen3RuntimeOptionsIncludedTables = 'No selectable source tables reported';
           state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
@@ -10658,7 +12175,7 @@
             : 'Runtime options source tables were not checked because the service was unavailable.';
           state.screen3LiveServiceStatus = 'Error';
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
-            ? 'Refresh failed; showing cached runtime options from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + '.'
+            ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are not active evidence.'
             : 'No runtime options cache is available.';
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
           state.screen3LastActionStatus = 'Runtime options service unavailable';
@@ -10666,10 +12183,14 @@
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain visible; retry Refresh options when service is available.'
+            ? 'Workflow service unavailable. Cached runtime options remain hidden; retry Refresh options when service is available.'
             : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
           if (fallbackCache) {
-            showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, state.screen3RuntimeOptionsCacheStatus);
+            state.screen2RuntimeOptionsLoadRequestId = '';
+            writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+            clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
+            writeDashboardState(state);
+            updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
             return;
           }
           writeDashboardState(state);
@@ -10713,6 +12234,7 @@
         } else {
           nextState.screen3LastNextStep = 'Runtime filters applied. Select a filtered AWR/run/report row for Runtime Scope, Target A, or Target B.';
         }
+        clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
         writeDashboardState(nextState);
       }
 
@@ -10888,6 +12410,8 @@
         event.preventDefault();
         const nextState = readDashboardState();
         nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionActivated = 'true';
+        nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         nextState.sourceSelectionMethod = 'existing_run_reference';
           nextState.existingRunLookupStatus = 'pending';
           nextState.existingRunLookupMessage = 'Querying governed workflow service for existing runs.';
@@ -10914,6 +12438,8 @@
           const runs = Array.isArray(body.runs) ? body.runs : [];
           const state = readDashboardState();
           state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionActivated = 'true';
+          state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupCount = String(runs.length);
           if (result.ok && body.status === 'accepted' && runs.length) {
@@ -10935,6 +12461,8 @@
         }).catch(function () {
           const state = readDashboardState();
           state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionActivated = 'true';
+          state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupStatus = 'unavailable';
           state.existingRunLookupMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
@@ -10956,6 +12484,8 @@
         const selectedValue = safeStateValue(select.value || '');
         const nextState = readDashboardState();
         nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionActivated = 'true';
+        nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         nextState.sourceSelectionMethod = 'existing_run_reference';
         nextState.selectedRunReference = selectedValue;
         if (selectedValue) {
@@ -10979,6 +12509,8 @@
         event.preventDefault();
         const state = readDashboardState();
         state.selectedSourceMode = 'object_storage';
+        state.sourceSelectionActivated = 'true';
+        state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         state.sourceSelectionMethod = 'object_storage_metadata';
         state.objectStorageValidationStatus = 'pending';
         state.objectStorageValidationMessage = 'Submitting Object Storage metadata to governed backend validation.';
@@ -11003,6 +12535,8 @@
           const body = result.body || {};
           const nextState = readDashboardState();
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = result.ok && body.status === 'accepted'
             ? (body.validation_status || 'valid')
@@ -11012,6 +12546,8 @@
         }).catch(function () {
           const nextState = readDashboardState();
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = 'unavailable';
           nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
@@ -11047,10 +12583,13 @@
           );
           return;
         }
-        const missingSourceFields = isIndexSourceSelectionAction(element)
-          || isScreen3RuntimeAction(element)
-          ? sourceSelectionMissingFields(dashboardState)
-          : [];
+        const missingSourceFields = isScreen1SourceIntakeExecutionAction(element)
+          ? screen1SourceIntakeMissingFields(dashboardState)
+          : (
+            isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element)
+              ? sourceSelectionMissingFields(dashboardState)
+              : []
+          );
         if (missingSourceFields.length) {
           setActionStatus(
             element,
@@ -11079,22 +12618,54 @@
           );
           return;
         }
-        setActionStatus(
-          element,
-          'pending',
-          isScreen1ParserGovernanceAction(element)
-            ? 'Submitting governed Screen 1 parser governance request...'
-            : (
-              isScreen3RuntimeAction(element)
-                ? 'Submitting governed Screen 2 Control runtime request...'
-                : 'Submitting governed source-selection request...'
-            )
-        );
-        requestBridge(PHASE7_ACTION_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildDashboardActionRequest(element))
-        })
+        const actionRequest = buildDashboardActionRequest(element);
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            'pending',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Submission', value: 'Starting governed backend source intake request.' }
+            ])
+          );
+        } else {
+          setActionStatus(
+            element,
+            'pending',
+            isScreen1ParserGovernanceAction(element)
+              ? 'Submitting governed Screen 1 parser governance request...'
+              : (
+                isScreen3RuntimeAction(element)
+                  ? 'Submitting governed Screen 2 Control runtime request...'
+                  : 'Submitting governed source-selection request...'
+              )
+          );
+        }
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          setScreen1GeneratedArtifactReadyState(false, {
+            status: 'running',
+            source_summary: { execution_status: 'running' }
+          });
+        }
+        const submitRequest = function () {
+          return requestBridge(PHASE7_ACTION_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(actionRequest)
+          });
+        };
+        const serviceReady = isScreen1SourceIntakeExecutionAction(element)
+          ? verifyScreen1SourceIntakeService().then(function () {
+            setScreen1SourceIntakeStatusMarkup(
+              element,
+              'pending',
+              screen1ActionRequestRows(actionRequest, [
+                { label: 'Service health', value: 'Workflow service supports screen1_source_intake_execute.' },
+                { label: 'Submission', value: 'Submitting governed request now.' }
+              ])
+            );
+          })
+          : Promise.resolve();
+        serviceReady.then(submitRequest)
           .then(function (response) {
             return response.json().then(function (payload) {
               return { ok: response.ok, payload: payload };
@@ -11102,14 +12673,50 @@
           })
           .then(function (result) {
             const responseStatus = result.payload ? safeStateValue(result.payload.status || '') : '';
-            const successfulStatus = responseStatus === 'accepted' || responseStatus === 'blocked' || responseStatus === 'completed';
+            const successfulStatus = (
+              responseStatus === 'accepted' ||
+              responseStatus === 'blocked' ||
+              responseStatus === 'completed' ||
+              responseStatus === 'completed_artifact_ready' ||
+              responseStatus === 'pending' ||
+              responseStatus === 'running'
+            );
             if (!result.ok || !result.payload || !successfulStatus) {
-              setActionStatus(
-                element,
-                'failed',
-                result.payload && result.payload.message
-                  ? result.payload.message
-                  : 'Governed workflow request was rejected.'
+              const rejectedMessage = result.payload && result.payload.message
+                ? safeStateValue(result.payload.message)
+                : 'Governed workflow request was rejected.';
+              const rejectedMessageLower = rejectedMessage.toLowerCase();
+              const staleScreen1ExecutionService = isScreen1SourceIntakeExecutionAction(element) && (
+                rejectedMessageLower.indexOf('action_type must be one of') >= 0 ||
+                rejectedMessageLower.indexOf('screen1_source_intake_execute') < 0 && rejectedMessageLower.indexOf('action_type') >= 0
+              );
+	              if (isScreen1SourceIntakeExecutionAction(element)) {
+	                setScreen1GeneratedArtifactReadyState(false, result.payload || {
+	                  status: 'failed_safely',
+	                  source_summary: { execution_status: 'failed_safely' }
+	                });
+	                failScreen1SourceIntake(
+	                  element,
+	                  actionRequest,
+	                  'failed',
+	                  result.payload || {
+	                    status: 'failed',
+	                    request_id: actionRequest.request_id,
+	                    source_summary: { execution_status: 'failed', artifact_ready: false }
+	                  },
+	                  staleScreen1ExecutionService
+	                    ? 'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute. Command: ' +
+	                      screen1SourceIntakeServiceRestartCommand()
+	                    : rejectedMessage
+	                );
+	                return;
+	              }
+	              setActionStatus(
+	                element,
+	                'failed',
+	                staleScreen1ExecutionService
+                  ? 'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute.'
+                  : rejectedMessage
               );
               return;
             }
@@ -11128,6 +12735,30 @@
               updateScreen3ExecutionResultPanelFromResponse(element, responseStatus, result.payload);
               return;
             }
+	            if (isScreen1SourceIntakeExecutionAction(element)) {
+	              const summary = result.payload.source_summary || {};
+	              const artifactReady = (
+	                responseStatus === 'completed_artifact_ready' ||
+	                summary.artifact_ready === true ||
+	                safeStateValue(summary.execution_status) === 'completed_artifact_ready'
+	              );
+	              if (artifactReady) {
+	                completeScreen1SourceIntake(element, actionRequest, result.payload);
+	                return;
+	              }
+	              setScreen1GeneratedArtifactReadyState(false, result.payload);
+	              setScreen1SourceIntakeStatusMarkup(
+	                element,
+	                responseStatus,
+	                responseRows(actionRequest, result.payload, [
+	                  { label: 'Polling', value: 'Checking backend source intake status until completion or safe failure.' }
+	                ])
+	              );
+	              if (responseStatus === 'accepted' || responseStatus === 'pending' || responseStatus === 'running') {
+	                pollScreen1SourceIntakeStatus(element, actionRequest, Date.now());
+	              }
+	              return;
+	            }
 	            setActionStatus(
 	              element,
 	              'accepted',
@@ -11135,16 +12766,35 @@
 	                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
                 (isScreen1ParserGovernanceAction(element)
                   ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
-                  : '. Next step: open Screen 2 Control.')
-	            );
+                  : '. Next step: continue to ' + (
+                    sanitizeDashboardState(readDashboardState()).selectedSourceMode === 'existing_run'
+                      ? 'Screen 2 Control.'
+                      : 'Screen 1 Ingestion.'
+                  ))
+		            );
           })
-          .catch(function () {
-            setActionStatus(
-              element,
-              'failed',
-              'Dashboard workflow service is not running. Start the service to use interactive features.'
-            );
-          });
+	          .catch(function (error) {
+	            if (isScreen1SourceIntakeExecutionAction(element)) {
+	              failScreen1SourceIntake(
+	                element,
+	                actionRequest,
+	                'failed',
+	                {
+	                  status: 'failed',
+	                  request_id: actionRequest.request_id,
+	                  source_summary: { execution_status: 'failed', artifact_ready: false }
+	                },
+	                (safeStateValue(error && error.message) || 'Dashboard workflow service is unreachable.') +
+	                  ' Restart command: ' + screen1SourceIntakeServiceRestartCommand()
+	              );
+	              return;
+	            }
+	            setActionStatus(
+	              element,
+	              'failed',
+	              'Dashboard workflow service is not running. Start the service to use interactive features.'
+	            );
+	          });
       }
 
       function handlePhase7ActionClick(event) {
@@ -11225,6 +12875,9 @@
           dashboardInteractivityInitialized = true;
         }
         const appliedState = applyDashboardState(readDashboardState(), scope);
+        if (!screen2ShouldHydrateFromPersistentState()) {
+          return appliedState;
+        }
         return restoreScreen3RuntimeOptionsFromCache(scope) || appliedState;
       }
 
@@ -11267,7 +12920,9 @@
         handleScreen3RuntimeOptionsLoadClick: handleScreen3RuntimeOptionsLoadClick,
         handleScreen3RuntimeFilterButtonClick: handleScreen3RuntimeFilterButtonClick,
         handleExistingRunLookupClick: handleExistingRunLookupClick,
-        handleObjectStorageValidationClick: handleObjectStorageValidationClick
+        handleObjectStorageValidationClick: handleObjectStorageValidationClick,
+        screen1GeneratedArtifactReady: screen1GeneratedArtifactReady,
+        updateScreen1GeneratedArtifactGate: updateScreen1GeneratedArtifactGate
       });
 
       document.addEventListener('DOMContentLoaded', function () {

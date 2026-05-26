@@ -8,7 +8,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
+import threading
+from urllib.parse import parse_qs, urlsplit
 from typing import Any, Sequence
 
 
@@ -19,6 +22,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.learning.dashboard_runtime_interaction import (
+    DASHBOARD_RUNTIME_ACTION_TYPES,
+    SCREEN_REQUIRED_ACTION_TYPES,
+    default_action_queue_dir,
     load_screen3_runtime_options,
     lookup_existing_runs,
     process_dashboard_action,
@@ -32,6 +38,7 @@ SCREEN3_OPTIONS_ENDPOINT_PATH = "/phase7/dashboard/screen3/options"
 OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH = "/phase7/dashboard/object-storage/validate"
 SCREEN2_EXPLANATION_ENDPOINT_PATH = "/phase7/dashboard/screen2/explanation"
 HEALTH_ENDPOINT_PATH = "/phase7/dashboard/health"
+ACTION_STATUS_ENDPOINT_PATH = "/phase7/dashboard/actions/status"
 SCREEN2_EXPLANATION_PROVIDER_MODES = frozenset({"off", "mock", "local", "oci"})
 SUPPORTED_ENDPOINT_PATHS = (
     ENDPOINT_PATH,
@@ -40,6 +47,7 @@ SUPPORTED_ENDPOINT_PATHS = (
     OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH,
     SCREEN2_EXPLANATION_ENDPOINT_PATH,
     HEALTH_ENDPOINT_PATH,
+    ACTION_STATUS_ENDPOINT_PATH,
 )
 SCREEN2_EXPLANATION_FORBIDDEN_FIELDS = frozenset(
     {
@@ -105,7 +113,19 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
         self._send_json({"status": "ok"}, status_code=204)
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib handler naming
-        if self.path != HEALTH_ENDPOINT_PATH:
+        parsed = urlsplit(self.path)
+        if parsed.path == HEALTH_ENDPOINT_PATH:
+            self._send_json(self._health_payload(), status_code=200)
+            return
+        if parsed.path == ACTION_STATUS_ENDPOINT_PATH:
+            queue_dir = getattr(self.server, "phase7_queue_dir", None)
+            result_payload, status_code = screen1_source_intake_status_payload(
+                parse_qs(parsed.query),
+                queue_dir=queue_dir,
+            )
+            self._send_json(result_payload, status_code=status_code)
+            return
+        if parsed.path != HEALTH_ENDPOINT_PATH:
             self._send_json(
                 {
                     "status": "rejected",
@@ -114,7 +134,6 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
                 status_code=404,
             )
             return
-        self._send_json(self._health_payload(), status_code=200)
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler naming
         if self.path not in SUPPORTED_ENDPOINT_PATHS:
@@ -216,8 +235,23 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
             queue_dir=queue_dir,
             connection_factory=governance_connection_factory,
             db_persistence_enabled=True,
+            source_intake_executor=lambda request: start_screen1_source_intake_execution(
+                request,
+                queue_dir=queue_dir,
+            ),
         )
-        status_code = 202 if result.status in {"accepted", "blocked", "completed"} else 400
+        status_code = (
+            202
+            if result.status in {
+                "accepted",
+                "blocked",
+                "completed",
+                "completed_artifact_ready",
+                "pending",
+                "running",
+            }
+            else 400
+        )
         self._send_json(result.to_dict(), status_code=status_code)
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
@@ -245,12 +279,77 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
             "port": port,
             "base_url": f"http://{host}:{port}",
             "supported_endpoints": list(SUPPORTED_ENDPOINT_PATHS),
+            "screen1_source_intake_status_endpoint": ACTION_STATUS_ENDPOINT_PATH,
+            "supported_action_types": list(DASHBOARD_RUNTIME_ACTION_TYPES),
+            "supported_screen_action_types": {
+                screen_id: list(action_types)
+                for screen_id, action_types in SCREEN_REQUIRED_ACTION_TYPES.items()
+            },
             "supported_provider_modes": sorted(SCREEN2_EXPLANATION_PROVIDER_MODES),
             "screen2_explanation_provider_mode": provider_mode,
             "db_connectivity_status": "not_checked",
             "mutates_runtime_truth": False,
             "creates_screen2_records": False,
         }
+
+
+def screen1_source_intake_status_payload(
+    query: dict[str, list[str]],
+    *,
+    queue_dir: Path | None,
+) -> tuple[dict[str, Any], int]:
+    request_id = str((query.get("request_id") or [""])[0] or "").strip()
+    if not request_id:
+        return {
+            "status": "rejected",
+            "message": "request_id query parameter is required.",
+            "artifact_ready": False,
+        }, 400
+    target_dir = _screen1_queue_dir(queue_dir)
+    status_path = _screen1_status_path(target_dir, request_id)
+    if status_path.exists():
+        try:
+            payload = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {
+                "status": "failed_safely",
+                "request_id": request_id,
+                "message": "Screen 1 source intake status file could not be read safely.",
+                "artifact_ready": False,
+            }, 500
+        return payload, 200
+    audit_path = _screen1_audit_path(target_dir, request_id)
+    if audit_path.exists():
+        return {
+            "status": "running",
+            "request_id": request_id,
+            "audit_reference": str(audit_path),
+            "message": (
+                "Screen 1 source intake request was recorded; backend status "
+                "is not available yet."
+            ),
+            "artifact_ready": False,
+            "source_summary": {
+                "artifact_ready": False,
+                "execution_status": "running",
+                "screen1GeneratedArtifactReady": False,
+                "screen1GeneratedRunExecuted": False,
+                "screen1SelectedGeneratedArtifactReady": False,
+            },
+        }, 202
+    return {
+        "status": "failed_safely",
+        "request_id": request_id,
+        "message": "No Screen 1 source intake request/status record was found for this request_id.",
+        "artifact_ready": False,
+        "source_summary": {
+            "artifact_ready": False,
+            "execution_status": "failed_safely",
+            "screen1GeneratedArtifactReady": False,
+            "screen1GeneratedRunExecuted": False,
+            "screen1SelectedGeneratedArtifactReady": False,
+        },
+    }, 404
 
 
 def _default_screen2_provider_mode() -> str:
@@ -265,6 +364,275 @@ def _default_screen2_provider_mode() -> str:
         if key == "AI_PROVIDER" and value in {"oracle", "oci-genai", "oci_genai"}:
             return "oci"
     return "off"
+
+
+def start_screen1_source_intake_execution(
+    request: Any,
+    *,
+    queue_dir: Path | None,
+) -> dict[str, Any]:
+    """Start governed local Screen 1 source intake and return a pollable running state."""
+
+    target_dir = _screen1_queue_dir(queue_dir)
+    request_id = str(getattr(request, "request_id", "") or "screen1-source-intake")
+    audit_path = _screen1_audit_path(target_dir, request_id)
+    status_path = _screen1_status_path(target_dir, request_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    running_payload = _screen1_source_intake_status_response(
+        request,
+        {
+            "status": "running",
+            "execution_status": "running",
+            "artifact_ready": False,
+            "runner_invoked": False,
+            "message": (
+                "Source intake request accepted. Backend intake/generation is "
+                "running. Keep this page open; status will update automatically."
+            ),
+        },
+        audit_path=audit_path,
+    )
+    _write_json(status_path, running_payload)
+    worker = threading.Thread(
+        target=_screen1_source_intake_worker,
+        args=(request, audit_path, status_path),
+        name=f"screen1-source-intake-{_safe_status_filename(request_id)[:48]}",
+        daemon=True,
+    )
+    worker.start()
+    return {
+        "status": "running",
+        "execution_status": "running",
+        "artifact_ready": False,
+        "runner_invoked": False,
+        "request_status_endpoint": ACTION_STATUS_ENDPOINT_PATH,
+        "message": running_payload["message"],
+        "audit_reference": str(audit_path),
+    }
+
+
+def _screen1_source_intake_worker(
+    request: Any,
+    audit_path: Path,
+    status_path: Path,
+) -> None:
+    result = run_screen1_source_intake_execution(request)
+    status_payload = _screen1_source_intake_status_response(
+        request,
+        result,
+        audit_path=audit_path,
+    )
+    _write_json(status_path, status_payload)
+    _update_screen1_source_intake_audit(audit_path, result)
+
+
+def run_screen1_source_intake_execution(request: Any) -> dict[str, Any]:
+    """Run governed local Screen 1 source intake through the backend generator."""
+
+    payload = getattr(request, "payload", {}) or {}
+    mode = str(payload.get("selectedSourceMode") or payload.get("source_mode") or "").strip()
+    if mode != "local_staged":
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "runner_invoked": False,
+            "message": (
+                "Backend source intake execution currently supports local folder "
+                "sources only. No generated artifact was claimed."
+            ),
+        }
+
+    source_path = str(payload.get("selectedSourcePath") or "").strip()
+    if not source_path:
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "runner_invoked": False,
+            "message": (
+                "Backend intake execution requires a backend-visible local folder "
+                "path. Browser folder metadata alone is not sufficient."
+            ),
+        }
+    input_dir = Path(source_path).expanduser()
+    if not input_dir.is_absolute():
+        input_dir = (ROOT / input_dir).resolve()
+    else:
+        input_dir = input_dir.resolve()
+    if not input_dir.exists() or not input_dir.is_dir():
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "runner_invoked": False,
+            "source_input_dir": str(input_dir),
+            "message": (
+                "Backend intake execution failed safely because the selected "
+                f"local folder is not available to the service: {input_dir}"
+            ),
+        }
+
+    env = os.environ.copy()
+    env["PHASE7_DASHBOARD_WORKFLOW_SERVICE_AUTOSTART"] = "false"
+    env["AWR_SOURCE_INPUT_DIR"] = str(input_dir)
+    env["PYTHONPATH"] = (
+        str(ROOT)
+        if not env.get("PYTHONPATH")
+        else str(ROOT) + os.pathsep + str(env.get("PYTHONPATH"))
+    )
+    timeout = int(os.getenv("PHASE7_SCREEN1_SOURCE_INTAKE_TIMEOUT", "420"))
+    command = [sys.executable, "-m", "scripts.run_analysis"]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(ROOT),
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "runner_invoked": True,
+            "source_input_dir": str(input_dir),
+            "message": (
+                "Source intake failed safely because backend generation timed out. "
+                "No generated artifact was claimed."
+            ),
+            "stdout_tail": _tail_text(exc.stdout),
+            "stderr_tail": _tail_text(exc.stderr),
+        }
+    dashboard_path = ROOT / "awr_dashboard" / "index.html"
+    if completed.returncode != 0:
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "runner_invoked": True,
+            "source_input_dir": str(input_dir),
+            "returncode": completed.returncode,
+            "message": (
+                "Source intake failed safely because backend generation returned "
+                f"exit code {completed.returncode}. No generated artifact was claimed."
+            ),
+            "stdout_tail": _tail_text(completed.stdout),
+            "stderr_tail": _tail_text(completed.stderr),
+        }
+    return {
+        "status": "completed_artifact_ready",
+        "execution_status": "completed_artifact_ready",
+        "artifact_ready": True,
+        "runner_invoked": True,
+        "dashboard_regenerated": dashboard_path.exists(),
+        "dashboard_artifact_path": str(dashboard_path),
+        "source_input_dir": str(input_dir),
+        "returncode": completed.returncode,
+        "message": "Source intake completed. Generated artifact is ready.",
+        "stdout_tail": _tail_text(completed.stdout),
+        "stderr_tail": _tail_text(completed.stderr),
+    }
+
+
+def _screen1_source_intake_status_response(
+    request: Any,
+    execution: dict[str, Any],
+    *,
+    audit_path: Path,
+) -> dict[str, Any]:
+    request_id = str(getattr(request, "request_id", "") or "")
+    status = str(execution.get("status") or execution.get("execution_status") or "failed_safely")
+    artifact_ready = bool(execution.get("artifact_ready")) and status == "completed_artifact_ready"
+    source_summary = {
+        "execution_status": execution.get("execution_status") or status,
+        "backend_execution_status": status,
+        "backend_execution_performed": bool(execution.get("runner_invoked")),
+        "backend_source_intake_runner_invoked": bool(execution.get("runner_invoked")),
+        "artifact_ready": artifact_ready,
+        "screen1GeneratedArtifactReady": artifact_ready,
+        "screen1GeneratedRunExecuted": artifact_ready,
+        "screen1SelectedGeneratedArtifactReady": artifact_ready,
+        "dashboard_regenerated": bool(execution.get("dashboard_regenerated")),
+        "dashboard_artifact_path": execution.get("dashboard_artifact_path"),
+        "source_input_dir": execution.get("source_input_dir")
+        or getattr(request, "payload", {}).get("selectedSourcePath"),
+        "runner_message": execution.get("message"),
+        "runner_returncode": execution.get("returncode"),
+        "stdout_tail": execution.get("stdout_tail"),
+        "stderr_tail": execution.get("stderr_tail"),
+        "current_run_truth_mutated": False,
+        "deterministic_truth_changed": False,
+        "parser_mutated": False,
+        "learning_candidate_created": False,
+        "materialization_changed": False,
+        "runtime_eligibility_changed": False,
+        "phase8_started": False,
+        "browser_parsing_performed": False,
+        "browser_db_query_attempted": False,
+        "browser_file_read_attempted": False,
+        "browser_object_storage_access_attempted": False,
+    }
+    return {
+        "status": status,
+        "request_id": request_id,
+        "audit_reference": str(audit_path),
+        "message": execution.get("message")
+        or (
+            "Source intake completed. Generated artifact is ready."
+            if artifact_ready
+            else "Source intake status is available."
+        ),
+        "artifact_ready": artifact_ready,
+        "queued": True,
+        "persisted": False,
+        "run_analysis_called": False,
+        "source_summary": source_summary,
+    }
+
+
+def _update_screen1_source_intake_audit(audit_path: Path, execution: dict[str, Any]) -> None:
+    try:
+        envelope = json.loads(audit_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(envelope, dict):
+        return
+    envelope["source_intake_execution"] = execution
+    _write_json(audit_path, envelope)
+
+
+def _screen1_queue_dir(queue_dir: Path | None) -> Path:
+    return queue_dir or default_action_queue_dir()
+
+
+def _safe_status_filename(value: str) -> str:
+    normalized = "".join(
+        character if character.isalnum() or character in "_.:-" else "-"
+        for character in str(value or "").strip()
+    ).strip("-")
+    return normalized or "screen1-source-intake"
+
+
+def _screen1_audit_path(queue_dir: Path, request_id: str) -> Path:
+    return queue_dir / f"{_safe_status_filename(request_id)}.json"
+
+
+def _screen1_status_path(queue_dir: Path, request_id: str) -> Path:
+    return queue_dir / f"{_safe_status_filename(request_id)}.status.json"
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _tail_text(value: Any, limit: int = 4000) -> str:
+    text = str(value or "")
+    return text[-limit:]
 
 
 def generate_screen2_explanation(payload: dict[str, Any]) -> dict[str, Any]:
@@ -498,7 +866,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Object Storage validation endpoint: http://{args.host}:{args.port}{OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH}")
     print(f"Screen 2 explanation endpoint: http://{args.host}:{args.port}{SCREEN2_EXPLANATION_ENDPOINT_PATH}")
     print(f"Health endpoint: http://{args.host}:{args.port}{HEALTH_ENDPOINT_PATH}")
-    print("This service queues governed request records only; it does not mutate Phase 4I or runtime truth.")
+    print(
+        "This service queues governed requests and can run Screen 1 backend "
+        "source intake/generation; it does not mutate Phase 4I or runtime truth "
+        "in the browser."
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:

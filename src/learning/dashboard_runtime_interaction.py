@@ -22,8 +22,11 @@ DASHBOARD_RUNTIME_ACTION_STATUSES = (
     "accepted",
     "blocked",
     "completed",
+    "completed_artifact_ready",
     "failed_safely",
+    "pending",
     "rejected",
+    "running",
 )
 
 DASHBOARD_RUNTIME_SCREEN_IDS = (
@@ -38,6 +41,7 @@ DASHBOARD_RUNTIME_SCREEN_IDS = (
 
 DASHBOARD_RUNTIME_ACTION_TYPES = (
     "source_selection_handoff",
+    "screen1_source_intake_execute",
     "parser_unknown_review",
     "parser_unknown_approve",
     "parser_unknown_reject",
@@ -66,6 +70,7 @@ DASHBOARD_RUNTIME_ACTION_TYPES = (
 SCREEN_REQUIRED_ACTION_TYPES: dict[str, tuple[str, ...]] = {
     "index_source_mode": ("source_selection_handoff",),
     "screen_1": (
+        "screen1_source_intake_execute",
         "parser_unknown_review",
         "parser_unknown_approve",
         "parser_unknown_reject",
@@ -170,7 +175,9 @@ class DashboardRuntimeActionRequest:
             )
         if self.screen_id == "index_source_mode" and self.action_type == "source_selection_handoff":
             _validate_index_source_selection_payload(self.payload)
-        if self.screen_id == "screen_1":
+        if self.screen_id == "screen_1" and self.action_type == "screen1_source_intake_execute":
+            _validate_screen1_source_intake_execute_payload(self)
+        elif self.screen_id == "screen_1":
             _validate_screen1_parser_governance_payload(self)
         if self.screen_id == "screen_2":
             _validate_screen2_diagnostic_review_payload(self)
@@ -333,6 +340,7 @@ def process_dashboard_action(
     queue_dir: Path | None = None,
     connection_factory: Any | None = None,
     db_persistence_enabled: bool = False,
+    source_intake_executor: Any | None = None,
 ) -> DashboardRuntimeActionResult:
     """Validate and queue a governed dashboard action request."""
 
@@ -378,7 +386,24 @@ def process_dashboard_action(
         json.dumps(envelope, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    if request.screen_id == "screen_1":
+    screen1_source_intake_execution = (
+        request.screen_id == "screen_1"
+        and request.action_type == "screen1_source_intake_execute"
+    )
+    source_intake_execution: dict[str, Any] | None = None
+    if screen1_source_intake_execution:
+        db_persistence = {
+            "status": "not_attempted",
+            "mode": "json_audit_file",
+            "record_reference": None,
+            "tables_touched": [],
+            "message": (
+                "Screen 1 source intake execution is recorded in the JSON audit "
+                "envelope; backend intake/generation status is reported separately."
+            ),
+            "screen6_candidate_created": False,
+        }
+    elif request.screen_id == "screen_1":
         db_persistence = _persist_screen1_parser_governance_review(
             request,
             audit_reference,
@@ -402,12 +427,25 @@ def process_dashboard_action(
             "screen6_candidate_created": False,
         }
     envelope["persistence"] = db_persistence
+    if screen1_source_intake_execution:
+        source_intake_execution = _execute_screen1_source_intake_request(
+            request,
+            source_intake_executor,
+        )
+        envelope["source_intake_execution"] = source_intake_execution
     audit_reference.write_text(
         json.dumps(envelope, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     source_summary = _source_summary_for_request(request)
-    if request.screen_id == "screen_1":
+    if screen1_source_intake_execution:
+        source_summary.update(
+            _screen1_source_intake_execution_summary_for_result(
+                request,
+                source_intake_execution or {},
+            )
+        )
+    elif request.screen_id == "screen_1":
         source_summary.update(
             {
                 "persistence_mode": db_persistence["mode"],
@@ -431,7 +469,31 @@ def process_dashboard_action(
         source_summary.update(_screen3_runtime_summary_for_request(request, db_persistence))
     message = "Governed dashboard action request queued for workflow handling."
     if request.screen_id == "screen_1":
-        if db_persistence["status"] == "persisted":
+        if screen1_source_intake_execution:
+            execution_status = str(
+                (source_intake_execution or {}).get("status")
+                or "failed_safely"
+            )
+            if execution_status == "completed_artifact_ready":
+                message = (
+                    "Source intake completed. Generated artifact is ready."
+                )
+            elif execution_status in {"accepted", "pending", "running"}:
+                message = (
+                    "Source intake request accepted. Backend intake/generation "
+                    "is running or pending."
+                )
+            elif execution_status == "blocked":
+                message = (
+                    (source_intake_execution or {}).get("message")
+                    or "Backend intake execution runner is not wired."
+                )
+            else:
+                message = (
+                    (source_intake_execution or {}).get("message")
+                    or "Source intake failed safely. See request/audit details."
+                )
+        elif db_persistence["status"] == "persisted":
             message = (
                 "Accepted / queued for parser governance review. DB-backed "
                 "parser governance record persisted; JSON audit envelope recorded."
@@ -442,7 +504,14 @@ def process_dashboard_action(
                 "recorded because DB persistence was unavailable."
             )
     result_status = "accepted"
-    if request.screen_id == "screen_3":
+    if screen1_source_intake_execution:
+        result_status = str(
+            (source_intake_execution or {}).get("status")
+            or "failed_safely"
+        )
+        if result_status not in DASHBOARD_RUNTIME_ACTION_STATUSES:
+            result_status = "failed_safely"
+    elif request.screen_id == "screen_3":
         requested_action = _screen3_requested_action(request.payload)
         missing_gates = list(db_persistence.get("missing_execution_gates") or [])
         execution_performed = bool(db_persistence.get("execution_performed"))
@@ -1817,7 +1886,11 @@ def load_screen3_runtime_options(
     queue_dir: Path | None = None,
     connection_factory: Any | None = None,
 ) -> dict[str, Any]:
-    """Load DB-backed Screen 3 runtime selector options through the governed service."""
+    """Load DB-backed runtime selector options through the governed service.
+
+    Product-visible Screen 2 Control still uses the legacy screen3 route and
+    request identifiers for compatibility.
+    """
 
     try:
         _validate_screen3_runtime_options_request(payload)
@@ -1840,11 +1913,11 @@ def load_screen3_runtime_options(
                     "target_a_readiness": "blocked",
                     "target_b_readiness": "blocked",
                     "both_targets_comparable": False,
-                    "missing_gates": ["invalid Screen 3 runtime options request"],
+                    "missing_gates": ["invalid Screen 2 runtime options request"],
                     "status": "blocked",
-                    "next_step": "Submit a governed Screen 3 runtime options request.",
+                    "next_step": "Submit a governed Screen 2 runtime options request.",
                 },
-                "missing_gates": ["invalid Screen 3 runtime options request"],
+                "missing_gates": ["invalid Screen 2 runtime options request"],
             }
         )
         return result
@@ -1906,7 +1979,7 @@ def load_screen3_runtime_options(
             ),
             "audit_reference": None,
             "message": (
-                "Screen 3 runtime options are unavailable because the governed workflow service "
+                "Screen 2 runtime options are unavailable because the governed workflow service "
                 "could not query DB-backed run history. "
                 f"Runtime options unavailable: {type(exc).__name__}: {exc}"
             ),
@@ -1920,7 +1993,7 @@ def load_screen3_runtime_options(
                 "source": "AWR_RUN_HISTORY,AWR_REPORT",
                 "runtime_options_source_tables": source_table_coverage,
                 "runtime_options_source_note": (
-                    "Screen 3 could not query DB-backed runtime option tables because DB connectivity "
+                    "Screen 2 could not query DB-backed runtime option tables because DB connectivity "
                     "or service configuration is unavailable."
                 ),
                 "runtime_options_filters_used": _screen3_runtime_options_filters_used(payload, limit=limit),
@@ -2019,9 +2092,9 @@ def load_screen3_runtime_options(
         "request_id": request_id,
         "audit_reference": str(audit_reference),
         "message": (
-            f"Screen 3 runtime options loaded from {len(runs)} DB-backed row(s). {source_note}"
+            f"Screen 2 runtime options loaded from existing platform evidence: {len(runs)} DB-backed row(s). {source_note}"
             if runs
-            else f"No DB-backed AWR runs were found for Screen 3 runtime selection. {source_note}"
+            else f"No DB-backed AWR runs were found for Screen 2 runtime selection. {source_note}"
         ),
         "service_status": "available",
         "runtime_options_loaded": bool(runs),
@@ -3099,11 +3172,11 @@ def _mark_screen3_runtime_source_table(
     if error is not None:
         entry["reason_if_not_used"] = f"option query unavailable: {type(error).__name__}: {error}"
     elif included:
-        entry["reason_if_not_used"] = "included in Screen 3 runtime options"
+        entry["reason_if_not_used"] = "included in Screen 2 runtime options"
     elif entry.get("row_count") == 0:
         entry["reason_if_not_used"] = "no rows found"
     else:
-        entry["reason_if_not_used"] = "query returned no selectable Screen 3 rows"
+        entry["reason_if_not_used"] = "query returned no selectable Screen 2 rows"
 
 
 def _screen3_runtime_source_note(
@@ -3142,7 +3215,7 @@ def _screen3_runtime_source_note(
         else ""
     )
     wired_gap_text = (
-        " Wired source tables counted rows but returned no selectable Screen 3 rows: "
+        " Wired source tables counted rows but returned no selectable Screen 2 rows: "
         + ", ".join(wired_but_returned_no_rows)
         + ". Check column availability, filters, and service query shape."
         if wired_but_returned_no_rows
@@ -3182,7 +3255,7 @@ def _screen3_runtime_options_filters_used(payload: dict[str, Any], *, limit: int
         ),
         "search": _screen3_optional_text(payload.get("screen3RuntimeFilterSearch")),
         "note": (
-            "Current Screen 3 runtime-options query applies the safety limit and returns selectable "
+            "Current Screen 2 runtime-options query applies the safety limit and returns selectable "
             "rows from wired runtime option sources; browser-side filters narrow the displayed list."
         ),
     }
@@ -3966,7 +4039,169 @@ def _validate_index_source_selection_payload(payload: dict[str, Any]) -> None:
     _reject_source_secret_fields(payload)
 
 
+def _validate_screen1_source_intake_execute_payload(
+    request: DashboardRuntimeActionRequest,
+) -> None:
+    payload = request.payload
+    mode = str(
+        payload.get("selectedSourceMode")
+        or payload.get("selected_source_mode")
+        or payload.get("source_mode")
+        or ""
+    ).strip()
+    if mode not in {"local_staged", "local_file", "object_storage"}:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution requires local_staged, local_file, or object_storage source mode"
+        )
+    method = str(payload.get("sourceSelectionMethod") or payload.get("source_selection_method") or "").strip()
+    if str(payload.get("target_screen") or "").strip() != "screen_1":
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution payload must target screen_1"
+        )
+    if request.target_type not in {"source_intake", "source_selection"}:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution target_type must be source_intake"
+        )
+    if request.execution_mode not in {"governed_backend_execution", "local_backend_execution"}:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution must use governed_backend_execution"
+        )
+    forbidden_true_fields = (
+        "browser_parsing_performed",
+        "browser_file_read_attempted",
+        "browser_file_upload_performed",
+        "browser_object_storage_access_attempted",
+        "direct_awr_parse_attempted",
+        "direct_file_read_attempted",
+        "direct_object_storage_execution_attempted",
+        "browser_db_query_attempted",
+        "em_extract_attempted",
+        "phase4i_mutation_allowed",
+        "phase8_behavior",
+        "run_analysis_coupling",
+        "current_run_truth_mutated",
+        "deterministic_truth_changed",
+        "parser_mutated",
+        "learning_candidate_created",
+        "materialization_changed",
+        "runtime_eligibility_changed",
+    )
+    for field_name in forbidden_true_fields:
+        if payload.get(field_name) is True:
+            raise DashboardRuntimeInteractionError(
+                f"Screen 1 source intake execution payload field {field_name} must remain false"
+            )
+    if "em_extract" in mode.lower() or "em extract" in mode.lower():
+        raise DashboardRuntimeInteractionError("EM Extract source mode remains Phase 8")
+    if mode == "local_staged":
+        _require_text(payload.get("selectedSourcePath"), "payload.selectedSourcePath")
+        if method == "os_folder_picker":
+            _require_positive_int(
+                payload.get("selectedLocalFolderFileCount"),
+                "payload.selectedLocalFolderFileCount",
+            )
+            _require_positive_int(
+                payload.get("selectedLocalFolderCandidateCount")
+                or payload.get("selectedLocalFolderAwrCandidateCount"),
+                "payload.selectedLocalFolderCandidateCount",
+            )
+            _require_positive_int(
+                payload.get("selectedLocalFolderAwrCandidateCount")
+                or payload.get("selectedLocalFolderCandidateCount"),
+                "payload.selectedLocalFolderAwrCandidateCount",
+            )
+            if str(payload.get("selectedLocalFolderValidationStatus") or "").lower().startswith("invalid"):
+                raise DashboardRuntimeInteractionError(
+                    "payload.selectedLocalFolderValidationStatus must not be invalid"
+                )
+        elif method not in {"backend_path", ""}:
+            raise DashboardRuntimeInteractionError(
+                "local_staged source intake execution requires os_folder_picker or backend_path"
+            )
+    elif mode == "local_file":
+        path = payload.get("selectedSourcePath")
+        _require_text(path, "payload.selectedSourcePath")
+        _require_allowed_local_file_name(path, "payload.selectedSourcePath")
+        if method == "os_file_picker":
+            file_name = payload.get("selectedLocalFileName")
+            _require_text(file_name, "payload.selectedLocalFileName")
+            _require_allowed_local_file_name(file_name, "payload.selectedLocalFileName")
+        elif method not in {"backend_path", ""}:
+            raise DashboardRuntimeInteractionError(
+                "local_file source intake execution requires os_file_picker or backend_path"
+            )
+    elif mode == "object_storage":
+        if method not in {"object_storage_metadata", ""}:
+            raise DashboardRuntimeInteractionError(
+                "object_storage source intake execution requires object_storage_metadata"
+            )
+        for field_name in (
+            "objectStorageNamespace",
+            "objectStorageBucket",
+            "objectStorageObjectName",
+            "objectStorageRegion",
+        ):
+            _require_text(payload.get(field_name), f"payload.{field_name}")
+        if str(payload.get("objectStorageValidationStatus") or "").strip() != "valid":
+            raise DashboardRuntimeInteractionError(
+                "payload.objectStorageValidationStatus must be valid before object_storage source intake execution"
+            )
+    _reject_source_secret_fields(payload)
+
+
+def _execute_screen1_source_intake_request(
+    request: DashboardRuntimeActionRequest,
+    source_intake_executor: Any | None,
+) -> dict[str, Any]:
+    if source_intake_executor is None:
+        return {
+            "status": "blocked",
+            "execution_status": "blocked_no_runner",
+            "artifact_ready": False,
+            "message": "Backend intake execution runner is not wired.",
+            "runner_invoked": False,
+        }
+    try:
+        result = source_intake_executor(request)
+    except Exception as exc:  # noqa: BLE001 - service must fail closed
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "message": f"Source intake failed safely. {type(exc).__name__}: {exc}",
+            "runner_invoked": True,
+        }
+    if not isinstance(result, dict):
+        return {
+            "status": "failed_safely",
+            "execution_status": "failed_safely",
+            "artifact_ready": False,
+            "message": "Source intake runner returned an invalid result.",
+            "runner_invoked": True,
+        }
+    normalized = dict(result)
+    status = str(normalized.get("status") or normalized.get("execution_status") or "").strip()
+    artifact_ready = bool(normalized.get("artifact_ready")) or status == "completed_artifact_ready"
+    if artifact_ready:
+        status = "completed_artifact_ready"
+    elif status not in DASHBOARD_RUNTIME_ACTION_STATUSES:
+        status = "failed_safely"
+    normalized["status"] = status
+    normalized["execution_status"] = str(normalized.get("execution_status") or status)
+    normalized["artifact_ready"] = artifact_ready and status == "completed_artifact_ready"
+    normalized.setdefault("runner_invoked", True)
+    normalized.setdefault(
+        "message",
+        "Source intake completed. Generated artifact is ready."
+        if normalized["artifact_ready"]
+        else "Source intake did not produce an artifact-ready result.",
+    )
+    return normalized
+
+
 def _source_summary_for_request(request: DashboardRuntimeActionRequest) -> dict[str, Any]:
+    if request.screen_id == "screen_1" and request.action_type == "screen1_source_intake_execute":
+        return _screen1_source_intake_execution_summary_for_request(request)
     if request.screen_id != "index_source_mode" or request.action_type != "source_selection_handoff":
         if request.screen_id == "screen_1":
             return _screen1_governance_summary_for_request(request)
@@ -4031,6 +4266,115 @@ def _source_summary_for_request(request: DashboardRuntimeActionRequest) -> dict[
     summary["validation_status"] = _source_validation_status(payload)
     summary["validation_messages"] = _source_validation_messages(payload)
     return summary
+
+
+def _screen1_source_intake_execution_summary_for_request(
+    request: DashboardRuntimeActionRequest,
+) -> dict[str, Any]:
+    payload = request.payload
+    mode = str(
+        payload.get("selectedSourceMode")
+        or payload.get("selected_source_mode")
+        or payload.get("source_mode")
+        or ""
+    )
+    summary: dict[str, Any] = {
+        "screen_id": request.screen_id,
+        "action_type": request.action_type,
+        "workflow_type": request.workflow_type,
+        "target_type": request.target_type,
+        "target_id": request.target_id,
+        "selectedSourceMode": mode,
+        "sourceSelectionMethod": payload.get("sourceSelectionMethod")
+        or payload.get("source_selection_method")
+        or "",
+        "target_screen": payload.get("target_screen"),
+        "execution_mode": request.execution_mode,
+        "validation_status": _source_validation_status(payload),
+        "validation_messages": _source_validation_messages(payload),
+        "artifact_ready": False,
+        "screen1GeneratedArtifactReady": False,
+        "screen1GeneratedRunExecuted": False,
+        "screen1SelectedGeneratedArtifactReady": False,
+        "current_run_truth_mutated": False,
+        "deterministic_truth_changed": False,
+        "parser_mutated": False,
+        "learning_candidate_created": False,
+        "materialization_changed": False,
+        "runtime_eligibility_changed": False,
+        "phase8_started": False,
+        "browser_parsing_performed": False,
+        "browser_db_query_attempted": False,
+        "browser_file_read_attempted": False,
+        "browser_object_storage_access_attempted": False,
+    }
+    for field_name in (
+        "selectedSourcePath",
+        "selectedLocalFolderFileCount",
+        "selectedLocalFolderOutFileCount",
+        "selectedLocalFolderSampleFiles",
+        "selectedLocalRelativePaths",
+        "selectedLocalTotalBytes",
+        "selectedLocalFolderCandidateCount",
+        "selectedLocalFolderAwrCandidateCount",
+        "selectedLocalFolderRejectedCount",
+        "selectedLocalFolderValidationStatus",
+        "selectedLocalFolderValidationMessages",
+        "selectedLocalFileName",
+        "selectedLocalFileSize",
+        "selectedLocalFileType",
+        "selectedLocalFileExtension",
+        "selectedLocalFileValidationStatus",
+        "objectStorageNamespace",
+        "objectStorageBucket",
+        "objectStorageObjectName",
+        "objectStorageRegion",
+        "objectStorageValidationStatus",
+        "objectStorageValidationMessage",
+        "backend_visible_path",
+        "picker_file_manifest",
+        "uploaded_file_manifest",
+        "awr_signature_validation",
+    ):
+        if payload.get(field_name) not in ("", None):
+            summary[field_name] = payload.get(field_name)
+    return summary
+
+
+def _screen1_source_intake_execution_summary_for_result(
+    request: DashboardRuntimeActionRequest,
+    execution: dict[str, Any],
+) -> dict[str, Any]:
+    artifact_ready = bool(execution.get("artifact_ready")) or execution.get("status") == "completed_artifact_ready"
+    return {
+        "execution_status": execution.get("execution_status") or execution.get("status"),
+        "backend_execution_status": execution.get("status"),
+        "backend_execution_performed": bool(execution.get("runner_invoked")),
+        "backend_source_intake_runner_invoked": bool(execution.get("runner_invoked")),
+        "artifact_ready": artifact_ready,
+        "screen1GeneratedArtifactReady": artifact_ready,
+        "screen1GeneratedRunExecuted": artifact_ready,
+        "screen1SelectedGeneratedArtifactReady": artifact_ready,
+        "dashboard_regenerated": bool(execution.get("dashboard_regenerated")),
+        "dashboard_artifact_path": execution.get("dashboard_artifact_path"),
+        "source_input_dir": execution.get("source_input_dir")
+        or request.payload.get("selectedSourcePath"),
+        "runner_message": execution.get("message"),
+        "runner_returncode": execution.get("returncode"),
+        "stdout_tail": execution.get("stdout_tail"),
+        "stderr_tail": execution.get("stderr_tail"),
+        "current_run_truth_mutated": False,
+        "deterministic_truth_changed": False,
+        "parser_mutated": False,
+        "learning_candidate_created": False,
+        "materialization_changed": False,
+        "runtime_eligibility_changed": False,
+        "phase8_started": False,
+        "browser_parsing_performed": False,
+        "browser_db_query_attempted": False,
+        "browser_file_read_attempted": False,
+        "browser_object_storage_access_attempted": False,
+    }
 
 
 def _screen1_governance_summary_for_request(

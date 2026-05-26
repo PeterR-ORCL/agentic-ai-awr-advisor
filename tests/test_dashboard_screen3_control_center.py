@@ -49,7 +49,8 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn('"screen_2": "Screen 2 - Runtime Scope & Analysis Control"', source)
         self.assertIn('"screen_3": "Screen 3 - Diagnostic Snapshot"', source)
         self.assertIn("Existing run truth unchanged", rendered)
-        self.assertIn("Source Received From Index", rendered)
+        self.assertIn("Runtime Evidence Path", rendered)
+        self.assertIn("Evidence path status", rendered)
         self.assertIn("Load Runtime Options", rendered)
         self.assertIn("Work Area 1", rendered)
         self.assertIn("Select Runtime Scope", rendered)
@@ -84,15 +85,16 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("data-screen3-runtime-sort", rendered)
         self.assertIn("data-screen3-table-sort", rendered)
         self.assertIn("data-screen3-sort-indicator", rendered)
-        self.assertIn("data-screen3-row-id", rendered)
+        self.assertIn("No DB-backed AWR/run options are loaded yet", rendered)
+        self.assertIn("data-screen3-row-id", source)
         self.assertIn("screen3SelectedRuntimeScopeRowId", source)
         self.assertIn("screen3SelectedTargetARowId", source)
         self.assertIn("screen3SelectedTargetBRowId", source)
         self.assertIn("screen3RuntimeOptionsCache", source)
         self.assertIn("screen3-runtime-options-v1", source)
         self.assertIn("Runtime options restored from browser cache", source)
-        self.assertIn("Refresh failed; showing cached runtime options", source)
-        self.assertIn("Cache status", rendered)
+        self.assertIn("Refresh failed; cached runtime options were not activated", source)
+        self.assertIn("Cache Status", rendered)
         self.assertIn("screen3RuntimeScopeSelectionSource", source)
         self.assertIn("screen3TargetASelectionSource", source)
         self.assertIn("screen3TargetBSelectionSource", source)
@@ -108,14 +110,15 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("Only its selected row gets the strong table highlight", rendered)
         self.assertIn("Snapshot / Interval Selection", rendered)
         self.assertIn("Apply interval to", rendered)
-        self.assertIn("Selected Runtime Scope", rendered)
+        self.assertIn("Selected AWR / Report Row", rendered)
+        self.assertIn("Selected Runtime Scope / Assignment Summary", rendered)
         self.assertIn("Comparison &amp; Review Controls", rendered)
         self.assertNotIn("<h4>Comparison Controls</h4>", rendered)
         self.assertIn("Review Mode", rendered)
         self.assertIn("Governed Actions", rendered)
         self.assertIn("Request / Execution Result", rendered)
         self.assertIn("Runtime Safety and Selection Impact", rendered)
-        self.assertIn("Technical Audit / Debug Details", rendered)
+        self.assertNotIn("Technical Audit / Debug Details", rendered)
         self.assertIn("Generated at build time", source)
         self.assertIn("Workflow Service:", source)
         self.assertIn("data-dashboard-runtime-badge=\"true\"", source)
@@ -129,22 +132,22 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertNotIn("Selected Issue Domain", rendered)
 
         results_index = rendered.find("Filtered AWR / Run / Report Results")
+        selected_row_index = rendered.find("Selected AWR / Report Row")
         interval_index = rendered.find("Snapshot / Interval Selection")
+        assignment_index = rendered.find("Selected Runtime Scope / Assignment Summary")
         selected_context_index = rendered.find("Selected Context")
+        self.assertGreater(selected_row_index, results_index)
+        self.assertGreater(interval_index, selected_row_index)
+        self.assertGreater(assignment_index, interval_index)
         self.assertGreater(selected_context_index, results_index)
         self.assertGreater(selected_context_index, interval_index)
 
     def test_selector_metadata_exists_for_domains_and_run_context(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
         rendered = self.render_screen3()
 
         required = (
             'data-dashboard-selectable="true"',
-            'data-dashboard-select-type="runtimeScope"',
-            'data-dashboard-select-key="selectedRuntimeScope"',
-            'data-dashboard-state-set-selectedDb="ORCL"',
-            'data-dashboard-state-set-selectedDbid="123456"',
-            'data-dashboard-select-type="snapshot"',
-            'data-dashboard-select-key="selectedTimeWindow"',
             'data-dashboard-state-key="screen3RuntimeFilterSearch"',
             'data-dashboard-select-type="comparisonMode"',
             'data-dashboard-select-key="selectedComparisonMode"',
@@ -154,6 +157,17 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+        dynamic_required = (
+            "data-dashboard-select-type', config.selectType",
+            "data-dashboard-select-type', 'runtimeScope'",
+            "data-dashboard-select-type', 'snapshot'",
+            "data-dashboard-select-key', 'selectedRuntimeScope'",
+            "data-dashboard-select-key', 'selectedTimeWindow'",
+        )
+        for phrase in dynamic_required:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, source)
+        self.assertIn("No DB-backed AWR/run options are loaded yet", rendered)
         self.assertNotIn("screen3-filter-pill", rendered)
 
     def test_runtime_scope_table_and_comparison_builder_are_present(self) -> None:
@@ -172,14 +186,14 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "Report ID / Run History ID",
             "Target A",
             "Target B",
-            "Source type",
-            "Scope type",
-            "Scope value",
+            "Source Type",
+            "Scope Type",
+            "Scope Value",
             "Resolution",
             "Readiness",
             "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
             "Comparison Readiness / Outcome",
-            "Both targets comparable",
+            "Both Comparable",
             "Current DB history",
             "Similar AWRs",
             "Cluster baseline",

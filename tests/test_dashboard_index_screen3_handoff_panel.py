@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import inspect
 import py_compile
 import unittest
 from pathlib import Path
@@ -19,72 +18,50 @@ class DashboardIndexScreen3HandoffPanelTests(unittest.TestCase):
     def test_html_dashboard_compiles(self) -> None:
         py_compile.compile(str(HTML_DASHBOARD_PATH), doraise=True)
 
-    def test_panel_exists(self) -> None:
-        rendered = self.render_home()
-        self.assertIn('id="index-screen3-handoff-panel"', rendered)
-        self.assertIn("Index to Screen 2 Control Selection Handoff Preview", rendered)
-        self.assertIn('data-phase="7BT"', rendered)
-        self.assertIn('data-preview-only="true"', rendered)
-
-    def test_safety_labels_exist(self) -> None:
+    def test_existing_platform_evidence_path_points_to_screen_2_control(self) -> None:
         rendered = self.render_home()
         for phrase in (
-            "Preview only",
-            "Handoff is not active in this phase",
-            "No Screen 2 Control state update",
-            "No backend request created",
-            "No object storage call",
-            "No local file read",
-            "No DB lookup",
-            "No run_analysis.py call",
-            "Future EM Extract belongs to Phase 8",
-            "Phase 8 sizing/TCO not implemented",
-            "Screen 2 Control",
-            "handoff_supported",
-            "handoff_performed",
-            "screen3_state_updated",
-            "backend_request_created",
-            "can_handoff",
-            "handoff_blocked",
-            "<dd>false</dd>",
-            "<dd>true</dd>",
+            "Use Existing Platform Evidence",
+            'data-phase7-entry-path="existing_platform_evidence"',
+            'data-phase7-entry-source-modes="existing_run"',
+            "Screen 2 - Runtime Scope &amp; Analysis Control",
+            "screen_2_control.html",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+        for phrase in (
+            'data-dashboard-select-id="existing_run"',
+            "Load Existing Runs",
+            "Governed existing run lookup",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, rendered)
+
+    def test_new_source_path_points_to_screen_1_ingestion(self) -> None:
+        rendered = self.render_home()
+        for phrase in (
+            "Load / Ingest New Source",
+            'data-phase7-entry-path="new_source"',
+            'data-phase7-entry-source-modes="local_staged local_file object_storage"',
+            "Screen 1 - Ingestion / Parser / Source Governance",
+            "screen_1_ingestion.html",
+            "Open Screen 1 Ingestion",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
-    def test_no_forms_fetch_xhr_or_backend_calls(self) -> None:
-        dashboard = dashboard_module()
-        panel_source = inspect.getsource(
-            dashboard._render_index_screen3_handoff_panel
-        ).lower()
-        rendered = self.render_home().lower()
+    def test_legacy_handoff_preview_panel_is_not_rendered(self) -> None:
+        rendered = self.render_home()
         for phrase in (
-            "<form",
-            "method=\"post\"",
-            "action=\"/",
-            "fetch(",
-            "xmlhttprequest",
-            "sendbeacon",
-            "/api/",
-            "backend_endpoint",
-            "execute_handoff(",
-            "perform_handoff(",
-            "update_screen3_state(",
-            "create_backend_request(",
-            "run_analysis.py(",
-            "download_object(",
-            "list_bucket(",
-            "call_object_storage(",
-            "query_database(",
-            "open_file(",
-            "read_file(",
+            'id="index-screen3-handoff-panel"',
+            "Index to Screen 2 Control Selection Handoff Preview",
+            "Legacy 7BT",
+            "Handoff is not active in this phase",
+            "No backend request created",
+            "handoff_blocked",
         ):
             with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase, panel_source)
                 self.assertNotIn(phrase, rendered)
-        for phrase in ("localstorage", "window.location"):
-            with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase, panel_source)
 
     def render_home(self) -> str:
         return dashboard_module()._render_home_page(

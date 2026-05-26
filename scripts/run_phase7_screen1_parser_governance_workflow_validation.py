@@ -25,15 +25,56 @@ REQUIRED_SCREEN1_ACTIONS: tuple[str, ...] = (
 )
 
 REQUIRED_OPERATOR_WORKFLOW_SNIPPETS: tuple[str, ...] = (
-    "Run / Intake Report",
+    "Current Generated Run / Intake Evidence",
+    "Generated evidence reflects a generated dashboard artifact.",
+    "Browser-side source intake does",
+    "not mutate deterministic truth.",
+    "data-screen1-artifact-ready-region",
+    "data-screen1-artifact-ready-content",
+    "data-screen1-artifact-template",
+    "data-screen1-artifact-empty-state",
+    "screen1-generated-evidence-group",
+    "screen1-generated-evidence-info-grid",
+    "screen1-generated-evidence-info-box",
+    "Intake Result",
+    "Generated Time",
+    "Files Processed",
+    "Result",
+    "Dataset Status",
+    "Source Database",
+    "DB / DBID",
+    "Database Version",
+    "Database Role",
+    "Operating System",
+    "Host / Instance",
+    "Platform / Topology Evidence",
+    "Platform",
+    "Selected Scope",
+    "Instance Count",
+    "RAC / Cluster Evidence",
+    "Data Guard / ADG Evidence",
+    "Topology Notes",
+    "Capacity Snapshot",
+    "Cumulative OCPUs / Cores",
+    "Memory per Instance",
+    "DB Load / Vector Status",
+    "Loaded / Reused AWR IDs",
+    "Feature Vectors",
+    "Similarity Ready",
+    "Snapshot Window",
+    "Snapshot Start / End",
+    "Parser / Source Profile Notes",
+    "Parser optional-section notes",
+    "Source-profile/parser-expectation review notes",
     "Full File / Report Table",
     "data-screen1-full-report-table",
     "data-screen1-full-report-table-compact",
     "data-screen1-full-report-row",
+    "data-screen1-full-report-table-template",
     "Unknown Signals",
     "data-screen1-parser-review-unknown-signals",
     "Parser Governance Backlog Review",
-    "Review persisted parser signals and submit a governed backlog review request.",
+    "Review parser signals for the current generated artifact and submit a",
     "Optional IO section absence",
     "24 persisted review records",
     "Current run unknowns: 0",
@@ -158,28 +199,57 @@ def validate_screen1_parser_governance(
     knowledge_index = generated_text.find('id="screen1-knowledge-artifact-context"')
     run_intake_report_ready = (
         run_report_index >= 0
-        and "Run / Intake Report" in primary_text
-        and "Run Label / Generated Time" in primary_text
+        and "Current Generated Run / Intake Evidence" in primary_text
+        and "Generated evidence reflects a generated dashboard artifact." in primary_text
+        and "created by the unsent source workflow above" in primary_text
+        and 'data-screen1-artifact-ready-region="true"' in primary_text
+        and 'data-screen1-generated-artifact-ready="false"' in primary_text
+        and 'data-screen1-artifact-ready-content="true"' in primary_text
+        and 'data-screen1-generated-evidence-template="true"' in primary_text
+        and "No generated run evidence is available yet." in primary_visible_text
+        and "screen1GeneratedArtifactReady" in source_text
+        and "updateScreen1GeneratedArtifactGate" in source_text
+        and "screen1-generated-evidence-group" in primary_text
+        and "screen1-generated-evidence-info-grid" in primary_text
+        and "screen1-generated-evidence-info-box" in primary_text
+        and "info-box screen1-generated-evidence-info-box" in primary_text
+        and "Intake Result" in primary_text
+        and "Generated Time" in primary_text
         and "Source Mode" in primary_text
-        and "Total Files" in primary_text
-        and "Processed" in primary_text
-        and "Succeeded" in primary_text
-        and "Failed" in primary_text
-        and "Skipped" in primary_text
+        and "Files Processed" in primary_text
+        and "Result" in primary_text
+        and "Dataset Status" in primary_text
+        and "Source Database" in primary_text
+        and "DB / DBID" in primary_text
+        and "Database Version" in primary_text
+        and "Database Role" in primary_text
+        and "Operating System" in primary_text
+        and "Host / Instance" in primary_text
+        and "Platform / Topology Evidence" in primary_text
+        and "Platform" in primary_text
+        and "Selected Scope" in primary_text
+        and "Instance Count" in primary_text
+        and "RAC / Cluster Evidence" in primary_text
+        and "Data Guard / ADG Evidence" in primary_text
+        and "Topology Notes" in primary_text
+        and "Capacity Snapshot" in primary_text
+        and "Cumulative OCPUs / Cores" in primary_text
+        and "Memory per Instance" in primary_text
+        and "DB Load / Vector Status" in primary_text
         and "DB Connectivity" in primary_text
         and "DB Load Mode" in primary_text
-        and "Already Loaded" in primary_text
-        and "Newly Loaded" in primary_text
-        and "Reused AWR IDs" in primary_text
-        and "Feature Vectors Existing" in primary_text
-        and "Feature Vectors Created/Updated" in primary_text
-        and "DB Similarity Ready" in primary_text
-        and "Selected Database / DBID" in primary_text
-        and "Host" in primary_text
-        and "Snapshot Start" in primary_text
-        and "Snapshot End" in primary_text
+        and "Loaded / Reused AWR IDs" in primary_text
+        and "Feature Vectors" in primary_text
+        and "Similarity Ready" in primary_text
+        and "Snapshot Window" in primary_text
+        and "Snapshot Start / End" in primary_text
         and "Last Snapshot" in primary_text
-        and "Current Selected Scope" in primary_text
+        and "Parser / Source Profile Notes" in primary_text
+        and "Parser optional-section notes" in primary_text
+        and "Source-profile/parser-expectation review notes" in primary_text
+        and "Topology Detected" not in primary_text
+        and "RAC Context" not in primary_text
+        and "Version / Platform / Topology Hints" not in primary_text
     )
     report_inventory_removed = (
         "Report Inventory" not in primary_text
@@ -205,16 +275,76 @@ def validate_screen1_parser_governance(
         if full_report_index >= 0 and parser_health_index > full_report_index
         else ""
     )
+    parser_health_section = (
+        generated_text[parser_health_index:parser_review_index]
+        if parser_health_index >= 0 and parser_review_index > parser_health_index
+        else ""
+    )
+    parser_review_section = (
+        generated_text[parser_review_index:governance_index]
+        if parser_review_index >= 0 and governance_index > parser_review_index
+        else ""
+    )
+    governance_section = (
+        generated_text[governance_index:field_mapping_index]
+        if governance_index >= 0 and field_mapping_index > governance_index
+        else ""
+    )
+    full_report_visible_text = visible_text(full_report_section)
+    parser_health_visible_text = visible_text(parser_health_section)
+    parser_review_visible_text = visible_text(parser_review_section)
+    governance_visible_text = visible_text(governance_section)
     full_report_row_count = full_report_section.count('data-screen1-full-report-row="true"')
+    generated_evidence_gated_ready = (
+        'data-screen1-artifact-ready-region="true"' in primary_text
+        and 'data-screen1-generated-artifact-ready="false"' in primary_text
+        and 'data-screen1-artifact-empty-state="true"' in primary_text
+        and 'data-screen1-artifact-ready-content="true"' in primary_text
+        and 'data-screen1-generated-evidence-template="true"' in primary_text
+        and 'data-screen1-full-report-table-template="true"' in primary_text
+        and "No generated run evidence is available yet." in primary_visible_text
+        and "No generated file/report rows are available yet." in primary_visible_text
+        and "screen1GeneratedArtifactReady" in source_text
+        and "screen1GeneratedRunExecuted" in source_text
+        and "screen1SelectedGeneratedArtifactReady" in source_text
+        and "updateScreen1GeneratedArtifactGate" in source_text
+        and "screen1GeneratedArtifactReady: screen1GeneratedArtifactReady" in source_text
+    )
+    generated_values_hidden_before_ready = (
+        "Unit run" not in primary_visible_text
+        and "AWR ID:" not in full_report_visible_text
+        and "data-screen1-full-report-row" not in full_report_visible_text
+    )
+    parser_dynamic_blocks_gated_before_ready = (
+        "data-screen1-parser-health-template" in parser_health_section
+        and "data-screen1-parser-review-template" in parser_review_section
+        and "data-screen1-backlog-review-template" in governance_section
+        and "No parser health is available yet." in parser_health_visible_text
+        and "No parser unknown-signal results are available yet." in parser_review_visible_text
+        and "No parser governance backlog is available yet." in governance_visible_text
+        and "24 validation notes were detected" not in parser_health_visible_text
+        and "Persisted Review Records" not in parser_review_visible_text
+        and "MISSING_EXPECTED_SECTION" not in parser_review_visible_text
+        and "Optional IO section absence" not in governance_visible_text
+        and "24 persisted review records" not in governance_visible_text
+        and "Current run unknowns: 0" not in governance_visible_text
+    )
     compact_full_report_columns_ready = (
         "data-screen1-full-report-table-compact" in full_report_section
-        and "<th>File Name</th>" in full_report_section
-        and "<th>Parse / DB</th>" in full_report_section
-        and "<th>AWR / Vector</th>" in full_report_section
-        and "<th>DB / DBID</th>" in full_report_section
-        and "<th>Host / Instance</th>" in full_report_section
-        and "<th>Snapshot Window</th>" in full_report_section
-        and "<th>Parser Notes</th>" in full_report_section
+        and "File Name" in full_report_section
+        and "Parse / DB" in full_report_section
+        and "AWR / Vector" in full_report_section
+        and "DB / DBID" in full_report_section
+        and "Host / Instance" in full_report_section
+        and "Snapshot Window" in full_report_section
+        and "Parser Notes" in full_report_section
+        and 'data-screen3-table-id="screen1-full-report-table"' in full_report_section
+        and "data-screen3-table-sort" in full_report_section
+        and "data-screen3-table-filter" in full_report_section
+        and "data-screen3-table-filter-toggle" in full_report_section
+        and "data-screen3-table-count" in full_report_section
+        and "data-screen3-table-sort-summary" in full_report_section
+        and "data-screen3-table-filter-summary" in full_report_section
         and "AWR ID:" in full_report_section
         and "<th>File</th>" not in full_report_section
         and "<th>Parse</th>" not in full_report_section
@@ -237,10 +367,14 @@ def validate_screen1_parser_governance(
         and "data-screen1-full-report-table" in primary_text
         and "<details" not in full_report_context
         and (historical_index < 0 or full_report_index < historical_index)
+        and generated_evidence_gated_ready
+        and generated_values_hidden_before_ready
         and full_report_row_count >= 24
         and compact_full_report_columns_ready
         and "screen1-full-report-table-wrap" in source_text
-        and "overflow-x: visible" in source_text
+        and "max-height: 520px" in source_text
+        and "overflow: auto" in source_text
+        and "position: sticky" in source_text
         and "table-layout: fixed" in source_text
         and "overflow-wrap: anywhere" in source_text
     )
@@ -248,9 +382,19 @@ def validate_screen1_parser_governance(
         parser_review_index >= 0
         and "Unknown Signals" in primary_text
         and "data-screen1-parser-review-unknown-signals" in primary_text
+        and "screen1-unknown-signals-compact" in primary_text
+        and "Parser Review Status" in primary_text
+        and "Dominant Grouped Signal" in primary_text
         and "Current Run Unknowns" in primary_text
         and "Persisted Review Records" in primary_text
+        and "New / Classified" in primary_text
+        and "Review Status" in primary_text
         and "MISSING_EXPECTED_SECTION" in primary_text
+        and "Persisted parser governance backlog item, not a new runtime parser failure." in primary_text
+        and "Use Parser Governance Backlog Review below to decide how this" in primary_text
+        and "Review Backlog Summary" not in parser_review_section
+        and "Grouped Unknown Signals" not in parser_review_section
+        and "screen1-parser-review-summary-table" not in parser_review_section
         and (historical_index < 0 or parser_review_index < historical_index)
     )
     section_order_ready = (
@@ -261,12 +405,12 @@ def validate_screen1_parser_governance(
         and governance_index > parser_review_index
         and field_mapping_index > governance_index
         and knowledge_index > field_mapping_index
-        and historical_index > knowledge_index
+        and (historical_index < 0 or historical_index > knowledge_index)
     )
     heading_cleanup_ready = all(
         snippet in primary_text
         for snippet in (
-            "<div class=\"section-kicker\">INGESTION</div>",
+            "<div class=\"section-kicker\">GENERATED EVIDENCE</div>",
             "<div class=\"section-kicker\">REPORTS</div>",
             "<div class=\"section-kicker\">PARSER HEALTH</div>",
             "<h2>Parse Confidence</h2>",
@@ -281,6 +425,7 @@ def validate_screen1_parser_governance(
         duplicate in primary_text
         for duplicate in (
             "<div class=\"section-kicker\">Run / Intake Report</div>",
+            "<h2>Run / Intake Report</h2>",
             "<div class=\"section-kicker\">Full File / Report Table</div>",
             "<h2>Parser Health / Parse Confidence</h2>",
             "<h2>Parser Review / Unknown Signals</h2>",
@@ -301,10 +446,12 @@ def validate_screen1_parser_governance(
         review_index >= 0
         and (
             preview_index < 0
-            or (historical_index > review_index and historical_index < preview_index)
+            or (
+                historical_index >= 0
+                and historical_index > review_index
+                and historical_index < preview_index
+            )
         )
-        and "Historical / Debug Evidence" in generated_text
-        or (review_index >= 0 and preview_index < 0)
     )
     action_controls_ready = all(
         action in source_text
@@ -328,13 +475,18 @@ def validate_screen1_parser_governance(
         and primary_text.count('data-screen1-backlog-item="true"') == 1
         and "Request parser mapping approval" not in primary_text
     )
+    field_mapping_section = (
+        generated_text[field_mapping_index:knowledge_index]
+        if field_mapping_index >= 0 and knowledge_index > field_mapping_index
+        else ""
+    )
     field_candidate_empty_state_ready = (
-        "New AWR Field Mapping Candidates" in primary_text
-        and "No new AWR field mapping candidates are available for review." in primary_text
-        and "Field approval will appear here when governed parser mapping candidate records exist." in primary_text
-        and "No fake candidates are shown." in primary_text
-        and "Optional IO section absence is handled as parser backlog review" not in primary_text
-        and "data-screen1-field-submit" not in primary_text
+        "New AWR Field Mapping Candidates" in field_mapping_section
+        and "No new AWR field mapping candidates are available for review." in field_mapping_section
+        and "Field approval will appear here when governed parser mapping candidate records exist." in field_mapping_section
+        and "No fake candidates are shown." in field_mapping_section
+        and "Optional IO section absence is handled as parser backlog review" not in field_mapping_section
+        and "data-screen1-field-submit" not in field_mapping_section
     )
     optional_absence_raw_present = (
         "Optional IO section not present" in generated_text
@@ -490,9 +642,9 @@ def validate_screen1_parser_governance(
     )
     checks = [
         check_result(
-            "run_intake_report_visible",
+            "run_intake_report_artifact_gated",
             run_intake_report_ready,
-            "Screen 1 shows a visible run/intake report before parser governance.",
+            "Screen 1 gates generated run/intake evidence before parser governance.",
         ),
         check_result(
             "report_inventory_removed",
@@ -517,7 +669,7 @@ def validate_screen1_parser_governance(
         check_result(
             "full_report_table_visible_not_historical",
             full_report_table_visible,
-            "Full file/report table is visible by default before historical/debug evidence.",
+            "Full file/report table is artifact-gated before historical/debug evidence.",
         ),
         check_result(
             "full_report_table_compact_columns_ready",
@@ -527,7 +679,12 @@ def validate_screen1_parser_governance(
         check_result(
             "full_report_table_all_rows_visible",
             full_report_row_count >= 24,
-            "Full file/report table renders all 24 report rows.",
+            "Full file/report table preserves all 24 report rows inside artifact-ready payload.",
+        ),
+        check_result(
+            "parser_dynamic_blocks_artifact_gated",
+            parser_dynamic_blocks_gated_before_ready,
+            "Parser health, unknown-signal, and governance backlog facts are hidden until artifact-ready state.",
         ),
         check_result(
             "parser_review_unknown_signals_visible",
@@ -572,7 +729,7 @@ def validate_screen1_parser_governance(
         check_result(
             "file_table_visible",
             file_table_visible,
-            "Full report table is visible and not buried under historical/debug evidence.",
+            "Full report table is present, artifact-gated, and not buried under historical/debug evidence.",
         ),
         check_result(
             "submit_button_gated_by_required_fields",
@@ -801,6 +958,13 @@ def visible_text(html_text: str) -> str:
     text = html_text
     text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r"<style\b[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<template\b[^>]*>.*?</template>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(
+        r"<([a-z][a-z0-9:-]*)\b(?=[^>]*\bhidden\b)[^>]*>.*?</\1>",
+        " ",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     text = re.sub(r"<[^>]+>", " ", text)
     return " ".join(text.split())
 

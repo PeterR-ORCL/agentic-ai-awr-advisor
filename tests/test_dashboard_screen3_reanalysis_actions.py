@@ -109,17 +109,32 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
         rendered = self.render_screen3()
 
         required = (
-            "Source Received From Index",
-            "Local staged",
-            "Local file",
+            "Runtime Evidence Path",
+            "Evidence path status",
+            "Local source path",
+            "Selected local file",
             "Existing run",
             "Object Storage",
-            "Return to Source Intake",
+            "Return to Platform Entry",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
+        dynamic_path_states = (
+            "Existing Platform Evidence",
+            "Runtime options not loaded",
+            "Runtime options loaded; row/scope selection required",
+            "Runtime scope selected",
+            "Screen 1 intake required",
+            "New Source Artifact",
+            "Object Storage Metadata",
+            "Screen 1 validation/intake required",
+            "Ready for Analysis / Review / Action / Learning",
+        )
+        for phrase in dynamic_path_states:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, source)
         self.assertNotIn("Future EM Extract", rendered)
 
     def test_readiness_summary_and_source_scope_exist(self) -> None:
@@ -127,7 +142,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
         rendered = self.render_screen3()
 
         required = (
-            "Source Received From Index",
+            "Runtime Evidence Path",
             "Load Runtime Options",
             "Select Runtime Scope",
             "Runtime Scope Filters",
@@ -137,7 +152,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             "Review Mode",
             "Runtime Safety and Selection Impact",
             "Request / Execution Result",
-            "DB persistence",
+            "DB Persistence",
             "Object Storage validation",
             "Existing run truth unchanged",
         )

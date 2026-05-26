@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from html.parser import HTMLParser
 import importlib.util
 import io
 import json
@@ -23,13 +24,18 @@ SELECTION_BLOCKER_ID = "DASHBOARD_SELECTION_WORKFLOW_UNCLEAR"
 VALIDATION_NAME = "Phase 7CM Index Source Selection Runtime Validation"
 
 REQUIRED_SCREEN_ACTIONS: dict[str, tuple[str, ...]] = {
-    "index_source_mode": ("source_selection_handoff",),
+    "screen_1": ("screen1_source_intake_execute",),
     "screen_3": ("screen3_active_reanalysis",),
 }
 
 GENERATED_DASHBOARD_FILES: tuple[str, ...] = (
     "awr_dashboard/index.html",
+    "awr_dashboard/screen_1_ingestion.html",
     "awr_dashboard/screen_2_control.html",
+    "awr_dashboard/screen_3_analysis.html",
+    "awr_dashboard/screen_4_historical_review.html",
+    "awr_dashboard/screen_5_recommendation_action.html",
+    "awr_dashboard/screen_6_fleet_overview.html",
 )
 
 TREND_AWARE_SCORING_ARTIFACTS: tuple[str, ...] = (
@@ -154,6 +160,9 @@ def validate_dashboard_runtime_interaction(
     governed_memory_result = validate_governed_memory_production_wording(
         generated_texts,
     )
+    generated_default_gating_result = validate_generated_default_evidence_gating(
+        generated_texts,
+    )
     service_validation_ready = (
         service_smoke.get("status") == "passed"
         and service_smoke.get("accepted_source_modes")
@@ -178,9 +187,9 @@ def validate_dashboard_runtime_interaction(
     )
     checks = [
         check_result(
-            "source_index_source_selection_action_control",
+            "source_screen1_source_intake_execution_action_control",
             all(result["status"] == "passed" for result in source_screen_results.values()),
-            "source dashboard contains the required governed index/source-selection action control",
+            "source dashboard contains the required governed Screen 1 source-intake execution action control",
         ),
         check_result(
             "dashboard_js_bridge",
@@ -209,7 +218,7 @@ def validate_dashboard_runtime_interaction(
             "generated_dashboard_action_controls",
             generated_has_7cm
             and all(result["status"] == "passed" for result in generated_screen_results.values()),
-            "generated dashboard contains required governed source-selection and Screen 3 action controls",
+            "generated dashboard contains required governed Screen 1 source-intake and Screen 3 action controls",
         ),
         check_result(
             "generated_screen3_control_center_ready",
@@ -315,6 +324,11 @@ def validate_dashboard_runtime_interaction(
             governed_memory_result["reason"],
         ),
         check_result(
+            "generated_artifact_not_active_evidence_by_default",
+            generated_default_gating_result["status"] == "passed",
+            generated_default_gating_result["reason"],
+        ),
+        check_result(
             "no_direct_run_analysis_button_coupling",
             'data-run-analysis-coupling="true"' not in source_text
             and "scripts/run_analysis.py" not in action_control_text(source_text),
@@ -398,9 +412,11 @@ def validate_dashboard_runtime_interaction(
         failures.append(pipeline_source_summary_result["reason"])
     if governed_memory_result["status"] != "passed":
         failures.append(governed_memory_result["reason"])
+    if generated_default_gating_result["status"] != "passed":
+        failures.append(generated_default_gating_result["reason"])
     source_ready = not failures
-    index_actions = source_screen_results["index_source_mode"]["present_action_types"]
-    index_ready = source_screen_results["index_source_mode"]["status"] == "passed"
+    screen1_actions = source_screen_results["screen_1"]["present_action_types"]
+    screen1_source_ready = source_screen_results["screen_1"]["status"] == "passed"
     return {
         "phase": "Phase 7",
         "subphase": "7CM",
@@ -433,6 +449,7 @@ def validate_dashboard_runtime_interaction(
             "files": sorted(generated_texts),
             "screens": generated_screen_results,
             "screen3_control_center": generated_screen3_result,
+            "default_evidence_gating": generated_default_gating_result,
         },
         "service_bridge": service_smoke,
         "deferred_screen_workflow_blocker_id": SELECTION_BLOCKER_ID,
@@ -452,11 +469,11 @@ def validate_dashboard_runtime_interaction(
             "7CS Screen 6 governance runtime workflow",
             "7CT cross-screen runtime workflow integration",
         ],
-        "index_source_status": {
-            "ready": index_ready,
-            "present_action_types": index_actions,
-            "required_action_types": list(REQUIRED_SCREEN_ACTIONS["index_source_mode"]),
-            "source_selection_handoff": "source_selection_handoff" in index_actions,
+        "screen1_source_intake_status": {
+            "ready": screen1_source_ready,
+            "present_action_types": screen1_actions,
+            "required_action_types": list(REQUIRED_SCREEN_ACTIONS["screen_1"]),
+            "screen1_source_intake_execute": "screen1_source_intake_execute" in screen1_actions,
         },
         "checks": checks,
         "failures": failures,
@@ -506,7 +523,12 @@ def validate_source_screen_controls(
         return rendered_results
     results: dict[str, dict[str, Any]] = {}
     for screen, required in REQUIRED_SCREEN_ACTIONS.items():
-        screen_present = f'screen_id="{screen}"' in source_text or f"screen_id='{screen}'" in source_text
+        screen_present = (
+            f'screen_id="{screen}"' in source_text
+            or f"screen_id='{screen}'" in source_text
+            or f'"screen_id": "{screen}"' in source_text
+            or f"'screen_id': '{screen}'" in source_text
+        )
         present = [
             action
             for action in required
@@ -514,8 +536,6 @@ def validate_source_screen_controls(
             or f"'action_type': '{action}'" in source_text
         ]
         missing = [action for action in required if action not in present]
-        if not screen_present and screen == "index_source_mode":
-            screen_present = 'screen_id="index_source_mode"' in source_text
         if not screen_present:
             missing = list(required)
         passed = screen_present and not missing
@@ -702,6 +722,17 @@ def run_service_smoke_test() -> dict[str, Any]:
             screen3_options_endpoint_path
             in set(health_payload.get("supported_endpoints") or [])
         )
+        health_exposes_action_status_route = (
+            "/phase7/dashboard/actions/status"
+            in set(health_payload.get("supported_endpoints") or [])
+        )
+        health_supported_action_types = set(health_payload.get("supported_action_types") or [])
+        health_supported_screen_actions = health_payload.get("supported_screen_action_types") or {}
+        health_exposes_screen1_source_intake_action = (
+            "screen1_source_intake_execute" in health_supported_action_types
+            and "screen1_source_intake_execute"
+            in set(health_supported_screen_actions.get("screen_1") or [])
+        )
         object_storage_response, object_storage_status_code = invoke_service_handler(
             handler,
             object_storage_validate_endpoint_path,
@@ -765,6 +796,8 @@ def run_service_smoke_test() -> dict[str, Any]:
             and existing_run_unavailable_state_tested
             and screen3_runtime_options_tested
             and health_exposes_screen3_options_route
+            and health_exposes_action_status_route
+            and health_exposes_screen1_source_intake_action
             and object_storage_validation_tested
             and invalid_object_storage_rejected
             and invalid_source_requests_rejected
@@ -789,7 +822,11 @@ def run_service_smoke_test() -> dict[str, Any]:
             "existing_run_unavailable_response": existing_unavailable_response,
             "screen3_runtime_options_tested": screen3_runtime_options_tested,
             "health_exposes_screen3_options_route": health_exposes_screen3_options_route,
+            "health_exposes_action_status_route": health_exposes_action_status_route,
+            "health_exposes_screen1_source_intake_action": health_exposes_screen1_source_intake_action,
             "health_supported_endpoints": health_payload.get("supported_endpoints"),
+            "health_supported_action_types": health_payload.get("supported_action_types"),
+            "health_supported_screen_action_types": health_payload.get("supported_screen_action_types"),
             "screen3_runtime_options_status_code": screen3_options_status_code,
             "screen3_runtime_options_response": screen3_options_response,
             "object_storage_validation_tested": object_storage_validation_tested,
@@ -1522,32 +1559,23 @@ def validate_no_contradictory_operational_text(
     source_text: str,
     generated_texts: dict[str, str],
 ) -> dict[str, str]:
-    """Ensure index preview language is framed as legacy context, not current workflow."""
+    """Ensure Index product copy does not contradict the current source workflow."""
 
     del source_text
     index_text = generated_texts.get("awr_dashboard/index.html", "")
-    required_legacy_markers = (
-        "data-phase7-legacy-context",
-        "Legacy 7BQ Read-Only Context",
-        "Legacy 7BR Read-Only Context",
-        "Legacy 7BS Read-Only Context",
-        "Legacy 7BT Read-Only Context",
-        "Historical Phase Boundary Evidence",
+    primary_pos = index_text.find('id="phase7cr-platform-entry-panel"')
+    legacy_markers = (
+        'id="index-source-mode-entry-panel"',
+        'id="index-source-status-panel"',
+        'id="index-object-storage-config-panel"',
+        'id="index-screen3-handoff-panel"',
+        "Legacy 7BQ",
+        "Legacy 7BR",
+        "Legacy 7BS",
+        "Legacy 7BT",
     )
-    missing_markers = [marker for marker in required_legacy_markers if marker not in index_text]
-    primary_pos = index_text.find('id="phase7cm-source-intake-panel"')
-    legacy_positions = [
-        pos
-        for pos in (
-            index_text.find('id="index-source-mode-entry-panel"'),
-            index_text.find('id="index-source-status-panel"'),
-            index_text.find('id="index-object-storage-config-panel"'),
-            index_text.find('id="index-screen3-handoff-panel"'),
-        )
-        if pos >= 0
-    ]
-    first_legacy = min(legacy_positions) if legacy_positions else len(index_text)
-    primary_region = visible_text(index_text[:first_legacy]).lower()
+    present_legacy = [marker for marker in legacy_markers if marker in index_text]
+    primary_region = visible_text(index_text).lower()
     contradictory_phrases = (
         "screen 3 selection handoff remains a future controlled workflow",
         "active handoff/backend request/source intake are not implemented",
@@ -1561,15 +1589,16 @@ def validate_no_contradictory_operational_text(
     present_contradictions = [
         phrase for phrase in contradictory_phrases if phrase in primary_region
     ]
-    if missing_markers:
+    if present_legacy:
         return {
             "status": "failed",
-            "reason": "legacy preview context markers missing: " + ", ".join(missing_markers),
+            "reason": "legacy phase-boundary panels remain product-facing: "
+            + ", ".join(present_legacy),
         }
     if primary_pos < 0:
         return {
             "status": "failed",
-            "reason": "primary 7CM source-selection workflow is missing from generated index.html",
+            "reason": "primary Index platform entry panel is missing from generated index.html",
         }
     if present_contradictions:
         return {
@@ -1579,7 +1608,7 @@ def validate_no_contradictory_operational_text(
         }
     return {
         "status": "passed",
-        "reason": "legacy preview panels are separated from current 7CM operational controls",
+        "reason": "Index product copy uses the current two-path source workflow without legacy contradictions",
     }
 
 
@@ -1601,7 +1630,7 @@ def validate_preview_only_context_markers(
             start = max(0, match.start() - 1400)
             end = min(len(text), match.end() + 1400)
             context = text[start:end].lower()
-            if "legacy" not in context and "read-only" not in context:
+            if "legacy" not in context and "read-only" not in context and "preview only" not in context:
                 line = text.count("\n", 0, match.start()) + 1
                 offenders.append(f"{label}:{line}")
     if offenders:
@@ -1621,9 +1650,12 @@ def validate_preview_only_context_markers(
 def validate_index_source_selection_workflow(
     generated_texts: dict[str, str],
 ) -> dict[str, Any]:
-    """Require index.html to expose a coherent current 7CM source selection workflow."""
+    """Require Index entry choices and Screen 1 source workflow ownership."""
 
     index_text = generated_texts.get("awr_dashboard/index.html", "")
+    screen1_text = generated_texts.get("awr_dashboard/screen_1_ingestion.html", "")
+    index_visible = visible_text(index_text)
+    screen1_visible = visible_text(screen1_text)
     offenders: list[str] = []
     if not index_text:
         return {
@@ -1631,9 +1663,75 @@ def validate_index_source_selection_workflow(
             "reason": "index source selection validation could not find generated awr_dashboard/index.html",
             "offenders": ["missing index.html"],
         }
-    required_markers = (
-        'id="phase7cm-source-intake-panel"',
+    if not screen1_text:
+        return {
+            "status": "failed",
+            "reason": "index source selection validation could not find generated awr_dashboard/screen_1_ingestion.html",
+            "offenders": ["missing screen_1_ingestion.html"],
+        }
+    required_index_markers = (
+        'id="phase7cr-platform-entry-panel"',
         'data-phase7-index-source-selection="true"',
+        'data-phase7-primary-entry-paths="true"',
+        'data-phase7-entry-path="new_source"',
+        'data-phase7-entry-path="existing_platform_evidence"',
+        'data-phase7-entry-source-modes="local_staged local_file object_storage"',
+        'data-phase7-entry-source-modes="existing_run"',
+        'data-phase7-current-runtime-pipeline="true"',
+        'data-phase7-system-flow-dynamic="true"',
+        'screen_1_ingestion.html',
+        'screen_2_control.html',
+        "Platform Entry / Source Intake",
+        "What do you want to work with?",
+        "Load / Ingest New Source",
+        "Use Existing Platform Evidence",
+        "Screen 1 - Ingestion / Parser / Source Governance",
+        "Screen 2 - Runtime Scope &amp; Analysis Control",
+        "AWR Intelligence Pipeline",
+        "Deterministic Runtime Architecture",
+        "Deterministic Truth vs AI Explanation",
+        "Governed Memory &amp; Semantic Recall",
+        "LLM / Explanation Provider",
+        "6-Screen Product Model",
+    )
+    normalized_index_text = re.sub(r"\s+", " ", index_text)
+    missing_index = [
+        marker
+        for marker in required_index_markers
+        if marker not in index_text and marker not in normalized_index_text
+    ]
+    offenders.extend(f"index missing marker: {marker}" for marker in missing_index)
+
+    forbidden_index_markers = (
+        "Selection Workflow",
+        "Detailed Source Mode Configuration",
+        "Source Mode Configuration",
+        "Selected Source Summary",
+        "Validation / Handoff Status",
+        "Validation / Execution Status",
+        "Validate Object Storage Source",
+        "Request ID",
+        "Audit record",
+        'data-phase7-current-source-card="true"',
+        'data-dashboard-select-key="selectedSourceMode"',
+        'data-required-selection-key="selectedSourceMode"',
+        'data-phase7-action-control="true"',
+        'data-phase7-action-result-panel="true"',
+        'data-phase7-source-configuration="true"',
+        'data-phase7-object-storage-validation-control="true"',
+        'data-dashboard-select-id="local_staged"',
+        'data-dashboard-select-id="local_file"',
+        'data-dashboard-select-id="object_storage"',
+        'data-dashboard-select-id="existing_run"',
+    )
+    offenders.extend(
+        f"index exposes Screen 1 workflow marker: {marker}"
+        for marker in forbidden_index_markers
+        if marker in index_visible
+    )
+
+    required_screen1_markers = (
+        'id="phase7cm-source-intake-panel"',
         'data-phase7-current-source-card="true"',
         'data-dashboard-select-key="selectedSourceMode"',
         'data-required-selection-key="selectedSourceMode"',
@@ -1642,15 +1740,10 @@ def validate_index_source_selection_workflow(
         'data-phase7-audit-status-area="true"',
         'data-phase7-source-configuration="true"',
         'data-dashboard-state-key="selectedSourcePath"',
-        'data-dashboard-state-key="selectedRunReference"',
         'data-dashboard-state-key="objectStorageNamespace"',
         'data-dashboard-state-key="objectStorageBucket"',
         'data-dashboard-state-key="objectStorageObjectName"',
         'data-dashboard-state-key="objectStorageRegion"',
-        'data-dashboard-state-key="existingRunLookupStatus"',
-        'data-dashboard-state-key="objectStorageValidationStatus"',
-        'data-phase7-existing-run-lookup-control="true"',
-        'data-phase7-existing-run-options="true"',
         'data-phase7-object-storage-validation-control="true"',
         'data-phase7-dynamic-source-summary="true"',
         'data-phase7-active-source-configuration="true"',
@@ -1662,87 +1755,62 @@ def validate_index_source_selection_workflow(
         'data-phase7-source-summary-card="action"',
         'data-phase7-source-summary-card="next_step"',
         'data-phase7-source-submit-label="true"',
-        'data-phase7-advanced-debug-state="true"',
         'value="data/input"',
-        'data-dashboard-state-key="selectedLocalFolderAwrCandidateCount"',
-        'data-dashboard-state-key="selectedLocalFolderValidationStatus"',
-        'data-dashboard-state-key="selectedLocalFileValidationStatus"',
-        'data-dashboard-state-key="awrSignatureValidation"',
-        'screen_2_control.html',
-        "Choose the input source context",
-        "Submit governed source handoff request",
+        "New Source Intake / Validation Workflow",
+        "Submit a governed backend source intake request",
         "Your browser may label this as Upload",
         "files available for governed validation",
         "governed submit not yet performed",
-        "Active Source Configuration / Runtime Source State",
+        "Selected Source Summary",
         "Active Source Selection",
-        "Runtime Source Validation",
+        "Validation / Execution Status",
         "Active Source",
         "Source Metadata",
         "Validation Status",
-        "Handoff Target",
+        "Execution Target",
         "Action State",
         'data-phase7-runtime-source-validation="true"',
         'data-phase7-source-validation-card="local_folder"',
         'data-phase7-source-validation-card="local_file"',
-        'data-phase7-source-validation-card="existing_run"',
         'data-phase7-source-validation-card="object_storage"',
         'data-phase7-service-availability-status="true"',
         'data-phase7-submit-result-reference="true"',
-        "Load Existing Runs",
-        "No prior runs found in governed persistence.",
-        "Existing run lookup unavailable. Governed workflow service is not connected to DB or returned no runs.",
         "Validate Object Storage Source",
         "Dashboard workflow service is not running. Start the service to use interactive features.",
-        "System Flow",
-        "AWR Intelligence Pipeline",
-        'data-phase7-current-runtime-pipeline="true"',
-        'data-phase7-system-flow-dynamic="true"',
-        'data-phase7-source-summary-card="pipeline_mode"',
-        'data-phase7-source-summary-card="pipeline_active"',
-        'data-phase7-source-summary-card="pipeline_validation"',
-        'data-phase7-source-summary-card="pipeline_handoff"',
-        "Current source mode",
-        "Active source",
-        "Current source validation",
-        "Current handoff target",
-        "Source Configuration Reference / Staging Context",
-        'data-phase7-current-source-context="true"',
-        'data-phase7-source-configuration-reference="true"',
-        'data-phase7-source-summary-card="config_type"',
-        'data-phase7-source-summary-card="config_location"',
-        'data-phase7-source-summary-card="config_candidates"',
-        'data-phase7-source-summary-card="config_validation"',
-        'data-phase7-source-summary-card="config_handoff"',
-        "Current Source Type",
-        "Current Source Location",
-        "Current Source Metadata",
-        "Current Source Validation",
-        "Current Handoff Status",
-        "Active Source Configuration / Runtime Source State",
-        "Local development fallback",
         "browser does not read local files",
         "never browser-side bucket reads",
+        "governed metadata validation only",
+        "full load, parse, and",
+        "analyze remain backend-gated",
         "backend validation pending",
         "Folder picker metadata.",
         "File picker metadata.",
-        "Service-selected persisted run reference:",
         "Object Storage metadata. Namespace:",
     )
-    normalized_index_text = re.sub(r"\s+", " ", index_text)
-    missing = [
+    normalized_screen1_text = re.sub(r"\s+", " ", screen1_text)
+    missing_screen1 = [
         marker
-        for marker in required_markers
-        if marker not in index_text and marker not in normalized_index_text
+        for marker in required_screen1_markers
+        if marker not in screen1_text and marker not in normalized_screen1_text
     ]
-    offenders.extend(f"missing marker: {marker}" for marker in missing)
+    offenders.extend(f"screen1 missing marker: {marker}" for marker in missing_screen1)
 
-    source_modes = ("local_staged", "local_file", "existing_run", "object_storage")
+    source_modes = ("local_staged", "local_file", "object_storage")
     for source_mode in source_modes:
-        if f'data-dashboard-select-id="{source_mode}"' not in index_text:
-            offenders.append(f"missing current selectable source card: {source_mode}")
+        if f'data-dashboard-select-id="{source_mode}"' not in screen1_text:
+            offenders.append(f"screen1 missing selectable new-source card: {source_mode}")
+    if 'data-dashboard-select-id="existing_run"' in screen1_text:
+        offenders.append("screen1 exposes existing_run as a new-source selectable card")
+    for marker in (
+        "Load Existing Runs",
+        'data-phase7-existing-run-lookup-control="true"',
+        'data-phase7-existing-run-options="true"',
+        'data-phase7-source-validation-card="existing_run"',
+    ):
+        if marker in screen1_visible:
+            offenders.append(f"screen1 duplicates Screen 2 existing-evidence lookup marker: {marker}")
 
-    primary_pos = index_text.find('id="phase7cm-source-intake-panel"')
+    primary_pos = index_text.find('id="phase7cr-platform-entry-panel"')
     legacy_positions = [
         pos
         for pos in (
@@ -1754,37 +1822,9 @@ def validate_index_source_selection_workflow(
         if pos >= 0
     ]
     if primary_pos < 0:
-        offenders.append("primary 7CM source intake panel missing")
-    elif legacy_positions and min(legacy_positions) < primary_pos:
-        offenders.append("legacy source preview panel appears before primary 7CM source intake panel")
-    reference_positions = [
-        pos
-        for pos in (
-            index_text.find("data-phase7-default-runtime-pipeline-reference"),
-            index_text.find("data-phase7-default-local-staging-reference"),
-        )
-        if pos >= 0
-    ]
-    if primary_pos >= 0 and reference_positions and min(reference_positions) < primary_pos:
-        offenders.append("default/reference source panels appear before Active Source Configuration")
-
-    for panel_id in (
-        "index-source-mode-entry-panel",
-        "index-source-status-panel",
-        "index-object-storage-config-panel",
-        "index-screen3-handoff-panel",
-    ):
-        marker = f'id="{panel_id}"'
-        pos = index_text.find(marker)
-        if pos < 0:
-            continue
-        tag_start = index_text.rfind("<", 0, pos)
-        tag_end = index_text.find(">", pos)
-        tag = index_text[tag_start: tag_end + 1].lower() if tag_start >= 0 and tag_end >= 0 else ""
-        if not tag.startswith("<details"):
-            offenders.append(f"legacy panel is not collapsed details: {panel_id}")
-        if "phase7-legacy-boundary-details" not in tag:
-            offenders.append(f"legacy panel missing historical boundary class: {panel_id}")
+        offenders.append("primary Index platform entry panel missing")
+    if legacy_positions:
+        offenders.append("legacy source preview panel remains rendered on product Index")
 
     first_legacy = min(legacy_positions) if legacy_positions else len(index_text)
     primary_region = visible_text(index_text[:first_legacy]).lower()
@@ -1805,11 +1845,11 @@ def validate_index_source_selection_workflow(
     if "data-required-selection-key=\"insufficient data" in index_text.lower():
         offenders.append("index source handoff required-selection-key contains fallback/error text")
     if "Current Source Configuration / Staging Context" in index_text:
-        offenders.append("static local source reference still uses current-source title")
+        offenders.append("Index still exposes current-source configuration details")
     if "No service-returned runs available" in index_text:
-        offenders.append("existing run empty/unavailable state is generic and not actionable")
+        offenders.append("Index still exposes existing run lookup state")
     if "Default source: data/input" in index_text:
-        offenders.append("local source card presents data/input as active default source instead of reference/fallback")
+        offenders.append("Index still presents data/input as active default source")
     disallowed_active_labels = (
         "Default local development mode",
         "Default source",
@@ -1831,18 +1871,6 @@ def validate_index_source_selection_workflow(
     ):
         if stale_attr in primary_region:
             offenders.append(f"primary source workflow still uses stale reference-only marker: {stale_attr}")
-    for required_dynamic_attr in (
-        'data-phase7-current-runtime-pipeline="true"',
-        'data-phase7-current-source-context="true"',
-    ):
-        attr_pos = index_text.find(required_dynamic_attr)
-        if attr_pos < 0:
-            continue
-        tag_start = index_text.rfind("<", 0, attr_pos)
-        tag_end = index_text.find(">", attr_pos)
-        tag = index_text[tag_start: tag_end + 1].lower() if tag_start >= 0 and tag_end >= 0 else ""
-        if tag.startswith("<details"):
-            offenders.append(f"{required_dynamic_attr} must remain visible and not be collapsed")
     if "Current Mode: Local" in index_text:
         offenders.append("default pipeline reference still claims active Current Mode: Local")
     if "Current mode: local AWR staging" in index_text:
@@ -1852,21 +1880,14 @@ def validate_index_source_selection_workflow(
     for dynamic_marker in (
         "if (mode === 'local_staged')",
         "if (mode === 'local_file')",
-        "if (mode === 'existing_run')",
         "if (mode === 'object_storage')",
     ):
-        if dynamic_marker not in index_text:
+        if dynamic_marker not in screen1_text:
             offenders.append(f"active source configuration missing dynamic branch: {dynamic_marker}")
-    if "Advanced Debug State / Browser Selection State" not in index_text:
-        offenders.append("raw browser state is not collapsed into Advanced Debug State")
-    if "Submit Object Storage Source Handoff" not in index_text:
-        offenders.append("shared submit path does not expose Object Storage source-specific label")
-    if "Submit Existing Run Source Handoff" not in index_text:
-        offenders.append("shared submit path does not expose Existing Run source-specific label")
-    if "Submit Local Folder Source Handoff" not in index_text:
-        offenders.append("shared submit path does not expose Local Folder source-specific label")
-    if "Submit Local File Source Handoff" not in index_text:
-        offenders.append("shared submit path does not expose Local File source-specific label")
+    if "Advanced Debug State / Browser Selection State" in visible_text(index_text):
+        offenders.append("Index still renders raw browser debug state")
+    if "Submit Existing Run Source Handoff" in screen1_visible:
+        offenders.append("Screen 1 exposes Existing Run source-specific submit label")
     forbidden_browser_execution_markers = (
         "FileReader",
         "readAsText",
@@ -1878,19 +1899,19 @@ def validate_index_source_selection_workflow(
         "oci-sdk",
     )
     for marker in forbidden_browser_execution_markers:
-        if marker.lower() in index_text.lower():
-            offenders.append(f"index source workflow exposes browser-side source access marker: {marker}")
+        if marker.lower() in (index_text + "\n" + screen1_text).lower():
+            offenders.append(f"source workflow exposes browser-side source access marker: {marker}")
 
     if offenders:
         return {
             "status": "failed",
-            "reason": "index source-selection workflow is not operationally coherent: "
+            "reason": "Index/Screen 1 source ownership boundary is not coherent: "
             + ", ".join(offenders[:12]),
             "offenders": offenders,
         }
     return {
         "status": "passed",
-        "reason": "index source-selection workflow has current selectable source cards, governed handoff action, result panel, and collapsed historical boundary evidence",
+        "reason": "Index shows two entry paths and platform context while Screen 1 owns new-source validation and handoff workflow",
         "offenders": [],
     }
 
@@ -1911,7 +1932,10 @@ def validate_generated_screen3_control_center(
     normalized_screen3_text = re.sub(r"\s+", " ", screen3_text)
     required_markers = (
         "Screen 2 - Runtime Scope & Analysis Control",
-        "Source Received From Index",
+        "Runtime Evidence Path",
+        "Evidence path status",
+        "completed artifact state from Screen 1",
+        "DB-backed runtime options to select scope, interval, and comparison targets",
         "Work Area 1",
         "Select Runtime Scope",
         "Work Area 2",
@@ -1922,8 +1946,9 @@ def validate_generated_screen3_control_center(
         "Load Runtime Options",
         "Runtime Scope Filters",
         "Filtered AWR / Run / Report Results",
+        "Selected AWR / Report Row",
         "Snapshot / Interval Selection",
-        "Selected Runtime Scope",
+        "Selected Runtime Scope / Assignment Summary",
         "Apply selection to",
         "Runtime Scope",
         "Review Mode",
@@ -1934,21 +1959,22 @@ def validate_generated_screen3_control_center(
         "Comparison Readiness / Outcome",
         "Comparison &amp; Review Controls",
         "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
-        "Source type",
-        "Scope type",
-        "Scope value",
+        "Source Type",
+        "Scope Type",
+        "Scope Value",
         "Resolution",
         "Readiness",
-        "Both targets comparable",
+        "Both Comparable",
+        "screen2-control-info-box",
+        "screen2-control-card-grid",
         "load_required",
-        "Technical Audit / Debug Details",
         "Application",
         "DB Name",
         "DBID",
         "Instance",
         "Host/System",
         "AWR / Run",
-        "Snapshot / Time Window",
+        "Effective Snapshot / Window",
         "Load available runtime options",
         "phase7cm-service-button screen3-runtime-options-button",
         "screen3-runtime-filter-panel",
@@ -1977,12 +2003,12 @@ def validate_generated_screen3_control_center(
         "/phase7/dashboard/screen3/options",
         "Target A",
         "Target B",
-        "Requested artifact/reference",
-        "Screen 4 handoff",
-        "Target A Resolution Card",
-        "Target B Resolution Card",
-        "Resolved AWR count",
-        "Resolved snapshot/window count",
+        "Requested Artifact / Reference",
+        "Screen 4 Handoff",
+        "Target A Resolution",
+        "Target B Resolution",
+        "Resolved AWRs",
+        "Resolved Windows",
         "Current DB history",
         "Similar AWRs",
         "Cluster baseline",
@@ -2000,12 +2026,12 @@ def validate_generated_screen3_control_center(
         "table_exists",
         "key_columns_used",
         "included_in_screen3_runtime_options",
-        "AWR_SNAPSHOT",
         "screen3RuntimeOptionsCache",
         "screen3-runtime-options-v1",
         "Runtime options restored from browser cache",
-        "Refresh failed; showing cached runtime options",
-        "Cache status",
+        "cached runtime options were not activated",
+        "Cached runtime options are available for continuity only; they are not active evidence.",
+        "Cache Status",
         "Generated at build time",
         "Workflow Service:",
         "data-dashboard-runtime-badge=\"true\"",
@@ -2124,12 +2150,29 @@ def validate_generated_screen3_control_center(
     comparison_pos = screen3_text.find("Resolve Comparison Targets")
     submit_pos = screen3_text.find("Submit Governed Action and Review Result")
     safety_impact_pos = screen3_text.find("Runtime Safety and Selection Impact")
-    technical_pos = screen3_text.find("Technical Audit / Debug Details")
     if not (
-        0 <= runtime_scope_pos < comparison_pos < submit_pos < safety_impact_pos < technical_pos
+        0 <= runtime_scope_pos < comparison_pos < submit_pos < safety_impact_pos
     ):
         offenders.append(
-            "generated Screen 3 does not use the required primary order: Select Runtime Scope, Resolve Comparison Targets, Submit Governed Action and Review Result, Runtime Safety and Selection Impact, Technical Audit / Debug Details"
+            "generated Screen 3 does not use the required primary order: Select Runtime Scope, Resolve Comparison Targets, Submit Governed Action and Review Result, Runtime Safety and Selection Impact"
+        )
+    detailed_order = [
+        "Runtime Evidence Path",
+        "Load Runtime Options",
+        "Runtime Scope Filters",
+        "Filtered AWR / Run / Report Results",
+        "Selected AWR / Report Row",
+        "Snapshot / Interval Selection",
+        "Selected Runtime Scope / Assignment Summary",
+        "Resolve Comparison Targets",
+        "Comparison Readiness / Outcome",
+        "Submit Governed Action and Review Result",
+    ]
+    detailed_positions = [screen3_text.find(marker) for marker in detailed_order]
+    if any(position < 0 for position in detailed_positions) or detailed_positions != sorted(detailed_positions):
+        offenders.append(
+            "generated Screen 2 Control does not use the required detailed order: "
+            + " < ".join(detailed_order)
         )
 
     visible_screen3_text = re.sub(r"<[^>]+>", " ", visible_text(screen3_text))
@@ -2150,12 +2193,13 @@ def validate_generated_screen3_control_center(
                 "generated Screen 3 still exposes misleading primary operator label: " + marker
             )
 
-    technical_details_pos = screen3_text.find("Technical Audit / Debug Details")
     safety_pos = screen3_text.find("Runtime Safety and Selection Impact")
-    if technical_details_pos < 0 or safety_pos < 0 or technical_details_pos < safety_pos:
+    if "Technical Audit / Debug Details" in visible_text(screen3_text):
         offenders.append(
-            "generated Screen 3 does not keep Technical Audit / Debug Details collapsed at the bottom after Runtime Safety and Selection Impact"
+            "generated Screen 2 still exposes Technical Audit / Debug Details"
         )
+    if safety_pos < 0:
+        offenders.append("generated Screen 3 does not expose Runtime Safety and Selection Impact")
 
     result_field_checks = (
         ("Selected source mode", ("Selected source mode", "Source mode", 'data-screen3-result-field="selected_source_mode"')),
@@ -2237,18 +2281,31 @@ def validate_generated_screen3_control_center(
 
 
 def validate_selection_workflow_ux(generated_texts: dict[str, str]) -> dict[str, Any]:
-    """Require index UX landmarks that explain source selection-to-action flow."""
+    """Require Index entry UX and Screen 1 source workflow landmarks."""
 
-    combined = generated_texts.get("awr_dashboard/index.html", "")
-    required_markers = (
+    index_text = generated_texts.get("awr_dashboard/index.html", "")
+    screen1_text = generated_texts.get("awr_dashboard/screen_1_ingestion.html", "")
+    index_visible = visible_text(index_text)
+    screen1_visible = visible_text(screen1_text)
+    normalized_screen1_visible = re.sub(r"\s+", " ", screen1_visible)
+    required_index_markers = (
+        'data-phase7-primary-entry-paths="true"',
+        'data-phase7-entry-path="new_source"',
+        'data-phase7-entry-path="existing_platform_evidence"',
+        "What do you want to work with?",
+        "Load / Ingest New Source",
+        "Use Existing Platform Evidence",
+        "Open Screen 1 Ingestion",
+        "Open Screen 2 Control",
+    )
+    required_screen1_markers = (
         'data-phase7-selection-workflow="true"',
-        "Step 1: Select source mode or source context",
-        "Step 2: Review source readiness",
-        "Step 3: Choose governed source-selection handoff",
-        "Step 4: Submit governed source handoff request",
-        "Step 5: Review result",
+        "Step 1: Select the new source mode or source context",
+        "Step 2: Review source readiness and configure validation through the governed service path",
+        "Step 3: Submit a governed backend source intake request",
+        "Step 4: Review request state",
+        "Step 5: After backend completion",
         'data-phase7-current-selection-panel="true"',
-        'data-phase7-current-selection-summary="true"',
         'data-action-enabled-state="disabled-no-selection"',
         'data-phase7-action-result-panel="true"',
         'data-phase7-request-id-target="true"',
@@ -2258,26 +2315,55 @@ def validate_selection_workflow_ux(generated_texts: dict[str, str]) -> dict[str,
         "Selection state: not selected",
         "Request ID",
         "Audit record",
-        "Open Screen 2 Control",
     )
-    missing = [marker for marker in required_markers if marker not in combined]
+    missing = [
+        f"index:{marker}"
+        for marker in required_index_markers
+        if marker not in index_text
+    ]
+    missing.extend(
+        f"screen1:{marker}"
+        for marker in required_screen1_markers
+        if marker not in screen1_text and marker not in normalized_screen1_visible
+    )
     generic_only_markers = (
         "Step 1: Select item.",
         "Step 3: Choose governed action.",
         "Step 4: Submit request.",
         "No selection exists yet. Select a card or row to enable governed actions for this screen.",
     )
-    generic_found = [marker for marker in generic_only_markers if marker in combined]
-    index_text = generated_texts.get("awr_dashboard/index.html", "")
+    generic_found = [
+        marker
+        for marker in generic_only_markers
+        if marker in index_text or marker in screen1_text
+    ]
+    forbidden_index_markers = (
+        'data-phase7-selection-workflow="true"',
+        'data-phase7-action-result-panel="true"',
+        'data-phase7-request-id-target="true"',
+        "Request ID",
+        "Audit record",
+    )
+    index_workflow_found = [
+        marker for marker in forbidden_index_markers if marker in index_visible
+    ]
     screen_specific = {
-        "index_source_selection_workflow": (
-            "select source mode or source context" in visible_text(index_text).lower()
-            and "governed source handoff request" in visible_text(index_text).lower()
-            and "screen 3" in visible_text(index_text).lower()
+        "index_two_path_entry": (
+            "what do you want to work with" in index_visible.lower()
+            and "load / ingest new source" in index_visible.lower()
+            and "use existing platform evidence" in index_visible.lower()
+            and "screen 1" in index_visible.lower()
+            and "screen 2 control" in index_visible.lower()
+        ),
+        "screen1_source_workflow": (
+            "new source intake / validation workflow" in screen1_visible.lower()
+            and "governed backend source intake request" in screen1_visible.lower()
+            and "request id" in screen1_visible.lower()
+            and "audit record" in screen1_visible.lower()
         ),
     }
     failed_specific = [name for name, passed in screen_specific.items() if not passed]
-    if missing or failed_specific or generic_found:
+    if missing or failed_specific or generic_found or index_workflow_found:
         parts = []
         if missing:
             parts.append("missing UX markers: " + ", ".join(missing))
@@ -2285,10 +2371,12 @@ def validate_selection_workflow_ux(generated_texts: dict[str, str]) -> dict[str,
             parts.append("missing screen-specific workflow text: " + ", ".join(failed_specific))
         if generic_found:
             parts.append("generic-only workflow text remains: " + ", ".join(generic_found))
+        if index_workflow_found:
+            parts.append("Index still exposes Screen 1 workflow UX: " + ", ".join(index_workflow_found))
         return {"status": "failed", "reason": "; ".join(parts)}
     return {
         "status": "passed",
-        "reason": "selection workflow, current selection, enablement, and result/audit UX markers are present",
+        "reason": "Index entry UX and Screen 1 source workflow/result UX markers are present",
     }
 
 
@@ -2394,18 +2482,21 @@ def validate_index_source_selection_behavior_contract(
     source_text: str,
     generated_texts: dict[str, str],
 ) -> dict[str, Any]:
-    """Validate the generated index has enough wiring for source-card click behavior."""
+    """Validate Screen 1 has enough wiring for new-source click behavior."""
 
     index_text = generated_texts.get("awr_dashboard/index.html", "")
+    screen1_text = generated_texts.get("awr_dashboard/screen_1_ingestion.html", "")
+    index_visible = visible_text(index_text)
+    screen1_visible = visible_text(screen1_text)
     offenders: list[str] = []
-    source_modes = ("local_staged", "local_file", "existing_run", "object_storage")
+    source_modes = ("local_staged", "local_file", "object_storage")
     for source_mode in source_modes:
         card_marker = f'data-dashboard-select-id="{source_mode}"'
-        if card_marker not in index_text:
+        if card_marker not in screen1_text:
             offenders.append(f"missing selectable card for {source_mode}")
-        card_pos = index_text.find(card_marker)
+        card_pos = screen1_text.find(card_marker)
         if card_pos >= 0:
-            card_context = index_text[max(0, card_pos - 900): card_pos + 1400]
+            card_context = screen1_text[max(0, card_pos - 900): card_pos + 1400]
             for marker in (
                 'data-dashboard-selectable="true"',
                 'data-dashboard-select-key="selectedSourceMode"',
@@ -2448,7 +2539,7 @@ def validate_index_source_selection_behavior_contract(
         "selectedLocalFolderAwrCandidateCount: dashboardState.selectedLocalFolderAwrCandidateCount",
         "selectedLocalFileValidationStatus: dashboardState.selectedLocalFileValidationStatus",
         "awr_signature_validation: dashboardState.awrSignatureValidation",
-        "target_screen: 'screen3'",
+        "target_screen: (isScreen1Action || isScreen1SourceAction) ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3')",
         "browser_file_read_attempted: false",
         "browser_object_storage_access_attempted: false",
         "em_extract_attempted: false",
@@ -2457,10 +2548,9 @@ def validate_index_source_selection_behavior_contract(
         "sourceSubmitLabel",
         "sourceActionStateMessage",
         "Select a source to continue.",
-        "Ready to submit Local Folder source handoff.",
-        "Ready to submit Local File source handoff.",
-        "Ready to submit Existing Run source handoff.",
-        "Ready to submit Object Storage source handoff.",
+        "Ready to submit governed backend Local Folder source intake.",
+        "Ready to submit governed backend Local File source intake.",
+        "Ready to submit governed Object Storage source intake metadata.",
         "updateSourceWorkflowSummary",
         "handleExistingRunLookupClick",
         "handleObjectStorageValidationClick",
@@ -2474,7 +2564,32 @@ def validate_index_source_selection_behavior_contract(
             offenders.append(f"source JS missing {marker}")
 
     required_index_markers = (
-        'data-phase7-current-selection-summary="true"',
+        'data-phase7-primary-entry-paths="true"',
+        'data-phase7-entry-path="new_source"',
+        'data-phase7-entry-path="existing_platform_evidence"',
+        "Load / Ingest New Source",
+        "Use Existing Platform Evidence",
+        "screen_1_ingestion.html",
+        "screen_2_control.html",
+    )
+    for marker in required_index_markers:
+        if marker not in index_text:
+            offenders.append(f"generated index missing entry marker {marker}")
+
+    forbidden_index_markers = (
+        'data-dashboard-select-id="local_staged"',
+        'data-dashboard-select-id="local_file"',
+        'data-dashboard-select-id="object_storage"',
+        'data-dashboard-select-id="existing_run"',
+        'data-phase7-action-result-panel="true"',
+        'data-phase7-source-configuration="true"',
+        'data-phase7-object-storage-validation-control="true"',
+    )
+    for marker in forbidden_index_markers:
+        if marker in index_visible:
+            offenders.append(f"generated index exposes Screen 1 workflow marker {marker}")
+
+    required_screen1_markers = (
         'data-dashboard-selected-summary',
         'data-required-selection-key="selectedSourceMode"',
         'data-action-enabled-state="disabled-no-selection"',
@@ -2484,15 +2599,10 @@ def validate_index_source_selection_behavior_contract(
         'data-phase7-source-configuration="true"',
         'data-dashboard-state-input="true"',
         'data-dashboard-state-key="selectedSourcePath"',
-        'data-dashboard-state-key="selectedRunReference"',
         'data-dashboard-state-key="objectStorageNamespace"',
         'data-dashboard-state-key="objectStorageBucket"',
         'data-dashboard-state-key="objectStorageObjectName"',
         'data-dashboard-state-key="objectStorageRegion"',
-        'data-dashboard-state-key="existingRunLookupStatus"',
-        'data-dashboard-state-key="objectStorageValidationStatus"',
-        'data-phase7-existing-run-lookup-control="true"',
-        'data-phase7-existing-run-options="true"',
         'data-phase7-object-storage-validation-control="true"',
         'data-phase7-dynamic-source-summary="true"',
         'data-phase7-source-submit-label="true"',
@@ -2501,20 +2611,29 @@ def validate_index_source_selection_behavior_contract(
         "Audit record",
         "success/failure",
     )
-    for marker in required_index_markers:
-        if marker not in index_text:
-            offenders.append(f"generated index missing {marker}")
+    for marker in required_screen1_markers:
+        if marker not in screen1_text:
+            offenders.append(f"generated Screen 1 missing {marker}")
+    for marker in (
+        'data-dashboard-select-id="existing_run"',
+        'data-phase7-existing-run-lookup-control="true"',
+        'data-phase7-existing-run-options="true"',
+        'data-phase7-source-validation-card="existing_run"',
+        "Load Existing Runs",
+    ):
+        if marker in screen1_visible:
+            offenders.append(f"generated Screen 1 duplicates existing platform evidence marker {marker}")
 
     if offenders:
         return {
             "status": "failed",
-            "reason": "index source-selection click/submit behavior contract is incomplete: "
+            "reason": "Screen 1 source-selection click/submit behavior contract is incomplete: "
             + ", ".join(offenders[:12]),
             "offenders": offenders,
         }
     return {
         "status": "passed",
-        "reason": "index source cards select selectedSourceMode, update Current Selection, enable handoff, and include selected source context in governed payload",
+        "reason": "Screen 1 source cards select selectedSourceMode, update Current Selection, enable handoff, and include selected source context in governed payload",
         "offenders": [],
     }
 
@@ -2523,9 +2642,11 @@ def validate_picker_source_selection_support(
     source_text: str,
     generated_texts: dict[str, str],
 ) -> dict[str, Any]:
-    """Validate OS picker metadata capture for the narrowed index source workflow."""
+    """Validate OS picker metadata capture for the Screen 1 source workflow."""
 
     index_text = generated_texts.get("awr_dashboard/index.html", "")
+    screen1_text = generated_texts.get("awr_dashboard/screen_1_ingestion.html", "")
+    index_visible = visible_text(index_text)
     offenders: list[str] = []
     required_generated_markers = (
         'data-phase7-source-picker="local_folder"',
@@ -2540,27 +2661,21 @@ def validate_picker_source_selection_support(
         "Choose File",
         'data-phase7-picker-summary="local_folder"',
         'data-phase7-picker-summary="local_file"',
-        'data-dashboard-state-key="selectedLocalFolderFileCount"',
-        'data-dashboard-state-key="selectedLocalFolderOutFileCount"',
-        'data-dashboard-state-key="selectedLocalFolderCandidateCount"',
-        'data-dashboard-state-key="selectedLocalFolderAwrCandidateCount"',
-        'data-dashboard-state-key="selectedLocalFolderRejectedCount"',
-        'data-dashboard-state-key="selectedLocalFolderValidationStatus"',
-        'data-dashboard-state-key="selectedLocalFolderSampleFiles"',
-        'data-dashboard-state-key="selectedLocalFolderValidationMessages"',
-        'data-dashboard-state-key="selectedLocalFileName"',
-        'data-dashboard-state-key="selectedLocalFileSize"',
-        'data-dashboard-state-key="selectedLocalFileType"',
-        'data-dashboard-state-key="selectedLocalFileExtension"',
-        'data-dashboard-state-key="selectedLocalFileValidationStatus"',
-        'data-dashboard-state-key="awrSignatureValidation"',
         "AWR signature validation",
         "The current verified parser path supports .out AWR reports",
         "HTML AWR input is planned for a future parser/source adapter",
     )
     for marker in required_generated_markers:
-        if marker not in index_text:
-            offenders.append(f"generated index missing picker marker: {marker}")
+        if marker not in screen1_text:
+            offenders.append(f"generated Screen 1 missing picker marker: {marker}")
+
+    for marker in (
+        'data-phase7-source-picker="local_folder"',
+        'data-phase7-source-picker="local_file"',
+        'data-phase7-object-storage-validation-control="true"',
+    ):
+        if marker in index_visible:
+            offenders.append(f"generated index exposes Screen 1 picker/validation marker: {marker}")
 
     required_source_markers = (
         "handlePhase7SourcePickerChange",
@@ -2584,7 +2699,7 @@ def validate_picker_source_selection_support(
         "selectedLocalFileValidationStatus",
         "awrSignatureValidation",
         "isAwrCandidateFileName",
-        "Ready to submit governed source handoff",
+        "Ready to submit governed source intake",
         "Nothing has been submitted yet",
         "governed request/audit record is created only after this submit action",
         "warning-backend-validation-pending",
@@ -2608,7 +2723,7 @@ def validate_picker_source_selection_support(
         "objectStorageClient",
         "oci-sdk",
     )
-    combined = source_text + "\n" + index_text
+    combined = source_text + "\n" + index_text + "\n" + screen1_text
     unsupported_support_markers = (
         'accept=".out,.txt',
         'accept=".out,.html',
@@ -2640,7 +2755,7 @@ def validate_picker_source_selection_support(
         }
     return {
         "status": "passed",
-        "reason": "local folder and local file OS pickers capture metadata, update source state, and preserve browser no-parse/no-access boundaries",
+        "reason": "Screen 1 local folder and local file OS pickers capture metadata, update source state, and preserve browser no-parse/no-access boundaries",
         "offenders": [],
     }
 
@@ -2649,12 +2764,12 @@ def validate_pipeline_source_summary(
     source_text: str,
     generated_texts: dict[str, str],
 ) -> dict[str, Any]:
-    """Require compact selected-source text in the deterministic pipeline."""
+    """Require visible Index pipeline context without operational source state."""
 
     index_text = generated_texts.get("awr_dashboard/index.html", "")
     offenders: list[str] = []
     pipeline_start = index_text.find('data-phase7-current-runtime-pipeline="true"')
-    source_context_start = index_text.find('data-phase7-current-source-context="true"')
+    source_context_start = index_text.find("Deterministic Runtime Architecture")
     pipeline_region = (
         index_text[pipeline_start:source_context_start]
         if pipeline_start >= 0 and source_context_start > pipeline_start
@@ -2679,20 +2794,25 @@ def validate_pipeline_source_summary(
             offenders.append(f"dashboard source missing compact pipeline marker: {marker}")
 
     required_generated_markers = (
-        'data-phase7-source-summary-card="pipeline_node_source"',
-        "Local staged AWR source. Path: data/input.",
-        "Source selection changes the governed handoff context only.",
-        "Deterministic parsing, scoring, decision, and recommendation remain",
+        "AWR Intelligence Pipeline",
+        "Governed source intake flows into deterministic parsing",
+        "Screen 1 and Screen 2 own the operational workflow controls",
+        "Deterministic Runtime Architecture",
+        "Deterministic Truth vs AI Explanation",
+        "Governed Memory &amp; Semantic Recall",
+        "LLM / Explanation Provider",
+        'data-phase7-current-runtime-pipeline="true"',
+        'data-phase7-system-flow-dynamic="true"',
         ".pipeline-node small",
-        ".pipeline-mode-badge .meta",
         ".phase7cm-source-summary-card p",
         "overflow-wrap: anywhere",
         "word-break: break-word",
         "min-width: 0",
     )
     combined = source_text + "\n" + index_text
+    normalized_combined = re.sub(r"\s+", " ", combined)
     for marker in required_generated_markers:
-        if marker not in combined:
+        if marker not in combined and marker not in normalized_combined:
             offenders.append(f"generated/source dashboard missing compact pipeline marker: {marker}")
 
     if pipeline_region:
@@ -2701,6 +2821,8 @@ def validate_pipeline_source_summary(
             offenders.append("pipeline region renders full Object Storage object path instead of compact basename")
         if "Current source context:" in pipeline_region:
             offenders.append("pipeline ingestion node still uses generic current-source-context wording")
+        if "Current source mode:" in pipeline_region or "Active source:" in pipeline_region:
+            offenders.append("Index pipeline region exposes active source workflow state")
     else:
         offenders.append("generated index missing visible deterministic runtime pipeline region")
 
@@ -2716,7 +2838,7 @@ def validate_pipeline_source_summary(
         }
     return {
         "status": "passed",
-        "reason": "deterministic pipeline uses compact selected-source summaries and preserves full details in Source Configuration",
+        "reason": "Index pipeline remains visible as platform context without exposing source workflow execution state",
         "offenders": [],
     }
 
@@ -2728,7 +2850,7 @@ def validate_governed_memory_production_wording(
 
     index_text = generated_texts.get("awr_dashboard/index.html", "")
     offenders: list[str] = []
-    block_start = index_text.find('class="card secondary memory-explainer-card"')
+    block_start = index_text.find("memory-explainer-card")
     block_end = index_text.find("</section>", block_start)
     memory_block = (
         index_text[block_start:block_end]
@@ -2778,6 +2900,245 @@ def validate_governed_memory_production_wording(
     }
 
 
+def validate_generated_default_evidence_gating(
+    generated_texts: dict[str, str],
+) -> dict[str, Any]:
+    """Require generated artifacts to remain inert until an operator handoff exists."""
+
+    required_files = GENERATED_DASHBOARD_FILES
+    missing_files = [path for path in required_files if path not in generated_texts]
+    offenders: list[str] = []
+    if missing_files:
+        offenders.extend(f"missing generated dashboard file: {path}" for path in missing_files)
+
+    visible_by_path = {
+        path: generated_default_visible_text(generated_texts.get(path, ""))
+        for path in required_files
+    }
+
+    index_visible = visible_by_path.get("awr_dashboard/index.html", "")
+    for marker in (
+        "What do you want to work with?",
+        "Load / Ingest New Source",
+        "Use Existing Platform Evidence",
+        "AWR Intelligence Pipeline",
+    ):
+        if marker not in index_visible:
+            offenders.append(f"index missing default entry/platform marker: {marker}")
+    for marker in (
+        "Total Files: 24",
+        "Succeeded: 24",
+        "Source Mode: LOCAL",
+        "Overall Status:",
+        "Confidence: LOW",
+        "Scope: SPRTRN / 8101005004",
+        "Snapshot Count: 24",
+        "Comparison Window: 24 / 106h",
+        "Recommendation Count:",
+        "DB Name: SPRTRN",
+        "Similar AWRs:",
+        "Cluster:",
+        "Rarity:",
+    ):
+        if marker in index_visible:
+            offenders.append(f"index exposes generated summary by default: {marker}")
+
+    screen1_visible = visible_by_path.get("awr_dashboard/screen_1_ingestion.html", "")
+    for marker in (
+        "No source selected",
+        "Select a source mode or choose a folder/file before submitting.",
+        "No generated run evidence is available yet.",
+        "No generated file/report rows are available yet.",
+        "No parser health is available yet.",
+        "No parser unknown-signal results are available yet.",
+        "No parser governance backlog is available yet.",
+    ):
+        if marker not in screen1_visible:
+            offenders.append(f"screen1 missing default empty-state marker: {marker}")
+    for marker in (
+        "AWR candidates: 24",
+        "Ready to submit governed backend Local Folder",
+        "Generated Time",
+        "Files Processed",
+        "SPRTRN / 8101005004",
+        "Runtime Parser Unknowns",
+        "24 validation notes",
+        "Optional IO section absence",
+        "MISSING_EXPECTED_SECTION",
+    ):
+        if marker in screen1_visible:
+            offenders.append(f"screen1 exposes generated/source evidence by default: {marker}")
+
+    screen2_visible = visible_by_path.get("awr_dashboard/screen_2_control.html", "")
+    for marker in (
+        "Runtime Evidence Path",
+        "None selected",
+        "No valid runtime evidence path yet",
+        "Choose a path from Platform Entry",
+        "Load Runtime Options",
+    ):
+        if marker not in screen2_visible:
+            offenders.append(f"screen2 missing default runtime-path marker: {marker}")
+    for marker in (
+        "Showing 25 of 27",
+        "Use row for Target",
+        "Runtime options loaded",
+        "27 DB-backed row(s)",
+        "AWR_RUN_HISTORY",
+        "AWR_REPORT",
+        "SPRTRN / 8101005004",
+        "Pending comparison request",
+    ):
+        if marker in screen2_visible:
+            offenders.append(f"screen2 exposes runtime evidence by default: {marker}")
+
+    downstream_expectations = {
+        "awr_dashboard/screen_3_analysis.html": (
+            "No diagnostic evidence is selected yet.",
+            ("Why This Posture", "CPU Signal:", "TUNE FIRST", "No dominant scored domain selected"),
+        ),
+        "awr_dashboard/screen_4_historical_review.html": (
+            "No review evidence is selected yet.",
+            ("Historical Review / Comparison", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
+        ),
+        "awr_dashboard/screen_5_recommendation_action.html": (
+            "No recommendation/action context is selected yet.",
+            ("No Immediate Scaling Action Recommended", "Action Rationale", "Evidence Checklist", "db file sequential read"),
+        ),
+        "awr_dashboard/screen_6_fleet_overview.html": (
+            "No learning governance context is selected yet.",
+            ("Learning Governance Context Preview", "Nearest Similar AWRs", "Similar AWRs", "SPRTRN / 8101005004"),
+        ),
+    }
+    for path, (required_empty_marker, forbidden_markers) in downstream_expectations.items():
+        text = visible_by_path.get(path, "")
+        if "Evidence Handoff Required" not in text or required_empty_marker not in text:
+            offenders.append(f"{path} missing Evidence Handoff Required empty state")
+        for marker in forbidden_markers:
+            if marker in text:
+                offenders.append(f"{path} exposes generated downstream evidence by default: {marker}")
+
+    if offenders:
+        return {
+            "status": "failed",
+            "reason": "fresh generated dashboard still exposes generated artifacts as active evidence: "
+            + "; ".join(offenders[:12]),
+            "offenders": offenders,
+        }
+    return {
+        "status": "passed",
+        "reason": (
+            "fresh generated dashboard keeps generated artifact payloads inert until a current "
+            "Screen 1 artifact-ready handoff or Screen 2 runtime-scope handoff exists"
+        ),
+        "offenders": [],
+    }
+
+
+class GeneratedDefaultVisibleTextParser(HTMLParser):
+    """Extract static product-visible text while ignoring hidden payloads/templates."""
+
+    _VOID_TAGS = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+    _BLOCK_TAGS = {
+        "article",
+        "br",
+        "dd",
+        "div",
+        "dt",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "li",
+        "p",
+        "section",
+        "td",
+        "th",
+        "tr",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._skip_depth = 0
+        self._chunks: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized_tag = tag.lower()
+        attr_map = {name.lower(): value for name, value in attrs}
+        skip_this = self._should_skip(normalized_tag, attr_map)
+        if self._skip_depth:
+            if normalized_tag not in self._VOID_TAGS:
+                self._skip_depth += 1
+            return
+        if skip_this:
+            if normalized_tag not in self._VOID_TAGS:
+                self._skip_depth = 1
+            return
+        if normalized_tag in self._BLOCK_TAGS:
+            self._chunks.append("\n")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized_tag = tag.lower()
+        attr_map = {name.lower(): value for name, value in attrs}
+        if self._skip_depth or self._should_skip(normalized_tag, attr_map):
+            return
+        if normalized_tag in self._BLOCK_TAGS:
+            self._chunks.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._skip_depth:
+            self._skip_depth -= 1
+            return
+        if tag.lower() in self._BLOCK_TAGS:
+            self._chunks.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth and data.strip():
+            self._chunks.append(data)
+
+    def get_text(self) -> str:
+        return re.sub(r"[ \t\r\f\v]+", " ", "".join(self._chunks)).strip()
+
+    @staticmethod
+    def _should_skip(tag: str, attrs: dict[str, str | None]) -> bool:
+        if tag in {"script", "style", "template", "noscript"}:
+            return True
+        if tag == "details" and "open" not in attrs:
+            return True
+        if "hidden" in attrs:
+            return True
+        if attrs.get("aria-hidden") == "true":
+            return True
+        gated_attributes = (
+            "data-dashboard-evidence-gated-content",
+            "data-screen1-artifact-ready-content",
+            "data-screen3-source-handoff-content",
+            "data-screen3-technical-source-state",
+        )
+        return any(attrs.get(attribute) == "true" for attribute in gated_attributes)
+
+
+def generated_default_visible_text(html: str) -> str:
+    parser = GeneratedDefaultVisibleTextParser()
+    parser.feed(html)
+    return parser.get_text()
+
+
 def extract_dashboard_state_keys(source_text: str) -> set[str]:
     match = re.search(
         r"DASHBOARD_INTERACTIVITY_STATE_KEYS\s*=\s*\((.*?)\)",
@@ -2810,7 +3171,7 @@ def validate_no_current_workflow_preview_text(
         "feedback_created=false",
     )
     for label, raw_text in generated_texts.items():
-        text = visible_text(raw_text)
+        text = generated_default_visible_text(raw_text)
         for phrase in phrases:
             search_start = 0
             while True:
@@ -2824,6 +3185,7 @@ def validate_no_current_workflow_preview_text(
                         "legacy",
                         "historical",
                         "read-only",
+                        "preview only",
                         "technical detail",
                         "not the current operational path",
                     )

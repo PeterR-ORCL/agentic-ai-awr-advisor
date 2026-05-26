@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from importlib import util
 from pathlib import Path
@@ -15,9 +16,24 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "run_phase7_dashboard_runtime_interaction_validation.py"
 PHASE7CM_UX_FIXTURE = """
 <section id="phase7cm-source-intake-panel" data-phase7-index-source-selection="true" data-dashboard-default-state="{&quot;selectedSourceMode&quot;:&quot;local_staged&quot;,&quot;selectedSourcePath&quot;:&quot;data/input&quot;,&quot;sourceSelectionMethod&quot;:&quot;backend_path&quot;}">
-  <p>Choose the input source context and submit governed source handoff request.</p>
+  <h2>What do you want to work with?</h2>
+  <p>Choose a primary path, then submit governed source intake request.</p>
   <p>The browser does not read local files and never browser-side bucket reads.</p>
-  <section class="card prominent pipeline-card" data-phase7-current-runtime-pipeline="true" data-phase7-system-flow-dynamic="true">
+  <div data-phase7-primary-entry-paths="true">
+    <article data-phase7-entry-path="new_source" data-phase7-entry-source-modes="local_staged local_file object_storage">
+      <strong>Load / Ingest New Source</strong>
+      <p>Primary handoff: Screen 1 - Ingestion / Parser / Source Governance</p>
+      <a href="screen_1_ingestion.html">Open Screen 1 Ingestion</a>
+    </article>
+    <article data-phase7-entry-path="existing_platform_evidence" data-phase7-entry-source-modes="existing_run">
+      <strong>Use Existing Platform Evidence</strong>
+      <p>Primary handoff: Screen 2 - Runtime Scope &amp; Analysis Control</p>
+      <a href="screen_2_control.html">Open Screen 2 Control</a>
+    </article>
+  </div>
+  <details data-phase7-index-technical-context="true">
+  <summary>Technical Details - Runtime / Truth / Memory Context</summary>
+  <section class="evidence-pane pipeline-card" data-phase7-current-runtime-pipeline="true" data-phase7-system-flow-dynamic="true">
     <div class="section-kicker">System Flow</div>
     <h2>AWR Intelligence Pipeline</h2>
     <p>Local development fallback: data/input.</p>
@@ -35,7 +51,7 @@ PHASE7CM_UX_FIXTURE = """
     <h3>Current Source Location</h3><p data-phase7-source-summary-card="config_location">Current source location: data/input</p>
     <h3>Current Source Metadata</h3><p data-phase7-source-summary-card="config_candidates">Candidate AWR files: 1; .out files: 1; samples: sample.out</p>
     <h3>Current Source Validation</h3><p data-phase7-source-summary-card="config_validation">Current source validation: backend validation pending</p>
-    <h3>Current Handoff Status</h3><p data-phase7-source-summary-card="config_handoff">Current handoff status: Ready to submit Local Folder source handoff.</p>
+    <h3>Current Source Intake Status</h3><p data-phase7-source-summary-card="config_handoff">Current source intake status: Ready to submit governed backend Local Folder source intake.</p>
   </section>
   <p>The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter.</p>
   <section class="card secondary memory-explainer-card">
@@ -50,10 +66,11 @@ PHASE7CM_UX_FIXTURE = """
     <strong>Parser Unknowns</strong>
     <p>Runtime influence remains gated, auditable, and denied by default.</p>
   </section>
-  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_staged" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_staged" data-entity-type="source_mode" data-downstream-action="governed-source-handoff-local-staged" data-source-selection-method="backend_path" data-source-default-path="data/input"><p>Selection state: not selected.</p></article>
-  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_file" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_file" data-entity-type="source_mode" data-downstream-action="governed-source-handoff-local-file" data-source-selection-method="os_file_picker" data-source-default-path=""><p>Selection state: not selected.</p></article>
+  </details>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_staged" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_staged" data-entity-type="source_mode" data-downstream-action="governed-source-intake-local-staged" data-source-selection-method="backend_path" data-source-default-path="data/input"><p>Selection state: not selected.</p></article>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_file" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_file" data-entity-type="source_mode" data-downstream-action="governed-source-intake-local-file" data-source-selection-method="os_file_picker" data-source-default-path=""><p>Selection state: not selected.</p></article>
   <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="existing_run" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="existing_run" data-entity-type="source_mode" data-downstream-action="governed-source-handoff-existing-run" data-source-selection-method="existing_run_reference" data-source-default-run-reference=""><p>Selection state: not selected.</p></article>
-  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="object_storage" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="object_storage" data-entity-type="source_mode" data-downstream-action="governed-source-handoff-object-storage" data-source-selection-method="object_storage_metadata" data-object-storage-namespace="axxduehrw7lz" data-object-storage-bucket="agentic-ai-awr-raw" data-object-storage-object-name="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-object-storage-region="us-phoenix-1"><p>Selection state: not selected.</p></article>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="object_storage" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="object_storage" data-entity-type="source_mode" data-downstream-action="governed-source-intake-object-storage" data-source-selection-method="object_storage_metadata" data-object-storage-namespace="axxduehrw7lz" data-object-storage-bucket="agentic-ai-awr-raw" data-object-storage-object-name="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-object-storage-region="us-phoenix-1"><p>Selection state: not selected.</p></article>
   <section data-phase7-source-configuration="true">
     <label for="phase7cm-local-folder-picker">Choose Folder</label>
     <input id="phase7cm-local-folder-picker" type="file" webkitdirectory multiple data-phase7-source-picker="local_folder" data-picker-summary-target="phase7cm-local-folder-picker-summary">
@@ -61,7 +78,7 @@ PHASE7CM_UX_FIXTURE = """
     <input value="data/input" data-dashboard-state-input="true" data-dashboard-state-key="selectedSourcePath" data-phase7-source-path-field="local_staged">
     <label for="phase7cm-local-file-picker">Choose File</label>
     <input id="phase7cm-local-file-picker" type="file" accept=".out" data-phase7-source-picker="local_file" data-picker-summary-target="phase7cm-local-file-picker-summary">
-    <small id="phase7cm-local-file-picker-summary" data-phase7-picker-summary="local_file">File selected. Nothing has been submitted yet. Backend validation is pending until Submit Governed Source Handoff is clicked.</small>
+    <small id="phase7cm-local-file-picker-summary" data-phase7-picker-summary="local_file">File selected. Nothing has been submitted yet. Backend validation is pending until Run Governed Source Intake is clicked.</small>
     <input placeholder="/path/to/report.out or C:\\path\\to\\report.out" data-dashboard-state-input="true" data-dashboard-state-key="selectedSourcePath" data-phase7-source-path-field="local_file">
     <input placeholder="Select a service-returned run below" data-dashboard-state-input="true" data-dashboard-state-key="selectedRunReference" data-phase7-existing-run-field="true" readonly>
     <button type="button" data-phase7-existing-run-lookup-control="true" data-phase7-service-endpoint="existing_runs">Load Existing Runs</button>
@@ -72,24 +89,25 @@ PHASE7CM_UX_FIXTURE = """
     <input value="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageObjectName">
     <input value="us-phoenix-1" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageRegion">
     <button type="button" data-phase7-object-storage-validation-control="true" data-phase7-service-endpoint="object_storage_validate">Validate Object Storage Source</button>
+    <p>Object Storage is governed metadata validation only; full load, parse, and analyze remain backend-gated.</p>
     <p>Dashboard workflow service is not running. Start the service to use interactive features.</p>
   </section>
   <section data-phase7-current-selection-panel="true" data-phase7-active-source-configuration="true">
-    <h3>Active Source Configuration / Runtime Source State</h3>
+    <h3>Selected Source Summary</h3>
     <p><strong>Active Source Selection.</strong></p>
-    <p>Submit Local Folder Source Handoff. Submit Local File Source Handoff. Submit Existing Run Source Handoff. Submit Object Storage Source Handoff.</p>
+    <p>Run Local Folder Source Intake. Run Local File Source Intake. Submit Existing Run Source Handoff. Run Object Storage Source Intake.</p>
     <div data-phase7-dynamic-source-summary="true">
       <p data-phase7-source-summary-card="active">Active Source. if (mode === 'local_staged') if (mode === 'local_file') if (mode === 'existing_run') if (mode === 'object_storage')</p>
       <p data-phase7-source-summary-card="metadata">Source Metadata. Folder picker metadata. File picker metadata. Service-selected persisted run reference: RUN_HISTORY_ID:9001. Object Storage metadata. Namespace: axxduehrw7lz</p>
       <p data-phase7-source-summary-card="validation">Validation Status</p>
       <p data-phase7-source-summary-card="missing">Required Metadata / Missing Fields</p>
-      <p data-phase7-source-summary-card="handoff">Handoff Target</p>
+      <p data-phase7-source-summary-card="handoff">Execution Target</p>
       <p data-phase7-source-summary-card="action">Action State</p>
       <p data-phase7-source-summary-card="next_step">Next Step</p>
     </div>
   </section>
   <section data-phase7-runtime-source-validation="true">
-    <h3>Runtime Source Validation</h3>
+    <h3>Validation / Execution Status</h3>
     <div data-phase7-runtime-source-validation-grid="true">
       <p data-phase7-source-validation-card="local_folder">Local folder validation appears here.</p>
       <p data-phase7-source-validation-card="local_file">Local file validation appears here.</p>
@@ -129,41 +147,201 @@ PHASE7CM_UX_FIXTURE = """
   </details>
   <a href="screen_2_control.html">Open Screen 2 Control</a>
 </section>
-<details id="index-source-mode-entry-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BQ Source Mode Entry</summary><p>Legacy 7BQ Read-Only Context.</p></details>
-<details id="index-source-status-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BR Source Status</summary><p>Legacy 7BR Read-Only Context.</p></details>
-<details id="index-object-storage-config-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BS Object Storage Configuration</summary><p>Legacy 7BS Read-Only Context.</p></details>
-<details id="index-screen3-handoff-panel" class="phase7-legacy-boundary-details" data-phase7-legacy-context="true"><summary>Historical Phase Boundary Evidence - Legacy 7BT Index to Screen 2 Control Handoff Preview</summary><p>Legacy 7BT Read-Only Context. In this legacy evidence only, no backend request is created.</p></details>
 <section data-phase7-selection-workflow="true">
   <h3>Selection Workflow</h3>
   <ol>
-    <li>Step 1: Select source mode or source context</li>
-    <li>Step 2: Review source readiness and Screen 2 Control handoff target</li>
-    <li>Step 3: Choose governed source-selection handoff</li>
-    <li>Step 4: Submit governed source handoff request</li>
-    <li>Step 5: Review result, request ID, audit ID, and Open Screen 2 Control</li>
+    <li>Step 1: Choose a primary path: new source or existing platform evidence</li>
+    <li>Step 2: Review source readiness and next governed screen</li>
+    <li>Step 3: Submit a governed backend source intake request</li>
+    <li>Step 4: Review request state, request ID, and audit ID</li>
+    <li>Step 5: After backend completion, review generated evidence and continue Screen 1 governance</li>
   </ol>
 </section>
 <a data-phase7-action-control="true"
-   data-screen-id="index_source_mode"
-   data-action-type="source_selection_handoff"
-   data-workflow-type="index_source_selection_handoff"
-   data-target-type="source_selection"
-   data-target-id="index-source-selection"
+   data-screen-id="screen_1"
+   data-action-type="screen1_source_intake_execute"
+   data-workflow-type="screen1_source_intake_execution"
+   data-target-type="source_intake"
+   data-target-id="screen1-source-intake-execute"
    data-required-selection-key="selectedSourceMode"
-   data-action-enabled-state="disabled-no-selection"><strong data-phase7-source-submit-label="true">Submit Object Storage Source Handoff</strong></a>
+   data-action-enabled-state="disabled-no-selection"><strong data-phase7-source-submit-label="true">Run Object Storage Source Intake</strong></a>
 <p data-phase7-action-result-panel="true" data-phase7-request-id-target="true" data-phase7-audit-status-area="true">
   success/failure, Request ID and Audit record appear here.
 </p>
 """
+
+PHASE7CR_INDEX_FIXTURE = """
+<section id="phase7cr-platform-entry-panel" data-phase7-index-source-selection="true">
+  <h1>Platform Entry / Source Intake</h1>
+  <h2>What do you want to work with?</h2>
+  <p>Start here. Choose whether to load a new source or work with existing platform evidence. Index is the entry and handoff point; Screen 1 and Screen 2 own the workflow controls.</p>
+  <div data-phase7-primary-entry-paths="true">
+    <a href="screen_1_ingestion.html" data-dashboard-propagate-state="true" data-phase7-entry-path="new_source" data-phase7-entry-source-modes="local_staged local_file object_storage">
+      <strong>Load / Ingest New Source</strong>
+      <p>Primary handoff: Screen 1 - Ingestion / Parser / Source Governance.</p>
+      <span>Open Screen 1 Ingestion</span>
+    </a>
+    <a href="screen_2_control.html" data-dashboard-propagate-state="true" data-phase7-entry-path="existing_platform_evidence" data-phase7-entry-source-modes="existing_run">
+      <strong>Use Existing Platform Evidence</strong>
+      <p>Primary handoff: Screen 2 - Runtime Scope &amp; Analysis Control.</p>
+      <span>Open Screen 2 Control</span>
+    </a>
+  </div>
+</section>
+<section class="pipeline-card" data-phase7-current-runtime-pipeline="true" data-phase7-system-flow-dynamic="true">
+  <h2>AWR Intelligence Pipeline</h2>
+  <p>Governed source intake flows into deterministic parsing, feature engineering, scoring, decision posture, recommendation generation, and dashboard truth. Screen 1 and Screen 2 own the operational workflow controls.</p>
+  <ol><li class="pipeline-node"><small>Source Intake</small></li></ol>
+</section>
+<section><h2>Deterministic Runtime Architecture</h2><p>Runtime orchestration remains governed by backend services.</p></section>
+<section><h2>Deterministic Truth vs AI Explanation</h2><p>Deterministic truth remains authoritative; AI text is explanation only.</p></section>
+<section class="memory-explainer-card">
+  <div class="section-kicker">Governed Memory</div>
+  <h2>Governed Memory &amp; Semantic Recall</h2>
+  <p>Governed memory preserves analysis runs, recommendations, actions, outcomes, feedback, parser unknowns, approvals, and knowledge artifacts. Semantic recall provides optional reviewer-assist context outside deterministic runtime truth generation.</p>
+  <strong>Run Tracking</strong>
+  <strong>Recommendation Tracking</strong>
+  <strong>Action Tracking</strong>
+  <strong>Outcome Tracking</strong>
+  <strong>Feedback Capture</strong>
+  <strong>Parser Unknowns</strong>
+  <p>Runtime influence remains gated, auditable, and denied by default.</p>
+</section>
+<section><h2>LLM / Explanation Provider</h2><p>LLM output is optional explanatory support, never deterministic truth.</p></section>
+<section><h2>6-Screen Product Model</h2><p>Home, 1 Ingestion, 2 Control, 3 Analysis, 4 Review, 5 Action, 6 Learning.</p></section>
+"""
+
+PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE = """
+<section id="phase7cm-source-intake-panel" data-phase7-index-source-selection="true" data-dashboard-default-state="{&quot;selectedSourceMode&quot;:&quot;local_staged&quot;,&quot;selectedSourcePath&quot;:&quot;data/input&quot;,&quot;sourceSelectionMethod&quot;:&quot;backend_path&quot;}">
+  <h2>New Source Intake / Validation Workflow</h2>
+  <p>For new sources, configure and validate source metadata here, then continue ingestion, parser review, and source governance on Screen 1.</p>
+  <p>The browser does not read local files and never browser-side bucket reads.</p>
+  <section data-phase7-selection-workflow="true">
+    <h3>Selection Workflow</h3>
+    <ol>
+      <li>Step 1: Select the new source mode or source context.</li>
+      <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
+      <li>Step 3: Submit a governed backend source intake request.</li>
+      <li>Step 4: Review request state, Request ID, and Audit record.</li>
+      <li>Step 5: After backend completion, generated run evidence and the file/report table become available.</li>
+    </ol>
+  </section>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_staged" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_staged" data-entity-type="source_mode" data-downstream-action="governed-source-intake-local-staged" data-source-selection-method="backend_path" data-source-default-path="data/input"><p>Selection state: not selected.</p></article>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="local_file" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="local_file" data-entity-type="source_mode" data-downstream-action="governed-source-intake-local-file" data-source-selection-method="os_file_picker" data-source-default-path=""><p>Selection state: not selected.</p></article>
+  <article data-phase7-current-source-card="true" data-dashboard-selectable="true" data-dashboard-select-key="selectedSourceMode" data-dashboard-select-id="object_storage" data-dashboard-filter-key="selectedSourceMode" data-dashboard-filter-value="object_storage" data-entity-type="source_mode" data-downstream-action="governed-source-intake-object-storage" data-source-selection-method="object_storage_metadata" data-object-storage-namespace="axxduehrw7lz" data-object-storage-bucket="agentic-ai-awr-raw" data-object-storage-object-name="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-object-storage-region="us-phoenix-1"><p>Selection state: not selected.</p></article>
+  <section data-phase7-source-configuration="true">
+    <h3>Source Mode Configuration</h3>
+    <label for="phase7cm-local-folder-picker">Choose Folder</label>
+    <input id="phase7cm-local-folder-picker" type="file" webkitdirectory multiple data-phase7-source-picker="local_folder" data-picker-summary-target="phase7cm-local-folder-picker-summary">
+    <small id="phase7cm-local-folder-picker-summary" data-phase7-picker-summary="local_folder">Your browser may label this as Upload. Folder selected. 2 files available for governed validation. 1 AWR candidates found. Nothing has been submitted yet. Folder selected by OS picker; backend validation pending; governed submit not yet performed.</small>
+    <input value="data/input" data-dashboard-state-input="true" data-dashboard-state-key="selectedSourcePath" data-phase7-source-path-field="local_staged">
+    <label for="phase7cm-local-file-picker">Choose File</label>
+    <input id="phase7cm-local-file-picker" type="file" accept=".out" data-phase7-source-picker="local_file" data-picker-summary-target="phase7cm-local-file-picker-summary">
+    <small id="phase7cm-local-file-picker-summary" data-phase7-picker-summary="local_file">File selected. Nothing has been submitted yet. Backend validation is pending until Run Governed Source Intake is clicked.</small>
+    <input placeholder="/path/to/report.out or C:\\path\\to\\report.out" data-dashboard-state-input="true" data-dashboard-state-key="selectedSourcePath" data-phase7-source-path-field="local_file">
+    <input value="axxduehrw7lz" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageNamespace">
+    <input value="agentic-ai-awr-raw" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageBucket">
+    <input value="awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageObjectName">
+    <input value="us-phoenix-1" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageRegion">
+    <input value="backend validation pending" data-dashboard-state-input="true" data-dashboard-state-key="objectStorageValidationStatus">
+    <button type="button" data-phase7-object-storage-validation-control="true" data-phase7-service-endpoint="object_storage_validate">Validate Object Storage Source</button>
+    <p>Object Storage is governed metadata validation only; full load, parse, and analyze remain backend-gated.</p>
+    <p>Dashboard workflow service is not running. Start the service to use interactive features.</p>
+    <p>AWR signature validation. The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter.</p>
+  </section>
+  <section data-phase7-current-selection-panel="true" data-phase7-active-source-configuration="true">
+    <h3>Selected Source Summary</h3>
+    <p><strong>Active Source Selection.</strong></p>
+    <p>Run Local Folder Source Intake. Run Local File Source Intake. Run Object Storage Source Intake.</p>
+    <div data-phase7-dynamic-source-summary="true">
+      <p data-phase7-source-summary-card="active"><strong>Active Source</strong> No source selected</p>
+      <p data-phase7-source-summary-card="metadata"><strong>Source Metadata</strong> Select a source mode or choose a folder/file before submitting.</p>
+      <p data-phase7-source-summary-card="validation"><strong>Validation Status</strong> Not checked</p>
+      <p data-phase7-source-summary-card="missing"><strong>Required Metadata / Missing Fields</strong> Select a source to see required metadata.</p>
+      <p data-phase7-source-summary-card="handoff"><strong>Execution Target</strong> No execution target selected.</p>
+      <p data-phase7-source-summary-card="action"><strong>Action State</strong> Select a source to continue.</p>
+      <p data-phase7-source-summary-card="next_step"><strong>Next Step</strong> Choose a source mode, then configure source metadata.</p>
+    </div>
+    <template>Folder picker metadata. File picker metadata. Object Storage metadata. Namespace: if (mode === 'local_staged') if (mode === 'local_file') if (mode === 'object_storage')</template>
+  </section>
+  <section data-phase7-runtime-source-validation="true">
+    <h3>Validation / Execution Status</h3>
+    <div data-phase7-runtime-source-validation-grid="true">
+      <p data-phase7-source-validation-card="local_folder">Local folder validation appears here.</p>
+      <p data-phase7-source-validation-card="local_file">Local file validation appears here.</p>
+      <p data-phase7-source-validation-card="object_storage">Object Storage validation appears here.</p>
+      <p data-phase7-source-validation-card="service" data-phase7-service-availability-status="true">Governed workflow service: local source-intake service endpoint. Local development service: scripts/dashboard_workflow_service.py.</p>
+      <p data-phase7-source-validation-card="result" data-phase7-submit-result-reference="true">Request / Audit Result appears here.</p>
+    </div>
+  </section>
+  <details data-phase7-advanced-debug-state="true"><summary>Advanced Debug State / Browser Selection State</summary>
+    <p data-dashboard-selected-summary data-phase7-current-selection-summary="true">Collapsed browser selection debug state.</p>
+    <dl data-phase7-source-metadata-summary="true">
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedSourceMode">local_staged</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedSourcePath">data/input</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="sourceSelectionMethod">backend_path</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderFileCount">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderOutFileCount">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderCandidateCount">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderAwrCandidateCount">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderRejectedCount">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderValidationStatus">backend validation pending</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderSampleFiles">none</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalRelativePaths">none</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalTotalBytes">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFolderValidationMessages">none</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFileName">none</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFileSize">0</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFileType">unknown</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFileExtension">unknown</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="selectedLocalFileValidationStatus">backend validation pending</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="awrSignatureValidation">AWR signature validation backend validation pending</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="objectStorageValidationStatus">valid</dd>
+      <dd data-dashboard-state-input="true" data-dashboard-state-key="objectStorageValidationMessage">Object Storage metadata accepted by governed backend validation.</dd>
+    </dl>
+  </details>
+  <a data-phase7-action-control="true"
+     data-screen-id="screen_1"
+     data-action-type="screen1_source_intake_execute"
+     data-workflow-type="screen1_source_intake_execution"
+     data-target-type="source_intake"
+     data-target-id="screen1-source-intake-execute"
+     data-required-selection-key="selectedSourceMode"
+     data-action-enabled-state="disabled-no-selection"><strong data-phase7-source-submit-label="true">Run Object Storage Source Intake</strong></a>
+  <p data-phase7-action-result-panel="true" data-phase7-request-id-target="true" data-phase7-audit-status-area="true">
+    success/failure, Request ID and Audit record appear here.
+  </p>
+  <section>
+    <p>No generated run evidence is available yet.</p>
+    <p>No generated file/report rows are available yet.</p>
+    <p>No parser health is available yet.</p>
+    <p>No parser unknown-signal results are available yet.</p>
+    <p>No parser governance backlog is available yet.</p>
+  </section>
+</section>
+"""
+
+PHASE7CR_INDEX_AND_SCREEN1_FIXTURES = {
+    "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+    "awr_dashboard/screen_1_ingestion.html": PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE,
+}
 
 PHASE7CP_SCREEN3_FIXTURE = """
 <section data-phase7-runtime-interaction-panel="true">
   <title>Screen 2 - Runtime Scope & Analysis Control</title>
   <h1>Screen 2 - Runtime Scope & Analysis Control</h1>
   <h2>Screen 2 - Runtime Scope & Analysis Control</h2>
-  <h3>Source Received From Index</h3>
+  <h3>Runtime Evidence Path</h3>
+  <h4>Evidence path status</h4>
+  <p>Screen 2 receives the operator path from Platform Entry or the completed artifact state from Screen 1.</p>
+  <p>DB-backed runtime options to select scope, interval, and comparison targets.</p>
+  <div>None selected. No valid runtime evidence path yet. Choose a path from Platform Entry.</div>
+  <h3>Load Runtime Options</h3>
+  <div hidden>
   <h3>Work Area 1 - Select Runtime Scope</h3>
   <h3>Load Runtime Options</h3>
+  <p>screen2-control-card-grid</p>
+  <p>screen2-control-info-box</p>
   <button type="button" class="phase7cm-service-button screen3-runtime-options-button" data-screen3-runtime-options-load="true">Load available runtime options</button>
   <p>Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.</p>
   <p>/phase7/dashboard/screen3/options</p>
@@ -220,27 +398,29 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Application: Not available</p>
   <h4>Runtime Scope Filters</h4>
   <h4>Filtered AWR / Run / Report Results</h4>
-  <h4>Selected Runtime Scope</h4>
+  <h4>Selected AWR / Report Row</h4>
   <p>Apply selection to</p>
   <p>Runtime Scope</p>
   <h3>Snapshot / Interval Selection</h3>
   <p>Apply interval to</p>
   <p>Application / DB Name / DBID / Instance / Host/System</p>
   <p>AWR / Run and Snapshot / Time Window</p>
+  <h4>Selected Runtime Scope / Assignment Summary</h4>
+  <p>Effective Snapshot / Window</p>
   <h3>Work Area 2 - Resolve Comparison Targets</h3>
   <p>Target A and Target B are built from the selected AWR/report rows and windows.</p>
   <p>Only its selected row gets the strong table highlight.</p>
   <h4>Comparison Target A</h4>
   <h4>Comparison Target B</h4>
-  <p>Target A Resolution Card</p>
-  <p>Target B Resolution Card</p>
+  <p>Target A Resolution</p>
+  <p>Target B Resolution</p>
   <p>source_type + scope_type + scope_value + time_window + resolution_state + readiness_state</p>
-  <p>Source type / Scope type / Scope value / Time window / Resolution / Readiness / Missing gates</p>
-  <p>Resolved AWR count</p>
-  <p>Resolved snapshot/window count</p>
+  <p>Source Type / Scope Type / Scope Value / Time window / Resolution / Readiness / Missing gates</p>
+  <p>Resolved AWRs</p>
+  <p>Resolved Windows</p>
   <p>Comparison Readiness / Outcome</p>
   <p>Comparison &amp; Review Controls</p>
-  <p>Both targets comparable</p>
+  <p>Both Comparable</p>
   <p>load_required</p>
   <p>Current DB history</p>
   <p>Similar AWRs</p>
@@ -257,6 +437,8 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <h3>Request / Execution Result</h3>
   <p>screen3-result-summary-banner</p>
   <h4>Comparison Result Summary</h4>
+  <p>Requested Artifact / Reference</p>
+  <p>Screen 4 Handoff</p>
   <dl>
     <dt>Selected source mode</dt>
     <dt>Selected application</dt>
@@ -289,7 +471,6 @@ PHASE7CP_SCREEN3_FIXTURE = """
   </dl>
   <h3>Runtime Safety and Selection Impact</h3>
   <p>Local selection changes only browser/local request context.</p>
-  <details><summary>Technical Audit / Debug Details</summary></details>
   <p>Existing run truth unchanged</p>
   <p>Runtime options route unavailable</p>
   <p>route available</p>
@@ -303,8 +484,9 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>screen3RuntimeOptionsCache</p>
   <p>screen3-runtime-options-v1</p>
   <p>Runtime options restored from browser cache</p>
-  <p>Refresh failed; showing cached runtime options</p>
-  <p>Cache status</p>
+  <p>Refresh failed; cached runtime options were not activated</p>
+  <p>Cached runtime options are available for continuity only; they are not active evidence.</p>
+  <p>Cache Status</p>
   <p>Generated at build time</p>
   <p>Workflow Service:</p>
   <p>data-dashboard-runtime-badge="true"</p>
@@ -321,8 +503,40 @@ PHASE7CP_SCREEN3_FIXTURE = """
      data-target-id="screen3-selected-source-scope"
      data-required-selection-key="selectedSourceMode"
      data-execution-mode="local_backend_execution">Analyze Selection</a>
+  </div>
 </section>
 """
+
+PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
+    "screen_3_analysis.html": (
+        '<section data-dashboard-evidence-gate-empty="true">'
+        "<h2>Evidence Handoff Required</h2>"
+        "<p>No diagnostic evidence is selected yet.</p>"
+        "</section>"
+        '<div data-dashboard-evidence-gated-content="true" hidden>Why This Posture</div>'
+    ),
+    "screen_4_historical_review.html": (
+        '<section data-dashboard-evidence-gate-empty="true">'
+        "<h2>Evidence Handoff Required</h2>"
+        "<p>No review evidence is selected yet.</p>"
+        "</section>"
+        '<div data-dashboard-evidence-gated-content="true" hidden>Historical Review / Comparison</div>'
+    ),
+    "screen_5_recommendation_action.html": (
+        '<section data-dashboard-evidence-gate-empty="true">'
+        "<h2>Evidence Handoff Required</h2>"
+        "<p>No recommendation/action context is selected yet.</p>"
+        "</section>"
+        '<div data-dashboard-evidence-gated-content="true" hidden>Action Rationale</div>'
+    ),
+    "screen_6_fleet_overview.html": (
+        '<section data-dashboard-evidence-gate-empty="true">'
+        "<h2>Evidence Handoff Required</h2>"
+        "<p>No learning governance context is selected yet.</p>"
+        "</section>"
+        '<div data-dashboard-evidence-gated-content="true" hidden>Nearest Similar AWRs</div>'
+    ),
+}
 
 
 def validation_module():
@@ -360,11 +574,14 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         )
         for relative_path in module.GENERATED_DASHBOARD_FILES:
             file_name = Path(relative_path).name
-            content = generated
+            content = ""
             if file_name == "index.html":
-                content += PHASE7CM_UX_FIXTURE
+                content += PHASE7CR_INDEX_FIXTURE
+            if file_name == "screen_1_ingestion.html":
+                content += generated + PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE
             if file_name == "screen_2_control.html":
-                content += PHASE7CP_SCREEN3_FIXTURE
+                content += generated + PHASE7CP_SCREEN3_FIXTURE
+            content += PHASE7M_DOWNSTREAM_GATE_FIXTURES.get(file_name, "")
             (Path(cls.generated_dir.name) / Path(relative_path).name).write_text(
                 content,
                 encoding="utf-8",
@@ -414,11 +631,11 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
     def test_index_source_selection_screen_is_represented(self) -> None:
         screens = self.payload["screens"]
-        self.assertEqual(["index_source_mode", "screen_3"], sorted(screens))
-        self.assertEqual("passed", screens["index_source_mode"]["status"])
+        self.assertEqual(["screen_1", "screen_3"], sorted(screens))
+        self.assertEqual("passed", screens["screen_1"]["status"])
         self.assertIn(
-            "source_selection_handoff",
-            screens["index_source_mode"]["present_action_types"],
+            "screen1_source_intake_execute",
+            screens["screen_1"]["present_action_types"],
         )
         self.assertEqual("passed", screens["screen_3"]["status"])
         self.assertIn(
@@ -470,6 +687,9 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("objectStorageRegion", supported_keys)
         self.assertIn("objectStorageValidationStatus", supported_keys)
         self.assertIn("objectStorageValidationMessage", supported_keys)
+        self.assertIn("screen1SourceIntakeExecutionStatus", supported_keys)
+        self.assertIn("screen1GeneratedArtifactPath", supported_keys)
+        self.assertIn("dashboardEvidenceReady", supported_keys)
         self.assertIn("sourceMode: 'selectedSourceMode'", source)
         self.assertIn("'source-mode': 'selectedSourceMode'", source)
         self.assertIn('data-dashboard-select-key="selectedSourceMode"', source)
@@ -477,7 +697,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
         coverage = module.validate_dashboard_state_key_coverage(
             source,
-            {"awr_dashboard/index.html": PHASE7CM_UX_FIXTURE},
+            PHASE7CR_INDEX_AND_SCREEN1_FIXTURES,
         )
         self.assertEqual("passed", coverage["status"])
 
@@ -489,20 +709,23 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         )
         result = module.validate_index_source_selection_behavior_contract(
             source,
-            {"awr_dashboard/index.html": PHASE7CM_UX_FIXTURE},
+            PHASE7CR_INDEX_AND_SCREEN1_FIXTURES,
         )
         self.assertEqual("passed", result["status"])
 
-        missing_summary = PHASE7CM_UX_FIXTURE.replace(
-            'data-phase7-current-selection-summary="true"',
-            'data-phase7-current-selection-summary="missing"',
+        missing_summary = PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE.replace(
+            'data-phase7-action-result-panel="true"',
+            'data-phase7-action-result-panel="missing"',
         )
         failed = module.validate_index_source_selection_behavior_contract(
             source,
-            {"awr_dashboard/index.html": missing_summary},
+            {
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": missing_summary,
+            },
         )
         self.assertEqual("failed", failed["status"])
-        self.assertIn("generated index missing", failed["reason"])
+        self.assertIn("generated Screen 1 missing", failed["reason"])
 
     def test_os_file_and_folder_picker_support_is_validated(self) -> None:
         module = validation_module()
@@ -512,20 +735,39 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         )
         result = module.validate_picker_source_selection_support(
             source,
-            {"awr_dashboard/index.html": PHASE7CM_UX_FIXTURE},
+            PHASE7CR_INDEX_AND_SCREEN1_FIXTURES,
         )
         self.assertEqual("passed", result["status"])
 
-        missing_folder_picker = PHASE7CM_UX_FIXTURE.replace(
+        missing_folder_picker = PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE.replace(
             'data-phase7-source-picker="local_folder"',
             'data-phase7-source-picker="missing_folder"',
         )
         failed = module.validate_picker_source_selection_support(
             source,
-            {"awr_dashboard/index.html": missing_folder_picker},
+            {
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": missing_folder_picker,
+            },
         )
         self.assertEqual("failed", failed["status"])
         self.assertIn("local_folder", failed["reason"])
+
+    def test_screen1_source_intake_uses_pollable_operator_feedback_contract(self) -> None:
+        source = (ROOT / "src" / "reporting" / "html_dashboard.py").read_text(
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        self.assertIn("PHASE7_ACTION_STATUS_ENDPOINT", source)
+        self.assertIn("PHASE7_HEALTH_ENDPOINT", source)
+        self.assertIn("verifyScreen1SourceIntakeService", source)
+        self.assertIn("pollScreen1SourceIntakeStatus", source)
+        self.assertIn("screen1SourceIntakeStatusEndpoint", source)
+        self.assertIn("screen1-source-intake-result", source)
+        self.assertIn("completed_artifact_ready", source)
+        self.assertIn("screen1SourceIntakeServiceRestartCommand", source)
+        self.assertIn("Workflow service supports screen1_source_intake_execute", source)
 
     def test_pipeline_source_summary_is_compact_and_overflow_safe(self) -> None:
         module = validation_module()
@@ -536,7 +778,7 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
         result = module.validate_pipeline_source_summary(
             source,
-            {"awr_dashboard/index.html": PHASE7CM_UX_FIXTURE},
+            {"awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE},
         )
         self.assertEqual("passed", result["status"])
         self.assertIn("sourcePipelineActiveSummary", source)
@@ -544,9 +786,9 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("Object Storage source selected. Object:", source)
         self.assertIn("pipeline_node_source: pipelineNode", source)
 
-        generated_with_full_object_in_pipeline = PHASE7CM_UX_FIXTURE.replace(
-            '<small data-phase7-source-summary-card="pipeline_node_source">Local staged AWR source. Path: data/input.</small>',
-            '<small data-phase7-source-summary-card="pipeline_node_source">Object Storage: agentic-ai-awr-raw/awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out</small>',
+        generated_with_full_object_in_pipeline = PHASE7CR_INDEX_FIXTURE.replace(
+            "Governed source intake flows into deterministic parsing",
+            "Object Storage: agentic-ai-awr-raw/awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out. Governed source intake flows into deterministic parsing",
         )
         failed = module.validate_pipeline_source_summary(
             source,
@@ -559,11 +801,11 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         module = validation_module()
 
         result = module.validate_governed_memory_production_wording(
-            {"awr_dashboard/index.html": PHASE7CM_UX_FIXTURE},
+            {"awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE},
         )
         self.assertEqual("passed", result["status"])
 
-        generated_with_phase_wording = PHASE7CM_UX_FIXTURE.replace(
+        generated_with_phase_wording = PHASE7CR_INDEX_FIXTURE.replace(
             '<div class="section-kicker">Governed Memory</div>',
             '<div class="section-kicker">Phase 6</div>',
         )
@@ -582,16 +824,19 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
 
         self.assertIn("PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out'])", source)
         self.assertIn("PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out'])", source)
-        self.assertIn('accept=".out"', PHASE7CM_UX_FIXTURE)
-        self.assertNotIn('accept=".out,.txt,.html,.awr"', PHASE7CM_UX_FIXTURE)
+        self.assertIn('accept=".out"', PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE)
+        self.assertNotIn('accept=".out,.txt,.html,.awr"', PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE)
 
-        generated_with_html_accept = PHASE7CM_UX_FIXTURE.replace(
+        generated_with_html_accept = PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE.replace(
             'accept=".out"',
             'accept=".out,.txt,.html,.awr"',
         )
         failed = module.validate_picker_source_selection_support(
             source,
-            {"awr_dashboard/index.html": generated_with_html_accept},
+            {
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": generated_with_html_accept,
+            },
         )
         self.assertEqual("failed", failed["status"])
         self.assertIn("unsupported Phase 7 local input extension", failed["reason"])
@@ -641,9 +886,15 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         result = module.validate_dashboard_runtime_interaction(
             source_text=source,
             generated_texts={
-                "awr_dashboard/index.html": generated + PHASE7CM_UX_FIXTURE,
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": generated
+                + PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE,
                 "awr_dashboard/screen_2_control.html": generated
                 + PHASE7CP_SCREEN3_FIXTURE,
+                **{
+                    f"awr_dashboard/{file_name}": fixture
+                    for file_name, fixture in PHASE7M_DOWNSTREAM_GATE_FIXTURES.items()
+                },
             },
             service_exists=True,
             contract_exists=True,
@@ -796,6 +1047,195 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         )
         self.assertEqual("rejected", result.status)
         self.assertFalse(result.queued)
+
+    def test_contract_rejects_unknown_screen1_source_action_type(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            {
+                "screen_id": "screen_1",
+                "action_type": "unsupported_screen1_source_execute",
+                "workflow_type": "screen1_source_intake_execution",
+                "actor_id": "ACTOR-LOCAL-TEST",
+                "target_type": "source_intake",
+                "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
+                "execution_mode": "governed_backend_execution",
+                "runtime_influence_granted": False,
+                "phase4i_mutation_allowed": False,
+                "phase8_behavior": False,
+                "run_analysis_coupling": False,
+                "payload": {
+                    "selectedSourceMode": "local_staged",
+                    "sourceSelectionMethod": "backend_path",
+                    "selectedSourcePath": "data/input",
+                    "target_screen": "screen_1",
+                    "browser_file_read_attempted": False,
+                    "browser_object_storage_access_attempted": False,
+                    "browser_db_query_attempted": False,
+                    "browser_parsing_performed": False,
+                    "run_analysis_coupling": False,
+                },
+            }
+        )
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("action_type must be one of", result.message)
+
+    def test_screen1_source_intake_execute_sets_artifact_ready_only_after_backend_completion(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        def complete_source_intake(_request: object) -> dict[str, object]:
+            return {
+                "status": "completed_artifact_ready",
+                "execution_status": "completed_artifact_ready",
+                "artifact_ready": True,
+                "dashboard_regenerated": True,
+                "dashboard_artifact_path": "awr_dashboard/index.html",
+                "runner_invoked": True,
+                "message": "Source intake completed. Generated artifact is ready.",
+            }
+
+        result = process_dashboard_action(
+            {
+                "screen_id": "screen_1",
+                "action_type": "screen1_source_intake_execute",
+                "workflow_type": "screen1_source_intake_execution",
+                "actor_id": "ACTOR-LOCAL-TEST",
+                "target_type": "source_intake",
+                "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
+                "execution_mode": "governed_backend_execution",
+                "runtime_influence_granted": False,
+                "phase4i_mutation_allowed": False,
+                "phase8_behavior": False,
+                "run_analysis_coupling": False,
+                "payload": {
+                    "selectedSourceMode": "local_staged",
+                    "sourceSelectionMethod": "backend_path",
+                    "selectedSourcePath": "data/input",
+                    "target_screen": "screen_1",
+                    "browser_file_read_attempted": False,
+                    "browser_object_storage_access_attempted": False,
+                    "browser_db_query_attempted": False,
+                    "browser_parsing_performed": False,
+                    "run_analysis_coupling": False,
+                },
+            },
+            source_intake_executor=complete_source_intake,
+        )
+        self.assertEqual("completed_artifact_ready", result.status)
+        self.assertTrue(result.source_summary["artifact_ready"])
+        self.assertTrue(result.source_summary["screen1GeneratedArtifactReady"])
+        self.assertTrue(result.source_summary["screen1GeneratedRunExecuted"])
+        self.assertTrue(result.source_summary["screen1SelectedGeneratedArtifactReady"])
+        self.assertFalse(result.source_summary["browser_file_read_attempted"])
+        self.assertFalse(result.run_analysis_called)
+
+    def test_screen1_source_intake_acceptance_without_runner_does_not_mark_artifact_ready(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            {
+                "screen_id": "screen_1",
+                "action_type": "screen1_source_intake_execute",
+                "workflow_type": "screen1_source_intake_execution",
+                "actor_id": "ACTOR-LOCAL-TEST",
+                "target_type": "source_intake",
+                "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
+                "execution_mode": "governed_backend_execution",
+                "runtime_influence_granted": False,
+                "phase4i_mutation_allowed": False,
+                "phase8_behavior": False,
+                "run_analysis_coupling": False,
+                "payload": {
+                    "selectedSourceMode": "local_staged",
+                    "sourceSelectionMethod": "backend_path",
+                    "selectedSourcePath": "data/input",
+                    "target_screen": "screen_1",
+                    "browser_file_read_attempted": False,
+                    "browser_object_storage_access_attempted": False,
+                    "browser_db_query_attempted": False,
+                    "browser_parsing_performed": False,
+                    "run_analysis_coupling": False,
+                },
+            }
+        )
+        self.assertEqual("blocked", result.status)
+        self.assertFalse(result.source_summary["artifact_ready"])
+        self.assertFalse(result.source_summary["screen1GeneratedArtifactReady"])
+        self.assertIn("runner is not wired", result.message)
+
+    def test_workflow_service_returns_completed_artifact_ready_for_mocked_screen1_execution(self) -> None:
+        import scripts.dashboard_workflow_service as service
+
+        module = validation_module()
+        original_runner = service.run_screen1_source_intake_execution
+
+        def mocked_runner(_request: object) -> dict[str, object]:
+            return {
+                "status": "completed_artifact_ready",
+                "execution_status": "completed_artifact_ready",
+                "artifact_ready": True,
+                "dashboard_regenerated": True,
+                "dashboard_artifact_path": "awr_dashboard/index.html",
+                "runner_invoked": True,
+                "message": "Source intake completed. Generated artifact is ready.",
+            }
+
+        service.run_screen1_source_intake_execution = mocked_runner
+        try:
+            with tempfile.TemporaryDirectory(prefix="screen1-source-intake-service-") as tmp:
+                response, status_code = module.invoke_service_handler(
+                    service.Phase7DashboardWorkflowHandler,
+                    service.ENDPOINT_PATH,
+                    json.dumps(
+                        {
+                            "screen_id": "screen_1",
+                            "action_type": "screen1_source_intake_execute",
+                            "workflow_type": "screen1_source_intake_execution",
+                            "actor_id": "ACTOR-LOCAL-TEST",
+                            "target_type": "source_intake",
+                            "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
+                            "execution_mode": "governed_backend_execution",
+                            "runtime_influence_granted": False,
+                            "phase4i_mutation_allowed": False,
+                            "phase8_behavior": False,
+                            "run_analysis_coupling": False,
+                            "payload": {
+                                "selectedSourceMode": "local_staged",
+                                "sourceSelectionMethod": "backend_path",
+                                "selectedSourcePath": "data/input",
+                                "target_screen": "screen_1",
+                                "browser_file_read_attempted": False,
+                                "browser_object_storage_access_attempted": False,
+                                "browser_db_query_attempted": False,
+                                "browser_parsing_performed": False,
+                                "run_analysis_coupling": False,
+                            },
+                        }
+                    ).encode("utf-8"),
+                    Path(tmp),
+                )
+                self.assertEqual(202, status_code)
+                self.assertEqual("running", response["status"])
+                request_id = response["request_id"]
+                status_response = response
+                status_code = 202
+                for _ in range(40):
+                    status_response, status_code = service.screen1_source_intake_status_payload(
+                        {"request_id": [request_id]},
+                        queue_dir=Path(tmp),
+                    )
+                    if status_response["status"] == "completed_artifact_ready":
+                        break
+                    time.sleep(0.05)
+        finally:
+            service.run_screen1_source_intake_execution = original_runner
+
+        self.assertEqual(200, status_code)
+        self.assertEqual("completed_artifact_ready", status_response["status"])
+        self.assertTrue(status_response["source_summary"]["artifact_ready"])
+        self.assertTrue(status_response["source_summary"]["screen1GeneratedArtifactReady"])
+        self.assertFalse(status_response["run_analysis_called"])
 
     def test_contract_rejects_html_awr_input_in_phase7(self) -> None:
         from src.learning.dashboard_runtime_interaction import process_dashboard_action
@@ -956,6 +1396,22 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             "/phase7/dashboard/screen3/options",
             payload["supported_endpoints"],
         )
+        self.assertIn(
+            "/phase7/dashboard/actions/status",
+            payload["supported_endpoints"],
+        )
+        self.assertEqual(
+            "/phase7/dashboard/actions/status",
+            payload["screen1_source_intake_status_endpoint"],
+        )
+        self.assertIn(
+            "screen1_source_intake_execute",
+            payload["supported_action_types"],
+        )
+        self.assertIn(
+            "screen1_source_intake_execute",
+            payload["supported_screen_action_types"]["screen_1"],
+        )
 
     def test_screen3_runtime_options_mark_external_targets_load_required(self) -> None:
         from src.learning.dashboard_runtime_interaction import load_screen3_runtime_options
@@ -1005,6 +1461,10 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             "/phase7/dashboard/screen3/options",
             source,
         )
+        self.assertIn(
+            "/phase7/dashboard/actions/status",
+            source,
+        )
 
     def test_service_or_contract_missing_blocks_validation(self) -> None:
         module = validation_module()
@@ -1027,10 +1487,13 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             for screen_id, action_types in module.REQUIRED_SCREEN_ACTIONS.items()
             for action_type in action_types
         )
-        generated += PHASE7CM_UX_FIXTURE
         result = module.validate_dashboard_runtime_interaction(
             source_text=source,
-            generated_texts={"awr_dashboard/index.html": generated},
+            generated_texts={
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": generated
+                + PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE,
+            },
             service_exists=False,
             contract_exists=True,
         )
@@ -1053,23 +1516,29 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             errors="ignore",
         )
         generated = (
-            '<section data-phase7-runtime-interaction-panel="true">'
-            '<button data-phase7-action-control="true" '
-            'data-screen-id="index_source_mode" '
-            'data-action-type="source_selection_handoff" '
-            'data-workflow-type="index_source_selection_handoff" '
-            'data-target-type="unit" data-target-id="unit" '
-            'data-required-selection-key="selectedSourceMode">Submit</button>'
-            "</section>"
-            + PHASE7CM_UX_FIXTURE.replace(
-                '<details id="index-source-mode-entry-panel"',
+            PHASE7CR_INDEX_FIXTURE.replace(
+                '<section id="phase7cr-platform-entry-panel"',
                 'Screen 3 selection handoff remains a future controlled workflow.'
-                '<details id="index-source-mode-entry-panel"',
+                '<section id="phase7cr-platform-entry-panel"',
             )
         )
         result = module.validate_dashboard_runtime_interaction(
             source_text=source,
-            generated_texts={"awr_dashboard/index.html": generated},
+            generated_texts={
+                "awr_dashboard/index.html": generated,
+                "awr_dashboard/screen_1_ingestion.html": (
+                    '<section data-phase7-runtime-interaction-panel="true">'
+                    '<button data-phase7-action-control="true" '
+                    'data-screen-id="screen_1" '
+                    'data-action-type="screen1_source_intake_execute" '
+                    'data-workflow-type="screen1_source_intake_execution" '
+                    'data-target-type="source_intake" data-target-id="unit" '
+                    'data-required-selection-key="selectedSourceMode">Submit</button>'
+                    "</section>"
+                    + PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE
+                ),
+                "awr_dashboard/screen_2_control.html": PHASE7CP_SCREEN3_FIXTURE,
+            },
             service_exists=True,
             contract_exists=True,
         )
@@ -1112,35 +1581,35 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         module = validation_module()
         result = module.validate_index_source_selection_workflow(
             {
-                "awr_dashboard/index.html": (
+                "awr_dashboard/index.html": PHASE7CR_INDEX_FIXTURE,
+                "awr_dashboard/screen_1_ingestion.html": (
                     '<section id="phase7cm-source-intake-panel" '
-                    'data-phase7-index-source-selection="true">'
-                    '<a data-phase7-action-control="true" '
-                    'data-required-selection-key="selectedSourceMode" '
-                    'data-phase7-action-result-panel="true" '
-                    'data-phase7-request-id-target="true" '
-                    'href="screen_2_control.html">Submit</a>'
-                    "</section>"
-                )
+                    'data-phase7-index-source-selection="true"></section>'
+                ),
             }
         )
         self.assertEqual("failed", result["status"])
         self.assertTrue(
-            any("missing current selectable source card" in offender for offender in result["offenders"])
+            any("screen1 missing selectable new-source card" in offender for offender in result["offenders"])
         )
 
-    def test_index_legacy_panel_before_current_source_workflow_blocks_validation(self) -> None:
+    def test_index_legacy_panel_on_product_index_blocks_validation(self) -> None:
         module = validation_module()
         index = (
-            '<details id="index-source-mode-entry-panel" class="phase7-legacy-boundary-details"></details>'
-            + PHASE7CM_UX_FIXTURE
+            PHASE7CR_INDEX_FIXTURE
+            + '<details id="index-source-mode-entry-panel" class="phase7-legacy-boundary-details"></details>'
             + '<a data-phase7-action-control="true" data-screen-id="index_source_mode" '
             'data-action-type="source_selection_handoff" '
             'data-required-selection-key="selectedSourceMode"></a>'
         )
-        result = module.validate_index_source_selection_workflow({"awr_dashboard/index.html": index})
+        result = module.validate_index_source_selection_workflow(
+            {
+                "awr_dashboard/index.html": index,
+                "awr_dashboard/screen_1_ingestion.html": PHASE7CR_SCREEN1_SOURCE_WORKFLOW_FIXTURE,
+            }
+        )
         self.assertEqual("failed", result["status"])
-        self.assertIn("legacy source preview panel appears before primary", result["reason"])
+        self.assertIn("legacy source preview panel remains rendered", result["reason"])
 
     def test_safety_invariants_are_preserved(self) -> None:
         invariants = self.payload["invariants"]

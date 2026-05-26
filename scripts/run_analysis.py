@@ -105,6 +105,16 @@ def _runtime_config() -> dict[str, Any]:
     return config
 
 
+def _source_input_dir() -> Path:
+    """Resolve the backend-visible AWR source directory for this run."""
+
+    return Path(
+        os.getenv("AWR_SOURCE_INPUT_DIR")
+        or os.getenv("PHASE7_AWR_SOURCE_INPUT_DIR")
+        or "data/input"
+    ).expanduser()
+
+
 def _phase7_dashboard_action_endpoint() -> str:
     return str(
         os.getenv(
@@ -281,11 +291,29 @@ def _phase7_dashboard_local_service_supports_screen3_options(host: str, port: in
     return bool(source_tables) and isinstance(target_resolution, dict)
 
 
+def _phase7_dashboard_local_service_supports_screen1_source_intake(
+    host: str, port: int
+) -> bool:
+    health_payload = _phase7_dashboard_local_service_health_payload(host, port)
+    supported_action_types = set(health_payload.get("supported_action_types") or [])
+    supported_screen_action_types = health_payload.get("supported_screen_action_types")
+    screen1_action_types = set()
+    if isinstance(supported_screen_action_types, dict):
+        screen1_action_types = set(supported_screen_action_types.get("screen_1") or [])
+    supported_endpoints = set(health_payload.get("supported_endpoints") or [])
+    return (
+        "screen1_source_intake_execute" in supported_action_types
+        and "screen1_source_intake_execute" in screen1_action_types
+        and "/phase7/dashboard/actions/status" in supported_endpoints
+    )
+
+
 def _phase7_dashboard_local_service_supports_required_routes(host: str, port: int) -> bool:
     return (
         _phase7_dashboard_local_service_supports_health(host, port)
         and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
         and _phase7_dashboard_local_service_supports_screen3_options(host, port)
+        and _phase7_dashboard_local_service_supports_screen1_source_intake(host, port)
     )
 
 
@@ -383,7 +411,8 @@ def _ensure_dashboard_workflow_service() -> None:
                 f"http://{host}:{port}, but it does not expose the current "
                 "required runtime routes: /phase7/dashboard/health and "
                 "/phase7/dashboard/screen2/explanation and "
-                "/phase7/dashboard/screen3/options. A stale local "
+                "/phase7/dashboard/screen3/options, or the current "
+                "Screen 1 source intake action registry. A stale local "
                 "dashboard_workflow_service.py process was stopped; starting "
                 "the current service now."
             )
@@ -393,10 +422,11 @@ def _ensure_dashboard_workflow_service() -> None:
                 f"http://{host}:{port}, but it does not expose the current "
                 "required runtime routes: /phase7/dashboard/health and "
                 "/phase7/dashboard/screen2/explanation and "
-                "/phase7/dashboard/screen3/options. This usually means "
+                "/phase7/dashboard/screen3/options, or the current "
+                "Screen 1 source intake action registry. This usually means "
                 "an older service process is still running. Stop the stale "
                 f"process on port {port} (for example: lsof -i :{port}, "
-                "then terminate that PID) and restart with: python3 "
+                "then terminate that PID) and restart with: .venv/bin/python "
                 "scripts/dashboard_workflow_service.py --host "
                 f"{host} --port {port}. Generated dashboard pages remain "
                 "viewable, but interactive features are unavailable until "
@@ -4816,6 +4846,7 @@ def _prepare_db_backed_similarity_runtime(
     connection: Any,
     snapshot_contexts: list[dict[str, Any]],
     latest_context: dict[str, Any],
+    input_dir: Path | None = None,
 ) -> dict[str, Any]:
     loaded_records = {
         context["file_name"]: _lookup_loaded_awr_record(connection, context)
@@ -4835,7 +4866,7 @@ def _prepare_db_backed_similarity_runtime(
             + ", ".join(missing[:5])
             + (" ..." if len(missing) > 5 else "")
         )
-        process_awr_batch(Path("data/input"), conn=connection)
+        process_awr_batch(input_dir or Path("data/input"), conn=connection)
         loaded_records = {
             context["file_name"]: _lookup_loaded_awr_record(connection, context)
             for context in snapshot_contexts
@@ -5567,11 +5598,11 @@ if __name__ == "__main__":
     print(f"  provider: {provider}")
     print(f"  model: {resolved_model or '(not configured)'}")
     _ensure_dashboard_workflow_service()
-    input_dir = Path("data/input")
+    input_dir = _source_input_dir()
     loader_result = load_awr_sources(input_dir)
     awr_files = loader_file_paths(loader_result)
     if not awr_files:
-        raise FileNotFoundError("No AWR input files found in data/input")
+        raise FileNotFoundError(f"No AWR input files found in {input_dir}")
 
     snapshot_contexts = [_build_snapshot_context(file_path) for file_path in awr_files]
     snapshot_contexts = sorted(snapshot_contexts, key=_snapshot_sort_key)
@@ -5632,6 +5663,7 @@ if __name__ == "__main__":
                 connection=connection,
                 snapshot_contexts=snapshot_contexts,
                 latest_context=latest_context,
+                input_dir=input_dir,
             )
             analysis_awr_id = int(db_similarity_runtime["analysis_awr_id"])
             db_ingestion_context = db_similarity_runtime["db_ingestion"]

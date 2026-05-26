@@ -160,6 +160,21 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "screen1BacklogDecision",
     "screen1BacklogReviewer",
     "screen1BacklogRationale",
+    "screen1GeneratedArtifactReady",
+    "screen1GeneratedRunExecuted",
+    "screen1SelectedGeneratedArtifactReady",
+    "screen1SourceIntakeExecutionStatus",
+    "screen1GeneratedArtifactPath",
+    "screen1ArtifactEvidenceReady",
+    "screen1ArtifactReadyRequestId",
+    "generatedArtifactAvailable",
+    "currentOperatorEvidenceSession",
+    "dashboardEvidenceSessionId",
+    "dashboardEvidenceReady",
+    "screen2ExistingEvidenceReady",
+    "screen2RuntimeOptionsLoadRequestId",
+    "screen2RuntimeScopeSelectionEpoch",
+    "screen2RuntimeScopeReadyAt",
     "selectedSemanticItem",
     "selectedLearningCandidate",
     "selectedLearningCandidateStatus",
@@ -194,6 +209,8 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedSourceContext",
     "selectedSourcePath",
     "sourceSelectionMethod",
+    "sourceSelectionActivated",
+    "sourceSelectionSessionId",
     "selectedLocalFolderFileCount",
     "selectedLocalFolderOutFileCount",
     "selectedLocalFolderSampleFiles",
@@ -970,6 +987,7 @@ def _build_page_html(
     )
     interactivity_script = _build_dashboard_interactivity_javascript()
     interactivity_boundary = _render_dashboard_interactivity_boundary_comment()
+    gated_content_html = _wrap_downstream_evidence_gate(page_key, content_html)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -981,7 +999,7 @@ def _build_page_html(
 {_shared_page_styles()}
   </style>
 </head>
-<body>
+<body data-dashboard-generated-at="{escape(generated_at, quote=True)}">
 {interactivity_boundary}
   <div class="container">
     <div class="{shell_class}">
@@ -1000,7 +1018,7 @@ def _build_page_html(
       {nav_html}
     </div>
 
-    {content_html}
+    {gated_content_html}
 
     <div class="footer">Generated at {escape(generated_at)}</div>
   </div>
@@ -1010,6 +1028,34 @@ def _build_page_html(
 </body>
 </html>
 """
+
+
+def _wrap_downstream_evidence_gate(page_key: str, content_html: str) -> str:
+    """Hide downstream generated evidence until a current handoff is ready."""
+
+    empty_messages = {
+        "screen_3": "No diagnostic evidence is selected yet. Complete Screen 1 source intake or select a DB-backed runtime scope on Screen 2.",
+        "screen_4": "No review evidence is selected yet. Complete source intake or select a runtime scope/comparison context first.",
+        "screen_5": "No recommendation/action context is selected yet. Complete analysis handoff before action review.",
+        "screen_6": "No learning governance context is selected yet. Complete evidence handoff before reviewing generated learning candidates.",
+    }
+    message = empty_messages.get(page_key)
+    if not message:
+        return content_html
+    return f"""
+    <section class="card prominent dashboard-evidence-empty-state"
+             data-dashboard-evidence-gate-empty="true"
+             data-dashboard-evidence-page="{escape(page_key, quote=True)}">
+      <div class="section-kicker">Evidence Readiness</div>
+      <h2>Evidence Handoff Required</h2>
+      <p class="meta">{escape(message)}</p>
+    </section>
+    <div data-dashboard-evidence-gated-content="true"
+         data-dashboard-evidence-page="{escape(page_key, quote=True)}"
+         hidden>
+      {content_html}
+    </div>
+    """
 
 
 def _render_dashboard_interactivity_boundary_comment() -> str:
@@ -1065,6 +1111,7 @@ def _build_dashboard_interactivity_javascript() -> str:
       const DASHBOARD_STATE_KEYS = Object.freeze(__DASHBOARD_STATE_KEYS__);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = __DASHBOARD_STORAGE_KEY__;
+      const DASHBOARD_OPERATOR_SESSION_KEY = DASHBOARD_STORAGE_KEY + '.currentOperatorSession';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
@@ -1201,6 +1248,81 @@ def _build_dashboard_interactivity_javascript() -> str:
           'objectStorageValidationStatus'
         ]
       });
+      const PHASE7CM_SOURCE_SELECTION_STATE_KEYS = Object.freeze([
+        'selectedSourceMode',
+        'selectedSourceContext',
+        'selectedSourcePath',
+        'sourceSelectionMethod',
+        'sourceSelectionSessionId',
+        'selectedLocalFolderFileCount',
+        'selectedLocalFolderOutFileCount',
+        'selectedLocalFolderSampleFiles',
+        'selectedLocalRelativePaths',
+        'selectedLocalTotalBytes',
+        'selectedLocalFileName',
+        'selectedLocalFileSize',
+        'selectedLocalFileType',
+        'selectedLocalFileExtension',
+        'selectedLocalFileValidationStatus',
+        'selectedRunReference',
+        'existingRunLookupStatus',
+        'existingRunLookupMessage',
+        'existingRunLookupCount',
+        'selectedLocalFolderCandidateCount',
+        'selectedLocalFolderAwrCandidateCount',
+        'selectedLocalFolderRejectedCount',
+        'selectedLocalFolderValidationStatus',
+        'selectedLocalFolderValidationMessages',
+        'awrSignatureValidation',
+        'objectStorageNamespace',
+        'objectStorageBucket',
+        'objectStorageObjectName',
+        'objectStorageRegion',
+        'objectStorageValidationStatus',
+        'objectStorageValidationMessage',
+        'sourceHandoffRequestId',
+        'sourceHandoffAuditStatus',
+        'selectedDb',
+        'selectedDbid',
+        'selectedHost',
+        'selectedInstance',
+        'selectedSystem',
+        'selectedAwr',
+        'selectedRun',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetB',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonBothComparable',
+        'screen1GeneratedArtifactReady',
+        'screen1GeneratedRunExecuted',
+        'screen1SelectedGeneratedArtifactReady',
+        'screen1SourceIntakeExecutionStatus',
+        'screen1GeneratedArtifactPath',
+        'screen1ArtifactEvidenceReady',
+        'screen1ArtifactReadyRequestId',
+        'generatedArtifactAvailable',
+        'currentOperatorEvidenceSession',
+        'dashboardEvidenceSessionId',
+        'dashboardEvidenceReady',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeOptionsLoadRequestId',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt'
+      ]);
       const PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out']);
       const PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out']);
       let dashboardInteractivityInitialized = false;
@@ -1339,6 +1461,27 @@ def _build_dashboard_interactivity_javascript() -> str:
         return state;
       }
 
+      function sourceSelectionIsCurrent(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          dashboardStateFlagIsReady(safeState.sourceSelectionActivated) &&
+          safeState.sourceSelectionSessionId &&
+          operatorSessionTokenMatches('sourceSelectionSessionId', safeState.sourceSelectionSessionId)
+        );
+      }
+
+      function withoutInactiveSourceSelection(state) {
+        const nextState = sanitizeDashboardState(state || {});
+        if (sourceSelectionIsCurrent(nextState)) {
+          return nextState;
+        }
+        PHASE7CM_SOURCE_SELECTION_STATE_KEYS.forEach(function (key) {
+          delete nextState[key];
+        });
+        nextState.sourceSelectionActivated = '';
+        return sanitizeDashboardState(nextState);
+      }
+
       function parseHashState(hashValue) {
         const state = {};
         const rawHash = typeof hashValue === 'string' ? hashValue : window.location.hash;
@@ -1358,6 +1501,29 @@ def _build_dashboard_interactivity_javascript() -> str:
           return {};
         }
         return state;
+      }
+
+      function isScreen2ControlPage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\\/)screen_2_control\\.html$/.test(path);
+      }
+
+      function isScreen1IngestionPage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\\/)screen_1_ingestion\\.html$/.test(path);
+      }
+
+      function isDownstreamEvidencePage() {
+        const path = String(window.location && window.location.pathname || '');
+        return /(^|\\/)(screen_3_analysis|screen_4_historical_review|screen_5_recommendation_action|screen_6_fleet_overview)\\.html$/.test(path);
+      }
+
+      function hasExplicitDashboardHandoffState() {
+        return Object.keys(parseHashState(window.location.hash)).length > 0;
+      }
+
+      function screen2ShouldHydrateFromPersistentState() {
+        return false;
       }
 
       function readLocalStorageState() {
@@ -1386,6 +1552,14 @@ def _build_dashboard_interactivity_javascript() -> str:
       function screen3RuntimeOptionsCacheStatusText(prefix, cachedAt) {
         const timestamp = safeStateValue(cachedAt || '');
         return prefix + (timestamp ? ' from ' + timestamp : '') + '.';
+      }
+
+      function screen2RuntimeOptionsProductMessage(value) {
+        return safeStateValue(value)
+          .replace(new RegExp('Screen 3 ' + 'runtime options', 'gi'), 'Screen 2 runtime options')
+          .replace(new RegExp('Screen 3 ' + 'Control Center', 'gi'), 'Screen 2 Control')
+          .replace(new RegExp('Screen 3 ' + 'Control', 'gi'), 'Screen 2 Control')
+          .replace(new RegExp('History ' + 'Selector', 'gi'), 'Runtime Scope & Analysis Control');
       }
 
       function readScreen3RuntimeOptionsCache() {
@@ -1599,17 +1773,12 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
-        const cachedRuntimeOptions = readScreen3RuntimeOptionsCache();
-        const cachedRuntimeOptionsState = screen3RuntimeOptionsStateFromCache(cachedRuntimeOptions);
+        const hashState = parseHashState(window.location.hash);
         const explicitState = Object.assign(
           {},
-          readLocalStorageState(),
-          parseHashState(window.location.hash)
+          hashState
         );
-        let state = Object.assign({}, defaultState, cachedRuntimeOptionsState, explicitState);
-        if (cachedRuntimeOptions) {
-          state = screen3ReconcileCachedSelectionState(state, cachedRuntimeOptions);
-        }
+        let state = Object.assign({}, defaultState, explicitState);
         if (
           explicitState.selectedSourceMode &&
           explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
@@ -1617,7 +1786,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           delete state.selectedSourcePath;
         }
-        return sanitizeDashboardState(state);
+        state = withoutInactiveSourceSelection(state);
+        return enforceCurrentScreen2EvidenceState(state);
       }
 
       function serializeDashboardState(state) {
@@ -2152,12 +2322,12 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function sourceSubmitLabel(mode) {
         const labels = {
-          local_staged: 'Submit Local Folder Source Handoff',
-          local_file: 'Submit Local File Source Handoff',
-          existing_run: 'Submit Existing Run Source Handoff',
-          object_storage: 'Submit Object Storage Source Handoff'
+          local_staged: 'Run Local Folder Source Intake',
+          local_file: 'Run Local File Source Intake',
+          existing_run: 'Continue Existing Platform Evidence',
+          object_storage: 'Run Object Storage Source Intake'
         };
-        return labels[mode] || 'Submit Governed Source Handoff';
+        return labels[mode] || 'Run Governed Source Intake';
       }
 
       function sourceActionStateMessage(state, missing) {
@@ -2168,18 +2338,18 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         if (!missing.length) {
           if (mode === 'local_staged') {
-            return 'Ready to submit Local Folder source handoff.';
+            return 'Ready to submit governed backend Local Folder source intake.';
           }
           if (mode === 'local_file') {
-            return 'Ready to submit Local File source handoff.';
+            return 'Ready to submit governed backend Local File source intake.';
           }
           if (mode === 'existing_run') {
-            return 'Ready to submit Existing Run source handoff.';
+            return 'Ready to continue with existing platform evidence on Screen 2 Control.';
           }
           if (mode === 'object_storage') {
-            return 'Ready to submit Object Storage source handoff.';
+            return 'Ready to submit governed Object Storage source intake metadata.';
           }
-          return 'Ready to submit governed source handoff.';
+          return 'Ready to submit governed source intake.';
         }
         if (mode === 'local_staged') {
           return 'Choose a folder or use backend path fallback. Missing: ' + missing.join(', ') + '.';
@@ -2200,6 +2370,575 @@ def _build_dashboard_interactivity_javascript() -> str:
           return 'Complete Object Storage metadata and validate configured defaults. Missing: ' + missing.join(', ') + '.';
         }
         return 'Source configuration incomplete. Missing: ' + missing.join(', ') + '.';
+      }
+
+      function sourceSelectionMethodLabel(method) {
+        const labels = {
+          backend_path: 'Backend-visible path',
+          os_folder_picker: 'Folder picker metadata',
+          os_file_picker: 'File picker metadata',
+          existing_run_reference: 'Existing platform evidence',
+          object_storage_metadata: 'Object Storage metadata'
+        };
+        return labels[method] || safeStateValue(method || 'Not selected');
+      }
+
+      function screen3SourceContextExecutionSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (screen1GeneratedArtifactReady(safeState)) {
+          return 'Generated artifact ready from governed backend source intake.';
+        }
+        if (safeState.sourceHandoffRequestId) {
+          return 'Source intake request submitted; artifact readiness is not confirmed on this page.';
+        }
+        const mode = safeState.selectedSourceMode || '';
+        if (mode === 'existing_run') {
+          return safeState.selectedRunReference
+            ? 'Existing platform evidence selected for Screen 2 runtime control.'
+            : 'Load or select existing platform evidence before runtime control.';
+        }
+        if (mode) {
+          return 'Run source intake on Screen 1 before using this new source for runtime control.';
+        }
+        return 'No source or evidence context selected.';
+      }
+
+      function screen3SourceContextGuidance(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+        return readiness.guidance;
+      }
+
+      function screen3NumericStateValue(value) {
+        const parsed = parseInt(safeStateValue(value || '0'), 10);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function newDashboardEvidenceSessionId(prefix) {
+        return [
+          safeStateValue(prefix || 'evidence'),
+          String(Date.now()),
+          Math.random().toString(36).slice(2, 8)
+        ].join('-');
+      }
+
+      function readOperatorSession() {
+        try {
+          const rawValue = window.sessionStorage.getItem(DASHBOARD_OPERATOR_SESSION_KEY);
+          const buildToken = safeStateValue(
+            document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+          );
+          if (!rawValue) {
+            return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+          }
+          const parsed = JSON.parse(rawValue);
+          if (!parsed || typeof parsed !== 'object') {
+            return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+          }
+          if (buildToken && safeStateValue(parsed.dashboardGeneratedAt || '') !== buildToken) {
+            const resetSession = { dashboardGeneratedAt: buildToken };
+            try {
+              window.sessionStorage.setItem(DASHBOARD_OPERATOR_SESSION_KEY, JSON.stringify(resetSession));
+            } catch (innerError) {
+              return resetSession;
+            }
+            return resetSession;
+          }
+          if (buildToken && !parsed.dashboardGeneratedAt) {
+            parsed.dashboardGeneratedAt = buildToken;
+          }
+          return parsed;
+        } catch (error) {
+          const buildToken = safeStateValue(
+            document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+          );
+          return buildToken ? { dashboardGeneratedAt: buildToken } : {};
+        }
+      }
+
+      function writeOperatorSessionValue(key, value) {
+        if (!key) {
+          return '';
+        }
+        const session = readOperatorSession();
+        const safeValue = safeStateValue(value || '');
+        const buildToken = safeStateValue(
+          document.body && document.body.getAttribute('data-dashboard-generated-at') || ''
+        );
+        if (buildToken) {
+          session.dashboardGeneratedAt = buildToken;
+        }
+        if (safeValue) {
+          session[key] = safeValue;
+        } else {
+          delete session[key];
+        }
+        try {
+          window.sessionStorage.setItem(DASHBOARD_OPERATOR_SESSION_KEY, JSON.stringify(session));
+        } catch (error) {
+          return safeValue;
+        }
+        return safeValue;
+      }
+
+      function issueOperatorSessionToken(key, prefix) {
+        const token = newDashboardEvidenceSessionId(prefix || key || 'operator');
+        writeOperatorSessionValue(key, token);
+        return token;
+      }
+
+      function operatorSessionTokenMatches(key, value) {
+        const safeValue = safeStateValue(value || '');
+        if (!key || !safeValue) {
+          return false;
+        }
+        return safeStateValue(readOperatorSession()[key]) === safeValue;
+      }
+
+      function screen3RuntimeOptionsLiveLoaded(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const rows = screen3NumericStateValue(safeState.screen3RuntimeOptionsLoadedRows);
+        return Boolean(
+          rows > 0 &&
+          safeState.screen2RuntimeOptionsLoadRequestId &&
+          operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
+          safeStateValue(safeState.screen3RuntimeOptionsCacheStatus || '').toLowerCase().indexOf('live-loaded') >= 0
+        );
+      }
+
+      function screen3RuntimeOptionsAreLoaded(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return screen3RuntimeOptionsLiveLoaded(safeState);
+      }
+
+      function screen3RuntimeScopeIsSelected(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          screen3RuntimeOptionsAreLoaded(safeState) &&
+          safeState.screen2RuntimeScopeSelectionEpoch &&
+          operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch) &&
+          safeState.selectedRuntimeScope &&
+          (
+            safeState.selectedRuntimeScopeSourceTable ||
+            safeState.selectedTimeWindow ||
+            safeState.selectedSnapshot ||
+            safeState.screen3SelectedRuntimeScopeRowId ||
+            safeState.selectedRuntimeScopeResolutionState
+          )
+        );
+      }
+
+      function screen1ArtifactEvidenceReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const requestBound = Boolean(
+          safeState.screen1ArtifactReadyRequestId ||
+          safeState.sourceHandoffRequestId ||
+          safeState.screen1GeneratedArtifactPath
+        );
+        return sourceSelectionIsCurrent(safeState) &&
+          requestBound &&
+          safeState.currentOperatorEvidenceSession === 'screen1_artifact_ready' &&
+          safeState.screen1ArtifactReadyRequestId &&
+          operatorSessionTokenMatches('screen1ArtifactReadyRequestId', safeState.screen1ArtifactReadyRequestId) &&
+          (
+          dashboardStateFlagIsReady(safeState.screen1ArtifactEvidenceReady) ||
+          dashboardStateFlagIsReady(safeState.screen1GeneratedArtifactReady) ||
+          dashboardStateFlagIsReady(safeState.screen1GeneratedRunExecuted) ||
+          dashboardStateFlagIsReady(safeState.screen1SelectedGeneratedArtifactReady)
+        );
+      }
+
+      function screen2ExistingEvidenceReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          sourceSelectionIsCurrent(safeState) &&
+          safeState.selectedSourceMode === 'existing_run' &&
+          safeState.screen2RuntimeOptionsLoadRequestId &&
+          operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
+          screen3RuntimeOptionsAreLoaded(safeState) &&
+          screen3RuntimeScopeIsSelected(safeState) &&
+          safeState.screen2RuntimeScopeReadyAt &&
+          operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch)
+        );
+      }
+
+      function dashboardEvidenceIsReady(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          safeState.currentOperatorEvidenceSession &&
+          (screen1ArtifactEvidenceReady(safeState) || screen2ExistingEvidenceReady(safeState))
+        );
+      }
+
+      function dashboardEvidenceReadyReason(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (screen1ArtifactEvidenceReady(safeState)) {
+          return 'screen1_artifact_ready';
+        }
+        if (screen2ExistingEvidenceReady(safeState)) {
+          return 'screen2_existing_evidence_ready';
+        }
+        return '';
+      }
+
+      function clearScreen2ExistingEvidenceState(state, options) {
+        if (!state) {
+          return state;
+        }
+        const opts = options || {};
+        state.screen2ExistingEvidenceReady = '';
+        state.screen2RuntimeScopeSelectionEpoch = '';
+        state.screen2RuntimeScopeReadyAt = '';
+        writeOperatorSessionValue('screen2RuntimeScopeSelectionEpoch', '');
+        if (opts.clearRuntimeOptions) {
+          state.screen2RuntimeOptionsLoadRequestId = '';
+          state.screen3RuntimeOptionsLoadedRows = '';
+          state.screen3RuntimeOptionsCount = '';
+          state.screen3RuntimeOptionsCacheStatus = '';
+          writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+        }
+        [
+          'selectedRuntimeScope',
+          'selectedRuntimeScopeSourceTable',
+          'selectedRuntimeScopeAwrCount',
+          'selectedRuntimeScopeSnapshotCount',
+          'selectedRuntimeScopeResolutionState',
+          'selectedRuntimeScopeReadinessState',
+          'screen3SelectedRuntimeScopeRowId',
+          'screen3SelectedRuntimeIntervalId',
+          'selectedComparisonTargetA',
+          'selectedComparisonTargetB',
+          'selectedComparisonTargetAReadinessState',
+          'selectedComparisonTargetBReadinessState',
+          'selectedComparisonBothComparable',
+          'screen3LastOutputArtifact',
+          'screen3LastNewRunOutputReference'
+        ].forEach(function (key) {
+          state[key] = '';
+        });
+        if (!screen1ArtifactEvidenceReady(state)) {
+          state.currentOperatorEvidenceSession = '';
+          state.dashboardEvidenceReady = '';
+          state.dashboardEvidenceSessionId = '';
+        }
+        return state;
+      }
+
+      function updateScreen2ExistingEvidenceReadiness(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        if (screen2ExistingEvidenceReady(state)) {
+          state.screen2ExistingEvidenceReady = 'true';
+          state.currentOperatorEvidenceSession = 'screen2_existing_evidence_ready';
+          state.dashboardEvidenceReady = 'screen2_existing_evidence_ready';
+          state.dashboardEvidenceSessionId = state.dashboardEvidenceSessionId || newDashboardEvidenceSessionId('screen2');
+        } else if (!screen1ArtifactEvidenceReady(state)) {
+          state.screen2ExistingEvidenceReady = '';
+          state.currentOperatorEvidenceSession = '';
+          state.dashboardEvidenceReady = '';
+          state.dashboardEvidenceSessionId = '';
+        }
+        return state;
+      }
+
+      function resetScreen2RuntimeOptionsDisplayState(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        state.screen3RuntimeOptionsStatus = 'not loaded';
+        state.screen3RuntimeOptionsMessage = 'Load available runtime options to query existing platform evidence through Screen 2 Control.';
+        state.screen3RuntimeOptionsCount = '0';
+        state.screen3RuntimeOptionsLoadedRows = '0';
+        state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        state.screen3RuntimeOptionsLoadedAt = 'not loaded';
+        state.screen3RuntimeOptionsIncludedTables = 'not checked';
+        state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
+        state.screen3RuntimeOptionsCoverageMessage = 'Load runtime options to see queried tables and row counts.';
+        state.screen3RuntimeOptionsCacheStatus = 'No runtime options cache restored.';
+        state.screen3LastRequestedAction = '';
+        state.screen3LastActionStatus = '';
+        state.screen3LastValidationStatus = '';
+        state.screen3LastPersistenceStatus = '';
+        state.screen3LastExecutionStatus = '';
+        state.screen3LastOutputArtifact = '';
+        state.screen3LastNewRunOutputReference = '';
+        state.screen3LastNextStep = '';
+        state.screen3LastRequestId = '';
+        state.screen3LastTransactionId = '';
+        return state;
+      }
+
+      function resetScreen2TargetAndComparisonState(state) {
+        if (!state || typeof state !== 'object') {
+          return state || {};
+        }
+        [
+          'selectedApplication',
+          'selectedDb',
+          'selectedDbid',
+          'selectedHost',
+          'selectedSystem',
+          'selectedInstance',
+          'selectedAwr',
+          'selectedRun',
+          'selectedRunReference',
+          'selectedReportId',
+          'selectedSnapshot',
+          'selectedTimeWindow',
+          'selectedRuntimeScope',
+          'selectedRuntimeScopeSummary',
+          'selectedRuntimeScopeSourceTable',
+          'selectedRuntimeScopeAwrCount',
+          'selectedRuntimeScopeSnapshotCount',
+          'selectedRuntimeScopeResolutionState',
+          'selectedRuntimeScopeReadinessState',
+          'selectedDomain',
+          'selectedSeverity',
+          'screen3RuntimeScopeSelectionSource',
+          'screen3TargetASelectionSource',
+          'screen3TargetBSelectionSource',
+          'screen3SelectedRuntimeScopeRowId',
+          'screen3SelectedTargetARowId',
+          'screen3SelectedTargetBRowId',
+          'screen3SelectedRuntimeIntervalId',
+          'screen3SelectedTargetAIntervalId',
+          'screen3SelectedTargetBIntervalId',
+          'selectedComparisonMode',
+          'selectedReviewMode',
+          'selectedComparisonTargetA',
+          'selectedComparisonTargetB',
+          'selectedComparisonTargetASourceType',
+          'selectedComparisonTargetBSourceType',
+          'selectedComparisonTargetAScopeType',
+          'selectedComparisonTargetBScopeType',
+          'selectedComparisonTargetAScopeValue',
+          'selectedComparisonTargetBScopeValue',
+          'selectedComparisonTargetATimeWindow',
+          'selectedComparisonTargetBTimeWindow',
+          'selectedComparisonTargetAResolutionState',
+          'selectedComparisonTargetBResolutionState',
+          'selectedComparisonTargetAReadinessState',
+          'selectedComparisonTargetBReadinessState',
+          'selectedComparisonTargetAResolutionSummary',
+          'selectedComparisonTargetBResolutionSummary',
+          'selectedComparisonTargetAAwrCount',
+          'selectedComparisonTargetBAwrCount',
+          'selectedComparisonTargetASnapshotCount',
+          'selectedComparisonTargetBSnapshotCount',
+          'selectedComparisonTargetAMissingGates',
+          'selectedComparisonTargetBMissingGates',
+          'selectedComparisonAwrA',
+          'selectedComparisonAwrB',
+          'selectedComparisonWindowA',
+          'selectedComparisonWindowB',
+          'selectedComparisonBothComparable'
+        ].forEach(function (key) {
+          state[key] = '';
+        });
+        state.screen3ActiveSelectionTarget = 'Runtime Scope';
+        return state;
+      }
+
+      function enforceCurrentScreen2EvidenceState(state) {
+        const nextState = sanitizeDashboardState(state || {});
+        if (!isScreen2ControlPage()) {
+          return nextState;
+        }
+        if (!screen3RuntimeOptionsLiveLoaded(nextState)) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
+          resetScreen2RuntimeOptionsDisplayState(nextState);
+          resetScreen2TargetAndComparisonState(nextState);
+          return updateScreen2ExistingEvidenceReadiness(nextState);
+        }
+        if (!screen3RuntimeScopeIsSelected(nextState)) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
+          resetScreen2TargetAndComparisonState(nextState);
+          return updateScreen2ExistingEvidenceReadiness(nextState);
+        }
+        return updateScreen2ExistingEvidenceReadiness(nextState);
+      }
+
+      function screen3RuntimeOptionsSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const rows = safeState.screen3RuntimeOptionsLoadedRows || safeState.screen3RuntimeOptionsCount || '';
+        if (!screen3RuntimeOptionsAreLoaded(safeState)) {
+          return 'Not loaded';
+        }
+        return rows ? rows + ' DB-backed row(s) available' : 'Loaded';
+      }
+
+      function screen3RuntimeScopeCompactSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (!screen3RuntimeScopeIsSelected(safeState)) {
+          return 'Not selected';
+        }
+        const dbLabel = [
+          safeState.selectedDb,
+          safeState.selectedDbid ? 'DBID: ' + safeState.selectedDbid : ''
+        ].filter(Boolean).join(' / ');
+        const hostLabel = [
+          safeState.selectedHost && safeState.selectedHost !== 'Not available' ? safeState.selectedHost : '',
+          safeState.selectedInstance ? 'Instance: ' + safeState.selectedInstance : ''
+        ].filter(Boolean).join(' / ');
+        const windowText = safeState.selectedTimeWindow || safeState.selectedSnapshot || '';
+        return [dbLabel, hostLabel, windowText].filter(Boolean).join(' · ') || 'Selected row';
+      }
+
+      function screen3RuntimeEvidencePathReadiness(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
+        const sourceCurrent = sourceSelectionIsCurrent(safeState);
+        const artifactReady = screen1GeneratedArtifactReady(safeState);
+        const runtimeOptionsLoaded = screen3RuntimeOptionsAreLoaded(safeState);
+        const runtimeScopeSelected = screen3RuntimeScopeIsSelected(safeState);
+
+        if (!sourceCurrent) {
+          return {
+            path: 'None selected',
+            readiness: 'No valid runtime evidence path yet',
+            nextStep: 'Choose a path from Platform Entry',
+            guidance: 'Choose Load / Ingest New Source or Use Existing Platform Evidence from Platform Entry.'
+          };
+        }
+
+        if (artifactReady && mode !== 'existing_run') {
+          return {
+            path: 'New Source Artifact',
+            readiness: 'completed_artifact_ready',
+            nextStep: runtimeOptionsLoaded ? 'Continue to Analysis' : 'Load Runtime Options / Continue to Analysis',
+            handoff: 'Ready for Analysis / Review / Action / Learning',
+            guidance: 'Screen 1 completed the governed artifact handoff. Screen 2 can load DB-backed runtime options and select scope.'
+          };
+        }
+
+        if (mode === 'existing_run') {
+          if (runtimeScopeSelected) {
+            return {
+              path: 'Existing Platform Evidence',
+              readiness: 'Runtime scope selected',
+              handoff: 'Ready for Analysis / Review / Action / Learning',
+              guidance: 'Existing platform evidence has a selected runtime scope/window/assignment for downstream workflow.'
+            };
+          }
+          if (runtimeOptionsLoaded) {
+            return {
+              path: 'Existing Platform Evidence',
+              readiness: 'Runtime options loaded; row/scope selection required',
+              nextStep: 'Select AWR / Report Row',
+              guidance: 'DB-backed runtime options are loaded. Select an AWR/report row and scope/window before downstream handoff.'
+            };
+          }
+          return {
+            path: 'Existing Platform Evidence',
+            readiness: 'Runtime options not loaded',
+            nextStep: 'Load Runtime Options',
+            guidance: 'Platform Entry selected the existing evidence path. Load DB-backed runtime options to choose scope.'
+          };
+        }
+
+        if (mode === 'object_storage') {
+          return {
+            path: 'Object Storage Metadata',
+            readiness: 'Screen 1 validation/intake required',
+            nextStep: 'Complete governed source intake on Screen 1',
+            guidance: 'Object Storage metadata is not runtime evidence until Screen 1 validates, ingests, and produces an artifact.'
+          };
+        }
+
+        if (mode === 'local_staged' || mode === 'local_file') {
+          return {
+            path: 'New Source',
+            readiness: 'Screen 1 intake required',
+            nextStep: 'Complete Screen 1 source intake',
+            guidance: 'New local source selection must complete Screen 1 source intake before Screen 2 can hand off runtime evidence.'
+          };
+        }
+
+        return {
+          path: 'None selected',
+          readiness: 'No valid runtime evidence path yet',
+          nextStep: 'Choose a path from Platform Entry',
+          guidance: 'Choose Load / Ingest New Source or Use Existing Platform Evidence from Platform Entry.'
+        };
+      }
+
+      function screen3SourceContextEntries(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+        const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
+        const rows = [];
+        function add(label, value, fallback, options) {
+          const opts = options || {};
+          const text = safeStateValue(value || '');
+          if (!text && opts.optional) {
+            return;
+          }
+          rows.push({
+            label: label,
+            value: text || fallback || 'Not selected',
+            emphasis: opts.emphasis === true
+          });
+        }
+        add('Path', readiness.path, 'None selected', { emphasis: true });
+        add('Readiness', readiness.readiness, 'No valid runtime evidence path yet', { emphasis: true });
+        if (readiness.handoff) {
+          add('Handoff / Next Step', readiness.handoff, '', { emphasis: true });
+        } else if (readiness.nextStep) {
+          add('Handoff / Next Step', readiness.nextStep, '', { emphasis: true });
+        }
+        if (mode === 'existing_run' || screen3RuntimeOptionsAreLoaded(safeState)) {
+          add('Runtime Options', screen3RuntimeOptionsSummary(safeState), 'Not loaded');
+        }
+        if (screen3RuntimeScopeIsSelected(safeState)) {
+          add('Runtime Scope', screen3RuntimeScopeCompactSummary(safeState), 'Not selected');
+        }
+        if (mode === 'existing_run') {
+          add('Evidence Reference', safeState.selectedRunReference, 'Runtime row not selected', {
+            optional: !safeState.selectedRunReference && !screen3RuntimeScopeIsSelected(safeState)
+          });
+        }
+        return rows;
+      }
+
+      function updateScreen3SourceContextSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        scope.querySelectorAll('[data-screen3-source-context-summary="true"]').forEach(function (container) {
+          if (!sourceSelectionIsCurrent(safeState)) {
+            container.innerHTML = '';
+            container.setAttribute('data-screen3-source-context-mode', 'none');
+            return;
+          }
+          const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : 'unknown');
+          const readiness = screen3RuntimeEvidencePathReadiness(safeState);
+          const rows = screen3SourceContextEntries(safeState);
+          const cards = rows.map(function (row) {
+            return '<article class="info-box screen2-control-info-box screen3-source-context-card' + (row.emphasis ? ' primary' : '') + '">' +
+              '<strong>' + escapeHtml(row.label) + '</strong>' +
+              '<div>' + escapeHtml(row.value) + '</div>' +
+              '</article>';
+          }).join('');
+          container.innerHTML =
+            '<div class="screen3-source-context-header">' +
+              '<strong>' + escapeHtml(readiness.path || sourceModeLabel(mode)) + '</strong>' +
+              '<span>' + escapeHtml(screen3SourceContextGuidance(safeState)) + '</span>' +
+            '</div>' +
+            '<div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced screen3-source-context-grid">' + cards + '</div>';
+          container.setAttribute('data-screen3-source-context-mode', mode);
+        });
+      }
+
+      function updateScreen2RuntimeDependentGates(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        const ready = isScreen2ControlPage() && screen3RuntimeScopeIsSelected(safeState);
+        scope.querySelectorAll('[data-screen2-runtime-scope-required-content="true"]').forEach(function (element) {
+          element.hidden = !ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-scope-empty-state="true"]').forEach(function (element) {
+          element.hidden = ready;
+        });
       }
 
       function isScreen1ParserGovernanceAction(element) {
@@ -2304,6 +3043,98 @@ def _build_dashboard_interactivity_javascript() -> str:
           return 'Ready to submit governed knowledge artifact rejection request for ' + selectedTarget + '.';
         }
         return 'Ready to submit governed Screen 1 parser governance request for ' + selectedTarget + '.';
+      }
+
+      function dashboardStateFlagIsReady(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        return (
+          normalized === 'true' ||
+          normalized === '1' ||
+          normalized === 'yes' ||
+          normalized === 'ready' ||
+          normalized === 'available' ||
+          normalized === 'selected' ||
+          normalized === 'executed' ||
+          normalized === 'artifact_ready' ||
+          normalized === 'generated_artifact_ready' ||
+          normalized === 'completed_artifact_ready'
+        );
+      }
+
+      function screen1GeneratedArtifactReady(state) {
+        return screen1ArtifactEvidenceReady(state || readDashboardState());
+      }
+
+      function clearScreen1GeneratedArtifactState(state) {
+        if (!state) {
+          return state;
+        }
+        state.screen1GeneratedArtifactReady = '';
+        state.screen1GeneratedRunExecuted = '';
+        state.screen1SelectedGeneratedArtifactReady = '';
+        state.screen1ArtifactEvidenceReady = '';
+        state.screen1ArtifactReadyRequestId = '';
+        state.screen1GeneratedArtifactPath = '';
+        state.dashboardEvidenceReady = '';
+        state.dashboardEvidenceSessionId = '';
+        state.currentOperatorEvidenceSession = '';
+        state.generatedArtifactAvailable = '';
+        writeOperatorSessionValue('screen1ArtifactReadyRequestId', '');
+        clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: true });
+        return state;
+      }
+
+      function mountScreen1ArtifactTemplate(region) {
+        if (!region || region.getAttribute('data-screen1-artifact-template-mounted') === 'true') {
+          return;
+        }
+        const content = region.querySelector('[data-screen1-artifact-ready-content="true"]');
+        const template = region.querySelector('template[data-screen1-artifact-template="true"]');
+        if (!content || !template || !template.content) {
+          return;
+        }
+        content.appendChild(template.content.cloneNode(true));
+        region.setAttribute('data-screen1-artifact-template-mounted', 'true');
+      }
+
+      function updateScreen1GeneratedArtifactGate(state, root) {
+        const scope = root || document;
+        const ready = screen1GeneratedArtifactReady(state);
+        scope.querySelectorAll('[data-screen1-artifact-ready-region="true"]').forEach(function (region) {
+          const emptyState = region.querySelector('[data-screen1-artifact-empty-state="true"]');
+          const content = region.querySelector('[data-screen1-artifact-ready-content="true"]');
+          region.setAttribute('data-screen1-generated-artifact-ready', ready ? 'true' : 'false');
+          if (ready) {
+            mountScreen1ArtifactTemplate(region);
+            applyScreen3TableStates(region);
+          }
+          if (emptyState) {
+            emptyState.hidden = ready;
+          }
+          if (content) {
+            content.hidden = !ready;
+          }
+        });
+      }
+
+      function updateDashboardEvidenceGate(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        const ready = dashboardEvidenceIsReady(safeState);
+        if (document.body) {
+          document.body.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+        }
+        scope.querySelectorAll('[data-dashboard-evidence-gate-empty="true"]').forEach(function (element) {
+          element.hidden = ready;
+          element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+        });
+        scope.querySelectorAll('[data-dashboard-evidence-gated-content="true"]').forEach(function (element) {
+          element.hidden = !ready;
+          element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+          if (ready) {
+            applyScreen3TableStates(element);
+          }
+        });
       }
 
       function screen1MissingFields(element, state) {
@@ -3529,6 +4360,56 @@ def _build_dashboard_interactivity_javascript() -> str:
       function updateSourceWorkflowSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
+        if (!sourceSelectionIsCurrent(safeState)) {
+          const values = {
+            active: 'No source selected',
+            metadata: 'Select a source mode or choose a folder/file before submitting.',
+            validation: 'Not checked',
+            missing: 'Select a source to see required metadata.',
+            handoff: 'No execution target selected.',
+            action: 'Select a source to continue.',
+            next_step: 'Choose a source mode, then configure source metadata.',
+            pipeline_mode: 'Current source mode: none selected',
+            pipeline_active: 'Active source: none selected',
+            pipeline_validation: 'Current source validation: not checked',
+            pipeline_handoff: 'Current target: none selected',
+            pipeline_node_source: 'Select a source for governed intake.',
+            config_type: 'Current source type: none selected',
+            config_location: 'Current source location: not selected',
+            config_candidates: 'No source metadata selected.',
+            config_rejected: 'No validation result yet.',
+            config_validation: 'Current source validation: not checked',
+            config_handoff: 'Current source intake status: select a source to continue.'
+          };
+          Object.keys(values).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
+              element.textContent = values[key];
+              element.setAttribute('data-phase7-source-summary-status', 'not-selected');
+              if (key.indexOf('pipeline_') === 0) {
+                element.setAttribute('title', 'No active source selection.');
+              }
+            });
+          });
+          const validationValues = {
+            local_folder: 'Local folder validation appears after Choose Folder or backend path metadata is submitted.',
+            local_file: 'Local file validation appears after Choose File or backend file metadata is submitted.',
+            existing_run: 'Existing platform evidence lookup belongs to Screen 2 Control.',
+            object_storage: 'Object Storage metadata validation appears after Validate Object Storage Source.',
+            service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
+            result: 'No source intake request has been submitted.'
+          };
+          Object.keys(validationValues).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
+              element.textContent = validationValues[key];
+              element.setAttribute('data-phase7-source-validation-status', 'not-selected');
+            });
+          });
+          scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
+            element.textContent = sourceSubmitLabel('');
+          });
+          updateScreen1ParserGovernanceSummary(safeState, scope);
+          return;
+        }
         const missing = sourceSelectionMissingFields(safeState);
         const modeLabel = sourceModeLabel(safeState.selectedSourceMode || '');
         const activeLocation = sourceActiveLocationSummary(safeState);
@@ -3536,6 +4417,9 @@ def _build_dashboard_interactivity_javascript() -> str:
         const pipelineNode = sourcePipelineNodeSummary(safeState);
         const validationSummary = sourceValidationSummary(safeState);
         const actionState = sourceActionStateMessage(safeState, missing);
+        const handoffTarget = safeState.selectedSourceMode === 'existing_run'
+          ? 'Screen 2 Control'
+          : 'Screen 1 Ingestion';
         const values = {
           active: modeLabel,
           metadata: sourceMetadataSummary(safeState),
@@ -3544,23 +4428,23 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? 'Missing required metadata: ' + missing.join(', ')
             : 'Required source metadata is satisfied.',
           handoff: missing.length
-            ? 'Screen 2 Control handoff disabled. Missing: ' + missing.join(', ')
-            : 'Screen 2 Control handoff ready. Submit governed request to receive request ID and audit record.',
+            ? handoffTarget + ' source intake disabled. Missing: ' + missing.join(', ')
+            : handoffTarget + ' source intake ready. Submit governed request to receive request ID and audit record.',
           action: actionState,
           next_step: missing.length
             ? 'Complete the missing metadata or validation before submitting.'
-            : 'Submit governed source handoff, review Request ID / Audit record, then open Screen 2 Control.',
+            : 'Submit governed source intake, review Request ID / Audit record, then continue to ' + handoffTarget + '.',
           pipeline_mode: 'Current source mode: ' + modeLabel,
           pipeline_active: 'Active source: ' + pipelineActive,
           pipeline_validation: 'Current source validation: ' + validationSummary,
-          pipeline_handoff: 'Current handoff target: Screen 2 Control',
+          pipeline_handoff: 'Current target: ' + handoffTarget,
           pipeline_node_source: pipelineNode,
           config_type: 'Current source type: ' + modeLabel,
           config_location: 'Current source location: ' + activeLocation,
           config_candidates: sourceCandidateSummary(safeState),
           config_rejected: sourceRejectedSummary(safeState),
           config_validation: 'Current source validation: ' + validationSummary,
-          config_handoff: 'Current handoff status: ' + actionState
+          config_handoff: 'Current source intake status: ' + actionState
         };
         Object.keys(values).forEach(function (key) {
           scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
@@ -3585,7 +4469,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? sourceValidationSummary(safeState)
             : 'Available after Validate Object Storage Source calls the governed service.',
           service: 'Governed workflow service: local source-intake service endpoint. Submit, lookup, and validation requests use governed service APIs; the browser does not query the database or Object Storage directly. Local development service: scripts/dashboard_workflow_service.py.',
-          result: 'After submit, the result panel shows accepted/rejected status, Request ID, Audit record, queued reference, and Open Screen 2 Control as the next step.'
+          result: 'After submit, the result panel shows accepted/running/completed/failed status, Request ID, Audit record, and generated artifact readiness.'
         };
         Object.keys(validationValues).forEach(function (key) {
           scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
@@ -3602,17 +4486,23 @@ def _build_dashboard_interactivity_javascript() -> str:
       function updateScreen3SourceHandoffEmptyState(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
-        const hasSourceContext = Boolean(
+        const hasSourceContext = sourceSelectionIsCurrent(safeState) && Boolean(
           safeState.selectedSourceMode ||
           safeState.selectedRunReference ||
           safeState.objectStorageNamespace ||
           safeState.selectedSourcePath ||
-          safeState.selectedLocalFileName
+          safeState.selectedLocalFileName ||
+          safeState.sourceHandoffRequestId
         );
         scope.querySelectorAll('[data-screen3-source-handoff-empty="true"]').forEach(function (element) {
           element.hidden = hasSourceContext;
           element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
         });
+        scope.querySelectorAll('[data-screen3-source-handoff-content="true"]').forEach(function (element) {
+          element.hidden = !hasSourceContext;
+          element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
+        });
+        updateScreen3SourceContextSummary(safeState, scope);
       }
 
       function isStaticDashboardHref(rawHref) {
@@ -3664,7 +4554,7 @@ def _build_dashboard_interactivity_javascript() -> str:
       function applyDashboardState(state, root) {
         const explicitState = sanitizeDashboardState(state);
         const defaultState = readDefaultDashboardState(root || document);
-        const safeState = Object.assign({}, defaultState, explicitState);
+        let safeState = Object.assign({}, defaultState, explicitState);
         if (
           explicitState.selectedSourceMode &&
           explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
@@ -3672,13 +4562,18 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           delete safeState.selectedSourcePath;
         }
+        safeState = withoutInactiveSourceSelection(safeState);
+        safeState = enforceCurrentScreen2EvidenceState(safeState);
         markSelectedElement(safeState, root);
         markReadOnlyFilterPlaceholders(safeState, root);
         updateDashboardStateInputs(safeState, root);
         updateSourceConfigurationVisibility(safeState, root);
         updateSelectedSummary(safeState, root);
         updateSourceWorkflowSummary(safeState, root);
+        updateScreen1GeneratedArtifactGate(safeState, root);
+        updateDashboardEvidenceGate(safeState, root);
         updateScreen3SourceHandoffEmptyState(safeState, root);
+        updateScreen2RuntimeDependentGates(safeState, root);
         updateScreen3RuntimeFilters(safeState, root);
         applyScreen3TableStates(root);
         updateScreen3RowApplyLabels(safeState, root);
@@ -3796,6 +4691,10 @@ def _build_dashboard_interactivity_javascript() -> str:
             });
           }
           screen3SetActiveSelectionSource(nextState, screen3RuntimeRowSelectionSource(element, nextState));
+          if (!screen3ActiveTargetSuffix(nextState) && screen3RuntimeOptionsAreLoaded(nextState)) {
+            nextState.screen2RuntimeScopeSelectionEpoch = issueOperatorSessionToken('screen2RuntimeScopeSelectionEpoch', 'screen2-scope');
+            nextState.screen2RuntimeScopeReadyAt = new Date().toISOString();
+          }
         } else if (selectType === 'snapshot') {
           const selectedIntervalId = valueForSelectable(element);
           const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
@@ -3823,6 +4722,10 @@ def _build_dashboard_interactivity_javascript() -> str:
             });
           }
           screen3SetActiveSelectionSource(nextState, 'Selected from interval table');
+          if (!screen3ActiveTargetSuffix(nextState) && screen3RuntimeOptionsAreLoaded(nextState)) {
+            nextState.screen2RuntimeScopeSelectionEpoch = nextState.screen2RuntimeScopeSelectionEpoch || issueOperatorSessionToken('screen2RuntimeScopeSelectionEpoch', 'screen2-scope');
+            nextState.screen2RuntimeScopeReadyAt = new Date().toISOString();
+          }
         }
         if (selectType === 'comparisonTargetA') {
           nextState.screen3TargetASelectionSource = 'Selected from advanced/external option';
@@ -3830,6 +4733,9 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.screen3TargetBSelectionSource = 'Selected from advanced/external option';
         }
         if (key === 'selectedSourceMode') {
+          clearScreen1GeneratedArtifactState(nextState);
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = safeStateValue(element.getAttribute('data-source-selection-method'));
           nextState.selectedSourcePath = safeStateValue(element.getAttribute('data-source-default-path'));
           nextState.selectedLocalFolderFileCount = '';
@@ -3859,6 +4765,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.objectStorageValidationStatus = '';
           nextState.objectStorageValidationMessage = '';
         }
+        updateScreen2ExistingEvidenceReadiness(nextState);
         return writeDashboardState(nextState);
       }
 
@@ -3879,22 +4786,38 @@ def _build_dashboard_interactivity_javascript() -> str:
         const configMode = safeStateValue(element.getAttribute('data-source-config-mode'));
         if (configMode) {
           nextState.selectedSourceMode = configMode;
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key === 'selectedSourcePath' && nextState.selectedSourceMode) {
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'backend_path';
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key === 'selectedRunReference') {
           nextState.selectedSourceMode = 'existing_run';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'existing_run_reference';
+          clearScreen1GeneratedArtifactState(nextState);
         }
         if (key.indexOf('objectStorage') === 0) {
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           if (key !== 'objectStorageValidationStatus' && key !== 'objectStorageValidationMessage') {
             nextState.objectStorageValidationStatus = 'pending';
             nextState.objectStorageValidationMessage = 'Metadata changed; validate Object Storage source before submitting.';
           }
         }
+        if (key.indexOf('screen3RuntimeFilter') === 0) {
+          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
+        }
+        updateScreen2ExistingEvidenceReadiness(nextState);
         writeDashboardState(nextState);
       }
 
@@ -3910,6 +4833,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         const files = Array.prototype.slice.call(picker.files || []);
         const nextState = readDashboardState();
         if (pickerType === 'local_folder') {
+          const stagedPathField = document.querySelector('[data-phase7-source-path-field="local_staged"]');
           const relativePaths = files.map(function (file) {
             return safeStateValue(file.webkitRelativePath || file.name || '');
           }).filter(Boolean);
@@ -3932,7 +4856,12 @@ def _build_dashboard_interactivity_javascript() -> str:
                 : 'No .out candidate AWR files found. HTML AWR input is planned for a future parser/source adapter.'
             );
           nextState.selectedSourceMode = 'local_staged';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'os_folder_picker';
+          nextState.selectedSourcePath = safeStateValue(
+            (stagedPathField && (stagedPathField.value || stagedPathField.getAttribute('value'))) || 'data/input'
+          );
           nextState.selectedLocalFolderFileCount = String(files.length);
           nextState.selectedLocalFolderOutFileCount = String(outFiles.length);
           nextState.selectedLocalFolderSampleFiles = candidateFiles.slice(0, 5).join(', ');
@@ -3946,6 +4875,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.awrSignatureValidation = candidateFiles.length
             ? 'backend_validation_pending'
             : 'failed';
+          clearScreen1GeneratedArtifactState(nextState);
           writeDashboardState(nextState);
           updateSourcePickerSummary(
             picker,
@@ -3967,11 +4897,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (pickerType === 'local_file') {
           const file = files[0];
           nextState.selectedSourceMode = 'local_file';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'os_file_picker';
           if (file) {
             const extension = fileExtension(file.name || '');
             const extensionValid = isAllowedLocalFileName(file.name || '');
             nextState.selectedLocalFileName = safeStateValue(file.name || '');
+            nextState.selectedSourcePath = safeStateValue(nextState.selectedSourcePath || file.name || '');
             nextState.selectedLocalFileSize = String(Number(file.size) || 0);
             nextState.selectedLocalFileType = safeStateValue(file.type || extension);
             nextState.selectedLocalFileExtension = extension;
@@ -3982,6 +4915,7 @@ def _build_dashboard_interactivity_javascript() -> str:
               ? 'backend_validation_pending'
               : 'failed';
           } else {
+            nextState.selectedSourcePath = '';
             nextState.selectedLocalFileName = '';
             nextState.selectedLocalFileSize = '';
             nextState.selectedLocalFileType = '';
@@ -3989,11 +4923,12 @@ def _build_dashboard_interactivity_javascript() -> str:
             nextState.selectedLocalFileValidationStatus = 'invalid';
             nextState.awrSignatureValidation = 'failed';
           }
+          clearScreen1GeneratedArtifactState(nextState);
           writeDashboardState(nextState);
           updateSourcePickerSummary(
             picker,
             file
-              ? 'File selected. Nothing has been submitted yet. Backend validation is pending until Submit Governed Source Handoff is clicked. File: ' + (file.name || 'unnamed') +
+              ? 'File selected. Nothing has been submitted yet. Backend validation is pending until Run Governed Source Intake is clicked. File: ' + (file.name || 'unnamed') +
                 '. Size: ' + (Number(file.size) || 0) +
                 ' bytes. Type/extension: ' + (file.type || fileExtension(file.name || '') || 'unknown') +
                 '. Extension validation: ' + (isAllowedLocalFileName(file.name || '') ? 'valid' : 'invalid') +
@@ -4025,6 +4960,16 @@ def _build_dashboard_interactivity_javascript() -> str:
         window.PHASE7_DASHBOARD_OBJECT_STORAGE_VALIDATE_ENDPOINT ||
         derivePhase7Endpoint('/phase7/dashboard/object-storage/validate')
       );
+      const PHASE7_ACTION_STATUS_ENDPOINT = (
+        window.PHASE7_DASHBOARD_ACTION_STATUS_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/actions/status')
+      );
+      const PHASE7_HEALTH_ENDPOINT = (
+        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
+        derivePhase7Endpoint('/phase7/dashboard/health')
+      );
+      const SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS = 2500;
+      const SCREEN1_SOURCE_INTAKE_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
       function readActionPayload(element) {
         const rawPayload = element.getAttribute('data-action-payload') || '{}';
@@ -4095,6 +5040,9 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function screen3RuntimeScopeSummary(state) {
         const safeState = sanitizeDashboardState(state || readDashboardState());
+        if (!screen3RuntimeScopeIsSelected(safeState)) {
+          return 'Not selected';
+        }
         const parts = [
           safeState.selectedApplication,
           safeState.selectedDb,
@@ -4869,7 +5817,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           setScreen3ResultField(panel, 'comparison_mode', screen3ComparisonSummary(safeState));
           setScreen3ResultField(panel, 'comparison_target_a', screen3TargetShortSummary(safeState, 'A'));
           setScreen3ResultField(panel, 'comparison_target_b', screen3TargetShortSummary(safeState, 'B'));
-          setScreen3ResultField(panel, 'comparison_status', safeState.screen3LastRequestedAction === 'Build Comparison' ? (safeState.screen3LastActionStatus || 'Comparison request pending') : 'Pending comparison request');
+          setScreen3ResultField(panel, 'comparison_status', safeState.screen3LastRequestedAction === 'Build Comparison' ? (safeState.screen3LastActionStatus || 'Comparison request pending') : 'Not submitted');
           setScreen3ResultField(panel, 'comparison_result_mode', screen3ComparisonSummary(safeState));
           setScreen3ResultField(panel, 'comparison_target_a_readiness', safeState.selectedComparisonTargetAReadinessState || 'Target A: not resolved');
           setScreen3ResultField(panel, 'comparison_target_b_readiness', safeState.selectedComparisonTargetBReadinessState || 'Target B: not resolved');
@@ -5003,6 +5951,57 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function isScreen1SourceIntakeExecutionAction(element) {
+        return (
+          safeStateValue(element.getAttribute('data-screen-id')) === 'screen_1' &&
+          safeStateValue(element.getAttribute('data-action-type')) === 'screen1_source_intake_execute'
+        );
+      }
+
+      function screen1SourceIntakeMissingFields(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const missing = sourceSelectionMissingFields(safeState).slice();
+        const mode = safeState.selectedSourceMode || '';
+        if ((mode === 'local_staged' || mode === 'local_file') && !safeState.selectedSourcePath) {
+          missing.push('selectedSourcePath');
+        }
+        return missing.filter(function (value, index, list) {
+          return value && list.indexOf(value) === index;
+        });
+      }
+
+      function setScreen1GeneratedArtifactReadyState(ready, responsePayload) {
+        const nextState = readDashboardState();
+        const payload = responsePayload || {};
+        const summary = payload.source_summary || {};
+        const readyValue = ready ? 'completed_artifact_ready' : '';
+        nextState.sourceSelectionActivated = nextState.sourceSelectionActivated || (ready ? 'true' : '');
+        if (ready && !nextState.sourceSelectionSessionId) {
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+        }
+        nextState.screen1GeneratedArtifactReady = readyValue;
+        nextState.screen1GeneratedRunExecuted = readyValue;
+        nextState.screen1SelectedGeneratedArtifactReady = readyValue;
+        nextState.screen1ArtifactEvidenceReady = readyValue;
+        nextState.screen1ArtifactReadyRequestId = ready ? safeStateValue(payload.request_id || nextState.sourceHandoffRequestId || '') : '';
+        if (ready && nextState.screen1ArtifactReadyRequestId) {
+          writeOperatorSessionValue('screen1ArtifactReadyRequestId', nextState.screen1ArtifactReadyRequestId);
+        }
+        nextState.generatedArtifactAvailable = ready ? 'true' : '';
+        nextState.currentOperatorEvidenceSession = ready ? 'screen1_artifact_ready' : '';
+        nextState.dashboardEvidenceReady = ready ? 'screen1_artifact_ready' : '';
+        nextState.dashboardEvidenceSessionId = ready ? newDashboardEvidenceSessionId('screen1') : '';
+        nextState.screen1SourceIntakeExecutionStatus = ready
+          ? 'completed_artifact_ready'
+          : safeStateValue(summary.execution_status || payload.status || '');
+        nextState.sourceHandoffRequestId = safeStateValue(payload.request_id || '');
+        nextState.sourceHandoffAuditStatus = safeStateValue(payload.audit_reference || '');
+        nextState.screen1GeneratedArtifactPath = safeStateValue(summary.dashboard_artifact_path || '');
+        writeDashboardState(nextState);
+        updateScreen1GeneratedArtifactGate(nextState, document);
+        return nextState;
+      }
+
       function isScreen3RuntimeAction(element) {
         return (
           safeStateValue(element.getAttribute('data-screen-id')) === 'screen_3' &&
@@ -5068,9 +6067,13 @@ def _build_dashboard_interactivity_javascript() -> str:
         scope.querySelectorAll(PHASE7_ACTION_SELECTOR).forEach(function (element) {
           const key = requiredSelectionKey(element);
           const selectedValue = selectionValueForAction(element, safeState);
-          const missingSourceFields = (isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element))
-            ? sourceSelectionMissingFields(safeState)
-            : [];
+          const missingSourceFields = isScreen1SourceIntakeExecutionAction(element)
+            ? screen1SourceIntakeMissingFields(safeState)
+            : (
+              (isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element))
+                ? sourceSelectionMissingFields(safeState)
+                : []
+            );
           const missingScreen1Fields = isScreen1ParserGovernanceAction(element)
             ? screen1MissingFields(element, safeState)
             : [];
@@ -5100,7 +6103,9 @@ def _build_dashboard_interactivity_javascript() -> str:
                     isScreen3RuntimeAction(element)
                       ? screen3ActionMessage(element, safeState, missingSourceFields)
                       : sourceActionStateMessage(safeState, missingSourceFields) +
-                        ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.'
+                        (isScreen1SourceIntakeExecutionAction(element)
+                          ? ' Submitting a valid source sends a governed backend intake request.'
+                          : ' OS picker/source selection is complete where applicable. Nothing has been submitted yet; governed request/audit record is created only after this submit action.')
                   )
               );
             } else if (!enabled && (currentStatus === 'waiting' || currentStatus === 'ready' || currentStatus.indexOf('disabled') === 0)) {
@@ -5132,9 +6137,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         const selectedContextKey = requiredSelectionKey(element);
         const selectedContextValue = selectionValueForAction(element, dashboardState);
         const isScreen1Action = isScreen1ParserGovernanceAction(element);
+        const isScreen1SourceAction = isScreen1SourceIntakeExecutionAction(element);
         const isScreen3Action = isScreen3RuntimeAction(element);
-        const requestPrefix = isScreen1Action ? 'PHASE7CN' : (isScreen3Action ? 'SCREEN3' : 'PHASE7CM');
-        const idempotencyPrefix = isScreen1Action ? 'phase7cn' : (isScreen3Action ? 'screen3' : 'phase7cm');
+        const requestPrefix = isScreen1Action
+          ? 'PHASE7CN'
+          : (isScreen1SourceAction ? 'SCREEN1-SOURCE' : (isScreen3Action ? 'SCREEN3' : 'PHASE7CM'));
+        const idempotencyPrefix = isScreen1Action
+          ? 'phase7cn'
+          : (isScreen1SourceAction ? 'screen1-source' : (isScreen3Action ? 'screen3' : 'phase7cm'));
         const idempotencyKey = [
           idempotencyPrefix,
           screenId,
@@ -5215,8 +6225,10 @@ def _build_dashboard_interactivity_javascript() -> str:
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
-            target_screen: isScreen1Action ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
-            source_request_contract_version: isScreen1Action ? '' : '7CM.index_source_selection.v1',
+            target_screen: (isScreen1Action || isScreen1SourceAction) ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
+            source_request_contract_version: isScreen1SourceAction
+              ? '7CR.screen1_source_intake_execute.v1'
+              : (isScreen1Action ? '' : '7CM.index_source_selection.v1'),
             screen1_parser_governance_contract_version: isScreen1Action
               ? '7CN.screen1_parser_governance.v1'
               : '',
@@ -5307,12 +6319,12 @@ def _build_dashboard_interactivity_javascript() -> str:
             governance_intent: payload.governance_intent || (
               isScreen1Action
                 ? 'screen1_parser_governance_review'
-                : ''
+                : (isScreen1SourceAction ? 'screen1_source_intake_execute' : '')
             ),
             governance_status: payload.governance_status || (
               isScreen1Action
                 ? 'review_requested'
-                : ''
+                : (isScreen1SourceAction ? 'execution_requested' : '')
             ),
             future_run_influence_gated: true,
             future_run_influence_granted: false,
@@ -5320,6 +6332,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             runtime_activation_requested: false,
             runtime_activation_granted: false,
             runtime_execution_requested: false,
+            backend_source_intake_execution_requested: isScreen1SourceAction,
             parser_output_mutation_requested: false,
             parser_output_mutation_allowed: false,
             direct_parser_mutation_allowed: false,
@@ -5408,6 +6421,225 @@ def _build_dashboard_interactivity_javascript() -> str:
         });
       }
 
+      function invokePhase7Get(endpoint) {
+        const requestBridge = window['fetch'];
+        if (typeof requestBridge !== 'function') {
+          return Promise.reject(new Error('browser request bridge unavailable'));
+        }
+        return requestBridge(endpoint, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            return { ok: response.ok, status: response.status, body: body };
+          });
+        });
+      }
+
+      function screen1SourceIntakeStatusEndpoint(requestId) {
+        const separator = PHASE7_ACTION_STATUS_ENDPOINT.indexOf('?') >= 0 ? '&' : '?';
+        return PHASE7_ACTION_STATUS_ENDPOINT + separator + 'request_id=' +
+          encodeURIComponent(safeStateValue(requestId));
+      }
+
+      function screen1SourceIntakeServiceRestartCommand() {
+        return 'PYTHONPATH=. .venv/bin/python scripts/dashboard_workflow_service.py --host 127.0.0.1 --port 8765';
+      }
+
+      function screen1SourceIntakeStatusMarkup(status, rows) {
+        const safeStatus = safeStateValue(status || 'status');
+        const items = (Array.isArray(rows) ? rows : []).filter(function (row) {
+          return row && row.label;
+        });
+        return '<div class="screen1-source-intake-result">' +
+          '<strong>' + escapeHtml(safeStatus.replace(/_/g, ' ')) + '</strong>' +
+          '<dl>' + items.map(function (row) {
+            return '<div><dt>' + escapeHtml(row.label) + '</dt><dd>' +
+              escapeHtml(row.value || 'Not reported') + '</dd></div>';
+          }).join('') + '</dl>' +
+          '</div>';
+      }
+
+      function setScreen1SourceIntakeStatusMarkup(element, status, rows) {
+        setActionStatusMarkup(
+          element,
+          status,
+          screen1SourceIntakeStatusMarkup(status, rows)
+        );
+      }
+
+      function screen1ActionRequestRows(actionRequest, extraRows) {
+        const payload = actionRequest.payload || {};
+        const rows = [
+          { label: 'Action type', value: actionRequest.action_type },
+          { label: 'Request ID', value: actionRequest.request_id },
+          { label: 'Source mode', value: payload.selectedSourceMode || payload.source_mode },
+          { label: 'Source path', value: payload.selectedSourcePath || payload.backend_visible_path },
+          { label: 'Service endpoint', value: PHASE7_ACTION_ENDPOINT },
+          { label: 'Status endpoint', value: PHASE7_ACTION_STATUS_ENDPOINT }
+        ];
+        return rows.concat(Array.isArray(extraRows) ? extraRows : []);
+      }
+
+      function responseRows(actionRequest, responsePayload, extraRows) {
+        const payload = responsePayload || {};
+        const summary = payload.source_summary || {};
+        const rows = screen1ActionRequestRows(actionRequest, [
+          { label: 'Service status', value: payload.status || summary.execution_status },
+          { label: 'Audit record', value: payload.audit_reference },
+          { label: 'Artifact ready', value: summary.artifact_ready === true ? 'yes' : 'no' },
+          { label: 'Dashboard regenerated', value: summary.dashboard_regenerated === true ? 'yes' : 'no' },
+          { label: 'Message', value: payload.message || summary.runner_message }
+        ]);
+        return rows.concat(Array.isArray(extraRows) ? extraRows : []);
+      }
+
+      function verifyScreen1SourceIntakeService() {
+        return invokePhase7Get(PHASE7_HEALTH_ENDPOINT).then(function (result) {
+          const body = result.body || {};
+          const supportedActions = Array.isArray(body.supported_action_types)
+            ? body.supported_action_types
+            : [];
+          const supportedScreenActions = body.supported_screen_action_types || {};
+          const screen1Actions = Array.isArray(supportedScreenActions.screen_1)
+            ? supportedScreenActions.screen_1
+            : [];
+          const supported = supportedActions.indexOf('screen1_source_intake_execute') >= 0 &&
+            screen1Actions.indexOf('screen1_source_intake_execute') >= 0;
+          if (!result.ok || body.status !== 'ok' || !supported) {
+            throw new Error(
+              'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute. Command: ' +
+              screen1SourceIntakeServiceRestartCommand()
+            );
+          }
+          return body;
+        });
+      }
+
+      function screen1SourceIntakeResponseArtifactReady(payload) {
+        const body = payload || {};
+        const summary = body.source_summary || {};
+        return (
+          body.status === 'completed_artifact_ready' ||
+          summary.artifact_ready === true ||
+          safeStateValue(summary.execution_status) === 'completed_artifact_ready'
+        );
+      }
+
+      function completeScreen1SourceIntake(element, actionRequest, payload) {
+        setScreen1GeneratedArtifactReadyState(true, payload);
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          'completed_artifact_ready',
+          responseRows(actionRequest, payload, [
+            { label: 'Next step', value: 'Reloading the regenerated dashboard artifact.' }
+          ])
+        );
+        if (!window.__screen1SourceIntakeReloadScheduled) {
+          window.__screen1SourceIntakeReloadScheduled = true;
+          setTimeout(function () {
+            window.location.reload();
+          }, 500);
+        }
+      }
+
+      function failScreen1SourceIntake(element, actionRequest, status, payload, message) {
+        const safePayload = payload || {};
+        setScreen1GeneratedArtifactReadyState(false, safePayload);
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          status || safePayload.status || 'failed_safely',
+          responseRows(actionRequest, safePayload, [
+            { label: 'Reason', value: message || safePayload.message || 'Source intake failed safely.' },
+            { label: 'Next step', value: 'Fix the source/service issue and submit again. Generated evidence remains empty.' }
+          ])
+        );
+      }
+
+      function pollScreen1SourceIntakeStatus(element, actionRequest, startedAt) {
+        const requestId = safeStateValue(actionRequest.request_id);
+        if (!requestId) {
+          failScreen1SourceIntake(
+            element,
+            actionRequest,
+            'failed_safely',
+            {},
+            'Cannot poll Screen 1 source intake status because no Request ID was issued.'
+          );
+          return;
+        }
+        if (Date.now() - startedAt > SCREEN1_SOURCE_INTAKE_POLL_TIMEOUT_MS) {
+          failScreen1SourceIntake(
+            element,
+            actionRequest,
+            'timed_out',
+            {
+              status: 'timed_out',
+              request_id: requestId,
+              source_summary: { execution_status: 'timed_out', artifact_ready: false }
+            },
+            'Backend source intake is still not complete after the local polling timeout. Check the audit/status record or restart the workflow service.'
+          );
+          return;
+        }
+        invokePhase7Get(screen1SourceIntakeStatusEndpoint(requestId)).then(function (result) {
+          const body = result.body || {};
+          const status = safeStateValue(body.status || '');
+          if (screen1SourceIntakeResponseArtifactReady(body)) {
+            completeScreen1SourceIntake(element, actionRequest, body);
+            return;
+          }
+          if (!result.ok && status !== 'running' && status !== 'pending' && status !== 'accepted') {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status || 'failed_safely',
+              body,
+              body.message || 'Screen 1 source intake status endpoint returned a failure.'
+            );
+            return;
+          }
+          if (status === 'failed' || status === 'failed_safely' || status === 'rejected' || status === 'blocked') {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status,
+              body,
+              body.message || 'Screen 1 source intake did not produce an artifact-ready result.'
+            );
+            return;
+          }
+          setScreen1GeneratedArtifactReadyState(false, body);
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            status || 'running',
+            responseRows(actionRequest, body, [
+              { label: 'Polling', value: 'Backend intake/generation is still running. This page will keep checking.' }
+            ])
+          );
+          setTimeout(function () {
+            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
+          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+        }).catch(function (error) {
+          setScreen1GeneratedArtifactReadyState(false, {
+            status: 'running',
+            request_id: requestId,
+            source_summary: { execution_status: 'running', artifact_ready: false }
+          });
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            'running',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Status check', value: 'Could not reach status endpoint yet: ' + safeStateValue(error && error.message) },
+              { label: 'Next check', value: 'Retrying automatically.' }
+            ])
+          );
+          setTimeout(function () {
+            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
+          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+        });
+      }
+
       function screen3RuntimeOptionValue(option, fallback) {
         if (!option || typeof option !== 'object') {
           return safeStateValue(fallback || '');
@@ -5456,7 +6688,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           item.snapshot_begin || item.awr_begin_time || 'begin_unknown',
           item.snapshot_end || item.awr_end_time || screen3RuntimeWindow(item) || 'end_unknown'
         ].map(function (part) {
-          return safeStateValue(part).replace(/\s+/g, ' ').trim() || 'unknown';
+          return safeStateValue(part).replace(/\\s+/g, ' ').trim() || 'unknown';
         }).join('|');
       }
 
@@ -5469,7 +6701,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           item.snapshot_end || item.end_time || screen3RuntimeWindow(item) || 'end_unknown',
           item.window_type || 'window'
         ].map(function (part) {
-          return safeStateValue(part).replace(/\s+/g, ' ').trim() || 'unknown';
+          return safeStateValue(part).replace(/\\s+/g, ' ').trim() || 'unknown';
         }).join('|');
       }
 
@@ -5952,13 +7184,13 @@ def _build_dashboard_interactivity_javascript() -> str:
         replaceRuntimeOptionNodes(
           'runtime-scope-rows',
           runs.map(createScreen3RuntimeScopeRow),
-          'No DB-backed AWR/run options were returned. Use the current generated fallback row or restore DB-backed run history.',
+          'No DB-backed AWR/run options are loaded yet. Load Runtime Options to populate this table.',
           13
         );
         replaceRuntimeOptionNodes(
           'interval-rows',
           intervals.map(createScreen3IntervalRow),
-          'Interval options unavailable; use current generated snapshot/window fallback.',
+          'No interval/window options are loaded yet. Load Runtime Options and select an AWR/report row to populate this table.',
           5
         );
         // DB-backed AWR/report rows are selected from the main bounded runtime
@@ -5985,6 +7217,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         event.preventDefault();
         const refreshRequested = control.hasAttribute('data-screen3-runtime-options-refresh');
         const nextState = readDashboardState();
+        clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
         nextState.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
         nextState.screen3LastActionStatus = 'Loading runtime options';
         nextState.screen3LastValidationStatus = 'pending';
@@ -6048,7 +7281,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
           const serviceMessage = routeUnavailable
             ? 'Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.'
-            : (body.message || 'Runtime-control options request completed.');
+            : screen2RuntimeOptionsProductMessage(body.message || 'Runtime-control options request completed.');
           const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
           const sourceTables = Array.isArray(body.runtime_options_source_tables)
             ? body.runtime_options_source_tables
@@ -6074,6 +7307,20 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3RuntimeOptionsCacheStatus = optionsLoaded
             ? 'Runtime options live-loaded at ' + state.screen3RuntimeOptionsLoadedAt + '.'
             : 'No runtime options cache update was made.';
+          state.screen2RuntimeOptionsLoadRequestId = optionsLoaded
+            ? writeOperatorSessionValue(
+                'screen2RuntimeOptionsLoadRequestId',
+                safeStateValue(body.request_id || newDashboardEvidenceSessionId('screen2-options'))
+              )
+            : '';
+          state.screen2ExistingEvidenceReady = '';
+          state.screen2RuntimeScopeSelectionEpoch = '';
+          state.screen2RuntimeScopeReadyAt = '';
+          if (!screen1ArtifactEvidenceReady(state)) {
+            state.currentOperatorEvidenceSession = '';
+            state.dashboardEvidenceReady = '';
+            state.dashboardEvidenceSessionId = '';
+          }
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
           state.screen3LastActionStatus = routeUnavailable
             ? 'Runtime options route unavailable'
@@ -6123,10 +7370,18 @@ def _build_dashboard_interactivity_javascript() -> str:
             if (fallbackCache) {
               const cachedMessage = (
                 refreshRequested
-                  ? 'Refresh failed; showing cached runtime options'
-                  : 'Load failed; showing cached runtime options'
+                  ? 'Refresh failed; cached runtime options were not activated'
+                  : 'Load failed; cached runtime options were not activated'
               ) + (fallbackCache.cached_at ? ' from ' + fallbackCache.cached_at : '') + '.';
-              showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, cachedMessage);
+              state.screen3RuntimeOptionsMessage = cachedMessage + ' Re-query the workflow service to activate DB-backed runtime options.';
+              state.screen3RuntimeOptionsCacheStatus = 'Cached runtime options are available for continuity only; they are not active evidence.';
+              state.screen3RuntimeOptionsCount = '0';
+              state.screen3RuntimeOptionsLoadedRows = '0';
+              state.screen2RuntimeOptionsLoadRequestId = '';
+              writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+              clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
+              writeDashboardState(state);
+              updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
               return;
             }
           }
@@ -6137,10 +7392,10 @@ def _build_dashboard_interactivity_javascript() -> str:
           const fallbackCache = readScreen3RuntimeOptionsCache();
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
-            ? 'Refresh failed; showing last cached runtime options.'
+            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service to activate DB-backed runtime options.'
             : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load Screen 2 Control runtime options.';
-          state.screen3RuntimeOptionsCount = fallbackCache ? state.screen3RuntimeOptionsCount || '0' : '0';
-          state.screen3RuntimeOptionsLoadedRows = fallbackCache ? state.screen3RuntimeOptionsLoadedRows || '0' : '0';
+          state.screen3RuntimeOptionsCount = '0';
+          state.screen3RuntimeOptionsLoadedRows = '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
           state.screen3RuntimeOptionsIncludedTables = 'No selectable source tables reported';
           state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
@@ -6149,7 +7404,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             : 'Runtime options source tables were not checked because the service was unavailable.';
           state.screen3LiveServiceStatus = 'Error';
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
-            ? 'Refresh failed; showing cached runtime options from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + '.'
+            ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are not active evidence.'
             : 'No runtime options cache is available.';
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
           state.screen3LastActionStatus = 'Runtime options service unavailable';
@@ -6157,10 +7412,14 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain visible; retry Refresh options when service is available.'
+            ? 'Workflow service unavailable. Cached runtime options remain hidden; retry Refresh options when service is available.'
             : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
           if (fallbackCache) {
-            showScreen3CachedRuntimeOptionsAfterRefreshFailure(fallbackCache, state, state.screen3RuntimeOptionsCacheStatus);
+            state.screen2RuntimeOptionsLoadRequestId = '';
+            writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
+            clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
+            writeDashboardState(state);
+            updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
             return;
           }
           writeDashboardState(state);
@@ -6204,6 +7463,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         } else {
           nextState.screen3LastNextStep = 'Runtime filters applied. Select a filtered AWR/run/report row for Runtime Scope, Target A, or Target B.';
         }
+        clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
         writeDashboardState(nextState);
       }
 
@@ -6379,6 +7639,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         event.preventDefault();
         const nextState = readDashboardState();
         nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionActivated = 'true';
+        nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         nextState.sourceSelectionMethod = 'existing_run_reference';
           nextState.existingRunLookupStatus = 'pending';
           nextState.existingRunLookupMessage = 'Querying governed workflow service for existing runs.';
@@ -6405,6 +7667,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           const runs = Array.isArray(body.runs) ? body.runs : [];
           const state = readDashboardState();
           state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionActivated = 'true';
+          state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupCount = String(runs.length);
           if (result.ok && body.status === 'accepted' && runs.length) {
@@ -6426,6 +7690,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         }).catch(function () {
           const state = readDashboardState();
           state.selectedSourceMode = 'existing_run';
+          state.sourceSelectionActivated = 'true';
+          state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           state.sourceSelectionMethod = 'existing_run_reference';
           state.existingRunLookupStatus = 'unavailable';
           state.existingRunLookupMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
@@ -6447,6 +7713,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         const selectedValue = safeStateValue(select.value || '');
         const nextState = readDashboardState();
         nextState.selectedSourceMode = 'existing_run';
+        nextState.sourceSelectionActivated = 'true';
+        nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         nextState.sourceSelectionMethod = 'existing_run_reference';
         nextState.selectedRunReference = selectedValue;
         if (selectedValue) {
@@ -6470,6 +7738,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         event.preventDefault();
         const state = readDashboardState();
         state.selectedSourceMode = 'object_storage';
+        state.sourceSelectionActivated = 'true';
+        state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         state.sourceSelectionMethod = 'object_storage_metadata';
         state.objectStorageValidationStatus = 'pending';
         state.objectStorageValidationMessage = 'Submitting Object Storage metadata to governed backend validation.';
@@ -6494,6 +7764,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           const body = result.body || {};
           const nextState = readDashboardState();
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = result.ok && body.status === 'accepted'
             ? (body.validation_status || 'valid')
@@ -6503,6 +7775,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         }).catch(function () {
           const nextState = readDashboardState();
           nextState.selectedSourceMode = 'object_storage';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
           nextState.objectStorageValidationStatus = 'unavailable';
           nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
@@ -6538,10 +7812,13 @@ def _build_dashboard_interactivity_javascript() -> str:
           );
           return;
         }
-        const missingSourceFields = isIndexSourceSelectionAction(element)
-          || isScreen3RuntimeAction(element)
-          ? sourceSelectionMissingFields(dashboardState)
-          : [];
+        const missingSourceFields = isScreen1SourceIntakeExecutionAction(element)
+          ? screen1SourceIntakeMissingFields(dashboardState)
+          : (
+            isIndexSourceSelectionAction(element) || isScreen3RuntimeAction(element)
+              ? sourceSelectionMissingFields(dashboardState)
+              : []
+          );
         if (missingSourceFields.length) {
           setActionStatus(
             element,
@@ -6570,22 +7847,54 @@ def _build_dashboard_interactivity_javascript() -> str:
           );
           return;
         }
-        setActionStatus(
-          element,
-          'pending',
-          isScreen1ParserGovernanceAction(element)
-            ? 'Submitting governed Screen 1 parser governance request...'
-            : (
-              isScreen3RuntimeAction(element)
-                ? 'Submitting governed Screen 2 Control runtime request...'
-                : 'Submitting governed source-selection request...'
-            )
-        );
-        requestBridge(PHASE7_ACTION_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildDashboardActionRequest(element))
-        })
+        const actionRequest = buildDashboardActionRequest(element);
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            'pending',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Submission', value: 'Starting governed backend source intake request.' }
+            ])
+          );
+        } else {
+          setActionStatus(
+            element,
+            'pending',
+            isScreen1ParserGovernanceAction(element)
+              ? 'Submitting governed Screen 1 parser governance request...'
+              : (
+                isScreen3RuntimeAction(element)
+                  ? 'Submitting governed Screen 2 Control runtime request...'
+                  : 'Submitting governed source-selection request...'
+              )
+          );
+        }
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          setScreen1GeneratedArtifactReadyState(false, {
+            status: 'running',
+            source_summary: { execution_status: 'running' }
+          });
+        }
+        const submitRequest = function () {
+          return requestBridge(PHASE7_ACTION_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(actionRequest)
+          });
+        };
+        const serviceReady = isScreen1SourceIntakeExecutionAction(element)
+          ? verifyScreen1SourceIntakeService().then(function () {
+            setScreen1SourceIntakeStatusMarkup(
+              element,
+              'pending',
+              screen1ActionRequestRows(actionRequest, [
+                { label: 'Service health', value: 'Workflow service supports screen1_source_intake_execute.' },
+                { label: 'Submission', value: 'Submitting governed request now.' }
+              ])
+            );
+          })
+          : Promise.resolve();
+        serviceReady.then(submitRequest)
           .then(function (response) {
             return response.json().then(function (payload) {
               return { ok: response.ok, payload: payload };
@@ -6593,14 +7902,50 @@ def _build_dashboard_interactivity_javascript() -> str:
           })
           .then(function (result) {
             const responseStatus = result.payload ? safeStateValue(result.payload.status || '') : '';
-            const successfulStatus = responseStatus === 'accepted' || responseStatus === 'blocked' || responseStatus === 'completed';
+            const successfulStatus = (
+              responseStatus === 'accepted' ||
+              responseStatus === 'blocked' ||
+              responseStatus === 'completed' ||
+              responseStatus === 'completed_artifact_ready' ||
+              responseStatus === 'pending' ||
+              responseStatus === 'running'
+            );
             if (!result.ok || !result.payload || !successfulStatus) {
-              setActionStatus(
-                element,
-                'failed',
-                result.payload && result.payload.message
-                  ? result.payload.message
-                  : 'Governed workflow request was rejected.'
+              const rejectedMessage = result.payload && result.payload.message
+                ? safeStateValue(result.payload.message)
+                : 'Governed workflow request was rejected.';
+              const rejectedMessageLower = rejectedMessage.toLowerCase();
+              const staleScreen1ExecutionService = isScreen1SourceIntakeExecutionAction(element) && (
+                rejectedMessageLower.indexOf('action_type must be one of') >= 0 ||
+                rejectedMessageLower.indexOf('screen1_source_intake_execute') < 0 && rejectedMessageLower.indexOf('action_type') >= 0
+              );
+	              if (isScreen1SourceIntakeExecutionAction(element)) {
+	                setScreen1GeneratedArtifactReadyState(false, result.payload || {
+	                  status: 'failed_safely',
+	                  source_summary: { execution_status: 'failed_safely' }
+	                });
+	                failScreen1SourceIntake(
+	                  element,
+	                  actionRequest,
+	                  'failed',
+	                  result.payload || {
+	                    status: 'failed',
+	                    request_id: actionRequest.request_id,
+	                    source_summary: { execution_status: 'failed', artifact_ready: false }
+	                  },
+	                  staleScreen1ExecutionService
+	                    ? 'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute. Command: ' +
+	                      screen1SourceIntakeServiceRestartCommand()
+	                    : rejectedMessage
+	                );
+	                return;
+	              }
+	              setActionStatus(
+	                element,
+	                'failed',
+	                staleScreen1ExecutionService
+                  ? 'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute.'
+                  : rejectedMessage
               );
               return;
             }
@@ -6619,6 +7964,30 @@ def _build_dashboard_interactivity_javascript() -> str:
               updateScreen3ExecutionResultPanelFromResponse(element, responseStatus, result.payload);
               return;
             }
+	            if (isScreen1SourceIntakeExecutionAction(element)) {
+	              const summary = result.payload.source_summary || {};
+	              const artifactReady = (
+	                responseStatus === 'completed_artifact_ready' ||
+	                summary.artifact_ready === true ||
+	                safeStateValue(summary.execution_status) === 'completed_artifact_ready'
+	              );
+	              if (artifactReady) {
+	                completeScreen1SourceIntake(element, actionRequest, result.payload);
+	                return;
+	              }
+	              setScreen1GeneratedArtifactReadyState(false, result.payload);
+	              setScreen1SourceIntakeStatusMarkup(
+	                element,
+	                responseStatus,
+	                responseRows(actionRequest, result.payload, [
+	                  { label: 'Polling', value: 'Checking backend source intake status until completion or safe failure.' }
+	                ])
+	              );
+	              if (responseStatus === 'accepted' || responseStatus === 'pending' || responseStatus === 'running') {
+	                pollScreen1SourceIntakeStatus(element, actionRequest, Date.now());
+	              }
+	              return;
+	            }
 	            setActionStatus(
 	              element,
 	              'accepted',
@@ -6626,16 +7995,35 @@ def _build_dashboard_interactivity_javascript() -> str:
 	                '. Audit record: ' + (result.payload.audit_reference || 'audit reference unavailable') +
                 (isScreen1ParserGovernanceAction(element)
                   ? '. Parser governance request is queued through the governed workflow path. DB persistence is reported in the Screen 1 result panel when available; no Screen 6 candidate or runtime influence is created by this submit.'
-                  : '. Next step: open Screen 2 Control.')
-	            );
+                  : '. Next step: continue to ' + (
+                    sanitizeDashboardState(readDashboardState()).selectedSourceMode === 'existing_run'
+                      ? 'Screen 2 Control.'
+                      : 'Screen 1 Ingestion.'
+                  ))
+		            );
           })
-          .catch(function () {
-            setActionStatus(
-              element,
-              'failed',
-              'Dashboard workflow service is not running. Start the service to use interactive features.'
-            );
-          });
+	          .catch(function (error) {
+	            if (isScreen1SourceIntakeExecutionAction(element)) {
+	              failScreen1SourceIntake(
+	                element,
+	                actionRequest,
+	                'failed',
+	                {
+	                  status: 'failed',
+	                  request_id: actionRequest.request_id,
+	                  source_summary: { execution_status: 'failed', artifact_ready: false }
+	                },
+	                (safeStateValue(error && error.message) || 'Dashboard workflow service is unreachable.') +
+	                  ' Restart command: ' + screen1SourceIntakeServiceRestartCommand()
+	              );
+	              return;
+	            }
+	            setActionStatus(
+	              element,
+	              'failed',
+	              'Dashboard workflow service is not running. Start the service to use interactive features.'
+	            );
+	          });
       }
 
       function handlePhase7ActionClick(event) {
@@ -6716,6 +8104,9 @@ def _build_dashboard_interactivity_javascript() -> str:
           dashboardInteractivityInitialized = true;
         }
         const appliedState = applyDashboardState(readDashboardState(), scope);
+        if (!screen2ShouldHydrateFromPersistentState()) {
+          return appliedState;
+        }
         return restoreScreen3RuntimeOptionsFromCache(scope) || appliedState;
       }
 
@@ -6758,7 +8149,9 @@ def _build_dashboard_interactivity_javascript() -> str:
         handleScreen3RuntimeOptionsLoadClick: handleScreen3RuntimeOptionsLoadClick,
         handleScreen3RuntimeFilterButtonClick: handleScreen3RuntimeFilterButtonClick,
         handleExistingRunLookupClick: handleExistingRunLookupClick,
-        handleObjectStorageValidationClick: handleObjectStorageValidationClick
+        handleObjectStorageValidationClick: handleObjectStorageValidationClick,
+        screen1GeneratedArtifactReady: screen1GeneratedArtifactReady,
+        updateScreen1GeneratedArtifactGate: updateScreen1GeneratedArtifactGate
       });
 
       document.addEventListener('DOMContentLoaded', function () {
@@ -7706,7 +9099,7 @@ def _render_home_page(
     report_data: dict[str, Any],
     screen_models: dict[str, Any],
 ) -> str:
-    """Render the landing page as explanation tier plus navigation hub."""
+    """Render the landing page as platform entry and source-intake hub."""
 
     metadata = _to_dict(report_data.get("metadata"))
     decision = _to_dict(report_data.get("decision"))
@@ -7761,81 +9154,68 @@ def _render_home_page(
             "Screen 1 - Intake / Parser Review / Governance Visibility",
             "screen_1_ingestion.html",
             [
-                ("Total Files", intake_summary.get("total_files")),
-                ("Succeeded", intake_summary.get("succeeded")),
-                ("Source Mode", _to_dict(screen_1.get("header")).get("source_mode")),
+                ("Purpose", "Configure and run governed source intake"),
+                ("Default State", "No source selected"),
+                ("Next Step", "Open Screen 1"),
             ],
         ),
         (
             "Screen 2 - Runtime Scope & Analysis Control",
             "screen_2_control.html",
             [
-                ("Snapshot Count", selector_header.get("snapshot_count")),
-                ("Comparison Window", selector_header.get("comparison_window")),
-                ("Scope", selector_header.get("scope_label")),
+                ("Purpose", "Load existing platform evidence"),
+                ("Default State", "Runtime options not loaded"),
+                ("Next Step", "Open Screen 2"),
             ],
         ),
         (
             "Screen 3 - Diagnostic Snapshot",
             "screen_3_analysis.html",
             [
-                ("Primary Issue", decision.get("primary_domain") or decision.get("primary_issue")),
-                (
-                    "Overall Status",
-                    normalized_decision.get("overall_status")
-                    or decision.get("risk_level")
-                    or decision.get("overall_status"),
-                ),
-                (
-                    "Confidence",
-                    _confidence_level_from_value(
-                        normalized_decision.get("confidence") or decision.get("confidence")
-                    ),
-                ),
+                ("Readiness", "Evidence handoff required"),
+                ("Unlocks After", "Screen 1 artifact or Screen 2 scope"),
             ],
         ),
         (
             "Screen 4 - Historical Review",
             "screen_4_historical_review.html",
             [
-                ("Scope", review_header.get("scope_label")),
-                ("Snapshot Count", review_header.get("snapshot_count")),
-                ("Comparison Window", review_header.get("comparison_window")),
+                ("Readiness", "Evidence handoff required"),
+                ("Unlocks After", "Runtime scope or comparison context"),
             ],
         ),
         (
             "Screen 5 - Recommendation Action & Outcome",
             "screen_5_recommendation_action.html",
             [
-                ("Recommendation Count", len(recommendations)),
-                (
-                    "Primary Issue",
-                    normalized_decision.get("primary_issue") or decision.get("primary_issue"),
-                ),
-                ("DB Name", metadata.get("db_name")),
+                ("Readiness", "Evidence handoff required"),
+                ("Unlocks After", "Analysis handoff"),
             ],
         ),
         (
             "Screen 6 - Learning Governance",
             "screen_6_fleet_overview.html",
             [
-                ("Similar AWRs", fleet_summary.get("similar_awrs")),
-                ("Cluster", _display_cluster_label(fleet_summary.get("cluster_label"))),
-                ("Rarity", fleet_summary.get("rarity")),
+                ("Readiness", "Evidence handoff required"),
+                ("Unlocks After", "Governed evidence handoff"),
             ],
         ),
     ]
 
     return f"""
     <div class="grid">
-      <!-- index.html is the explanation and navigation layer. -->
+      <!-- index.html is the platform entry and source-intake handoff layer. -->
       <section class="card primary compact-card">
-        <div class="section-kicker">Platform Identity</div>
-        <h2>Platform Overview</h2>
+        <div class="section-kicker">Platform Entry</div>
+        <h2>Platform Entry / Source Intake</h2>
         <p>
-          This dashboard provides a deterministic interpretation of Oracle AWR data,
-          combining canonical diagnosis, historical validation, and actionable guidance
-          across a structured multi-screen workflow.
+          Start here. Choose whether to load or ingest a new source, or work
+          with existing platform evidence.
+        </p>
+        <p class="meta">
+          Index captures governed source intent and handoff context only.
+          Runtime scope selection belongs to Screen 2 Control; diagnostic
+          snapshot review belongs to Screen 3 Analysis.
         </p>
       </section>
 
@@ -7852,47 +9232,84 @@ def _render_home_page(
         {_render_info_grid(llm_info_items, extra_class="ai-explanation-grid")}
       </section>
 
-      <section class="card prominent">
+      <section class="card prominent home-product-model-panel">
         <div class="section-kicker">Navigation</div>
         <h2>6-Screen Product Model</h2>
         <div class="nav-card-grid">
           {"".join(_render_navigation_card(title, href, previews) for title, href, previews in navigation_cards)}
         </div>
       </section>
-
-      {_render_phase7cm_index_debug_state_panel()}
-      {_render_index_source_mode_entry_preview()}
-      {_render_index_source_status_panel()}
-      {_render_index_object_storage_config_panel()}
-      {_render_index_screen3_handoff_panel()}
     </div>
     """
 
 
-def _render_phase7cm_index_source_intake_panel() -> str:
-    """Render narrowed Phase 7CM source-selection runtime workflow."""
+def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
+    """Render Index entry paths or the Screen 1 source workflow."""
 
     default_local_folder = "data/input"
     default_object_namespace = "axxduehrw7lz"
     default_object_bucket = "agentic-ai-awr-raw"
     default_object_region = "us-phoenix-1"
     default_object_name = "awr/raw/FINDB/2026-03-29/adg_awr_snap_06_adg_transport_lag.out"
-    default_state = json.dumps(
-        {
-            "selectedSourceMode": "local_staged",
-            "selectedSourcePath": default_local_folder,
-            "sourceSelectionMethod": "backend_path",
-        },
-        sort_keys=True,
-    )
+    default_state = json.dumps({}, sort_keys=True)
+    if surface == "index":
+        return f"""
+          <section class="card prominent phase7cr-platform-entry-panel"
+                   id="phase7cr-platform-entry-panel"
+                   data-phase7-index-source-selection="true"
+                   data-dashboard-default-state="{escape(default_state, quote=True)}">
+            <div class="section-kicker">Entry Choice</div>
+            <h2>What do you want to work with?</h2>
+            <p class="meta">
+              Pick the starting path. Index does not validate sources, submit
+              handoff requests, choose runtime scope, or generate diagnostics.
+            </p>
+
+            <div class="phase7cm-source-card-grid phase7cr-entry-path-grid"
+                 data-phase7-primary-entry-paths="true">
+              <a class="phase7cm-source-card phase7cr-entry-card phase7cr-entry-card-link"
+                 href="screen_1_ingestion.html"
+                 data-dashboard-propagate-state="true"
+                 data-phase7-entry-path="new_source"
+                 data-phase7-entry-source-modes="local_staged local_file object_storage">
+                <span class="mini-pill success">New source path</span>
+                <strong>Load / Ingest New Source</strong>
+                <p>
+                  Use this when the operator has a new AWR file, local staged
+                  folder, selected file, or Object Storage object metadata.
+                </p>
+                <p><strong>Source modes:</strong> local_staged, local_file, object_storage</p>
+                <p><strong>Handoff:</strong> Screen 1 - Ingestion / Parser / Source Governance</p>
+                <span class="inline-nav-hint phase7cr-entry-card-cta">Open Screen 1 Ingestion</span>
+              </a>
+              <a class="phase7cm-source-card phase7cr-entry-card phase7cr-entry-card-link"
+                 href="screen_2_control.html"
+                 data-dashboard-propagate-state="true"
+                 data-phase7-entry-path="existing_platform_evidence"
+                 data-phase7-entry-source-modes="existing_run">
+                <span class="mini-pill success">Existing evidence path</span>
+                <strong>Use Existing Platform Evidence</strong>
+                <p>
+                  Use this when evidence is already available inside the
+                  platform and the operator wants runtime scope, target, time
+                  window, or comparison control.
+                </p>
+                <p><strong>Source mode:</strong> existing_run</p>
+                <p><strong>Handoff:</strong> Screen 2 - Runtime Scope &amp; Analysis Control</p>
+                <span class="inline-nav-hint phase7cr-entry-card-cta">Open Screen 2 Control</span>
+              </a>
+            </div>
+          </section>
+        """
+
     source_cards = [
         (
             "local_staged",
             "Local folder / Local staged AWR",
             "Default local/dev source",
             "Use AWR files staged under data/input.",
-            f"Default local/dev fallback: {default_local_folder}",
-            "governed-source-handoff-local-staged",
+            f"Default: local/dev | Fallback: {default_local_folder}",
+            "governed-source-intake-local-staged",
             {
                 "data-source-default-path": default_local_folder,
                 "data-source-selection-method": "backend_path",
@@ -7909,7 +9326,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             "Operator-selected file",
             "Submit a governed request that identifies a local file context for backend-side validation.",
             "Requires configured local file path",
-            "governed-source-handoff-local-file",
+            "governed-source-intake-local-file",
             {
                 "data-source-default-path": "",
                 "data-source-selection-method": "os_file_picker",
@@ -7943,7 +9360,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             "Configuration-dependent source",
             "Submit a governed request for backend-side Object Storage validation using configured environment values.",
             "No browser-side Object Storage access",
-            "governed-source-handoff-object-storage",
+            "governed-source-intake-object-storage",
             {
                 "data-source-default-path": "",
                 "data-source-selection-method": "object_storage_metadata",
@@ -7955,8 +9372,10 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             },
         ),
     ]
+    source_cards = [card for card in source_cards if card[0] != "existing_run"]
     cards_html = []
     for source_id, title, kicker, description, readiness, action, defaults in source_cards:
+        target_note = "Screen 2 Control" if source_id == "existing_run" else "Screen 1 Ingestion"
         default_attrs = " ".join(
             f'{escape(name)}="{escape(value, quote=True)}"'
             for name, value in defaults.items()
@@ -7981,30 +9400,31 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                 <strong>{escape(title)}</strong>
                 <p>{escape(description)}</p>
                 <p><strong>Readiness:</strong> {escape(readiness)}</p>
-                <p class="selection-workflow-card-note">
-                  Selection state: not selected. Entity type: source mode.
-                  Downstream action: enables governed source-selection handoff to Screen 2 Control.
-                </p>
-              </article>
-            """
+	                <p class="selection-workflow-card-note">
+	                  Selection state: not selected. Entity type: source mode.
+	                  Downstream action: enables governed source intake for {escape(target_note)}.
+	                </p>
+	              </article>
+	            """
         )
 
     action_payload = json.dumps(
         {
-            "screen_id": "index_source_mode",
-            "action_type": "source_selection_handoff",
-            "workflow_type": "index_source_selection_handoff",
-            "target_type": "source_selection",
-            "target_id": "index-source-selection",
+            "screen_id": "screen_1",
+            "action_type": "screen1_source_intake_execute",
+            "workflow_type": "screen1_source_intake_execution",
+            "target_type": "source_intake",
+            "target_id": "screen1-source-intake-execute",
             "required_selection_key": "selectedSourceMode",
             "required_selection_label": "source mode",
             "governed_request": True,
+            "backend_source_intake_execution_requested": True,
             "runtime_influence_granted": False,
             "phase4i_mutation_allowed": False,
             "phase8_behavior": False,
             "direct_truth_mutation_allowed": False,
             "run_analysis_coupling": False,
-            "target_screen": "screen3",
+            "target_screen": "screen_1",
             "sourceSelectionMethod": "dashboard_state",
             "browser_parsing_performed": False,
             "browser_file_read_attempted": False,
@@ -8021,27 +9441,26 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                data-phase7-index-source-selection="true"
                data-phase7-runtime-interaction-panel="true"
                data-dashboard-default-state="{escape(default_state, quote=True)}">
-        <div class="section-kicker">Governed Source Intake</div>
-        <h2>Source Intake / Source Selection</h2>
+        <div class="section-kicker">Screen 1 Source Workflow</div>
+        <h2>New Source Intake / Validation Workflow</h2>
         <p class="meta">
-          Choose the input source context, review source readiness, submit a
-          governed source-selection handoff, then open Screen 2 Control with the
-          resulting request ID and audit status. The default local development
-          staging reference is <strong>data/input</strong>; Object Storage is the
-          preferred OCI-ready source path.
+          For new sources, configure and validate source metadata here, then
+          continue ingestion, parser review, and source governance. Existing
+          platform evidence runtime scope is controlled on Screen 2.
         </p>
 
         <section class="evidence-pane" data-phase7-selection-workflow="true">
           <h3>Selection Workflow</h3>
           <ol>
-            <li>Step 1: Select source mode or source context.</li>
+            <li>Step 1: Select the new source mode or source context.</li>
             <li>Step 2: Review source readiness and configure validation through the governed service path.</li>
-            <li>Step 3: Choose governed source-selection handoff.</li>
-            <li>Step 4: Submit governed source handoff request.</li>
-            <li>Step 5: Review result, Request ID, Audit record, and Open Screen 2 Control.</li>
+            <li>Step 3: Submit a governed backend source intake request.</li>
+            <li>Step 4: Review request state, Request ID, and Audit record.</li>
+            <li>Step 5: After backend completion, generated run evidence and the file/report table become available.</li>
           </ol>
         </section>
 
+        <h3>Source Mode Configuration</h3>
         <div class="phase7cm-source-card-grid">
           {"".join(cards_html)}
         </div>
@@ -8079,7 +9498,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                 No folder selected yet. Your browser may label this as Upload.
                 At this step, files are only selected for the governed source
                 request. No AWR analysis, backend staging, or dashboard truth
-                mutation occurs until you click Submit Governed Source Handoff.
+                mutation occurs until you click Run Governed Source Intake.
                 Browser provides selected files and relative names; backend
                 service validates/stages submitted metadata. In OCI, picker
                 metadata is treated as upload/staging input rather than a
@@ -8145,44 +9564,6 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                 backend validation.
               </small>
             </label>
-            <label class="phase7cm-source-config-field"
-                   data-source-config-mode="existing_run">
-              <span>Selected existing run reference</span>
-              <input type="text"
-                     placeholder="Select a service-returned run below"
-                     data-dashboard-state-input="true"
-                     data-dashboard-state-key="selectedRunReference"
-                     data-source-config-mode="existing_run"
-                     data-phase7-existing-run-field="true"
-                     readonly
-                     autocomplete="off">
-              <small>
-                The browser does not query persistence directly and this is not
-                a blind run-ID text box. Use the governed lookup below, select a
-                returned run, then submit the source handoff.
-              </small>
-            </label>
-            <div class="phase7cm-source-config-field"
-                 data-source-config-mode="existing_run">
-              <span>Governed existing run lookup</span>
-              <button type="button"
-                      class="phase7cm-service-button"
-                      data-phase7-existing-run-lookup-control="true"
-                      data-phase7-service-endpoint="existing_runs">
-                Load Existing Runs
-              </button>
-              <select id="phase7cm-existing-run-options"
-                      data-phase7-existing-run-options="true"
-                      aria-label="Service-returned existing run options">
-                <option value="">Run options load from governed service</option>
-              </select>
-              <small>
-                The local workflow service queries persistence on behalf of the
-                dashboard and returns selectable run options. If the DB is not
-                configured, the lookup reports unavailable and source handoff
-                remains disabled.
-              </small>
-            </div>
             <label class="phase7cm-source-config-field phase7cm-object-storage-config-field"
                    data-source-config-mode="object_storage">
               <span>Object Storage namespace</span>
@@ -8223,11 +9604,12 @@ def _render_phase7cm_index_source_intake_panel() -> str:
                      data-dashboard-state-key="objectStorageRegion"
                      data-source-config-mode="object_storage"
                      autocomplete="off">
-              <small>
-                Object Storage access happens only through governed backend
-                validation, never browser-side bucket reads. This is the
-                OCI-ready source-selection path.
-              </small>
+	              <small>
+	                Object Storage access happens only through governed backend
+	                validation, never browser-side bucket reads. This is
+	                governed metadata validation only; full load, parse, and
+	                analyze remain backend-gated.
+	              </small>
             </label>
             <div class="phase7cm-source-config-field phase7cm-object-storage-config-field"
                  data-source-config-mode="object_storage">
@@ -8250,37 +9632,37 @@ def _render_phase7cm_index_source_intake_panel() -> str:
         <section class="evidence-pane"
                  data-phase7-current-selection-panel="true"
                  data-phase7-active-source-configuration="true">
-          <h3>Active Source Configuration / Runtime Source State</h3>
-          <p class="meta">
-            <strong>Active Source Selection.</strong>
-            This is the operator-facing source workflow summary. It changes
-            with Local folder, Local file, Existing run, or Object Storage
-            selection and shows what is ready, missing, or invalid before the
-            governed Screen 2 Control handoff is submitted. The default local staging
-            reference below is informational only and is not the active source
-            once another source mode is selected.
-          </p>
+	          <h3>Selected Source Summary</h3>
+	          <p class="meta">
+	            <strong>Active Source Selection.</strong>
+	            This is the operator-facing source workflow summary. It changes
+	            with Local folder, Local file, or Object Storage
+	            selection and shows what is ready, missing, or invalid before the
+	            governed handoff is submitted. The default local staging
+	            reference below is informational only and is not the active source
+	            once another source mode is selected.
+	          </p>
           <div class="phase7cm-source-summary-grid"
                data-phase7-dynamic-source-summary="true">
             <article class="phase7cm-source-summary-card">
               <strong>Active Source</strong>
-              <p data-phase7-source-summary-card="active">Local folder / local staged AWR</p>
+              <p data-phase7-source-summary-card="active">No source selected</p>
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Source Metadata</strong>
-              <p data-phase7-source-summary-card="metadata">Backend-visible local/dev path: data/input</p>
+              <p data-phase7-source-summary-card="metadata">Select a source mode or choose a folder/file before submitting.</p>
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Validation Status</strong>
-              <p data-phase7-source-summary-card="validation">backend path validation pending</p>
+              <p data-phase7-source-summary-card="validation">Not checked</p>
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Required Metadata / Missing Fields</strong>
               <p data-phase7-source-summary-card="missing">Select a source to see required metadata.</p>
             </article>
             <article class="phase7cm-source-summary-card">
-              <strong>Handoff Target</strong>
-              <p data-phase7-source-summary-card="handoff">Screen 2 Control handoff status appears here.</p>
+              <strong>Execution Target</strong>
+		              <p data-phase7-source-summary-card="handoff">No execution target selected.</p>
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Action State</strong>
@@ -8288,7 +9670,7 @@ def _render_phase7cm_index_source_intake_panel() -> str:
             </article>
             <article class="phase7cm-source-summary-card">
               <strong>Next Step</strong>
-              <p data-phase7-source-summary-card="next_step">Submit a governed source handoff, then open Screen 2 Control.</p>
+		              <p data-phase7-source-summary-card="next_step">Choose a source mode, then configure source metadata.</p>
             </article>
           </div>
           <p class="meta">
@@ -8299,8 +9681,8 @@ def _render_phase7cm_index_source_intake_panel() -> str:
           </p>
         </section>
 
-        <section class="evidence-pane" data-phase7-runtime-source-validation="true">
-          <h3>Runtime Source Validation</h3>
+	        <section class="evidence-pane" data-phase7-runtime-source-validation="true">
+	          <h3>Validation / Execution Status</h3>
           <p class="meta">
             This block separates picker/configuration status from governed
             backend validation. OS picker selection alone is not staging and
@@ -8325,13 +9707,6 @@ def _render_phase7cm_index_source_intake_panel() -> str:
               </p>
             </article>
             <article class="phase7cm-source-summary-card">
-              <strong>Existing Run Lookup</strong>
-              <p data-phase7-source-validation-card="existing_run">
-                Load Existing Runs calls the governed service; the browser does
-                not query persistence directly.
-              </p>
-            </article>
-            <article class="phase7cm-source-summary-card">
               <strong>Object Storage Validation</strong>
               <p data-phase7-source-validation-card="object_storage">
                 Validate Object Storage Source calls the governed service; the
@@ -8351,9 +9726,9 @@ def _render_phase7cm_index_source_intake_panel() -> str:
               <strong>Request / Audit Result</strong>
               <p data-phase7-source-validation-card="result"
                  data-phase7-submit-result-reference="true">
-                After submit, accepted/rejected status, Request ID, Audit
-                record, queued reference, and Open Screen 2 Control appear in the
-                result panel.
+                After submit, accepted/running/completed/failed status, Request ID,
+	                Audit record, and generated artifact readiness appear in the
+	                result panel.
               </p>
             </article>
           </div>
@@ -8362,13 +9737,13 @@ def _render_phase7cm_index_source_intake_panel() -> str:
         <a href="#phase7cm-source-intake-panel"
            class="phase7-governed-action-control"
            data-phase7-action-control="true"
-           data-screen-id="index_source_mode"
-           data-action-type="source_selection_handoff"
-           data-workflow-type="index_source_selection_handoff"
-           data-target-type="source_selection"
-           data-target-id="index-source-selection"
+           data-screen-id="screen_1"
+           data-action-type="screen1_source_intake_execute"
+           data-workflow-type="screen1_source_intake_execution"
+           data-target-type="source_intake"
+           data-target-id="screen1-source-intake-execute"
            data-required-selection-key="selectedSourceMode"
-           data-execution-mode="request_record_only"
+           data-execution-mode="governed_backend_execution"
            data-runtime-influence-granted="false"
            data-phase4i-mutation-allowed="false"
            data-phase8-behavior="false"
@@ -8377,9 +9752,10 @@ def _render_phase7cm_index_source_intake_panel() -> str:
            data-action-enabled-state="disabled-no-selection"
            data-action-payload="{escape(action_payload, quote=True)}"
            aria-disabled="true">
-          <strong data-phase7-source-submit-label="true">Submit Local Folder Source Handoff</strong>
+          <strong data-phase7-source-submit-label="true">Run Local Folder Source Intake</strong>
           <span>
-            Submits the selected source through the governed workflow service.
+            Submits the selected source through the governed workflow service
+            and invokes backend intake/generation when the source is valid.
             Disabled until the selected source and validation requirements are
             satisfied.
           </span>
@@ -8394,11 +9770,19 @@ def _render_phase7cm_index_source_intake_panel() -> str:
           success/failure, Request ID, Audit record, and the next step.
         </div>
 
-        <p class="meta phase7cm-next-step-note">
-          Next step after an accepted request:
-          <a class="inline-nav-hint" href="screen_2_control.html" data-dashboard-propagate-state="true">Open Screen 2 Control</a>
-          to continue governed re-analysis with the accepted source context.
+        <p class="meta phase7cm-truth-boundary-note">
+          After submit, governed source intake results appear here. Generated
+          run evidence updates only after the backend analysis/generation path
+          produces a new dashboard artifact. Browser-side source intake does
+          not mutate deterministic truth.
         </p>
+
+        <p class="meta phase7cm-next-step-note">
+          Next step after an accepted new-source request:
+          continue ingestion, parser review, and source governance on Screen 1.
+          Existing platform evidence runtime scope is controlled on
+          <a class="inline-nav-hint" href="screen_2_control.html" data-dashboard-propagate-state="true">Screen 2 Control</a>.
+	        </p>
       </section>
     """
 
@@ -8407,11 +9791,11 @@ def _render_phase7cm_index_debug_state_panel() -> str:
     """Render collapsed browser/source state diagnostics at the bottom of index."""
 
     return """
-      <details class="card secondary phase7-legacy-boundary-details phase7cm-debug-state-details"
-               data-phase7-debug-state-panel="true"
-               data-phase7-advanced-debug-state="true">
-        <summary>Historical Phase Boundary Evidence - Advanced Debug State / Browser Selection State</summary>
-        <div class="section-kicker">Legacy Debug Context</div>
+	      <details class="card secondary phase7-legacy-boundary-details phase7cm-debug-state-details"
+	               data-phase7-debug-state-panel="true"
+	               data-phase7-advanced-debug-state="true">
+	        <summary>Technical Details - Advanced Debug State / Browser Selection State</summary>
+	        <div class="section-kicker">Debug Context</div>
         <h2>Advanced Debug State / Browser Selection State</h2>
         <p class="meta">
           Raw browser/hash/localStorage keys are intentionally secondary and
@@ -9027,7 +10411,7 @@ def _render_index_source_mode_entry_preview() -> str:
 
 
 def _render_home_system_ux_sections() -> str:
-    """Render static Screen 0 system explanation sections."""
+    """Render visible platform identity context for the Index page."""
 
     return """
       <section class="card prominent pipeline-card phase7-dynamic-pipeline-card"
@@ -9036,19 +10420,11 @@ def _render_home_system_ux_sections() -> str:
         <div class="section-kicker">System Flow</div>
         <h2>AWR Intelligence Pipeline</h2>
         <p class="meta pipeline-intro">
-          This panel follows the selected intake source mode. It shows the
-          current source mode, active source, source validation state, and
-          Screen 2 Control handoff target.<br>
-          Local development fallback:
-          <strong>data/input</strong>.
+          Governed source intake flows into deterministic parsing, feature
+          engineering, scoring, decision posture, recommendation generation,
+          and dashboard truth. Index explains the platform path; Screen 1 and
+          Screen 2 own the operational workflow controls.
         </p>
-
-        <div class="pipeline-mode-badge">
-          <span class="status-pill success" data-phase7-source-summary-card="pipeline_mode">Current source mode: Local folder / local staged AWR</span>
-          <span class="meta" data-phase7-source-summary-card="pipeline_active">Active source: data/input</span>
-          <span class="meta" data-phase7-source-summary-card="pipeline_validation">Current source validation: backend path validation pending</span>
-          <span class="meta" data-phase7-source-summary-card="pipeline_handoff">Current handoff target: Screen 2 Control</span>
-        </div>
 
         <div class="pipeline-lane">
           <div class="pipeline-lane-header">
@@ -9064,7 +10440,7 @@ def _render_home_system_ux_sections() -> str:
           <div class="pipeline-flow runtime-flow" aria-label="Deterministic runtime pipeline">
             <div class="pipeline-node source-node">
               <span>Ingestion</span>
-              <small data-phase7-source-summary-card="pipeline_node_source">Local staged AWR source. Path: data/input.</small>
+              <small data-phase7-source-summary-card="pipeline_node_source">Select a source for governed intake.</small>
             </div>
 
             <div class="pipeline-node">
@@ -9111,57 +10487,6 @@ def _render_home_system_ux_sections() -> str:
           </div>
         </div>
       </section>
-
-      <section class="card secondary future-input-card phase7-dynamic-source-context-card"
-               data-phase7-current-source-context="true"
-               data-phase7-source-configuration-reference="true">
-        <div class="section-kicker">Source Configuration</div>
-        <h2>Source Configuration Reference / Staging Context</h2>
-        <p class="meta">
-          This panel reflects the currently selected source intake workflow.
-          Local development fallback: <strong>data/input</strong>. The browser
-          never reads local backend paths or Object Storage directly; selected
-          metadata is submitted through the governed workflow service.
-        </p>
-
-        <div class="future-input-layout">
-          <div class="future-input-panel">
-            <h3>Current Source Type</h3>
-            <p data-phase7-source-summary-card="config_type">Current source type: Local folder / local staged AWR</p>
-          </div>
-
-          <div class="future-input-panel">
-            <h3>Current Source Location</h3>
-            <p data-phase7-source-summary-card="config_location">Current source location: data/input</p>
-          </div>
-
-          <div class="future-input-panel">
-            <h3>Current Source Metadata</h3>
-            <p data-phase7-source-summary-card="config_candidates">Candidate AWR files: 0; .out files: 0; samples: none</p>
-          </div>
-
-          <div class="future-input-panel">
-            <h3>Current Source Validation</h3>
-            <p data-phase7-source-summary-card="config_validation">Current source validation: backend path validation pending</p>
-          </div>
-
-          <div class="future-input-panel">
-            <h3>Current Handoff Status</h3>
-            <p data-phase7-source-summary-card="config_handoff">Current handoff status: Choose a folder or use backend path fallback.</p>
-          </div>
-        </div>
-
-        <div class="supportive-panel future-note">
-          <strong>Runtime safety note</strong>
-          <p>
-            Object Storage is handled by governed backend validation, not
-            browser-side bucket access. Enterprise Manager extracts, sizing,
-            TCO, and what-if advisory remain outside this source-intake
-            workflow.
-          </p>
-        </div>
-      </section>
-
       <section class="card secondary agent-architecture-card">
         <div class="section-kicker">Runtime Boundary</div>
         <h2>Deterministic Runtime Architecture</h2>
@@ -9290,6 +10615,7 @@ def _render_screen_1_page(
 ) -> str:
     return f"""
     <div class="grid">
+      {_render_phase7cm_index_source_intake_panel(surface="screen1")}
       {_render_screen1_run_intake_report_section(screen_model)}
       {_render_screen1_full_report_table_section(screen_model)}
       {_render_screen1_parser_health_primary_section(
@@ -9310,98 +10636,417 @@ def _render_screen_1_page(
       )}
       {_render_screen1_field_mapping_candidates_section(parser_governance_payload or {})}
       {_render_screen1_knowledge_artifact_context_section(parser_governance_payload or {})}
-      {_render_screen1_historical_governance_evidence(
-          screen_model,
-          parser_review_payload or {},
-          parser_governance_payload or {},
-          report_data or {},
-      )}
     </div>
     """
 
 
+def _render_screen1_generated_evidence_card(
+    title: str,
+    rows: list[tuple[str, Any, str]],
+) -> str:
+    """Render generated-run evidence using the dashboard info-box frame style."""
+
+    row_html = "\n".join(
+        f"""
+              <div class="info-box screen1-generated-evidence-info-box">
+                <strong title="{escape(str(label), quote=True)}">{escape(str(label))}</strong>
+                <div>{escape(_screen1_generated_evidence_value(value, fallback))}</div>
+              </div>
+        """
+        for label, value, fallback in rows
+    )
+    return f"""
+          <section class="screen1-generated-evidence-group" aria-label="{escape(title, quote=True)}">
+            <h3>{escape(title)}</h3>
+            <div class="info-grid screen1-generated-evidence-info-grid">
+              {row_html}
+            </div>
+          </section>
+    """
+
+
+def _screen1_generated_evidence_value(value: Any, fallback: str) -> str:
+    """Format generated evidence while keeping missing artifact facts truthful."""
+
+    return _display_value(value) if _has_display_value(value) else fallback
+
+
+def _screen1_generated_evidence_source_value(
+    value: Any,
+    fallback: str,
+    *,
+    missing_values: tuple[str, ...] = ("unknown", "not established", "none", "n/a"),
+) -> str:
+    """Return artifact-sourced display text or a truthful fallback."""
+
+    if not _has_display_value(value):
+        return fallback
+    display_value = _display_value(value)
+    normalized = display_value.strip().lower()
+    if normalized in missing_values:
+        return fallback
+    return display_value
+
+
+def _screen1_compact_summary_value(parts: list[tuple[str, Any]], fallback: str) -> str:
+    """Join related generated facts into one compact visible card value."""
+
+    formatted_parts = [
+        f"{label}: {_display_value(value)}"
+        for label, value in parts
+        if _has_display_value(value)
+    ]
+    return " / ".join(formatted_parts) if formatted_parts else fallback
+
+
+def _screen1_topology_context_value(
+    values: list[Any],
+    *,
+    needles: tuple[str, ...],
+    fallback: str,
+) -> str | None:
+    del fallback
+    matching_values = []
+    for value in values:
+        if not _has_display_value(value):
+            continue
+        display_value = _display_value(value)
+        candidates = [
+            item.strip()
+            for item in re.split(r"[,;/|]+", display_value)
+            if item.strip()
+        ] or [display_value]
+        for candidate in candidates:
+            normalized = candidate.lower()
+            if any(needle in normalized for needle in needles):
+                matching_values.append(candidate)
+    return _join_compact_values(matching_values) if matching_values else None
+
+
+def _screen1_parser_topology_hint_summary(
+    parse_confidence: dict[str, Any],
+    validation_notes: dict[str, Any],
+) -> dict[str, str | None]:
+    hints = parse_confidence.get("version_platform_topology_hints") or []
+    hint_text = _join_compact_values(hints) if isinstance(hints, list) else hints
+    raw_notes = validation_notes.get("notes") or validation_notes.get("items") or []
+    grouped_messages = [
+        group.get("message")
+        for group in _group_validation_notes(raw_notes)
+        if _has_display_value(group.get("message"))
+    ]
+    optional_messages = [
+        message
+        for message in grouped_messages
+        if any(
+            token in str(message).lower()
+            for token in (
+                "optional",
+                "missing_expected_section",
+                "source-profile",
+                "parser-expectation",
+                "not present",
+            )
+        )
+    ]
+    optional_note = _join_compact_values(optional_messages[:3])
+    review_note = next(
+        (
+            message
+            for message in grouped_messages
+            if "source-profile" in str(message).lower()
+            or "parser-expectation" in str(message).lower()
+        ),
+        optional_note,
+    )
+    return {
+        "raw_hints": _display_value(hint_text) if _has_display_value(hint_text) else None,
+        "optional_note": _display_value(optional_note) if _has_display_value(optional_note) else None,
+        "review_note": _display_value(review_note) if _has_display_value(review_note) else None,
+    }
+
+
+def _screen1_topology_notes(
+    *,
+    selected_scope: Any,
+    rac_evidence: Any,
+    data_guard_evidence: Any,
+    raw_parser_hints: Any,
+) -> str:
+    notes: list[str] = []
+    if _has_display_value(selected_scope):
+        notes.append(f"Selected report scope: {_display_value(selected_scope)}.")
+    if _has_display_value(rac_evidence):
+        notes.append("RAC/cluster indicators are present as supporting evidence, not as the selected report scope.")
+    if _has_display_value(data_guard_evidence):
+        notes.append("Data Guard/ADG indicators are present as supporting evidence; database role is shown separately.")
+    if _has_display_value(raw_parser_hints):
+        notes.append(f"Raw parser/source-profile hints: {_display_value(raw_parser_hints)}.")
+    return " ".join(notes) if notes else "No topology notes are available in the generated artifact."
+
+
 def _render_screen1_run_intake_report_section(screen_model: dict[str, Any]) -> str:
-    """Render the visible Screen 1 run/intake report as primary content."""
+    """Render current generated-run evidence without implying new source execution."""
 
     header = _to_dict(screen_model.get("header"))
     intake_summary = _to_dict(screen_model.get("intake_summary"))
     environment_context = _to_dict(screen_model.get("environment_context"))
     db_ingestion = _to_dict(screen_model.get("db_ingestion"))
     db_summary = _to_dict(db_ingestion.get("summary"))
+    parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
+    validation_notes = _to_dict(screen_model.get("validation_notes"))
     selected_database_dbid = _join_compact_values(
         [
             environment_context.get("source_database"),
             environment_context.get("dbid"),
         ]
     )
-
-    return f"""
-      <section class="card primary screen1-run-intake-report"
-               id="screen1-run-intake-report"
-               data-screen1-run-intake-report="true">
-        <div class="section-kicker">INGESTION</div>
-        <h2>Run / Intake Report</h2>
-        <div class="subgrid">
-          <section class="evidence-pane">
-            <h3>Run Summary</h3>
-            {_render_info_grid(
+    topology_context_values = [
+        environment_context.get("topology_detected"),
+        environment_context.get("selected_scope_topology"),
+        environment_context.get("historical_contextual_topology"),
+        environment_context.get("platform_detected"),
+    ]
+    selected_scope = (
+        environment_context.get("selected_scope_topology")
+        or environment_context.get("topology_detected")
+    )
+    rac_evidence = _screen1_topology_context_value(
+        topology_context_values,
+        needles=("rac", "cluster"),
+        fallback="Not explicitly identified in AWR",
+    )
+    data_guard_evidence = _screen1_topology_context_value(
+        topology_context_values,
+        needles=("data guard", "adg", "redo transport", "replication", "standby"),
+        fallback="Not explicitly identified in AWR",
+    )
+    parser_topology_summary = _screen1_parser_topology_hint_summary(
+        parse_confidence,
+        validation_notes,
+    )
+    run_summary_rows = [
+        ("Generated Time", header.get("run_label"), "Not available"),
+        ("Source Mode", header.get("source_mode"), "Not available"),
+        (
+            "Files Processed",
+            _screen1_compact_summary_value(
                 [
-                    ("Run Label / Generated Time", header.get("run_label")),
-                    ("Source Mode", header.get("source_mode")),
-                    ("Total Files", intake_summary.get("total_files")),
-                    ("Processed", intake_summary.get("processed")),
-                    ("Succeeded", intake_summary.get("succeeded")),
-                    ("Failed", intake_summary.get("failed")),
-                    ("Skipped", intake_summary.get("skipped")),
-                    ("Manifest / Dataset Status", intake_summary.get("manifest_status")),
+                    ("processed", intake_summary.get("processed")),
+                    ("total", intake_summary.get("total_files")),
                 ],
-                extra_class="intake-summary-grid",
-            )}
-          </section>
-          <section class="evidence-pane">
-            <h3>DB Load / Reuse</h3>
-            {_render_info_grid(
+                "Not available",
+            ),
+            "Not available",
+        ),
+        (
+            "Result",
+            _screen1_compact_summary_value(
                 [
-                    ("DB Connectivity", db_summary.get("db_connectivity")),
-                    ("DB Load Mode", db_summary.get("db_load_mode")),
-                    ("Already Loaded", _db_ingestion_summary_value(db_summary, "already_loaded")),
-                    ("Newly Loaded", _db_ingestion_summary_value(db_summary, "newly_loaded")),
-                    ("Reused AWR IDs", _db_ingestion_summary_value(db_summary, "reused_awr_ids")),
+                    ("succeeded", intake_summary.get("succeeded")),
+                    ("failed", intake_summary.get("failed")),
+                    ("skipped", intake_summary.get("skipped")),
+                ],
+                "Not available",
+            ),
+            "Not available",
+        ),
+        (
+            "Dataset Status",
+            intake_summary.get("manifest_status"),
+            "Not available",
+        ),
+    ]
+    database_environment_rows = [
+        ("DB / DBID", selected_database_dbid, "Not identified in generated artifact"),
+        ("Database Version", environment_context.get("db_version"), "Not identified in generated artifact"),
+        ("Database Role", environment_context.get("database_role"), "Not explicitly identified in AWR"),
+        ("Operating System", environment_context.get("operating_system"), "Not identified in generated artifact"),
+        (
+            "Host / Instance",
+            _join_compact_values(
+                [
+                    environment_context.get("hostname"),
+                    environment_context.get("instance_name"),
+                ]
+            ),
+            "Not explicitly identified in AWR",
+        ),
+    ]
+    platform_topology_rows = [
+        (
+            "Platform",
+            _screen1_generated_evidence_source_value(
+                environment_context.get("platform_detected"),
+                "Not established in generated artifact",
+            ),
+            "Not established in generated artifact",
+        ),
+        ("Selected Scope", selected_scope, "Not identified in generated artifact"),
+        ("Instance Count", environment_context.get("instance_count"), "Not identified in generated artifact"),
+        (
+            "RAC / Cluster Evidence",
+            "RAC indicators present" if _has_display_value(rac_evidence) else None,
+            "Not explicitly identified in generated artifact",
+        ),
+        (
+            "Data Guard / ADG Evidence",
+            "Data Guard indicators present" if _has_display_value(data_guard_evidence) else None,
+            "Not explicitly identified in generated artifact",
+        ),
+        (
+            "Topology Notes",
+            _screen1_topology_notes(
+                selected_scope=selected_scope,
+                rac_evidence=rac_evidence,
+                data_guard_evidence=data_guard_evidence,
+                raw_parser_hints=parser_topology_summary.get("raw_hints"),
+            ),
+            "No topology notes are available in the generated artifact.",
+        ),
+    ]
+    capacity_rows = [
+        (
+            "Cumulative OCPUs / Cores",
+            _screen1_generated_evidence_source_value(
+                environment_context.get("ocpus_cores"),
+                "Not available in generated artifact",
+            ),
+            "Not available in generated artifact",
+        ),
+        (
+            "Memory per Instance",
+            _screen1_generated_evidence_source_value(
+                environment_context.get("memory_per_instance"),
+                "Not available in generated artifact",
+            ),
+            "Not available in generated artifact",
+        ),
+    ]
+    db_load_rows = [
+        (
+            "DB Connectivity / DB Load Mode",
+            _screen1_compact_summary_value(
+                [
+                    ("connectivity", db_summary.get("db_connectivity")),
+                    ("load mode", db_summary.get("db_load_mode")),
+                ],
+                "Not available",
+            ),
+            "Not available",
+        ),
+        (
+            "Loaded / Reused AWR IDs",
+            _screen1_compact_summary_value(
+                [
+                    ("already loaded", _db_ingestion_summary_value(db_summary, "already_loaded")),
+                    ("newly loaded", _db_ingestion_summary_value(db_summary, "newly_loaded")),
+                    ("reused", _db_ingestion_summary_value(db_summary, "reused_awr_ids")),
+                ],
+                "Not available",
+            ),
+            "Not available",
+        ),
+        (
+            "Feature Vectors",
+            _screen1_compact_summary_value(
+                [
+                    ("existing", _db_ingestion_summary_value(db_summary, "feature_vectors_existing")),
                     (
-                        "Feature Vectors Existing",
-                        _db_ingestion_summary_value(db_summary, "feature_vectors_existing"),
-                    ),
-                    (
-                        "Feature Vectors Created/Updated",
+                        "created/updated",
                         _db_ingestion_summary_value(
                             db_summary,
                             "feature_vectors_created_updated",
                         ),
                     ),
-                    ("DB Similarity Ready", db_summary.get("db_similarity_ready")),
                 ],
-                extra_class="intake-summary-grid",
-            )}
-          </section>
-          <section class="evidence-pane">
-            <h3>Selected Scope</h3>
-            {_render_info_grid(
+                "Not available",
+            ),
+            "Not available",
+        ),
+        ("Similarity Ready", db_summary.get("db_similarity_ready"), "Not available"),
+    ]
+    selected_scope_rows = [
+        (
+            "Snapshot Start / End",
+            _screen1_compact_summary_value(
                 [
-                    ("Selected Database / DBID", selected_database_dbid),
-                    ("Host", environment_context.get("hostname")),
-                    ("Snapshot Start", environment_context.get("snapshot_start")),
-                    ("Snapshot End", environment_context.get("snapshot_end")),
-                    ("Last Snapshot", environment_context.get("last_snapshot")),
-                    (
-                        "Current Selected Scope",
-                        environment_context.get("selected_scope_topology")
-                        or environment_context.get("topology_detected"),
-                    ),
+                    ("start", environment_context.get("snapshot_start")),
+                    ("end", environment_context.get("snapshot_end")),
                 ],
-                extra_class="intake-summary-grid",
-            )}
-          </section>
+                "Not available",
+            ),
+            "Not available",
+        ),
+        ("Last Snapshot", environment_context.get("last_snapshot"), "Not available"),
+    ]
+    parser_topology_rows = [
+        (
+            "Parser optional-section notes",
+            parser_topology_summary.get("optional_note"),
+            "No optional-section notes identified in generated artifact",
+        ),
+        (
+            "Source-profile/parser-expectation review notes",
+            parser_topology_summary.get("review_note"),
+            "No source-profile/parser-expectation review notes identified",
+        ),
+    ]
+    has_generated_evidence = any(
+        _has_display_value(value)
+        for _, value, _ in [
+            *run_summary_rows,
+            *database_environment_rows,
+            *platform_topology_rows,
+            *capacity_rows,
+            *db_load_rows,
+            *selected_scope_rows,
+            *parser_topology_rows,
+        ]
+    )
+    generated_evidence_payload_html = (
+        f"""
+          <div class="screen1-generated-evidence-group-stack">
+            {_render_screen1_generated_evidence_card("Intake Result", run_summary_rows)}
+            {_render_screen1_generated_evidence_card("Source Database", database_environment_rows)}
+            {_render_screen1_generated_evidence_card("Platform / Topology Evidence", platform_topology_rows)}
+            {_render_screen1_generated_evidence_card("Capacity Snapshot", capacity_rows)}
+            {_render_screen1_generated_evidence_card("DB Load / Vector Status", db_load_rows)}
+            {_render_screen1_generated_evidence_card("Snapshot Window", selected_scope_rows)}
+            {_render_screen1_generated_evidence_card("Parser / Source Profile Notes", parser_topology_rows)}
+          </div>
+        """
+        if has_generated_evidence
+        else ""
+    )
+
+    return f"""
+      <section class="card primary screen1-run-intake-report"
+               id="screen1-run-intake-report"
+               data-screen1-run-intake-report="true"
+               data-screen1-artifact-ready-region="true"
+               data-screen1-generated-artifact-ready="false">
+        <div class="section-kicker">GENERATED EVIDENCE</div>
+        <h2>Current Generated Run / Intake Evidence</h2>
+        <p class="meta screen1-generated-run-boundary-note">
+          Generated evidence reflects a generated dashboard artifact. It is not
+          created by the unsent source workflow above. Browser-side source
+          intake records governed execution intent only. Generated evidence updates only
+          after a governed backend generation path produces or selects an
+          artifact.
+        </p>
+        <div class="screen1-generated-evidence-empty-state"
+             data-screen1-artifact-empty-state="true">
+          No generated run evidence is available yet. Complete source validation
+          and run/regenerate through the governed backend path.
         </div>
+        <div data-screen1-artifact-ready-content="true"
+             data-screen1-generated-evidence-content="true"
+             hidden></div>
+        <template data-screen1-artifact-template="true"
+                  data-screen1-generated-evidence-template="true">
+          {generated_evidence_payload_html}
+        </template>
       </section>
     """
 
@@ -9421,106 +11066,98 @@ def _render_screen1_parser_health_primary_section(
         screen_model,
     )
     return f"""
-      <section class="card secondary screen1-parser-health-panel" id="screen1-parser-health">
+      <section class="card secondary screen1-parser-health-panel"
+               id="screen1-parser-health"
+               data-screen1-parser-health="true"
+               data-screen1-artifact-ready-region="true"
+               data-screen1-generated-artifact-ready="false">
         <div class="section-kicker">PARSER HEALTH</div>
         <h2>Parse Confidence</h2>
-        <div class="subgrid">
-          <section class="half evidence-pane">
-            <h3>Runtime Parser Status</h3>
-            <div class="stack">
-              {_render_context_summary(
-                  {
-                      "summary": parse_confidence.get("adaptation_summary"),
-                      "items": [],
-                  },
-                  "items",
-                  "No parse confidence summary is available.",
-              )}
-              {_render_info_grid(
-                  [
-                      (
-                          "Parse Completeness Score",
-                          parse_confidence.get("parse_completeness_score"),
-                      ),
-                      ("Warnings", parse_confidence.get("warnings_count")),
-                      ("Sections Detected", parse_confidence.get("sections_detected")),
-                      ("Sections Missing", parse_confidence.get("sections_missing")),
-                      ("Runtime Parser Unknowns", parse_confidence.get("unknowns_captured")),
-                      (
-                          "Alias / Fallback Matching",
-                          parse_confidence.get("alias_fallback_matching"),
-                      ),
-                  ]
-              )}
-              <div class="meta context-note">
-                {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
-              </div>
-            </div>
-          </section>
-          <section class="half evidence-pane">
-            <h3>Validation Notes</h3>
-            {validation_notes_html}
-          </section>
+        <p class="meta">
+          Parser health reflects generated parser output. It appears only after a
+          governed backend source intake run produces or selects an artifact.
+        </p>
+        <div class="screen1-generated-evidence-empty-state"
+             data-screen1-artifact-empty-state="true">
+          No parser health is available yet. Complete source validation and run
+          source intake through the governed backend path.
         </div>
+        <div data-screen1-artifact-ready-content="true"
+             data-screen1-parser-health-content="true"
+             hidden></div>
+        <template data-screen1-artifact-template="true"
+                  data-screen1-parser-health-template="true">
+          <div class="subgrid">
+            <section class="half evidence-pane">
+              <h3>Runtime Parser Status</h3>
+              <div class="stack">
+                {_render_context_summary(
+                    {
+                        "summary": parse_confidence.get("adaptation_summary"),
+                        "items": [],
+                    },
+                    "items",
+                    "No parse confidence summary is available.",
+                )}
+                {_render_info_grid(
+                    [
+                        (
+                            "Parse Completeness Score",
+                            parse_confidence.get("parse_completeness_score"),
+                        ),
+                        ("Warnings", parse_confidence.get("warnings_count")),
+                        ("Sections Detected", parse_confidence.get("sections_detected")),
+                        ("Sections Missing", parse_confidence.get("sections_missing")),
+                        ("Runtime Parser Unknowns", parse_confidence.get("unknowns_captured")),
+                        (
+                            "Alias / Fallback Matching",
+                            parse_confidence.get("alias_fallback_matching"),
+                        ),
+                    ]
+                )}
+                <div class="meta context-note">
+                  {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
+                </div>
+              </div>
+            </section>
+            <section class="half evidence-pane">
+              <h3>Validation Notes</h3>
+              {validation_notes_html}
+            </section>
+          </div>
+        </template>
       </section>
     """
 
-
-def _render_screen1_historical_governance_evidence(
-    screen_model: dict[str, Any],
-    parser_review_payload: dict[str, Any],
-    parser_governance_payload: dict[str, Any],
-    report_data: dict[str, Any],
-) -> str:
-    """Render legacy Screen 1 parser/governance evidence behind one closed section."""
-
-    return f"""
-      <details class="card secondary screen1-historical-evidence phase7-legacy-boundary-details"
-               id="screen1-historical-governance-evidence">
-        <summary>Historical / Debug Evidence</summary>
-        <p class="meta">
-          Historical read-only parser review and parser governance
-          visibility records are kept here for audit/debug context. They are not
-          the current parser governance workflow.
-        </p>
-        <div class="stack">
-          {_render_screen1_governance_parser_exploration(
-              screen_model,
-              parser_review_payload,
-              parser_governance_payload,
-              report_data,
-          )}
-          {_render_screen1_parser_unknown_review_preview_panel(
-              screen_model,
-              parser_review_payload,
-              report_data,
-          )}
-          {_render_screen1_knowledge_artifact_review_preview_panel(
-              screen_model,
-              parser_governance_payload,
-              report_data,
-          )}
-          {_render_parser_governance_review_section(parser_governance_payload)}
-        </div>
-      </details>
-    """
-
-
 def _render_screen1_full_report_table_section(screen_model: dict[str, Any]) -> str:
     report_rows = screen_model.get("report_rows") or []
-    total_rows = len(report_rows)
+    table_payload_html = _render_screen1_full_report_table_compact(report_rows) if report_rows else ""
     return f"""
       <section class="card secondary screen1-full-report-table"
                id="screen1-full-report-table"
-               data-screen1-full-report-table="true">
+               data-screen1-full-report-table="true"
+               data-screen1-artifact-ready-region="true"
+               data-screen1-generated-artifact-ready="false">
         <div class="section-kicker">REPORTS</div>
         <h2>Full File / Report Table</h2>
         <p class="meta">
-          Complete file-level intake table for all {_display_value(total_rows)}
-          report rows. This is operational intake evidence, not historical/debug
-          evidence.
+          Complete file-level intake table for generated report rows after a
+          generated artifact is selected or ready. This is operational intake
+          evidence, not historical/debug evidence.
         </p>
-        {_render_screen1_full_report_table_compact(report_rows)}
+        <div class="screen1-generated-evidence-empty-state"
+             data-screen1-artifact-empty-state="true"
+             data-screen1-full-report-table-empty-state="true">
+          No generated file/report rows are available yet. Complete source
+          validation and run/regenerate through the governed backend path.
+        </div>
+        <div data-screen1-artifact-ready-content="true"
+             data-screen1-full-report-table-content="true"
+             hidden></div>
+        <template data-screen1-artifact-template="true"
+                  data-screen1-full-report-table-template="true">
+          {table_payload_html}
+        </template>
       </section>
     """
 
@@ -9531,17 +11168,18 @@ def _render_screen1_full_report_table_compact(report_rows: list[dict[str, Any]])
     if not report_rows:
         return _render_empty_item("No report rows are available.")
 
+    header_specs = [
+        ("File Name", "file_name", "Sort by file name"),
+        ("Parse / DB", "parse_db", "Sort by parse or DB status"),
+        ("AWR / Vector", "awr_vector", "Sort by AWR/vector status"),
+        ("DB / DBID", "db_dbid", "Sort by database or DBID"),
+        ("Host / Instance", "host_instance", "Sort by host or instance"),
+        ("Snapshot Window", "snapshot_window", "Sort by snapshot window"),
+        ("Parser Notes", "parser_notes", "Sort by parser notes"),
+    ]
     header_html = "".join(
-        f"<th>{escape(label)}</th>"
-        for label in [
-            "File Name",
-            "Parse / DB",
-            "AWR / Vector",
-            "DB / DBID",
-            "Host / Instance",
-            "Snapshot Window",
-            "Parser Notes",
-        ]
+        f"<th>{_screen3_sortable_table_header(label, key, title)}</th>"
+        for label, key, title in header_specs
     )
     row_html = []
     for row in report_rows:
@@ -9579,25 +11217,45 @@ def _render_screen1_full_report_table_compact(report_rows: list[dict[str, Any]])
         parser_note = _normalize_screen1_validation_note_message(
             _display_value(row_dict.get("parser_notes") or row_dict.get("validation_notes"))
         )
+        file_name = _display_value(row_dict.get("file_name"))
+        parse_db = _join_compact_values([f"Parse {parse_status}", f"DB {db_status}"])
+        awr_vector = _join_compact_values(
+            [f"AWR ID {awr_id}", f"Vector {vector_status}", f"Similarity {similarity}"]
+        )
         row_html.append(
             f"""
-            <tr data-screen1-full-report-row="true">
-              <td class="screen1-report-file">{escape(_display_value(row_dict.get("file_name")))}</td>
+            <tr data-screen1-full-report-row="true"
+                data-screen3-table-row="true"
+                data-screen3-filter-file_name="{escape(file_name, quote=True)}"
+                data-screen3-sort-file_name="{escape(file_name, quote=True)}"
+                data-screen3-filter-parse_db="{escape(parse_db, quote=True)}"
+                data-screen3-sort-parse_db="{escape(parse_db, quote=True)}"
+                data-screen3-filter-awr_vector="{escape(awr_vector, quote=True)}"
+                data-screen3-sort-awr_vector="{escape(awr_vector, quote=True)}"
+                data-screen3-filter-db_dbid="{escape(db_dbid, quote=True)}"
+                data-screen3-sort-db_dbid="{escape(db_dbid, quote=True)}"
+                data-screen3-filter-host_instance="{escape(host_instance, quote=True)}"
+                data-screen3-sort-host_instance="{escape(host_instance, quote=True)}"
+                data-screen3-filter-snapshot_window="{escape(snapshot_window, quote=True)}"
+                data-screen3-sort-snapshot_window="{escape(snapshot_window, quote=True)}"
+                data-screen3-filter-parser_notes="{escape(parser_note, quote=True)}"
+                data-screen3-sort-parser_notes="{escape(parser_note, quote=True)}">
+              <td class="screen1-report-file" data-screen3-cell-key="file_name">{escape(file_name)}</td>
               <td>
-                <div class="screen1-status-stack">
+                <div class="screen1-status-stack" data-screen3-cell-key="parse_db">
                   <span class="status-pill {_status_pill_class(parse_status)}">{escape(parse_status)}</span>
                   <span class="status-pill {_status_pill_class(db_status)}">{escape(db_status)}</span>
                 </div>
               </td>
-              <td>
+              <td data-screen3-cell-key="awr_vector">
                 <strong>AWR ID:</strong> {escape(awr_id)}
                 <br><strong>Vector:</strong> {escape(vector_status)}
                 <br><strong>Similarity:</strong> {escape(similarity)}
               </td>
-              <td>{escape(db_dbid)}</td>
-              <td>{escape(host_instance)}</td>
-              <td>{escape(snapshot_window)}</td>
-              <td class="screen1-report-parser-notes">{escape(parser_note)}</td>
+              <td data-screen3-cell-key="db_dbid">{escape(db_dbid)}</td>
+              <td data-screen3-cell-key="host_instance">{escape(host_instance)}</td>
+              <td data-screen3-cell-key="snapshot_window">{escape(snapshot_window)}</td>
+              <td class="screen1-report-parser-notes" data-screen3-cell-key="parser_notes">{escape(parser_note)}</td>
             </tr>
             """
         )
@@ -9613,9 +11271,12 @@ def _render_screen1_full_report_table_compact(report_rows: list[dict[str, Any]])
           </colgroup>
     """
     return (
+        _render_screen3_table_control_row("screen1-full-report-table", "Full File / Report Table")
+        +
         '<div class="data-table-wrap screen1-full-report-table-wrap">'
         '<table class="data-table screen1-full-report-table-compact" '
-        'data-screen1-full-report-table-compact="true">'
+        'data-screen1-full-report-table-compact="true" '
+        'data-screen3-table-id="screen1-full-report-table">'
         + colgroup
         + "<thead><tr>"
         + header_html
@@ -9630,7 +11291,7 @@ def _render_screen1_parser_review_unknown_signals_section(
     report_data: dict[str, Any],
     screen_model: dict[str, Any],
 ) -> str:
-    """Render parser review and unknown-signal context as operational content."""
+    """Render compact parser review and unknown-signal status."""
 
     summary = _to_dict(parser_review_payload.get("summary"))
     parse_confidence = _to_dict(screen_model.get("parse_confidence_adaptation"))
@@ -9640,81 +11301,82 @@ def _render_screen1_parser_review_unknown_signals_section(
     classified_count = _display_value(
         summary.get("CLASSIFIED") or summary.get("classified") or 0
     )
-    reviewed_count = _display_value(
-        summary.get("REVIEWED") or summary.get("reviewed") or 0
-    )
-    ignored_count = _display_value(summary.get("IGNORED") or summary.get("ignored") or 0)
     patterns = [_to_dict(pattern) for pattern in _screen1_list(parser_review_payload.get("pattern_summary"))]
+    dominant_pattern = patterns[0] if patterns else {}
+    dominant_section = _display_value(dominant_pattern.get("section_name"))
+    dominant_type = _display_value(dominant_pattern.get("unknown_type"))
+    dominant_count = _display_value(dominant_pattern.get("count") or 0)
+    dominant_status = _display_value(
+        dominant_pattern.get("review_status")
+        or dominant_pattern.get("classification")
+        or dominant_pattern.get("status")
+        or "Review backlog"
+    )
+    dominant_signal = (
+        "Optional IO section absence"
+        if dominant_section.lower() == "io"
+        and dominant_type == "MISSING_EXPECTED_SECTION"
+        else dominant_section
+    )
     if patterns:
-        pattern_rows = []
-        for pattern in patterns[:5]:
-            section_name = _display_value(pattern.get("section_name"))
-            unknown_type = _display_value(pattern.get("unknown_type"))
-            count = _display_value(pattern.get("count"))
-            status = _display_value(
-                pattern.get("review_status")
-                or pattern.get("classification")
-                or pattern.get("status")
-                or "Review backlog"
-            )
-            pattern_rows.append(
-                f"""
-                <tr>
-                  <td>{escape(section_name)}</td>
-                  <td>{escape(unknown_type)}</td>
-                  <td>{escape(count)}</td>
-                  <td>{escape(status)}</td>
-                </tr>
-                """
-            )
-        pattern_table = (
-            '<div class="data-table-wrap">'
-            '<table class="data-table screen1-parser-review-summary-table">'
-            "<thead><tr>"
-            "<th>Signal / Section</th>"
-            "<th>Signal Type</th>"
-            "<th>Count</th>"
-            "<th>Review Status</th>"
-            "</tr></thead><tbody>"
-            + "".join(pattern_rows)
-            + "</tbody></table></div>"
+        signal_summary_html = _render_info_grid(
+            [
+                ("Signal", dominant_signal),
+                ("Type", dominant_type),
+                ("Count", dominant_count),
+                ("Meaning", "Persisted parser governance backlog item, not a new runtime parser failure."),
+            ],
+            extra_class="screen1-unknown-signals-summary-grid",
         )
     else:
-        pattern_table = _render_empty_item("No persisted parser review signals are available.")
+        signal_summary_html = _render_empty_item("No persisted parser review signals are available.")
 
     return f"""
       <section class="card secondary screen1-parser-review-unknown-signals"
                id="screen1-parser-review-unknown-signals"
-               data-screen1-parser-review-unknown-signals="true">
+               data-screen1-parser-review-unknown-signals="true"
+               data-screen1-artifact-ready-region="true"
+               data-screen1-generated-artifact-ready="false">
         <div class="section-kicker">PARSER REVIEW</div>
         <h2>Unknown Signals</h2>
         <p class="meta">
-          Operational parser-review context distinguishes current runtime unknowns
-          from persisted review backlog records.
+          Unknown-signal review reflects generated parser output for the selected
+          artifact. Persisted parser memory is shown only after artifact-ready
+          state confirms a current run or selected artifact.
         </p>
-        <div class="subgrid">
-          <section class="evidence-pane">
-            <h3>Review Backlog Summary</h3>
-            {_render_info_grid(
-                [
-                    ("Current Run Unknowns", current_run_unknowns),
-                    ("Persisted Review Records", total),
-                    ("New", new_count),
-                    ("Classified", classified_count),
-                    ("Reviewed", reviewed_count),
-                    ("Ignored", ignored_count),
-                ],
-                extra_class="intake-summary-grid",
-            )}
-            <div class="meta context-note">
-              {escape(_runtime_parser_unknowns_note(parse_confidence, parser_review_payload, report_data, screen_model))}
-            </div>
-          </section>
-          <section class="evidence-pane">
-            <h3>Grouped Unknown Signals</h3>
-            {pattern_table}
-          </section>
+        <div class="screen1-generated-evidence-empty-state"
+             data-screen1-artifact-empty-state="true">
+          No parser unknown-signal results are available yet. Complete source
+          validation and run source intake through the governed backend path.
         </div>
+        <div data-screen1-artifact-ready-content="true"
+             data-screen1-parser-review-content="true"
+             hidden></div>
+        <template data-screen1-artifact-template="true"
+                  data-screen1-parser-review-template="true">
+          <div class="screen1-unknown-signals-compact">
+            <section class="screen1-unknown-signals-overview">
+              <h3>Parser Review Status</h3>
+              {_render_info_grid(
+                  [
+                      ("Current Run Unknowns", current_run_unknowns),
+                      ("Persisted Review Records", total),
+                      ("New / Classified", f"{new_count} / {classified_count}"),
+                      ("Review Status", dominant_status),
+                  ],
+                  extra_class="screen1-unknown-signals-summary-grid",
+              )}
+            </section>
+            <section class="screen1-unknown-signals-overview">
+              <h3>Dominant Grouped Signal</h3>
+              {signal_summary_html}
+            </section>
+            <p class="meta screen1-unknown-signals-handoff-note">
+              Use Parser Governance Backlog Review below to decide how this
+              persisted signal should be handled.
+            </p>
+          </div>
+        </template>
       </section>
     """
 
@@ -9867,16 +11529,28 @@ def _render_screen1_parser_governance_runtime_workflow(
     if not example_files_html:
         example_files_html = "<li>No example files available in the current dashboard context.</li>"
     return f"""
-	      <section class="card prominent screen1-parser-governance-review"
-	               id="screen1-parser-governance-review"
-	               data-screen1-backlog-review="true">
-	        <div class="section-kicker">GOVERNANCE</div>
-	        <h2>Parser Governance Backlog Review</h2>
-	        <p class="meta">
-	          Review persisted parser signals and submit a governed backlog review request.
-	        </p>
-
-	        <div class="screen1-operator-workflow">
+      <section class="card prominent screen1-parser-governance-review"
+               id="screen1-parser-governance-review"
+               data-screen1-backlog-review="true"
+               data-screen1-artifact-ready-region="true"
+               data-screen1-generated-artifact-ready="false">
+        <div class="section-kicker">GOVERNANCE</div>
+        <h2>Parser Governance Backlog Review</h2>
+        <p class="meta">
+          Review parser signals for the current generated artifact and submit a
+          governed backlog review request after source intake execution completes.
+        </p>
+        <div class="screen1-generated-evidence-empty-state"
+             data-screen1-artifact-empty-state="true">
+          No parser governance backlog is available yet. Complete source
+          validation and run source intake through the governed backend path.
+        </div>
+        <div data-screen1-artifact-ready-content="true"
+             data-screen1-backlog-review-content="true"
+             hidden></div>
+        <template data-screen1-artifact-template="true"
+                  data-screen1-backlog-review-template="true">
+        <div class="screen1-operator-workflow">
 	          <article class="screen1-review-item"
                    role="button"
                    tabindex="0"
@@ -10095,8 +11769,9 @@ def _render_screen1_parser_governance_runtime_workflow(
 		            </p>
 		          </article>
 		        </div>
-	        </section>
-	      </section>
+		        </section>
+        </template>
+		      </section>
 	    """
 
 
@@ -11207,6 +12882,7 @@ def _render_screen1_parser_unknown_review_preview_panel(
             {summary_rows}
           </dl>
         </section>
+        </template>
       </section>
     """
 
@@ -11532,7 +13208,7 @@ def _render_screen_2_page(
     )
     return f"""
     <div class="grid">
-      <!-- Screen 2 = diagnosis only. Ingestion stays on Screen 1; historical proof stays on Screen 4; action stays on Screen 5. -->
+      <!-- Screen 3 = diagnostic snapshot only. Ingestion stays on Screen 1; historical proof stays on Screen 4; action stays on Screen 5. -->
       <section class="card prominent diagnostic-compact-card">
         <div class="section-kicker">DECISION</div>
         <h2>Diagnostic Snapshot</h2>
@@ -13478,11 +15154,6 @@ def _render_screen_3_selector_page(
     screen_model: dict[str, Any],
     report_data: dict[str, Any] | None = None,
 ) -> str:
-    header = _to_dict(screen_model.get("header"))
-    selection_controls = _to_dict(screen_model.get("selection_controls"))
-    timeframe_selection = _to_dict(screen_model.get("timeframe_selection"))
-    review_mode = _to_dict(screen_model.get("review_mode"))
-    current_selection_summary = _to_dict(screen_model.get("current_selection_summary"))
     report = report_data or {}
     control_center = _build_screen3_control_center_model(screen_model, report)
     return f"""
@@ -13491,8 +15162,10 @@ def _render_screen_3_selector_page(
         <div class="section-kicker">Runtime Control Center</div>
         <h2>Screen 2 - Runtime Scope & Analysis Control</h2>
         <p class="static-selection-note">
-          Review the source selected on Index, choose the run/scope or comparison window, validate readiness, and submit
-          governed backend actions. Existing deterministic truth is not overwritten.
+          Review existing platform evidence from Index or validated source
+          context handed off from Screen 1, choose the run/scope or comparison
+          window, validate readiness, and submit governed backend actions.
+          Existing deterministic truth is not overwritten.
         </p>
         <p class="static-selection-note">
           If execution is not fully governed, the action is recorded and returned as blocked with the missing gates. New
@@ -13504,15 +15177,6 @@ def _render_screen_3_selector_page(
           {_render_screen3_comparison_review_work_area(screen_model, report, control_center)}
           {_render_screen3_submit_result_work_area(screen_model, report, control_center)}
           {_render_screen3_safety_selection_impact_panel()}
-          {_render_screen3_technical_audit_debug_details(
-              screen_model,
-              report,
-              control_center,
-              selection_controls,
-              timeframe_selection,
-              review_mode,
-              current_selection_summary,
-          )}
         </div>
       </section>
     </div>
@@ -13523,8 +15187,10 @@ def _render_screen3_selected_source_scope_panel(
     screen_model: dict[str, Any],
     report_data: dict[str, Any],
 ) -> str:
-    """Render source context received from Index without duplicating source intake."""
+    """Render runtime evidence path state without duplicating source intake."""
 
+    # Product-visible Screen 2 uses legacy screen3 technical hooks for route,
+    # cache, and browser-state compatibility until a controlled API migration.
     source_rows = [
         ("Source mode", "selectedSourceMode", "select a source on index"),
         ("Source method", "sourceSelectionMethod", "not selected"),
@@ -13556,26 +15222,56 @@ def _render_screen3_selected_source_scope_panel(
             for label, key, empty in rows
         )
 
-    source_row_html = state_row_html(source_rows)
+    hidden_state_row_html = state_row_html(source_rows)
     return f"""
           <section class="evidence-pane selector-pane screen3-source-received-panel">
-            <h3>Source Received From Index</h3>
+            <h3>Runtime Evidence Path</h3>
             <p class="static-selection-note">
-              Screen 2 Control receives source context from Index. It does not redo source intake or expose browser-side cloud credentials.
+              Screen 2 receives the operator path from Platform Entry or the
+              completed artifact state from Screen 1. It then loads DB-backed
+              runtime options to select scope, interval, and comparison targets.
             </p>
-            <p class="empty-state screen3-source-handoff-empty"
-               data-screen3-source-handoff-empty="true">
-              No Index source handoff has been received. Return to Index to select Local staged AWR, Local file, Existing run, or Object Storage.
-            </p>
+            <div class="empty-state screen3-source-handoff-empty"
+                 data-screen3-source-handoff-empty="true">
+              <div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced">
+                <article class="info-box screen2-control-info-box">
+                  <strong>Path</strong>
+                  <div>None selected</div>
+                </article>
+                <article class="info-box screen2-control-info-box">
+                  <strong>Readiness</strong>
+                  <div>No valid runtime evidence path yet</div>
+                </article>
+                <article class="info-box screen2-control-info-box">
+                  <strong>Next Step</strong>
+                  <div>Choose a path from Platform Entry</div>
+                </article>
+              </div>
+            </div>
             <p>
-              <a class="inline-action-link" href="index.html" data-dashboard-propagate-state="true">Return to Source Intake</a>
+              <a class="inline-action-link" href="index.html" data-dashboard-propagate-state="true">Return to Platform Entry</a>
             </p>
-            <div class="screen3-source-scope-stack">
+            <div class="screen3-source-scope-stack"
+                 data-screen3-source-handoff-content="true"
+                 hidden>
               <article class="screen3-context-subpanel">
-                <h4>Index-selected source context</h4>
-                <dl class="info-grid selector-compact-grid screen3-source-scope-grid">
-                  {source_row_html}
-                </dl>
+                <h4>Evidence path status</h4>
+                <p class="static-selection-note">
+                  This summary shows the active runtime evidence path.
+                  New-source intake remains owned by Screen 1; Screen 2 uses a
+                  completed artifact or DB-backed existing evidence to build the
+                  runtime-scope handoff.
+                </p>
+                <div class="screen3-source-context-summary"
+                     data-screen3-source-context-summary="true"></div>
+                <div class="screen3-technical-source-state"
+                     data-screen3-technical-source-state="true"
+                     hidden
+                     aria-hidden="true">
+                  <dl>
+                    {hidden_state_row_html}
+                  </dl>
+                </div>
               </article>
             </div>
           </section>
@@ -13793,65 +15489,213 @@ def _render_screen3_interval_fallback_row(
     )
 
 
-def _render_screen3_selected_runtime_scope_summary() -> str:
-    rows = [
-        ("Source type", "selectedSourceMode", "Not selected"),
-        ("Runtime source table", "selectedRuntimeScopeSourceTable", "Not selected"),
-        ("Application", "selectedApplication", "Not available"),
-        ("DB Name", "selectedDb", "Not selected"),
-        ("DBID", "selectedDbid", "Not selected"),
-        ("Instance", "selectedInstance", "Not available"),
-        ("Host/System", "selectedHost", "Not available"),
-        ("Application filter", "screen3RuntimeFilterApplication", "All applications"),
-        ("DB Name filter", "screen3RuntimeFilterDb", "All DB names"),
-        ("DBID filter", "screen3RuntimeFilterDbid", "All DBIDs"),
-        ("Instance filter", "screen3RuntimeFilterInstance", "All instances"),
-        ("Host/System filter", "screen3RuntimeFilterHost", "All hosts/systems"),
-        ("Source type filter", "screen3RuntimeFilterSourceType", "All source tables"),
-        ("Time range filter", "screen3RuntimeFilterTimeRange", "All time ranges"),
-        ("Apply selection to", "screen3ActiveSelectionTarget", "Runtime Scope"),
-        ("Run/report reference", "selectedRunReference", "Not selected"),
-        ("Snapshot / Time Window", "selectedTimeWindow", "Not selected"),
-        ("Resolved AWR count", "selectedRuntimeScopeAwrCount", "0"),
-        ("Resolved snapshot/window count", "selectedRuntimeScopeSnapshotCount", "0"),
-        ("Resolution state", "selectedRuntimeScopeResolutionState", "Pending target resolution"),
-        ("Readiness", "selectedRuntimeScopeReadinessState", "Pending target readiness"),
-    ]
-    return "\n".join(
-        f"""
-              <div>
-                <dt>{escape(label)}</dt>
-                <dd data-dashboard-state-input="true"
-                    data-dashboard-state-key="{escape(key, quote=True)}"
-                    data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
-              </div>
-        """
-        for label, key, empty in rows
+def _screen2_state_value(key: str, empty: str) -> _TrustedHtml:
+    return _TrustedHtml(
+        f'<span data-dashboard-state-input="true" '
+        f'data-dashboard-state-key="{escape(key, quote=True)}" '
+        f'data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</span>'
     )
+
+
+def _screen2_result_value(field: str, default: str) -> _TrustedHtml:
+    return _TrustedHtml(
+        f'<span data-screen3-result-field="{escape(field, quote=True)}" '
+        f'data-default-value="{escape(default, quote=True)}">{escape(default)}</span>'
+    )
+
+
+def _screen2_joined_state_values(
+    parts: list[tuple[str, str, str]],
+    *,
+    separator: str = " / ",
+) -> _TrustedHtml:
+    rendered_parts: list[str] = []
+    for index, (key, empty, prefix) in enumerate(parts):
+        if index:
+            rendered_parts.append(f'<span class="screen2-control-separator">{escape(separator)}</span>')
+        prefix_html = f'<span class="screen2-control-prefix">{escape(prefix)}</span> ' if prefix else ""
+        rendered_parts.append(
+            '<span class="screen2-control-subvalue">'
+            + prefix_html
+            + str(_screen2_state_value(key, empty))
+            + "</span>"
+        )
+    return _TrustedHtml("".join(rendered_parts))
+
+
+def _screen2_joined_result_values(
+    parts: list[tuple[str, str, str]],
+    *,
+    separator: str = " / ",
+) -> _TrustedHtml:
+    rendered_parts: list[str] = []
+    for index, (field, default, prefix) in enumerate(parts):
+        if index:
+            rendered_parts.append(f'<span class="screen2-control-separator">{escape(separator)}</span>')
+        prefix_html = f'<span class="screen2-control-prefix">{escape(prefix)}</span> ' if prefix else ""
+        rendered_parts.append(
+            '<span class="screen2-control-subvalue">'
+            + prefix_html
+            + str(_screen2_result_value(field, default))
+            + "</span>"
+        )
+    return _TrustedHtml("".join(rendered_parts))
+
+
+def _render_screen2_control_info_grid(
+    rows: list[tuple[str, Any] | tuple[str, Any, str]],
+    *,
+    extra_class: str = "",
+) -> str:
+    boxes: list[str] = []
+    for row in rows:
+        label, value = row[0], row[1]
+        box_class = row[2] if len(row) > 2 else ""
+        value_html = str(value) if isinstance(value, _TrustedHtml) else escape(_display_value(value))
+        class_name = " ".join(
+            part
+            for part in ("info-box", "screen2-control-info-box", str(box_class).strip())
+            if part
+        )
+        boxes.append(
+            f"""
+                <div class="{escape(class_name)}">
+                  <strong>{escape(str(label))}</strong>
+                  <div>{value_html}</div>
+                </div>
+            """
+        )
+    grid_class = " ".join(
+        part
+        for part in ("info-grid", "screen2-control-card-grid", extra_class.strip())
+        if part
+    )
+    return f'<div class="{escape(grid_class)}">{"".join(boxes)}</div>'
+
+
+def _render_screen3_selected_awr_report_row_summary() -> str:
+    rows: list[tuple[str, Any] | tuple[str, Any, str]] = [
+        ("Source Table", _screen2_state_value("selectedRuntimeScopeSourceTable", "Not selected")),
+        (
+            "DB / DBID",
+            _screen2_joined_state_values(
+                [
+                    ("selectedDb", "Not selected", ""),
+                    ("selectedDbid", "Not selected", "DBID"),
+                ]
+            ),
+        ),
+        (
+            "Host / Instance",
+            _screen2_joined_state_values(
+                [
+                    ("selectedHost", "Not available", ""),
+                    ("selectedInstance", "Not available", "Instance"),
+                ]
+            ),
+        ),
+        (
+            "Run / Report",
+            _screen2_joined_state_values(
+                [
+                    ("selectedRunReference", "Not selected", "Run"),
+                    ("selectedReportId", "Not selected", "Report"),
+                ]
+            ),
+        ),
+        ("Base Snapshot Window", _screen2_state_value("selectedTimeWindow", "Not selected"), "wide"),
+        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
+        ("Review Mode", _screen2_state_value("selectedReviewMode", "Pending review mode selection")),
+        ("Resolution State", _screen2_state_value("selectedRuntimeScopeResolutionState", "Pending row selection")),
+    ]
+    return _render_screen2_control_info_grid(rows, extra_class="screen2-control-card-grid-balanced")
+
+
+def _render_screen3_selected_runtime_assignment_summary() -> str:
+    rows: list[tuple[str, Any] | tuple[str, Any, str]] = [
+        (
+            "Effective DB / DBID",
+            _screen2_joined_state_values(
+                [
+                    ("selectedDb", "Not selected", ""),
+                    ("selectedDbid", "Not selected", "DBID"),
+                ]
+            ),
+        ),
+        (
+            "Effective Host / Instance",
+            _screen2_joined_state_values(
+                [
+                    ("selectedHost", "Not available", ""),
+                    ("selectedInstance", "Not available", "Instance"),
+                ]
+            ),
+        ),
+        (
+            "Selected Row / Report",
+            _screen2_joined_state_values(
+                [
+                    ("selectedRunReference", "Not selected", "Run"),
+                    ("selectedReportId", "Not selected", "Report"),
+                ]
+            ),
+        ),
+        ("Effective Snapshot / Window", _screen2_state_value("selectedTimeWindow", "Pending interval selection"), "wide"),
+        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
+        ("Runtime Scope Summary", _screen2_state_value("selectedRuntimeScope", "Pending runtime scope selection"), "wide"),
+        ("Review Mode", _screen2_state_value("selectedReviewMode", "Pending review mode selection")),
+        (
+            "Target A State",
+            _screen2_joined_state_values(
+                [
+                    ("selectedComparisonTargetAReadinessState", "Target A not resolved", "Ready"),
+                    ("selectedComparisonTargetAScopeValue", "Not selected", "Scope"),
+                ],
+                separator=" · ",
+            ),
+            "wide",
+        ),
+        (
+            "Target B State",
+            _screen2_joined_state_values(
+                [
+                    ("selectedComparisonTargetBReadinessState", "Target B not resolved", "Ready"),
+                    ("selectedComparisonTargetBScopeValue", "Not selected", "Scope"),
+                ],
+                separator=" · ",
+            ),
+            "wide",
+        ),
+    ]
+    return _render_screen2_control_info_grid(rows, extra_class="screen2-control-card-grid-balanced")
 
 
 def _render_screen3_runtime_option_loader_content() -> str:
     rows = [
-        ("Service", "screen3RuntimeOptionsStatus", "not loaded"),
-        ("DB persistence", "screen3RuntimeOptionsDbPersistenceStatus", "not checked"),
-        ("Loaded rows", "screen3RuntimeOptionsLoadedRows", "0"),
-        ("Options", "screen3RuntimeOptionsCount", "0"),
-        ("Last loaded", "screen3RuntimeOptionsLoadedAt", "not loaded"),
-        ("Included selectable tables", "screen3RuntimeOptionsIncludedTables", "not checked"),
-        ("Cache status", "screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
-        ("Message", "screen3RuntimeOptionsMessage", "Load available runtime options to query DB-backed AWR/run/snapshot choices."),
+        ("Service", _screen2_state_value("screen3RuntimeOptionsStatus", "not loaded")),
+        ("DB Persistence", _screen2_state_value("screen3RuntimeOptionsDbPersistenceStatus", "not checked")),
+        ("Loaded Rows", _screen2_state_value("screen3RuntimeOptionsLoadedRows", "0")),
+        ("Options", _screen2_state_value("screen3RuntimeOptionsCount", "0")),
+        ("Last Loaded", _screen2_state_value("screen3RuntimeOptionsLoadedAt", "not loaded")),
+        (
+            "Included Selectable Tables",
+            _screen2_state_value("screen3RuntimeOptionsIncludedTables", "not checked"),
+            "wide",
+        ),
+        (
+            "Cache Status",
+            _screen2_state_value("screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
+            "wide",
+        ),
+        (
+            "Message",
+            _screen2_state_value(
+                "screen3RuntimeOptionsMessage",
+                "Load available runtime options to query existing platform evidence through Screen 2 Control.",
+            ),
+            "wide",
+        ),
     ]
-    row_html = "\n".join(
-        f"""
-                  <div>
-                    <dt>{escape(label)}</dt>
-                    <dd data-dashboard-state-input="true"
-                        data-dashboard-state-key="{escape(key, quote=True)}"
-                        data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
-                  </div>
-        """
-        for label, key, empty in rows
-    )
     return f"""
             <div class="screen3-actions-inline">
               <button type="button"
@@ -13862,25 +15706,30 @@ def _render_screen3_runtime_option_loader_content() -> str:
                       data-screen3-runtime-options-load="true"
                       data-screen3-runtime-options-refresh="true">Refresh options</button>
             </div>
-            <dl class="info-grid selector-compact-grid screen3-runtime-options-status-grid">
-              {row_html}
-            </dl>
+            {_render_screen2_control_info_grid(rows, extra_class="screen3-runtime-options-status-grid")}
             <details class="screen3-technical-details screen3-runtime-coverage-details">
               <summary>Runtime option source-table coverage</summary>
-              <dl class="info-grid selector-compact-grid screen3-runtime-options-debug-grid">
-                <div>
-                  <dt>Source-table coverage</dt>
-                  <dd data-dashboard-state-input="true"
-                      data-dashboard-state-key="screen3RuntimeOptionsSourceTables"
-                      data-empty-label="Source table coverage not reported">Source table coverage not reported</dd>
-                </div>
-                <div>
-                  <dt>Coverage note</dt>
-                  <dd data-dashboard-state-input="true"
-                      data-dashboard-state-key="screen3RuntimeOptionsCoverageMessage"
-                      data-empty-label="Load runtime options to see queried tables and row counts.">Load runtime options to see queried tables and row counts.</dd>
-                </div>
-              </dl>
+              {_render_screen2_control_info_grid(
+                  [
+                      (
+                          "Source-table coverage",
+                          _screen2_state_value(
+                              "screen3RuntimeOptionsSourceTables",
+                              "Source table coverage not reported",
+                          ),
+                      ),
+                      (
+                          "Coverage note",
+                          _screen2_state_value(
+                              "screen3RuntimeOptionsCoverageMessage",
+                              "Load runtime options to see queried tables and row counts.",
+                          ),
+                          "wide",
+                      ),
+                  ],
+                  extra_class="screen3-runtime-options-debug-grid",
+              )}
+              <p class="meta">Cache is UI continuity only; DB-backed runtime options remain the authoritative source when the workflow service is available.</p>
             </details>
     """
 
@@ -14196,9 +16045,7 @@ def _render_screen3_runtime_scope_work_area(
               <h4>Load Runtime Options</h4>
               {_render_screen3_runtime_option_loader_content()}
             </article>
-            {_render_screen3_operator_help_panel()}
             {_render_screen3_runtime_scope_filter_panel()}
-            {_render_screen3_apply_selection_controls()}
             <article class="screen3-context-subpanel screen3-runtime-scope-table-panel">
               <h4>Filtered AWR / Run / Report Results</h4>
               <p class="meta">
@@ -14210,6 +16057,7 @@ def _render_screen3_runtime_scope_work_area(
               <p class="meta">
                 <strong data-screen3-filtered-result-count="true">Showing 0 of 0 loaded row(s)</strong>
               </p>
+              {_render_screen3_apply_selection_controls()}
               <div class="screen3-active-assignment-banner">
                 Active assignment:
                 <strong data-dashboard-state-input="true"
@@ -14238,26 +16086,28 @@ def _render_screen3_runtime_scope_work_area(
                     </tr>
                   </thead>
                   <tbody data-screen3-runtime-options-target="runtime-scope-rows">
-                    {_render_screen3_runtime_scope_fallback_row(screen_model, report_data)}
+                    <tr class="screen3-empty-runtime-row">
+                      <td class="empty-state" colspan="13">No DB-backed AWR/run options are loaded yet. Load Runtime Options to populate this table.</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             </article>
             <div class="screen3-workflow-subgrid screen3-runtime-detail-grid">
               <article class="screen3-context-subpanel screen3-selected-runtime-scope-panel">
-                <h4>Selected Runtime Scope</h4>
-                <dl class="info-grid selector-compact-grid screen3-selected-runtime-scope-grid">
-                  {_render_screen3_selected_runtime_scope_summary()}
-                </dl>
+                <h4>Selected AWR / Report Row</h4>
+                <p class="meta">
+                  This summarizes the base inventory row selected from the filtered runtime options table before optional interval/window refinement.
+                </p>
+                {_render_screen3_selected_awr_report_row_summary()}
               </article>
               <article class="screen3-context-subpanel screen3-snapshot-interval-panel screen3-interval-full-width-panel">
                 <h4>Snapshot / Interval Selection</h4>
                 <p class="meta">
-                  Step 1: choose where this interval should apply: Runtime Scope, Target A, or Target B.
-                  Step 2: select an interval/window row below. This table changes the time window only; it does not choose a different AWR/report row or change deterministic truth.
+                  Choose whether the selected interval updates Runtime Scope, Target A, or Target B. Selecting an interval changes the local Screen 2 assignment window only; it does not change deterministic diagnosis or persisted run truth.
                 </p>
                 {_render_screen3_apply_interval_controls()}
-                <p class="meta"><strong data-screen3-interval-result-count="true">Showing fallback interval/window row(s).</strong></p>
+                <p class="meta"><strong data-screen3-interval-result-count="true">Showing 0 interval/window row(s).</strong></p>
                 <p class="meta">This table selects the time window for the active assignment. Use header filters to narrow loaded interval/window rows.</p>
                 {_render_screen3_table_control_row("screen3-intervals", "interval")}
                 <div class="screen3-table-wrap screen3-interval-table-wrap">
@@ -14272,12 +16122,22 @@ def _render_screen3_runtime_scope_work_area(
                       </tr>
                     </thead>
                     <tbody data-screen3-runtime-options-target="interval-rows">
-                      {_render_screen3_interval_fallback_row(screen_model, report_data)}
+                      <tr class="screen3-empty-runtime-row">
+                        <td class="empty-state" colspan="5">No interval/window options are loaded yet. Load Runtime Options and select an AWR/report row to populate this table.</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
               </article>
+              <article class="screen3-context-subpanel screen3-selected-runtime-assignment-panel">
+                <h4>Selected Runtime Scope / Assignment Summary</h4>
+                <p class="meta">
+                  This is the final effective runtime selection after the selected AWR/report row, optional interval/window, and assignment target are applied.
+                </p>
+                {_render_screen3_selected_runtime_assignment_summary()}
+              </article>
             </div>
+            {_render_screen3_operator_help_panel()}
             {_render_screen3_selected_context_chips()}
           </section>
     """
@@ -14385,37 +16245,36 @@ def _render_screen3_comparison_target_row(
     )
 
 
+def _render_screen3_empty_target_option_table_row(target_label: str) -> str:
+    return f"""
+                          <tr class="screen3-disabled-placeholder-row"
+                              aria-disabled="true"
+                              data-dashboard-selectable="false">
+                            <td class="empty-state" colspan="10">
+                              No advanced {escape(target_label)} options are active. Load Runtime Options, select/confirm a runtime scope, then choose a DB-backed row above or wait for governed backend target materialization.
+                            </td>
+                          </tr>
+    """
+
+
 def _render_screen3_target_resolution_card(target_suffix: str) -> str:
     label = "Target A" if target_suffix.upper() == "A" else "Target B"
     prefix = f"selectedComparisonTarget{target_suffix.upper()}"
     rows = [
-        ("Source type", f"{prefix}SourceType", "Not resolved"),
-        ("Scope type", f"{prefix}ScopeType", "Not resolved"),
-        ("Scope value", f"{prefix}ScopeValue", "Not resolved"),
-        ("Time window", f"{prefix}TimeWindow", "Not selected"),
-        ("Resolution summary", f"{prefix}ResolutionSummary", "Not resolved"),
-        ("Resolved AWR count", f"{prefix}AwrCount", "0"),
-        ("Resolved snapshot/window count", f"{prefix}SnapshotCount", "0"),
-        ("Readiness", f"{prefix}ReadinessState", "Not resolved"),
-        ("Missing gates", f"{prefix}MissingGates", "Resolve target before comparison"),
+        ("Source Type", _screen2_state_value(f"{prefix}SourceType", "Not resolved")),
+        ("Scope Type", _screen2_state_value(f"{prefix}ScopeType", "Not resolved")),
+        ("Scope Value", _screen2_state_value(f"{prefix}ScopeValue", "Not resolved"), "wide"),
+        ("Time Window", _screen2_state_value(f"{prefix}TimeWindow", "Not selected"), "wide"),
+        ("Resolution Summary", _screen2_state_value(f"{prefix}ResolutionSummary", "Not resolved"), "wide"),
+        ("Resolved AWRs", _screen2_state_value(f"{prefix}AwrCount", "0")),
+        ("Resolved Windows", _screen2_state_value(f"{prefix}SnapshotCount", "0")),
+        ("Readiness", _screen2_state_value(f"{prefix}ReadinessState", "Not resolved")),
+        ("Missing Gates", _screen2_state_value(f"{prefix}MissingGates", "Resolve target before comparison"), "wide"),
     ]
-    row_html = "\n".join(
-        f"""
-              <div>
-                <dt>{escape(row_label)}</dt>
-                <dd data-dashboard-state-input="true"
-                    data-dashboard-state-key="{escape(state_key, quote=True)}"
-                    data-empty-label="{escape(empty, quote=True)}">{escape(empty)}</dd>
-              </div>
-        """
-        for row_label, state_key, empty in rows
-    )
     return f"""
               <article class="screen3-context-subpanel screen3-comparison-target-card">
-                <h4>{escape(label)} Resolution Card</h4>
-                <dl class="info-grid selector-compact-grid screen3-target-resolution-grid">
-                  {row_html}
-                </dl>
+                <h4>{escape(label)} Resolution</h4>
+                {_render_screen2_control_info_grid(rows, extra_class="screen3-target-resolution-grid")}
               </article>
     """
 
@@ -14425,7 +16284,6 @@ def _render_screen3_comparison_review_work_area(
     report_data: dict[str, Any],
     control_center: dict[str, list[dict[str, Any]]],
 ) -> str:
-    values = _screen3_generated_runtime_values(screen_model, report_data)
     comparison_modes = [
         {
             "label": "Current DB history",
@@ -14493,71 +16351,32 @@ def _render_screen3_comparison_review_work_area(
             "note": "Use similar AWR context when available.",
         },
     ]
-    target_a_row = _render_screen3_comparison_target_row(
-        target="A",
-        select_label="Use current scope",
-        source_type="current_generated_context",
-        scope_type="run",
-        scope_value=values["run_reference"] or "Current generated run",
-        time_window=values["window"] or "Latest/current interval",
-        resolution_state="current_generated_context",
-        readiness_state="analysis_required",
-        resolution_summary="Current generated dashboard context; DB-backed comparable resolution not confirmed",
-        awr_count="0",
-        snapshot_count="0",
-        missing_gates="confirm persisted comparable target before comparison",
-    )
-    target_b_rows = [
-        _render_screen3_comparison_target_row(
-            target="B",
-            select_label="Prepare local staged target",
-            source_type="local_staged_file",
-            scope_type="external_source",
-            scope_value="Index local staged source when provided",
-            time_window="Not persisted",
-            resolution_state="not_persisted",
-            readiness_state="load_required",
-            resolution_summary="Raw local source cannot be compared until governed load/parse/ingest/analyze completes",
-            awr_count="0",
-            snapshot_count="0",
-            missing_gates="load/parse/ingest/analyze target first",
-        ),
-        _render_screen3_comparison_target_row(
-            target="B",
-            select_label="Prepare Object Storage target",
-            source_type="object_storage_object",
-            scope_type="external_source",
-            scope_value="Index Object Storage object when provided",
-            time_window="Not persisted",
-            resolution_state="not_persisted",
-            readiness_state="load_required",
-            resolution_summary="Raw Object Storage object cannot be compared until governed server-side load/parse/ingest/analyze completes",
-            awr_count="0",
-            snapshot_count="0",
-            missing_gates="server-side load/parse/ingest/analyze target first",
-        ),
-    ]
     preview_rows = [
-        ("Status", "comparison_status", "Not ready"),
-        ("Mode", "comparison_result_mode", "Pending comparison setup"),
-        ("Review mode", "review_mode", "Pending review mode selection"),
-        ("Target A", "comparison_result_target_a", "Resolve source/scope/window first"),
-        ("Target B", "comparison_result_target_b", "Resolve source/scope/window first"),
-        ("Both targets comparable", "comparison_both_comparable", "No"),
-        ("Why / Missing gates", "comparison_missing_gates", "Resolve both targets to comparable persisted data"),
-        ("Artifact/reference", "comparison_artifact_reference", "No comparison artifact/reference created"),
-        ("Next step / Screen 4 handoff", "comparison_screen4_handoff", "Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists."),
+        ("Status", _screen2_result_value("comparison_status", "Not ready")),
+        ("Mode", _screen2_result_value("comparison_result_mode", "Pending comparison setup")),
+        ("Review Mode", _screen2_result_value("review_mode", "Pending review mode selection")),
+        ("Target A", _screen2_result_value("comparison_result_target_a", "Resolve source/scope/window first"), "wide"),
+        ("Target B", _screen2_result_value("comparison_result_target_b", "Resolve source/scope/window first"), "wide"),
+        ("Both Comparable", _screen2_result_value("comparison_both_comparable", "No")),
+        (
+            "Missing Gates",
+            _screen2_result_value("comparison_missing_gates", "Resolve both targets to comparable persisted data"),
+            "wide",
+        ),
+        (
+            "Artifact / Reference",
+            _screen2_result_value("comparison_artifact_reference", "No comparison artifact/reference created"),
+            "wide",
+        ),
+        (
+            "Screen 4 Handoff",
+            _screen2_result_value(
+                "comparison_screen4_handoff",
+                "Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists.",
+            ),
+            "wide",
+        ),
     ]
-    preview_html = "\n".join(
-        f"""
-              <div>
-                <dt>{escape(label)}</dt>
-                <dd data-screen3-result-field="{escape(field, quote=True)}"
-                    data-default-value="{escape(default, quote=True)}">{escape(default)}</dd>
-              </div>
-        """
-        for label, field, default in preview_rows
-    )
     return f"""
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-comparison"
                    data-screen3-execution-result-panel="true">
@@ -14566,7 +16385,16 @@ def _render_screen3_comparison_review_work_area(
             <p class="static-selection-note">
               Target A and Target B are built from the selected AWR/report rows and windows. Build Comparison stays blocked until both targets resolve to comparable persisted data; Screen 4 reviews deep evidence only after a real artifact/reference exists.
             </p>
-            <div class="screen3-workflow-subgrid screen3-comparison-workflow-grid">
+            <article class="screen3-context-subpanel screen2-runtime-scope-empty-state"
+                     data-screen2-runtime-scope-empty-state="true">
+              <h4>Comparison Targets Not Selected</h4>
+              <p class="empty-state">
+                Load Runtime Options, select an AWR/report row, and confirm the runtime scope before resolving Target A, Target B, or comparison readiness.
+              </p>
+            </article>
+            <div class="screen3-workflow-subgrid screen3-comparison-workflow-grid"
+                 data-screen2-runtime-scope-required-content="true"
+                 hidden>
               <article class="screen3-context-subpanel screen3-comparison-controls-card">
                 <h4>Comparison &amp; Review Controls</h4>
                 <div class="screen3-comparison-control-grid">
@@ -14596,17 +16424,15 @@ def _render_screen3_comparison_review_work_area(
               </div>
               <article class="screen3-context-subpanel screen3-comparison-preview-panel">
                 <h4>Comparison Readiness / Outcome</h4>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {preview_html}
-                </dl>
+                {_render_screen2_control_info_grid(preview_rows, extra_class="screen3-result-grid")}
               </article>
               <details class="screen3-secondary-selector-details screen3-target-picker-details">
                 <summary>Advanced target picker: external / baseline options</summary>
                 <p class="meta">
-                  DB-backed AWR/report targets come from the runtime inventory above. This secondary area is only for generated fallback, external staged file, Object Storage object, similar set, cluster baseline, or fleet baseline target states.
+                  DB-backed AWR/report targets come from the runtime inventory above. This secondary area remains empty until a governed backend path materializes comparable external or baseline target options.
                 </p>
                 <p class="meta screen3-advanced-picker-instruction">
-                  External or baseline rows can be selected only as load_required, blocked, or unavailable states until governed backend data creates comparable persisted data.
+                  External or baseline rows are not shown as selectable data until governed backend data creates comparable persisted target evidence.
                 </p>
                 <div class="screen3-secondary-selector-grid screen3-target-picker-grid">
                   <article class="screen3-context-subpanel screen3-comparison-target-panel">
@@ -14630,14 +16456,14 @@ def _render_screen3_comparison_review_work_area(
                           </tr>
                         </thead>
                         <tbody data-screen3-runtime-options-target="comparison-target-a">
-                          {target_a_row}
+                          {_render_screen3_empty_target_option_table_row("Target A")}
                         </tbody>
                       </table>
                     </div>
                   </article>
                   <article class="screen3-context-subpanel screen3-comparison-target-panel">
                     <h4>Target B option rows</h4>
-                    <p class="meta">Local or Object Storage targets show load_required until governed load/parse/ingest/analyze creates persisted comparable data.</p>
+                    <p class="meta">External Target B options remain empty until governed backend processing creates persisted comparable target data.</p>
                     {_render_screen3_table_control_row("screen3-target-b-options", "Target B advanced")}
                     <div class="screen3-table-wrap">
                       <table class="screen3-runtime-scope-table screen3-advanced-target-table" data-screen3-table-id="screen3-target-b-options">
@@ -14656,7 +16482,7 @@ def _render_screen3_comparison_review_work_area(
                           </tr>
                         </thead>
                         <tbody data-screen3-runtime-options-target="comparison-target-b">
-                          {"".join(target_b_rows)}
+                          {_render_screen3_empty_target_option_table_row("Target B")}
                         </tbody>
                       </table>
                     </div>
@@ -14680,7 +16506,16 @@ def _render_screen3_submit_result_work_area(
             <p class="static-selection-note">
               Submit a governed request on the left, then review validation, persistence, execution outcome, and next step on the right. Blocked results are expected when required gates are missing; existing deterministic truth is not overwritten.
             </p>
-            <div class="screen3-submit-result-grid">
+            <article class="screen3-context-subpanel screen2-runtime-scope-empty-state"
+                     data-screen2-runtime-scope-empty-state="true">
+              <h4>No Runtime Scope Selected</h4>
+              <p class="empty-state">
+                Governed Screen 2 actions stay unavailable until a current DB-backed runtime scope is selected in this session.
+              </p>
+            </article>
+            <div class="screen3-submit-result-grid"
+                 data-screen2-runtime-scope-required-content="true"
+                 hidden>
               {_render_screen3_reanalysis_action_ui(screen_model, report_data, control_center)}
               {_render_screen3_request_execution_result_panel()}
             </div>
@@ -14708,7 +16543,7 @@ def _render_screen3_safety_selection_impact_panel() -> str:
         ),
         (
             "Object Storage impact",
-            "Object Storage source selection and validation come from Index. Full load/analyze remains gated by server-side chain, parser/ingest, runner, and artifact lifecycle.",
+            "Object Storage source selection and validation are handled on Screen 1. Full load/analyze remains gated by server-side chain, parser/ingest, runner, and artifact lifecycle.",
         ),
         (
             "Existing run impact",
@@ -15188,7 +17023,7 @@ def _render_screen3_readiness_validation_panel(
         ("Source handoff", "Not selected until Index source handoff state is present."),
         ("Runtime options loaded", "Ready after Load Runtime Options returns DB-backed AWR/run choices; otherwise missing service/DB gate."),
         ("Required source metadata", "Request can be recorded after source metadata validates."),
-        ("Application / DB scope", "Ready when DB-backed option or current generated fallback is selected; Application may be unavailable."),
+        ("Application / DB scope", "Ready when a DB-backed runtime option is selected; Application may be unavailable."),
         ("Existing run selected", "Ready after a DB-backed AWR/run or valid Index existing-run reference is selected."),
         ("AWR / Run", preview.get("current_awr_run_context")),
         ("Snapshot / Time Window", preview.get("current_snapshot_window")),
@@ -15219,58 +17054,63 @@ def _render_screen3_readiness_validation_panel(
 
 
 def _render_screen3_request_execution_result_panel() -> str:
-    def rows_html(rows: list[tuple[str, str, str]]) -> str:
-        return "\n".join(
-            f"""
-                  <div>
-                    <dt>{escape(label)}</dt>
-                    <dd data-screen3-result-field="{escape(field, quote=True)}"
-                        data-default-value="{escape(default, quote=True)}">{escape(default)}</dd>
-                  </div>
-            """
-            for label, field, default in rows
-        )
-
     action_rows = [
-        ("Validation", "validation_status", "Not evaluated"),
-        ("Persistence", "persistence", "Not reported"),
-        ("Execution status", "execution_status", "Not executed"),
-        ("Existing run truth", "existing_run_truth", "Existing run truth unchanged"),
+        ("Validation", _screen2_result_value("validation_status", "Not evaluated")),
+        ("Persistence", _screen2_result_value("persistence", "Not reported")),
+        ("Execution Status", _screen2_result_value("execution_status", "Not executed")),
+        ("Existing Run Truth", _screen2_result_value("existing_run_truth", "Existing run truth unchanged"), "wide"),
     ]
     selected_scope_rows = [
-        ("Source mode", "selected_source_mode", "Pending source selection"),
-        ("Application", "selected_application", "Not available"),
-        ("DB", "selected_db", "Not selected"),
-        ("DBID", "selected_dbid", "Not selected"),
-        ("Host", "selected_host", "Not available"),
-        ("Instance", "selected_instance", "Not available"),
-        ("Run/report", "selected_awr_run", "Not selected"),
-        ("Snapshot/window", "selected_snapshot_window", "Not selected"),
-        ("Runtime scope", "runtime_scope", "Pending runtime selection"),
-        ("Review mode", "review_mode", "Pending review mode selection"),
+        ("Source Mode", _screen2_result_value("selected_source_mode", "Pending source selection")),
+        (
+            "DB / DBID",
+            _screen2_joined_result_values(
+                [
+                    ("selected_db", "Not selected", ""),
+                    ("selected_dbid", "Not selected", "DBID"),
+                ]
+            ),
+        ),
+        (
+            "Instance / Host",
+            _screen2_joined_result_values(
+                [
+                    ("selected_instance", "Not available", "Instance"),
+                    ("selected_host", "Not available", "Host"),
+                ]
+            ),
+        ),
+        ("Run / Report", _screen2_result_value("selected_awr_run", "Not selected"), "wide"),
+        ("Snapshot / Window", _screen2_result_value("selected_snapshot_window", "Not selected"), "wide"),
+        ("Runtime Scope Summary", _screen2_result_value("runtime_scope", "Pending runtime selection"), "wide"),
+        ("Review Mode", _screen2_result_value("review_mode", "Pending review mode selection")),
     ]
     target_rows = [
-        ("Target A readiness", "comparison_target_a_readiness", "Target A: not resolved"),
-        ("Target B readiness", "comparison_target_b_readiness", "Target B: not resolved"),
-        ("Both comparable", "comparison_both_comparable", "No"),
-        ("Target A", "comparison_result_target_a", "Not selected"),
-        ("Target B", "comparison_result_target_b", "Not selected"),
-        ("Missing gates", "comparison_missing_gates", "Resolve both targets to comparable persisted data."),
+        ("Target A Readiness", _screen2_result_value("comparison_target_a_readiness", "Target A: not resolved")),
+        ("Target B Readiness", _screen2_result_value("comparison_target_b_readiness", "Target B: not resolved")),
+        ("Both Comparable", _screen2_result_value("comparison_both_comparable", "No")),
+        ("Target A", _screen2_result_value("comparison_result_target_a", "Not selected"), "wide"),
+        ("Target B", _screen2_result_value("comparison_result_target_b", "Not selected"), "wide"),
+        ("Missing Gates", _screen2_result_value("comparison_missing_gates", "Resolve both targets to comparable persisted data."), "wide"),
     ]
     comparison_rows = [
-        ("Comparison status", "comparison_status", "Pending comparison request"),
-        ("Mode", "comparison_result_mode", "Pending comparison setup"),
-        ("Comparison mode", "comparison_mode", "Pending comparison setup"),
-        ("Requested artifact/reference", "comparison_artifact_reference", "Not created"),
-        ("Screen 4 handoff", "comparison_screen4_handoff", "Open Screen 4 after a comparison request returns an artifact/reference."),
+        ("Comparison Status", _screen2_result_value("comparison_status", "Not submitted")),
+        ("Mode", _screen2_result_value("comparison_result_mode", "Pending comparison setup")),
+        ("Comparison Mode", _screen2_result_value("comparison_mode", "Pending comparison setup")),
+        ("Requested Artifact / Reference", _screen2_result_value("comparison_artifact_reference", "Not created"), "wide"),
+        (
+            "Screen 4 Handoff",
+            _screen2_result_value("comparison_screen4_handoff", "Open Screen 4 after a comparison request returns an artifact/reference."),
+            "wide",
+        ),
     ]
     backend_rows = [
-        ("Request ID", "request_id", "Not created"),
-        ("Transaction ID", "transaction_id", "Not created"),
-        ("Audit reference", "audit_reference", "Not created"),
-        ("DB record", "db_record", "Not created"),
-        ("Output artifact", "output_artifact", "Not created"),
-        ("New run/output reference", "new_run_output_reference", "Not created"),
+        ("Request ID", _screen2_result_value("request_id", "Not created")),
+        ("Transaction ID", _screen2_result_value("transaction_id", "Not created")),
+        ("Audit Reference", _screen2_result_value("audit_reference", "Not created"), "wide"),
+        ("DB Record", _screen2_result_value("db_record", "Not created")),
+        ("Output Artifact", _screen2_result_value("output_artifact", "Not created"), "wide"),
+        ("New Run / Output Reference", _screen2_result_value("new_run_output_reference", "Not created"), "wide"),
     ]
     return f"""
           <section class="evidence-pane selector-pane screen3-result-panel"
@@ -15280,52 +17120,45 @@ def _render_screen3_request_execution_result_panel() -> str:
               This central panel is the place to look after submission. It reports what was submitted, what happened, which records or references were returned, and confirms old run truth remains unchanged.
             </p>
             <div class="screen3-result-summary-banner">
-              <div>
-                <dt>Status</dt>
-                <dd data-screen3-result-field="status" data-default-value="Waiting for submission">Waiting for submission</dd>
-              </div>
-              <div>
-                <dt>Requested action</dt>
-                <dd data-screen3-result-field="requested_action" data-default-value="Not issued">Not issued</dd>
-              </div>
-              <div>
-                <dt>Next step</dt>
-                <dd data-screen3-result-field="next_step" data-default-value="Select source/scope/comparison/review mode, then submit a governed action">Select source/scope/comparison/review mode, then submit a governed action</dd>
-              </div>
+              {_render_screen2_control_info_grid(
+                  [
+                      ("Status", _screen2_result_value("status", "Waiting for submission")),
+                      ("Requested Action", _screen2_result_value("requested_action", "Not issued")),
+                      (
+                          "Next Step",
+                          _screen2_result_value(
+                              "next_step",
+                              "Select source/scope/comparison/review mode, then submit a governed action",
+                          ),
+                          "wide",
+                      ),
+                  ],
+                  extra_class="screen2-control-card-grid-balanced",
+              )}
             </div>
             <div class="screen3-result-subcard-grid">
               <article class="screen3-context-subpanel screen3-result-subcard">
                 <h4>Action Status</h4>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {rows_html(action_rows)}
-                </dl>
+                {_render_screen2_control_info_grid(action_rows, extra_class="screen3-result-grid")}
               </article>
               <article class="screen3-context-subpanel screen3-result-subcard">
-                <h4>Selected Scope</h4>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {rows_html(selected_scope_rows)}
-                </dl>
+                <h4>Selected Runtime Scope / Assignment Result</h4>
+                {_render_screen2_control_info_grid(selected_scope_rows, extra_class="screen3-result-grid")}
               </article>
               <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
                 <h4>Target Resolution</h4>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {rows_html(target_rows)}
-                </dl>
+                {_render_screen2_control_info_grid(target_rows, extra_class="screen3-result-grid")}
               </article>
               <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
                 <h4>Comparison Result Summary</h4>
                 <p class="meta">
                   Screen 2 Control records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
                 </p>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {rows_html(comparison_rows)}
-                </dl>
+                {_render_screen2_control_info_grid(comparison_rows, extra_class="screen3-result-grid")}
               </article>
               <details class="screen3-context-subpanel screen3-result-subcard screen3-backend-references-details">
                 <summary>Backend References</summary>
-                <dl class="info-grid selector-compact-grid screen3-result-grid">
-                  {rows_html(backend_rows)}
-                </dl>
+                {_render_screen2_control_info_grid(backend_rows, extra_class="screen3-result-grid")}
               </details>
             </div>
             <details class="screen3-technical-details">
@@ -15374,7 +17207,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
         ),
         (
             "Object Storage impact",
-            "Object Storage source selection and validation are real from Index. Full load/parse/ingest/analyze remains blocked unless the full governed server-side chain exists.",
+            "Object Storage source selection and validation are handled on Screen 1. Full load/parse/ingest/analyze remains blocked unless the full governed server-side chain exists.",
         ),
         (
             "Existing run impact",
@@ -15582,125 +17415,6 @@ def _render_screen3_action_control_card(
     """
 
 
-def _render_screen3_technical_audit_debug_details(
-    screen_model: dict[str, Any],
-    report_data: dict[str, Any],
-    control_center: dict[str, list[dict[str, Any]]],
-    selection_controls: dict[str, Any],
-    timeframe_selection: dict[str, Any],
-    review_mode: dict[str, Any],
-    current_selection_summary: dict[str, Any],
-) -> str:
-    """Render collapsed Screen 3 technical details at the bottom only."""
-
-    header = _to_dict(screen_model.get("header"))
-    technical_rows = [
-        ("Service action type", "screen3_active_reanalysis"),
-        ("Internal action keys", "analyze_selection, rerun_analysis, build_comparison, load_from_object_storage"),
-        ("Approved execution mode identifier", "local_backend_execution"),
-        (
-            "Runtime option source tables",
-            "AWR_RUN_HISTORY, AWR_REPORT, AWR_SNAPSHOT, AWR_INGEST_RUN, AWR_SOURCE_SYSTEM, "
-            "AWR_METRIC_FACT, AWR_WAIT_EVENT_FACT, AWR_TOP_SQL_FACT, AWR_FEATURE_VECTOR",
-        ),
-        (
-            "Runtime source coverage fields",
-            "table_exists, row_count, key_columns_used, included_in_screen3_runtime_options, reason_if_not_used",
-        ),
-        ("Mutation flags", "current_run_truth_mutated=false; deterministic_truth_changed=false; parser_mutated=false"),
-        ("Learning/runtime flags", "learning_candidate_created=false; materialization_changed=false; runtime_eligibility_changed=false"),
-        ("LLM authority flags", "llm_changed_status=false; llm_changed_validation=false; llm_changed_execution=false; llm_changed_truth=false"),
-    ]
-    return f"""
-          <details class="screen3-secondary-selector-details screen3-technical-audit-details">
-            <summary>Technical Audit / Debug Details</summary>
-            <p class="static-selection-note">
-              Internal action names, execution identifiers, raw state propagation notes, and secondary selector context are intentionally collapsed.
-            </p>
-            <div class="subgrid selector-subgrid screen3-secondary-selector-grid">
-              <section class="evidence-pane selector-pane">
-                <h3>Technical Request Contract</h3>
-                {_render_info_grid(technical_rows, extra_class="selector-compact-grid")}
-              </section>
-              <section class="evidence-pane selector-pane">
-                <h3>Secondary AWR / Run Context</h3>
-                {_render_screen3_selector_group(
-                    control_center["awr_run"],
-                    "No additional AWR choices are available for the current dashboard context.",
-                )}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Secondary Database / System Context</h3>
-                {_render_screen3_selector_group(
-                    control_center["database_system"],
-                    "No database or system selector metadata is available in the current dashboard context.",
-                )}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Secondary Snapshot Context</h3>
-                {_render_screen3_selector_group(
-                    control_center["snapshot"],
-                    "No snapshot selector metadata is available. This selector does not change diagnostic output.",
-                )}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Generated Dashboard Context</h3>
-                {_render_info_grid(
-                    [
-                        ("DB Name", header.get("db_name")),
-                        ("DBID", header.get("dbid")),
-                        ("Instance", header.get("instance_name")),
-                        ("Host", header.get("host_name")),
-                        ("Window", header.get("window")),
-                    ],
-                    extra_class="selector-header-grid",
-                )}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Canonical Generated Selection Context</h3>
-                <p class="static-selection-note">
-                  This view reflects the generated analysis window used across downstream screens. The controls above do not rewrite this canonical context.
-                </p>
-                {_render_selection_controls(selection_controls)}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Generated Timeframe Context</h3>
-                {_render_info_grid(
-                    [
-                        ("Comparison Window", timeframe_selection.get("comparison_window")),
-                        ("Start / End Period", timeframe_selection.get("start_end_period")),
-                        ("Window A", timeframe_selection.get("window_a")),
-                        ("Window B", timeframe_selection.get("window_b")),
-                    ],
-                    extra_class="selector-compact-grid",
-                )}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Generated Review Intent Context</h3>
-                {_render_screen3_option_chips(
-                    review_mode.get("options") or [],
-                    "reviewMode",
-                    "selectedReviewMode",
-                    active_value=review_mode.get("active_mode"),
-                )}
-                {_render_info_strip([("Default Review Mode", review_mode.get("active_mode"))])}
-              </section>
-              <section class="half evidence-pane selector-pane">
-                <h3>Deterministic Current Selection Summary</h3>
-                {_render_info_grid(
-                    [
-                        ("Scope", current_selection_summary.get("scope")),
-                        ("Timeframe", current_selection_summary.get("timeframe")),
-                        ("Review Mode", current_selection_summary.get("review_mode")),
-                    ],
-                    extra_class="selector-compact-grid",
-                )}
-              </section>
-            </div>
-          </details>
-    """
-
-
 def _build_screen3_reanalysis_request_preview_model(
     screen_model: dict[str, Any],
     report_data: dict[str, Any],
@@ -15750,7 +17464,7 @@ def _build_screen3_reanalysis_request_preview_model(
         "source_context_readiness": "Ready when Index source handoff state is present; otherwise missing source selection",
         "source_metadata_readiness": "Validated by backend after governed source handoff",
         "existing_run_readiness": "Ready when an existing-run reference is returned by the workflow service",
-        "object_storage_readiness": "Object Storage source selection and validation are real at Index; full load/analyze requires server-side gates",
+        "object_storage_readiness": "Object Storage source selection and validation are handled on Screen 1; full load/analyze requires server-side gates",
         "backend_service_readiness": "Dashboard workflow service must be running for interactive actions",
         "db_persistence_readiness": "DB-backed workflow records are authoritative when configured; JSON audit fallback remains context",
         "execution_mode_boundary": "Approved local backend execution boundary",
@@ -21645,6 +23359,18 @@ def _shared_page_styles() -> str:
       color: var(--text);
       line-height: 1.6;
     }
+    [data-dashboard-evidence-gated-content="true"],
+    [data-screen1-artifact-ready-content="true"] {
+      display: none !important;
+    }
+    body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gated-content="true"],
+    [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-ready-content="true"] {
+      display: block !important;
+    }
+    body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gate-empty="true"],
+    [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-empty-state="true"] {
+      display: none !important;
+    }
     .container {
       max-width: 1600px;
       margin: 0 auto;
@@ -21815,6 +23541,17 @@ def _shared_page_styles() -> str:
     .card.prominent {
       background: linear-gradient(135deg, rgba(20, 36, 58, 0.96), rgba(13, 24, 40, 0.96));
       border-color: rgba(90, 209, 255, 0.34);
+    }
+    .home-product-model-panel {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(90, 209, 255, 0.22), transparent 34%),
+        linear-gradient(135deg, rgba(32, 58, 88, 0.98), rgba(16, 34, 57, 0.98));
+      border-color: rgba(110, 214, 255, 0.58);
+      box-shadow: 0 18px 40px rgba(20, 120, 190, 0.18), 0 10px 24px rgba(0, 0, 0, 0.24);
+    }
+    .home-product-model-panel .nav-card {
+      background: linear-gradient(135deg, rgba(36, 66, 100, 0.82), rgba(21, 42, 70, 0.84));
+      border-color: rgba(124, 219, 255, 0.42);
     }
     .card.compact-card {
       padding: 16px 18px;
@@ -22003,6 +23740,111 @@ def _shared_page_styles() -> str:
       display: grid;
       gap: 12px;
     }
+    .screen3-source-context-summary {
+      display: grid;
+      gap: 10px;
+    }
+    .screen3-source-context-header {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border: 1px solid rgba(90, 209, 255, 0.24);
+      border-radius: 10px;
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-source-context-header strong {
+      color: var(--text);
+      font-size: 14px;
+    }
+    .screen3-source-context-header span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .screen3-source-context-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .screen3-source-context-card {
+      min-height: 0;
+      padding: 8px 10px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(16, 28, 45, 0.62);
+    }
+    .screen3-source-context-card.primary {
+      border-color: rgba(90, 209, 255, 0.32);
+      background: rgba(90, 209, 255, 0.1);
+    }
+    .screen3-source-context-card span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .screen3-source-context-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 11px;
+      line-height: 1.28;
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+    .screen2-control-card-grid-balanced {
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+    .screen2-control-info-box {
+      min-height: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(16, 28, 45, 0.66);
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-info-box.wide {
+      grid-column: span 2;
+    }
+    .screen2-control-info-box.full {
+      grid-column: 1 / -1;
+    }
+    .screen2-control-info-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .screen2-control-info-box div {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen2-control-subvalue {
+      display: inline;
+    }
+    .screen2-control-prefix {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .screen2-control-separator {
+      color: var(--muted);
+      margin: 0 4px;
+    }
     .screen3-workflow-subgrid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -22120,27 +23962,34 @@ def _shared_page_styles() -> str:
       letter-spacing: 0.05em;
     }
     .screen3-comparison-target-card {
-      padding: 10px;
+      display: grid;
+      gap: 8px;
+      padding: 14px;
       min-width: 0;
     }
     .screen3-comparison-target-card h4 {
-      margin-bottom: 6px;
-      font-size: 11px;
+      margin: 0;
+      font-size: 12px;
     }
     .screen3-target-resolution-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 7px;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 8px;
     }
-    .screen3-target-resolution-grid div {
+    .screen3-target-resolution-grid .screen2-control-info-box {
+      display: grid;
+      align-content: start;
       min-width: 0;
-      padding-top: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
     }
-    .screen3-target-resolution-grid dt {
+    .screen3-target-resolution-grid .screen2-control-info-box.wide {
+      grid-column: span 2;
+    }
+    .screen3-target-resolution-grid .screen2-control-info-box strong {
       font-size: 10px;
       line-height: 1.25;
     }
-    .screen3-target-resolution-grid dd {
-      margin: 2px 0 0;
+    .screen3-target-resolution-grid .screen2-control-info-box div {
       font-size: 11px;
       line-height: 1.3;
       overflow-wrap: anywhere;
@@ -22798,9 +24647,7 @@ def _shared_page_styles() -> str:
       overflow-wrap: anywhere;
     }
     .screen3-result-summary-banner {
-      display: grid;
-      grid-template-columns: minmax(160px, 0.8fr) minmax(180px, 0.8fr) minmax(260px, 1.4fr);
-      gap: 10px;
+      display: block;
       margin: 10px 0 12px;
       padding: 12px;
       border: 1px solid rgba(90, 209, 255, 0.24);
@@ -25127,8 +26974,99 @@ def _shared_page_styles() -> str:
       letter-spacing: 0.05em;
       background: rgba(11, 21, 35, 0.7);
     }
+    .screen1-run-intake-report {
+      padding: 14px 16px;
+    }
+    .screen1-run-intake-report h2 {
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+    .screen1-generated-run-boundary-note {
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen1-generated-evidence-group-stack {
+      display: grid;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .screen1-generated-evidence-group {
+      display: grid;
+      gap: 8px;
+    }
+    .screen1-generated-evidence-group h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .screen1-generated-evidence-info-grid {
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 10px;
+    }
+    .screen1-generated-evidence-info-box {
+      min-height: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(20, 36, 58, 0.70);
+    }
+    .screen1-generated-evidence-info-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .screen1-generated-evidence-info-box div {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .screen1-unknown-signals-compact {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .screen1-unknown-signals-overview {
+      display: grid;
+      gap: 8px;
+    }
+    .screen1-unknown-signals-overview h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .screen1-unknown-signals-summary-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .screen1-unknown-signals-summary-grid .info-box {
+      min-height: 0;
+      padding: 10px 12px;
+    }
+    .screen1-unknown-signals-handoff-note {
+      margin: 0;
+    }
+    .screen1-generated-evidence-empty-state {
+      padding: 10px 12px;
+      border: 1px dashed rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.34);
+      font-size: 13px;
+    }
     .screen1-full-report-table-wrap {
-      overflow-x: visible;
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
     }
     .screen1-full-report-table-compact {
       min-width: 0;
@@ -25144,6 +27082,11 @@ def _shared_page_styles() -> str:
       word-break: break-word;
     }
     .screen1-full-report-table-compact th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: rgba(15, 27, 45, 0.98);
+      box-shadow: 0 1px 0 rgba(159, 176, 199, 0.18);
       font-size: 11px;
       letter-spacing: 0.04em;
     }
@@ -25416,6 +27359,17 @@ def _shared_page_styles() -> str:
       border: 1px solid rgba(159, 176, 199, 0.24);
       border-radius: 10px;
       background: rgba(11, 20, 34, 0.68);
+    }
+
+    .phase7cr-entry-card-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .phase7cr-entry-card-link .phase7cr-entry-card-cta {
+      align-self: end;
+      width: fit-content;
     }
 
     .phase7cm-source-card:hover,
@@ -25691,19 +27645,72 @@ def _shared_page_styles() -> str:
       overflow-wrap: anywhere;
     }
 
-    .phase7-governed-action-status[data-phase7-action-status="accepted"],
-    .screen1-action-status[data-phase7-action-status="accepted"],
-    .screen2-action-status[data-phase7-action-status="accepted"] {
-      color: #effbef;
-      border-color: rgba(102, 187, 106, 0.42);
-    }
+	    .phase7-governed-action-status[data-phase7-action-status="accepted"],
+	    .phase7-governed-action-status[data-phase7-action-status="running"],
+	    .phase7-governed-action-status[data-phase7-action-status="pending"],
+	    .phase7-governed-action-status[data-phase7-action-status="completed_artifact_ready"],
+	    .screen1-action-status[data-phase7-action-status="accepted"],
+	    .screen1-action-status[data-phase7-action-status="running"],
+	    .screen1-action-status[data-phase7-action-status="pending"],
+	    .screen1-action-status[data-phase7-action-status="completed_artifact_ready"],
+	    .screen2-action-status[data-phase7-action-status="accepted"] {
+	      color: #effbef;
+	      border-color: rgba(102, 187, 106, 0.42);
+	    }
 
-    .phase7-governed-action-status[data-phase7-action-status="failed"],
-    .screen1-action-status[data-phase7-action-status="failed"],
-    .screen2-action-status[data-phase7-action-status="failed"] {
-      color: #fff4f4;
-      border-color: rgba(255, 107, 107, 0.42);
-    }
+	    .phase7-governed-action-status[data-phase7-action-status="failed"],
+	    .phase7-governed-action-status[data-phase7-action-status="failed_safely"],
+	    .phase7-governed-action-status[data-phase7-action-status="timed_out"],
+	    .screen1-action-status[data-phase7-action-status="failed"],
+	    .screen1-action-status[data-phase7-action-status="failed_safely"],
+	    .screen1-action-status[data-phase7-action-status="timed_out"],
+	    .screen2-action-status[data-phase7-action-status="failed"] {
+	      color: #fff4f4;
+	      border-color: rgba(255, 107, 107, 0.42);
+	    }
+
+	    .screen1-source-intake-result {
+	      display: grid;
+	      gap: 8px;
+	    }
+
+	    .screen1-source-intake-result > strong {
+	      color: var(--text);
+	      font-size: 13px;
+	      text-transform: uppercase;
+	      letter-spacing: 0.05em;
+	    }
+
+	    .screen1-source-intake-result dl {
+	      display: grid;
+	      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	      gap: 8px;
+	      margin: 0;
+	    }
+
+	    .screen1-source-intake-result div {
+	      min-width: 0;
+	      padding: 7px 9px;
+	      border: 1px solid rgba(159, 176, 199, 0.18);
+	      border-radius: 8px;
+	      background: rgba(16, 28, 45, 0.64);
+	    }
+
+	    .screen1-source-intake-result dt {
+	      color: var(--accent);
+	      font-size: 10px;
+	      font-weight: 850;
+	      letter-spacing: 0.05em;
+	      text-transform: uppercase;
+	    }
+
+	    .screen1-source-intake-result dd {
+	      margin: 3px 0 0;
+	      color: var(--text);
+	      font-size: 12px;
+	      line-height: 1.3;
+	      overflow-wrap: anywhere;
+	    }
 
     .phase7cm-next-step-note {
       margin-top: 10px;
@@ -26250,11 +28257,13 @@ def _shared_page_styles() -> str:
       .semantic-assist-scope-list,
       .screen1-selector-grid,
       .screen1-operator-workflow,
+      .screen2-control-card-grid,
       .screen2-selector-grid,
       .screen2-review-action-grid,
 	      .screen3-selector-grid,
 	      .screen3-action-grid,
 	      .screen3-source-mode-grid,
+	      .screen3-source-context-grid,
 	      .screen3-filter-grid,
 	      .screen3-filter-toolbar,
 	      .screen3-workflow-subgrid,
@@ -26849,6 +28858,94 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
     .intake-summary-grid {{
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }}
+    .screen1-run-intake-report {{
+      padding: 14px 16px;
+    }}
+    .screen1-run-intake-report h2 {{
+      margin-bottom: 6px;
+      font-size: 18px;
+    }}
+    .screen1-generated-run-boundary-note {{
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }}
+    .screen1-generated-evidence-group-stack {{
+      display: grid;
+      gap: 14px;
+      margin-top: 12px;
+    }}
+    .screen1-generated-evidence-group {{
+      display: grid;
+      gap: 8px;
+    }}
+    .screen1-generated-evidence-group h3 {{
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.25;
+    }}
+    .screen1-generated-evidence-info-grid {{
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 10px;
+    }}
+    .screen1-generated-evidence-info-box {{
+      min-height: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(159, 176, 199, 0.22);
+      border-radius: 12px;
+      background: rgba(20, 36, 58, 0.70);
+    }}
+    .screen1-generated-evidence-info-box strong {{
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }}
+    .screen1-generated-evidence-info-box div {{
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }}
+    .screen1-unknown-signals-compact {{
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }}
+    .screen1-unknown-signals-overview {{
+      display: grid;
+      gap: 8px;
+    }}
+    .screen1-unknown-signals-overview h3 {{
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }}
+    .screen1-unknown-signals-summary-grid {{
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }}
+    .screen1-unknown-signals-summary-grid .info-box {{
+      min-height: 0;
+      padding: 10px 12px;
+    }}
+    .screen1-unknown-signals-handoff-note {{
+      margin: 0;
+    }}
+    .screen1-generated-evidence-empty-state {{
+      padding: 10px 12px;
+      border: 1px dashed rgba(159, 176, 199, 0.24);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(11, 20, 34, 0.34);
+      font-size: 13px;
+    }}
     .info-strip {{
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -26925,7 +29022,10 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
       background: rgba(11, 21, 35, 0.7);
     }}
     .screen1-full-report-table-wrap {{
-      overflow-x: visible;
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid rgba(159, 176, 199, 0.16);
+      border-radius: 10px;
     }}
     .screen1-full-report-table-compact {{
       min-width: 0;
@@ -26941,6 +29041,11 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
       word-break: break-word;
     }}
     .screen1-full-report-table-compact th {{
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: rgba(15, 27, 45, 0.98);
+      box-shadow: 0 1px 0 rgba(159, 176, 199, 0.18);
       font-size: 11px;
       letter-spacing: 0.04em;
     }}
@@ -27185,6 +29290,7 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
       .selector-compact-grid,
       .scalar-grid,
       .visual-layer-grid,
+      .screen1-generated-evidence-info-grid,
       .intake-summary-grid {{
         grid-template-columns: 1fr;
       }}

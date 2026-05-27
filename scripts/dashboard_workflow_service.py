@@ -780,9 +780,11 @@ def _screen2_canned_explanation(payload: dict[str, Any], *, provider_mode: str) 
         f"The decision posture remains {posture}, confidence remains {confidence}, and primary issue/domain remains "
         f"{primary_issue}. Diagnosis, score, confidence, recommendation, parser output, runtime behavior, ML behavior, "
         f"learning candidates, materialization, runtime eligibility, future-run behavior, evidence values, thresholds, "
-        f"and DB/governance/audit state are unchanged. This wording-only explanation does not load evidence, parse "
-        f"AWR content, compare evidence, select runtime scope, assign Target A/B, decide comparison readiness, or "
-        f"mutate deterministic analysis output."
+        f"and DB/governance/audit state are unchanged. If the selected context is Target A or Target B, this wording "
+        f"explains that target's individual deterministic diagnostic output only. A-vs-B comparison review belongs "
+        f"on Screen 4 after deterministic comparison output exists. This wording-only explanation does not load "
+        f"evidence, parse AWR content, compare evidence, select runtime scope, assign Target A/B, decide comparison "
+        f"readiness, compute comparison results, render comparison violin panels, or mutate deterministic analysis output."
     )
 
 
@@ -790,8 +792,10 @@ def _screen2_explanation_system_role() -> str:
     return (
         "You write concise operator-facing Oracle AWR diagnostic explanation text. "
         "The deterministic engine decides. You explain already-computed product Screen 3 deterministic analysis only. "
+        "If the selected context is Target A or Target B, explain that target's individual deterministic diagnostic output only. "
+        "A-vs-B comparison review and future comparison violin panels belong on Screen 4 after deterministic comparison output exists. "
         "You do not load evidence, parse AWR content, compare evidence, select runtime scope, assign Target A/B, "
-        "decide comparison readiness, or mutate deterministic analysis output. "
+        "decide comparison readiness, compute comparison results, render comparison violin panels, or mutate deterministic analysis output. "
         "Return plain text only, with no Markdown headings, no bullets, and no leading # characters."
     )
 
@@ -814,8 +818,12 @@ def _screen2_explanation_prompt(payload: dict[str, Any]) -> str:
         "explanation wording. Do not say or imply that diagnosis, primary issue/domain, score, severity, confidence, "
         "recommendation, parser output, runtime behavior, ML behavior, learning candidates, materialization, runtime "
         "eligibility, future-run behavior, evidence values, thresholds, or DB/governance/audit state changed. "
+        "If the selected context is Target A or Target B, explain that target's individual deterministic diagnostic "
+        "output only. A-vs-B comparison review and future comparison violin panels belong on Screen 4 after "
+        "deterministic comparison output exists. "
         "Do not say or imply that this path loads evidence, parses AWR content, compares evidence, selects runtime "
-        "scope, assigns Target A/B, decides comparison readiness, or performs deterministic analysis. "
+        "scope, assigns Target A/B, decides comparison readiness, computes comparison results, renders comparison "
+        "violin panels, or performs deterministic analysis. "
         "Do not mention threshold status unless a threshold value is provided. Do not describe runtime eligibility "
         "except to say that this Screen 3 diagnostic explanation path does not change it."
     )

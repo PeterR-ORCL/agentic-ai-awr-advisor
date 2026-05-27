@@ -13479,7 +13479,7 @@ def _render_screen2_review_panel(
         <div class="section-kicker">DIAGNOSTIC MEANING</div>
         <h2>Focused Diagnostic Meaning</h2>
         <p class="static-selection-note">
-          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 3 cannot perform those changes. Screen 3 may explain Target A or Target B diagnostic context individually when that selected evidence context exists; it does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, or change diagnostic truth.
+          The Diagnostic Snapshot explains the currently selected deterministic evidence context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. If this context is Target A or Target B, Screen 3 explains that target's individual deterministic diagnostic output only. Target labels do not change diagnosis, scores, confidence, severity, recommendations, evidence, or thresholds. Screen 3 does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, compute comparison results, render comparison violin panels, or change diagnostic truth.
         </p>
         <section class="evidence-pane screen2-review-target-summary">
           <h3 data-screen2-focus="heading">Selected Focus Summary</h3>
@@ -13530,13 +13530,16 @@ def _render_screen2_review_panel(
               <p>
                 Diagnosis, score, confidence, and recommendation changes require deterministic analysis or governed downstream workflows. This Screen 3 interaction only changes local selected focus and displayed explanation wording.
               </p>
+              <p>
+                If the selected context is Target A or Target B, generated wording may explain that target's own deterministic diagnostic meaning only. A-vs-B comparison review and future comparison violin panels belong on Screen 4 after deterministic comparison output exists.
+              </p>
               <p data-screen2-explanation-status="idle">
                 Default deterministic explanation is visible. Click generation only when you want optional wording refresh.
               </p>
             </div>
           </div>
           <p class="screen2-focus-boundary-note">
-            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior. Comparative evidence review remains a Screen 4 responsibility once deterministic comparison output exists.
+            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior. A-vs-B comparison review and future comparison violin panels remain a Screen 4 responsibility once deterministic comparison output exists.
           </p>
           <section class="screen2-focused-explanation-panel">
             <h3>Focused Diagnostic Explanation</h3>

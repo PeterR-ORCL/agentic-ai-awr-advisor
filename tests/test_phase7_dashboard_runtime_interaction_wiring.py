@@ -535,9 +535,11 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         "</section>"
         '<div data-dashboard-evidence-gated-content="true" hidden>'
         "Why This Posture. "
-        "Screen 3 may explain Target A or Target B diagnostic context individually. "
-        "it does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, or change diagnostic truth. "
-        "Comparative evidence review remains a Screen 4 responsibility once deterministic comparison output exists."
+        "The Diagnostic Snapshot explains the currently selected deterministic evidence context. "
+        "If this context is Target A or Target B, Screen 3 explains that target's individual deterministic diagnostic output only. "
+        "Target labels do not change diagnosis, scores, confidence, severity, recommendations, evidence, or thresholds. "
+        "Screen 3 does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, compute comparison results, render comparison violin panels, or change diagnostic truth. "
+        "A-vs-B comparison review and future comparison violin panels remain a Screen 4 responsibility once deterministic comparison output exists."
         "</div>"
     ),
     "screen_4_historical_review.html": (

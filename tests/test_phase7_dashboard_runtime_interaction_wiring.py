@@ -425,6 +425,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Effective Snapshot / Window</p>
   <h3>Work Area 2 - Resolve Comparison Targets</h3>
   <p>Target A and Target B identify selected candidate sides for later comparison review.</p>
+  <p>Cached Target A/B labels restore operator context only; readiness must be confirmed by current governed backend metadata before downstream comparison review.</p>
   <p>Assignment records selection context only.</p>
   <p>Only its selected row gets the strong table highlight.</p>
   <h4>Comparison Target A</h4>
@@ -455,6 +456,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <h3>Request / Result Receipt</h3>
   <p>Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference.</p>
   <p>Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only.</p>
+  <p>If receipt fields are restored from browser state, they are prior backend-returned context only until a current backend response supersedes them.</p>
   <p>A governed request/audit record may be created only when the backend returns that state.</p>
   <p>Backend status is service-returned only. Missing gates mean request receipt, not analysis execution or comparison output.</p>
   <p>screen3-result-summary-banner</p>
@@ -506,8 +508,13 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>screen3RuntimeOptionsCache</p>
   <p>screen3-runtime-options-v1</p>
   <p>Runtime options restored from browser cache</p>
+  <p>it is not current backend, runtime-options, readiness, request, or evidence truth</p>
+  <p>Continuity only; not active backend truth</p>
   <p>Refresh failed; cached runtime options were not activated</p>
   <p>Cached runtime options are available for continuity only; they are not active evidence.</p>
+  <p>Cached Screen 2 state restores operator context only.</p>
+  <p>failed refresh must remain visible and must not promote cache to current truth.</p>
+  <p>Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.</p>
   <p>Cache Status</p>
   <p>Generated at build time</p>
   <p>AI DB:</p>

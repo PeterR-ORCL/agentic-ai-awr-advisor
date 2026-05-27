@@ -1622,7 +1622,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',
           cache.cached_at
-        ) + ' Cache restores recent UI context only; click Refresh options to re-query the workflow service.';
+        ) + ' Cache restores recent UI context only; it is not current backend, runtime-options, readiness, request, or evidence truth. Click Refresh options to re-query the workflow service.';
         state.screen3RuntimeOptionsCount = safeStateValue(cache.option_count || '');
         state.screen3RuntimeOptionsLoadedRows = safeStateValue(cache.loaded_rows || cache.run_count || '');
         state.screen3RuntimeOptionsDbPersistenceStatus = safeStateValue(cache.db_persistence_status || '');
@@ -1633,7 +1633,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsCacheStatus = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',
           cache.cached_at
-        );
+        ) + ' Continuity only; not active backend truth.';
         return state;
       }
 
@@ -15750,6 +15750,9 @@ def _render_screen3_runtime_option_loader_content() -> str:
             <p class="meta">
               Loading options prepares selectable runtime-scope candidates only; active downstream readiness still requires a current row, window, and Runtime Scope or Target assignment.
             </p>
+            <p class="meta">
+              Cached Screen 2 state restores operator context only. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth. Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
+            </p>
             {_render_screen2_control_info_grid(rows, extra_class="screen3-runtime-options-status-grid")}
             <details class="screen3-technical-details screen3-runtime-coverage-details">
               <summary>Runtime option source-table coverage</summary>
@@ -16428,7 +16431,7 @@ def _render_screen3_comparison_review_work_area(
             <div class="section-kicker">Work Area 2</div>
             <h3>Resolve Comparison Targets</h3>
             <p class="static-selection-note">
-              Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
+              Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Cached Target A/B labels restore operator context only; readiness must be confirmed by current governed backend metadata before downstream comparison review. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
             </p>
             <article class="screen3-context-subpanel screen2-runtime-scope-empty-state"
                      data-screen2-runtime-scope-empty-state="true">
@@ -16646,6 +16649,9 @@ def _render_screen3_runtime_option_loader_panel() -> str:
             <h3>Load Runtime Options</h3>
             <p class="static-selection-note">
               Load existing platform evidence candidates from the governed workflow service. The browser never queries the DB directly, and loading options alone does not create active downstream evidence.
+            </p>
+            <p class="meta">
+              Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
             </p>
             <div class="screen3-actions-inline">
               <button type="button"
@@ -17167,6 +17173,7 @@ def _render_screen3_request_execution_result_panel() -> str:
             <p class="static-selection-note">
               This central panel is the place to look after submission. It reports what the governed backend returned: accepted, rejected, blocked, recorded, validation status, request ID, transaction ID, audit reference, and any output reference. Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference.
               Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only.
+              If receipt fields are restored from browser state, they are prior backend-returned context only until a current backend response supersedes them.
               A governed request/audit record may be created only when the backend returns that state.
             </p>
             <div class="screen3-result-summary-banner">

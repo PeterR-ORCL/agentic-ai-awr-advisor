@@ -75,7 +75,9 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             "Existing run truth is immutable",
             "Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference",
             "Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only",
+            "If receipt fields are restored from browser state, they are prior backend-returned context only until a current backend response supersedes them",
             "A governed request/audit record may be created only when the backend returns that state",
+            "Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):

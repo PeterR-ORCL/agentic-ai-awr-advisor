@@ -94,8 +94,21 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("screen3RuntimeOptionsCache", source)
         self.assertIn("screen3-runtime-options-v1", source)
         self.assertIn("Runtime options restored from browser cache", source)
+        self.assertIn(
+            "it is not current backend, runtime-options, readiness, request, or evidence truth",
+            source,
+        )
+        self.assertIn("Continuity only; not active backend truth", source)
         self.assertIn("Refresh failed; cached runtime options were not activated", source)
         self.assertIn("Cache Status", rendered)
+        self.assertIn(
+            "Cached Screen 2 state restores operator context only",
+            rendered,
+        )
+        self.assertIn(
+            "failed refresh must remain visible and must not promote cache to current truth",
+            rendered,
+        )
         self.assertIn("screen3RuntimeScopeSelectionSource", source)
         self.assertIn("screen3TargetASelectionSource", source)
         self.assertIn("screen3TargetBSelectionSource", source)
@@ -114,6 +127,14 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("Selected AWR / Report Row", rendered)
         self.assertIn("Selected Runtime Scope / Assignment Summary", rendered)
         self.assertIn("Comparison &amp; Review Controls", rendered)
+        self.assertIn(
+            "Cached Target A/B labels restore operator context only",
+            rendered,
+        )
+        self.assertIn(
+            "readiness must be confirmed by current governed backend metadata",
+            rendered,
+        )
         self.assertNotIn("<h4>Comparison Controls</h4>", rendered)
         self.assertIn("Review Mode", rendered)
         self.assertIn("Governed Actions", rendered)
@@ -124,6 +145,10 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         )
         self.assertIn(
             "Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only",
+            rendered,
+        )
+        self.assertIn(
+            "If receipt fields are restored from browser state, they are prior backend-returned context only until a current backend response supersedes them",
             rendered,
         )
         self.assertNotIn("Request / Execution Result", rendered)

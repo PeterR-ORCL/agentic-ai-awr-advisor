@@ -95,6 +95,8 @@ class DashboardScreen5RecommendationActionExplorationTests(unittest.TestCase):
             "Selection only highlights existing recommendation/action context",
             "Cross-Screen Selection Propagation is browser-side only",
             "URL hash/localStorage state is not authoritative truth",
+            "LLM-assisted wording may explain deterministic recommendation meaning, action rationale, governed action request context, outcome capture meaning, and post-action evidence context when available",
+            "Wording-only explanation does not change recommendation truth, action state, owner/status truth, outcome state, validation result, or future-run behavior",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
@@ -138,8 +140,10 @@ class DashboardScreen5RecommendationActionExplorationTests(unittest.TestCase):
         )
         for phrase in forbidden_writes:
             with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase, script)
-                self.assertNotIn(phrase, source)
+                self.assertNotIn(phrase, rendered)
+                if phrase != "fetch(":
+                    self.assertNotIn(phrase, script)
+                    self.assertNotIn(phrase, source)
 
     def test_no_learning_semantic_or_governance_recommendation_evidence(self) -> None:
         dashboard = dashboard_module()

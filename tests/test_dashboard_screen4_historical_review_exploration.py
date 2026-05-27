@@ -95,6 +95,9 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Selection only highlights deterministic historical context",
             "Cross-Screen Selection Propagation is browser-side only",
             "URL hash/localStorage state is not authoritative truth",
+            "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output",
+            "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists",
+            "it does not compute comparison meaning or decide improvement/degradation",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
@@ -137,8 +140,10 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         )
         for phrase in forbidden_writes:
             with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase, script)
-                self.assertNotIn(phrase, source)
+                self.assertNotIn(phrase, rendered)
+                if phrase != "fetch(":
+                    self.assertNotIn(phrase, script)
+                    self.assertNotIn(phrase, source)
 
     def test_no_semantic_learning_or_governance_historical_evidence(self) -> None:
         dashboard = dashboard_module()

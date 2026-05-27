@@ -531,28 +531,46 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         "<h2>Evidence Handoff Required</h2>"
         "<p>No diagnostic evidence is selected yet.</p>"
         "</section>"
-        '<div data-dashboard-evidence-gated-content="true" hidden>Why This Posture</div>'
+        '<div data-dashboard-evidence-gated-content="true" hidden>'
+        "Why This Posture. "
+        "Screen 3 may explain Target A or Target B diagnostic context individually. "
+        "it does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, or change diagnostic truth. "
+        "Comparative evidence review remains a Screen 4 responsibility once deterministic comparison output exists."
+        "</div>"
     ),
     "screen_4_historical_review.html": (
         '<section data-dashboard-evidence-gate-empty="true">'
         "<h2>Evidence Handoff Required</h2>"
         "<p>No review evidence is selected yet.</p>"
         "</section>"
-        '<div data-dashboard-evidence-gated-content="true" hidden>Historical Review / Comparison</div>'
+        '<div data-dashboard-evidence-gated-content="true" hidden>'
+        "Evidence Review / Historical &amp; Comparison Context. "
+        "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output. "
+        "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists. "
+        "it does not compute comparison meaning or decide improvement/degradation."
+        "</div>"
     ),
     "screen_5_recommendation_action.html": (
         '<section data-dashboard-evidence-gate-empty="true">'
         "<h2>Evidence Handoff Required</h2>"
         "<p>No recommendation/action context is selected yet.</p>"
         "</section>"
-        '<div data-dashboard-evidence-gated-content="true" hidden>Action Rationale</div>'
+        '<div data-dashboard-evidence-gated-content="true" hidden>'
+        "Action Rationale. "
+        "LLM-assisted wording may explain deterministic recommendation meaning, action rationale, governed action request context, outcome capture meaning, and post-action evidence context when available. "
+        "Wording-only explanation does not change recommendation truth, action state, owner/status truth, outcome state, validation result, or future-run behavior."
+        "</div>"
     ),
     "screen_6_fleet_overview.html": (
         '<section data-dashboard-evidence-gate-empty="true">'
         "<h2>Evidence Handoff Required</h2>"
         "<p>No learning governance context is selected yet.</p>"
         "</section>"
-        '<div data-dashboard-evidence-gated-content="true" hidden>Nearest Similar AWRs</div>'
+        '<div data-dashboard-evidence-gated-content="true" hidden>'
+        "Nearest Similar AWRs. "
+        "LLM-assisted wording may explain learning governance, candidate meaning, materialization meaning, runtime eligibility meaning, model registry/governance state, and why materialization and runtime eligibility are separate. "
+        "Wording-only explanation does not accept/reject candidates, materialize candidates, activate runtime eligibility, train/activate models, change registry state, or change future-run behavior."
+        "</div>"
     ),
 }
 

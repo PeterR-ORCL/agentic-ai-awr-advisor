@@ -204,6 +204,136 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertIn("choose runtime scope", envelope["forbidden_mutations"])
         self.assertIn("decide improvement/degradation", envelope["forbidden_mutations"])
 
+    def test_screens3_through6_scopes_are_screen_specific_and_non_mutating(self) -> None:
+        expected = {
+            "screen_3": {
+                "allowed": (
+                    "already-computed deterministic Phase 4 analysis",
+                    "OK/LOW confidence/TUNE FIRST meaning",
+                    "mixed-signal interpretation",
+                    "Target A individual diagnostic context",
+                    "Target B individual diagnostic context",
+                ),
+                "forbidden": (
+                    "compare Target A vs Target B",
+                    "decide improvement/degradation",
+                    "assign comparison readiness",
+                    "change diagnosis based on comparison",
+                    "generate comparative recommendation truth",
+                ),
+            },
+            "screen_4": {
+                "allowed": (
+                    "governed comparison evidence meaning",
+                    "future deterministic comparison violin meaning",
+                    "why evidence supports or does not support deterministic diagnosis",
+                    "historical and similarity context as advisory evidence context",
+                ),
+                "forbidden": (
+                    "change trend values",
+                    "change anomaly classification",
+                    "change similarity result",
+                    "change comparison result",
+                    "create comparison outputs",
+                    "persist comparison outputs",
+                ),
+            },
+            "screen_5": {
+                "allowed": (
+                    "deterministic recommendation meaning",
+                    "action priority/owner/status meaning",
+                    "governed action request meaning",
+                    "outcome capture meaning",
+                    "post-action evidence context",
+                ),
+                "forbidden": (
+                    "generate new recommendation truth",
+                    "mark action complete",
+                    "record outcome",
+                    "change owner/status truth",
+                    "change validation checklist result",
+                ),
+            },
+            "screen_6": {
+                "allowed": (
+                    "learning governance",
+                    "why candidate review is required",
+                    "materialization meaning",
+                    "runtime eligibility meaning",
+                    "why materialization and runtime eligibility are separate",
+                    "why future-run behavior requires explicit governed activation",
+                ),
+                "forbidden": (
+                    "accept or reject candidates",
+                    "create learning candidates",
+                    "materialize candidates",
+                    "activate runtime eligibility",
+                    "change model registry state",
+                    "activate models",
+                    "change future-run behavior",
+                ),
+            },
+        }
+
+        for screen_id, checks in expected.items():
+            allowed = self.contract.RUNTIME_EXPLANATION_ALLOWED_SCOPES[screen_id]
+            forbidden = self.contract.RUNTIME_EXPLANATION_FORBIDDEN_MUTATIONS[screen_id]
+            with self.subTest(screen_id=screen_id, boundary="scope"):
+                for phrase in checks["allowed"]:
+                    self.assertIn(phrase, allowed)
+                for phrase in checks["forbidden"]:
+                    self.assertIn(phrase, forbidden)
+
+    def test_screens3_through6_payload_validation_rejects_truth_mutation_fields(self) -> None:
+        validate = self.contract.validate_runtime_explanation_payload
+        payload = {
+            "request_type": "runtime_explanation",
+            "provider_mode": "mock",
+            "non_mutating_explanation_only": True,
+        }
+        forbidden_by_screen = {
+            "screen_3": (
+                "comparison_outcome_decision",
+                "improvement_degradation_decision",
+                "target_assignment",
+                "diagnosis_update",
+                "recommendation_update",
+            ),
+            "screen_4": (
+                "comparison_output_creation",
+                "comparison_violin_generation",
+                "comparison_outcome_decision",
+                "evidence_update",
+                "score_update",
+            ),
+            "screen_5": (
+                "recommendation_update",
+                "action_state_update",
+                "outcome_state_update",
+                "owner_status_update",
+                "validation_result_update",
+            ),
+            "screen_6": (
+                "candidate_acceptance",
+                "candidate_rejection",
+                "learning_candidate_action",
+                "materialization_action",
+                "runtime_eligibility_action",
+                "model_registry_update",
+                "model_activation_action",
+            ),
+        }
+
+        for screen_id, fields in forbidden_by_screen.items():
+            safe_payload = {**payload, "screen_id": screen_id}
+            self.assertEqual(validate(safe_payload, expected_screen_id=screen_id), "")
+            for field in fields:
+                with self.subTest(screen_id=screen_id, field=field):
+                    self.assertIn(
+                        "mutation/workflow fields",
+                        validate({**safe_payload, field: True}, expected_screen_id=screen_id),
+                    )
+
     def test_all_product_screens_have_allowed_and_forbidden_scopes(self) -> None:
         expected = {
             "index_source_mode",
@@ -366,6 +496,14 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             "The provider decided improvement from comparison.",
             "The provider decided degradation from comparison.",
             "The explanation changed action/outcome truth.",
+            "The explanation changed action state.",
+            "The explanation recorded outcome.",
+            "The explanation changed validation result.",
+            "The provider generated new recommendation truth.",
+            "The provider generated comparative recommendation truth.",
+            "The explanation created comparison output.",
+            "The explanation persisted comparison output.",
+            "The provider generated comparison violin output.",
             "The explanation created hidden DB write.",
             "The explanation created hidden audit record.",
             "The provider approved parser mapping.",
@@ -374,7 +512,11 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             "The explanation created scoring features.",
             "The provider assigned diagnostic domains.",
             "The explanation changed artifact readiness.",
+            "The explanation created learning candidate.",
             "This explanation activated runtime eligibility.",
+            "The provider materialized candidates.",
+            "The provider activated the model.",
+            "The provider changed model registry state.",
             "Phase 8 is active and sizing is active.",
             "Future runs will use the trained model.",
         ):

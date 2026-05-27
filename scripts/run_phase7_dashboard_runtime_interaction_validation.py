@@ -141,6 +141,9 @@ def validate_dashboard_runtime_interaction(
     )
     index_source_result = validate_index_source_selection_workflow(generated_texts)
     generated_screen3_result = validate_generated_screen3_control_center(generated_texts)
+    screens3_6_copy_result = validate_screens3_6_runtime_explanation_copy(
+        generated_texts
+    )
     preview_context_result = validate_preview_only_context_markers(
         source_text,
         generated_texts,
@@ -231,6 +234,11 @@ def validate_dashboard_runtime_interaction(
             "generated_screen3_control_center_ready",
             generated_screen3_result["status"] == "passed",
             generated_screen3_result["reason"],
+        ),
+        check_result(
+            "screens3_6_runtime_explanation_copy_ready",
+            screens3_6_copy_result["status"] == "passed",
+            screens3_6_copy_result["reason"],
         ),
         check_result(
             "service_bridge_accepts_governed_request",
@@ -401,6 +409,8 @@ def validate_dashboard_runtime_interaction(
         failures.append(contradictory_text_result["reason"])
     if index_source_result["status"] != "passed":
         failures.append(index_source_result["reason"])
+    if screens3_6_copy_result["status"] != "passed":
+        failures.append(screens3_6_copy_result["reason"])
     if preview_context_result["status"] != "passed":
         failures.append(preview_context_result["reason"])
     if selection_ux_result["status"] != "passed":
@@ -456,6 +466,7 @@ def validate_dashboard_runtime_interaction(
             "files": sorted(generated_texts),
             "screens": generated_screen_results,
             "screen3_control_center": generated_screen3_result,
+            "screens3_6_runtime_explanation_copy": screens3_6_copy_result,
             "default_evidence_gating": generated_default_gating_result,
         },
         "service_bridge": service_smoke,
@@ -2289,6 +2300,55 @@ def validate_generated_screen3_control_center(
     }
 
 
+def validate_screens3_6_runtime_explanation_copy(
+    generated_texts: dict[str, str],
+) -> dict[str, Any]:
+    """Require generated Screens 3-6 to expose non-mutating explanation boundaries."""
+
+    required_by_path = {
+        "awr_dashboard/screen_3_analysis.html": (
+            "Screen 3 may explain Target A or Target B diagnostic context individually",
+            "it does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, or change diagnostic truth",
+            "Comparative evidence review remains a Screen 4 responsibility once deterministic comparison output exists",
+        ),
+        "awr_dashboard/screen_4_historical_review.html": (
+            "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output",
+            "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists",
+            "it does not compute comparison meaning or decide improvement/degradation",
+        ),
+        "awr_dashboard/screen_5_recommendation_action.html": (
+            "LLM-assisted wording may explain deterministic recommendation meaning, action rationale, governed action request context, outcome capture meaning, and post-action evidence context when available",
+            "Wording-only explanation does not change recommendation truth, action state, owner/status truth, outcome state, validation result, or future-run behavior",
+        ),
+        "awr_dashboard/screen_6_fleet_overview.html": (
+            "LLM-assisted wording may explain learning governance, candidate meaning, materialization meaning, runtime eligibility meaning, model registry/governance state, and why materialization and runtime eligibility are separate",
+            "Wording-only explanation does not accept/reject candidates, materialize candidates, activate runtime eligibility, train/activate models, change registry state, or change future-run behavior",
+        ),
+    }
+    offenders: list[str] = []
+    for path, markers in required_by_path.items():
+        text = generated_texts.get(path, "")
+        normalized = re.sub(r"\s+", " ", text)
+        if not text:
+            offenders.append(f"missing generated artifact: {path}")
+            continue
+        for marker in markers:
+            if marker not in text and marker not in normalized:
+                offenders.append(f"{path} missing Screens 3-6 explanation boundary marker: {marker}")
+    if offenders:
+        return {
+            "status": "failed",
+            "reason": "generated Screens 3-6 runtime explanation copy is incomplete: "
+            + "; ".join(offenders[:8]),
+            "offenders": offenders,
+        }
+    return {
+        "status": "passed",
+        "reason": "generated Screens 3-6 expose non-mutating explanation ownership and boundary copy",
+        "offenders": [],
+    }
+
+
 def validate_selection_workflow_ux(generated_texts: dict[str, str]) -> dict[str, Any]:
     """Require Index entry UX and Screen 1 source workflow landmarks."""
 
@@ -3010,7 +3070,7 @@ def validate_generated_default_evidence_gating(
         ),
         "awr_dashboard/screen_4_historical_review.html": (
             "No review evidence is selected yet.",
-            ("Historical Review / Comparison", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
+            ("Evidence Review / Historical &amp; Comparison Context", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
         ),
         "awr_dashboard/screen_5_recommendation_action.html": (
             "No recommendation/action context is selected yet.",

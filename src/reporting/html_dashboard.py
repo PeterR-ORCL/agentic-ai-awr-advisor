@@ -820,7 +820,7 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
         ),
         "screen_4_historical_review.html": _build_page_html(
             page_key="screen_4",
-            page_title="Screen 4 - Historical Review",
+            page_title="Screen 4 - Evidence Review",
             report_data=report_data,
             content_html=_render_screen_4_page(
                 screen_4_model,
@@ -8188,7 +8188,7 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
         "screen_1": "Screen 1 - Ingestion",
         "screen_2": "Screen 2 - Runtime Scope & Analysis Control",
         "screen_3": "Screen 3 - Diagnostic Snapshot",
-        "screen_4": "Screen 4 - Historical Review",
+        "screen_4": "Screen 4 - Evidence Review",
         "screen_5": "Screen 5 - Recommendation Action & Outcome",
         "screen_6": "Screen 6 - Learning Governance",
     }.get(page_key, product.get("title") or "Dashboard")
@@ -9190,7 +9190,7 @@ def _render_home_page(
             ],
         ),
         (
-            "Screen 4 - Historical Review",
+            "Screen 4 - Evidence Review",
             "screen_4_historical_review.html",
             [
                 ("Readiness", "Evidence handoff required"),
@@ -13479,7 +13479,7 @@ def _render_screen2_review_panel(
         <div class="section-kicker">DIAGNOSTIC MEANING</div>
         <h2>Focused Diagnostic Meaning</h2>
         <p class="static-selection-note">
-          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 3 cannot perform those changes.
+          The domain lens and active explanation focus are local reporting context. Generate Focused Explanation can refresh wording, but selection and generation only change local selected focus and displayed explanation wording. LLM-style wording may explain what diagnosis, score, confidence, or recommendation changes would mean conceptually, but Screen 3 cannot perform those changes. Screen 3 may explain Target A or Target B diagnostic context individually when that selected evidence context exists; it does not compare Target A vs Target B, decide improvement/degradation, assign comparison readiness, or change diagnostic truth.
         </p>
         <section class="evidence-pane screen2-review-target-summary">
           <h3 data-screen2-focus="heading">Selected Focus Summary</h3>
@@ -13536,7 +13536,7 @@ def _render_screen2_review_panel(
             </div>
           </div>
           <p class="screen2-focus-boundary-note">
-            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior.
+            Selection changes only the local explanation focus. It does not change diagnosis, scoring, recommendations, parser output, runtime behavior, ML behavior, materialization, runtime eligibility, or future-run behavior. Comparative evidence review remains a Screen 4 responsibility once deterministic comparison output exists.
           </p>
           <section class="screen2-focused-explanation-panel">
             <h3>Focused Diagnostic Explanation</h3>
@@ -17980,7 +17980,7 @@ def _render_screen_4_page(
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
       <section class="card secondary screen4-summary-card">
         <div class="section-kicker">Screen 4</div>
-        <h2>Historical Review / Comparison</h2>
+        <h2>Evidence Review / Historical &amp; Comparison Context</h2>
         <div class="meta">
           Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.
         </div>
@@ -18114,6 +18114,8 @@ def _render_screen4_historical_exploration(
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
+          Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output.
+          LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists; it does not compute comparison meaning or decide improvement/degradation.
         </p>
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen4-selected-historical-panel">
@@ -18654,6 +18656,8 @@ def _render_screen5_recommendation_action_exploration(
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
+          LLM-assisted wording may explain deterministic recommendation meaning, action rationale, governed action request context, outcome capture meaning, and post-action evidence context when available.
+          Wording-only explanation does not change recommendation truth, action state, owner/status truth, outcome state, validation result, or future-run behavior.
         </p>
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen5-selected-recommendation-panel">
@@ -20593,6 +20597,8 @@ def _render_screen6_fleet_governance_learning_exploration(
           requires_human_review=true. Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
+          LLM-assisted wording may explain learning governance, candidate meaning, materialization meaning, runtime eligibility meaning, model registry/governance state, and why materialization and runtime eligibility are separate.
+          Wording-only explanation does not accept/reject candidates, materialize candidates, activate runtime eligibility, train/activate models, change registry state, or change future-run behavior.
         </p>
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen6-selected-panel">

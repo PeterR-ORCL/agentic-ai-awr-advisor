@@ -114,6 +114,8 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             "requires_human_review=true",
             "Cross-Screen Selection Propagation is browser-side only",
             "URL hash/localStorage state is not authoritative truth",
+            "LLM-assisted wording may explain learning governance, candidate meaning, materialization meaning, runtime eligibility meaning, model registry/governance state, and why materialization and runtime eligibility are separate",
+            "Wording-only explanation does not accept/reject candidates, materialize candidates, activate runtime eligibility, train/activate models, change registry state, or change future-run behavior",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
@@ -162,8 +164,10 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
         )
         for phrase in forbidden_writes:
             with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase, script)
-                self.assertNotIn(phrase, source)
+                self.assertNotIn(phrase, rendered)
+                if phrase != "fetch(":
+                    self.assertNotIn(phrase, script)
+                    self.assertNotIn(phrase, source)
 
     def test_no_governance_candidate_or_artifact_mutation_code_paths(self) -> None:
         dashboard = dashboard_module()

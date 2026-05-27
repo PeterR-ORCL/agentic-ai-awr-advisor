@@ -1,0 +1,170 @@
+# Phase 7 Screen 4 Evidence Review Mode Shell
+
+## 1. Purpose
+
+Screen 4 is the Evidence Review shell for the dashboard. It is the operator's place to inspect supporting evidence behind deterministic analysis, including historical context today and future deterministic comparison and deep evidence review when those outputs exist.
+
+The visible product role is `Screen 4 - Evidence Review`. The existing generated artifact and model names may remain `screen_4_historical_review.html` and `screen_4_historical_review` for compatibility during 7CV.
+
+## 2. Non-Goals
+
+This shell contract does not change diagnosis, scoring, severity, confidence, recommendation generation, parser behavior, database behavior, provider behavior, Phase 4I output shape, Phase 6 schema, generated dashboard artifact names, routes, screen ids, or cache keys.
+
+7CV-B does not implement a UI mode selector, comparison runtime, comparison violin diagrams, Historical Review internals, Comparative Review internals, Deep Analysis internals, provider routes, governed writes, learning materialization, runtime activation, or Phase 8 sizing, what-if, TCO, predictive, EMCC, or OEM behavior.
+
+## 3. 7CV-A Baseline
+
+7CV-A confirmed that Screen 4 already appears as `Screen 4 - Evidence Review` with nav label `4 Review`, while the implemented behavior remains mostly historical review.
+
+Screen 4 does not compute A-vs-B comparison, assign comparison readiness, decide improvement or degradation, render comparison violin diagrams, or expose a Screen 4-specific provider route. Existing Screen 4 cache behavior is continuity only. Shared dashboard JavaScript can contain Screen 2 and Screen 3 route or Target A/B strings, but those strings are not Screen 4 ownership unless Screen 4 renders visible controls or invokes a Screen 4 route.
+
+## 4. Screen 4 Role Contract
+
+Screen 4 owns supporting evidence review. It may show deterministic evidence, governed historical context, selected runtime context, historical trend/anomaly/similarity context, and unavailable-state placeholders for future governed evidence review.
+
+Screen 4 must not change diagnosis, score, severity, confidence, recommendations, parser mappings, Phase 4 truth, Phase 4I payload shape, Phase 6 schema, runtime behavior, future-run behavior, or learning materialization state.
+
+Screen 4 must not treat browser cache, UI state, or LLM wording as evidence truth. It must not compute A-vs-B comparison in the browser, assign comparison readiness, decide improvement/degradation, create deterministic output, or execute re-analysis.
+
+## 5. Mode Shell Model
+
+### Historical Review
+
+Purpose: review historical trend, anomaly, baseline, time-window, distribution, and similarity context.
+
+Current state: mostly implemented as read-only historical review using deterministic/report-derived evidence and local exploratory selectors.
+
+Allowed now: historical scope, current selection context, trend review, anomaly review, baseline context, historical distributions, derived metrics, topology/platform context, similarity evidence, safe empty states, and disabled historical workflow previews.
+
+Unavailable now: active historical workflow execution, official baseline selection, trend/anomaly approval, prior recommendation/outcome history as authoritative evidence unless governed data is explicitly available, and learning activation.
+
+Future owner: 7CW.
+
+Prohibited behavior: create historical truth from cache, infer trend changes without deterministic output, mutate run history, activate learning, replace deterministic trend/anomaly output, decide recommendation outcomes, or own Screen 5 action/outcome workflow.
+
+### Comparative Review
+
+Purpose: review deterministic Target A-vs-B comparison evidence after deterministic comparison output exists.
+
+Current state: unavailable except for future-governed ownership wording and handoff placeholders. No active Screen 4 A-vs-B comparison output is rendered today.
+
+Allowed now: unavailable/prepared-state placeholder copy that clearly says deterministic comparison output is not yet active, and ownership wording that reserves future comparison evidence and comparison violin panels for Screen 4.
+
+Unavailable now: target deltas, domain deltas, wait/event deltas, SQL deltas, topology/platform deltas, improvement/degradation/stable labels, comparison result summaries, and comparison violin diagrams.
+
+Future owner: 7CX.
+
+Prohibited behavior: compute comparison results in the browser, decide improvement/degradation without deterministic comparison output, assign comparison readiness, synthesize A-vs-B deltas, change Screen 3 diagnosis, change recommendations, or render comparison violin diagrams as truth before deterministic comparison data exists.
+
+### Deep Analysis
+
+Purpose: provide expert DBA evidence review for detailed AWR evidence in a structured way.
+
+Current state: no explicit Deep Analysis mode. Some high-level evidence is present in Screen 4, such as DB time, I/O, commit, memory, RAC, ADG, topology/platform, derived metrics, and limited top-SQL availability.
+
+Allowed now: scope definition and unavailable/preview-only placeholder language only. Existing high-level deterministic evidence may continue to appear inside Historical Review.
+
+Unavailable now: raw evidence drilldown, parser-discovered section drilldown, deep waits/events drilldown, top SQL investigation workflow, and expert panels that bypass deterministic analysis.
+
+Future owner: 7CY.
+
+Prohibited behavior: bypass deterministic analysis, diagnose directly from raw evidence, rewrite recommendations, add ungoverned scoring, allow LLM diagnosis/classification, mutate parser/source governance state, approve parser mappings, or own Screen 1 parser/source governance.
+
+## 6. Truth and State Boundary
+
+Deterministic evidence comes from Phase 4I output and deterministic analysis artifacts. It is authoritative for Screen 4 display. Examples include `metadata`, `decision`, `scores`, `trends`, `similarity_intelligence`, and `recommendations` generated by Phase 4. Recommendation generation remains owned by `src/analysis/recommendation_engine.py` through `generate_decision_recommendations`.
+
+Governed persisted context comes from Phase 6/7 persistence where available. It is authoritative only for its own governed record. It may provide historical run, recommendation/action/outcome, feedback, or learning governance context, but it must not override deterministic diagnosis.
+
+Selected runtime context comes from Screen 2 runtime scope, selected source, selected run, or selected target context. It is selected context only and must not become evidence truth by itself.
+
+Browser cache continuity comes from localStorage, hash state, or session continuity. It is display continuity only. It cannot create evidence, update evidence, determine readiness, or overwrite deterministic/governed truth.
+
+Future unavailable output refers to planned deterministic comparison or future deep-analysis artifacts that are not active. It must be labeled unavailable, future, prepared-only, or pending deterministic output.
+
+LLM explanatory wording is wording only. It may explain already-computed, already-selected, already-validated, already-recorded, or already-governed meaning, but it must not create evidence, classify evidence, diagnose, score, recommend, compare targets, persist records, activate runtime behavior, or change future-run behavior.
+
+## 7. Screen Boundary Matrix
+
+| Screen | Owner role | Allowed handoff to Screen 4 | Prohibited overlap |
+| --- | --- | --- | --- |
+| Home / Index | Platform entry and source intake | Source/run context already selected by the operator | Screen 4 must not own platform entry or source intake |
+| Screen 1 | Ingestion, parser, source governance, unknowns, mappings, artifact readiness | Governed source/artifact readiness context | Screen 4 must not approve mappings, mutate parser state, or own source governance |
+| Screen 2 | Runtime scope, existing evidence loading, Target A/B selection, comparison readiness preparation | Selected source/run/scope and future comparison-prepared context | Screen 4 must not assign readiness, select Target A/B, or own runtime-control requests |
+| Screen 3 | Diagnostic Snapshot and selected target individual deterministic explanation | Deterministic diagnosis and selected target context for evidence review | Screen 4 must not change diagnosis, score, severity, confidence, or recommendations |
+| Screen 4 | Evidence Review shell | Historical, future comparative, and future deep evidence review | Screen 4 must remain read-only until later governed workflows explicitly activate behavior |
+| Screen 5 | Recommendation action, owner/status, validation checklist, outcome capture | Evidence context that may support operator action review | Screen 4 must not create actions, record outcomes, validate actions, or own recommendation truth |
+| Screen 6 | Learning governance, candidate review, materialization, runtime eligibility | Governed learning context only when available and clearly labeled | Screen 4 must not materialize candidates, approve runtime eligibility, or activate learning |
+
+## 8. Current vs Future Capability Map
+
+| Capability | Current state | Truth source | Future workstream | Guardrail |
+| --- | --- | --- | --- | --- |
+| Historical trend review | Present | Deterministic trends/report data | 7CW | No trend recalculation |
+| Anomaly timeline | Present/partial | Deterministic anomaly output | 7CW | No anomaly reclassification |
+| Baseline context | Present as historical context | Deterministic/report comparison context | 7CW | Do not imply A-vs-B output |
+| Similarity evidence | Present | `similarity_intelligence` and governed data where available | 7CW | No nearest-neighbor recomputation in UI |
+| Prior recommendations/actions/outcomes | Mostly absent | Governed persistence only if available | 7CW | Must not become Screen 5 ownership |
+| Target A/B comparison | Placeholder only | Future deterministic comparison output | 7CX | No browser-side comparison |
+| Domain deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
+| Wait/event deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
+| SQL deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
+| Topology/platform deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
+| Comparison violin diagrams | Absent | Future deterministic comparison output | 7CX | Screen 4 owns future rendering, but none in 7CV |
+| Raw evidence drilldown | Absent | Future governed parser/deterministic evidence contract | 7CY | Do not bypass deterministic diagnosis |
+| Parser-discovered sections/elements | Absent | Screen 1/parser governance | 7CY | No parser governance mutation |
+| LLM explanatory wording | Limited/common route only | Approved provider/service path if used | 7CV-C+ as wording only | No evidence creation or decisions |
+
+## 9. Comparison and Violin Ownership
+
+Screen 2 prepares Target A/B and comparison readiness. Screen 3 explains a selected Target A or Target B individually. Screen 4 owns future deterministic A-vs-B evidence review after deterministic comparison output exists.
+
+Screen 4 owns future comparison violin panels. 7CV-B does not implement comparison violin diagrams, comparison violin data, comparison runtime, or comparison output rendering.
+
+Existing Screen 4 workload distribution violins are historical/supporting distribution evidence, not A-vs-B comparison violin diagrams.
+
+## 10. LLM / Provider Boundary
+
+7CV-B adds no Screen 4 provider route. Existing common Screen 2 explanation plumbing remains outside Screen 4 ownership unless Screen 4 renders visible controls and an approved route in a later task.
+
+Future LLM wording on Screen 4 may explain already-computed deterministic evidence, governed persisted context, or deterministic comparison meaning. It must not create evidence, choose evidence, validate evidence, decide comparison outcome, score, diagnose, recommend, persist records, or mutate workflow state.
+
+## 11. Cache / State Boundary
+
+Cache is continuity only. Screen 4 may use browser-local state to restore selected source/run context or local evidence-review selection highlights.
+
+Cache cannot create evidence, determine comparison readiness, create comparison output, change deterministic diagnosis, change recommendation truth, overwrite governed persistence, or fabricate Historical, Comparative, or Deep Analysis state.
+
+Stale cache must yield unavailable or refresh-needed wording rather than evidence claims.
+
+## 12. Product Copy Guidance
+
+Use `historical baseline context` or `historical period context` when referring to existing multi-snapshot or latest-vs-prior review. Reserve `Comparative Review` and `Target A-vs-B` for deterministic comparison output.
+
+Avoid `Learning Preview` wording when it could imply Screen 6 ownership. Prefer `Historical Review Workflow Preview` or `Evidence Review Notes Preview` for disabled Screen 4 concepts.
+
+Keep visible product language aligned to `Evidence Review` while preserving technical artifact compatibility with `screen_4_historical_review.html`, `screen_4_historical_review`, existing routes, existing screen ids, and existing cache keys.
+
+Do not treat shared JavaScript search hits as ownership evidence. Ownership requires Screen 4 visible controls, Screen 4 route invocation, or Screen 4-specific source rendering.
+
+## 13. 7CV-C Readiness Criteria
+
+7CV-C may safely implement a static/local Screen 4 mode selector shell only if the mode names remain locked as Historical Review, Comparative Review, and Deep Analysis.
+
+7CV-C must not add a backend route, comparison computation, comparison violin implementation, deep analysis internals, artifact rename, route rename, screen id rename, cache key rename, provider route, or generated comparison truth.
+
+Comparative Review must render unavailable/prepared-state copy until deterministic comparison output exists. Deep Analysis must render unavailable/preview-only scope copy until 7CY. Historical Review may wrap existing content without changing its current behavior.
+
+Tests should verify no mutation, no provider route, no comparison truth claims, no comparison readiness assignment, no comparison violin rendering, and no Screen 3/5/6 boundary drift.
+
+## 14. Deferrals
+
+7CW owns Historical Review internals.
+
+7CX owns Comparative Review internals, deterministic comparison evidence rendering, A-vs-B deltas, deterministic improvement/degradation/stable labels when available, and comparison violin panels.
+
+7CY owns Deep Analysis internals, expert DBA evidence panels, raw evidence drilldown, governed parser-discovered section display, and detailed AWR evidence review.
+
+7DD or later owns any runtime execution activation where explicitly governed.
+
+Phase 8 owns sizing, what-if advisory, TCO, predictive analytics, EMCC expansion, and OEM expansion.

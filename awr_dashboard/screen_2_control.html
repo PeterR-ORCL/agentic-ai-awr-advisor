@@ -5046,7 +5046,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 27, 2026, 4:45 PM">
+<body data-dashboard-generated-at="May 27, 2026, 5:45 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5181,7 +5181,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 27, 2026, 4:45 PM</div>
+        <div class="hero-meta">Generated: May 27, 2026, 5:45 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link active" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5612,12 +5612,12 @@
 
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="screen3ApplySelectionTarget" data-dashboard-select-key="screen3ActiveSelectionTarget" data-dashboard-select-id="Target A" data-dashboard-target="Target A">
                 <span>Target A</span>
-                <small>Row and interval selections resolve Comparison Target A.</small>
+                <small>Row and interval selections record candidate Target A context.</small>
               </button>
 
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="screen3ApplySelectionTarget" data-dashboard-select-key="screen3ActiveSelectionTarget" data-dashboard-select-id="Target B" data-dashboard-target="Target B">
                 <span>Target B</span>
-                <small>Row and interval selections resolve Comparison Target B.</small>
+                <small>Row and interval selections record candidate Target B context.</small>
               </button>
             </div>
             </article>
@@ -5831,10 +5831,10 @@
             <article class="screen3-context-subpanel screen3-operator-help-panel">
               <h4>How to use this screen</h4>
               <ol class="screen3-operator-steps">
-                <li><strong>Choose assignment.</strong> Runtime Scope prepares a selected AWR/report for a governed analysis or re-run request. Target A and Target B define the two sides of a comparison.</li>
+                <li><strong>Choose assignment.</strong> Runtime Scope prepares a selected AWR/report for a governed analysis or re-run request. Target A and Target B record selected candidate sides for later comparison review.</li>
                 <li><strong>Select AWR/report row.</strong> The row you click is applied only to the active assignment.</li>
                 <li><strong>Optional interval/window.</strong> Select a window for the same assignment when period-level comparison is needed.</li>
-                <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can proceed.</li>
+                <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can request downstream review. Readiness is not a comparison result.</li>
                 <li><strong>Submit governed action.</strong> Requests go through the workflow service; Screen 2 does not change diagnosis, scores, recommendations, parser output, learning, materialization, or runtime eligibility.</li>
               </ol>
             </article>
@@ -5948,7 +5948,7 @@
             <div class="section-kicker">Work Area 2</div>
             <h3>Resolve Comparison Targets</h3>
             <p class="static-selection-note">
-              Target A and Target B are built from the selected AWR/report rows and windows. Build Comparison stays blocked until both targets resolve to comparable persisted data; Screen 4 reviews deep evidence only after a real artifact/reference exists.
+              Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
             </p>
             <article class="screen3-context-subpanel screen2-runtime-scope-empty-state"
                      data-screen2-runtime-scope-empty-state="true">
@@ -6007,7 +6007,7 @@
 
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="reviewMode" data-dashboard-select-key="selectedReviewMode" data-dashboard-select-id="Period comparison" data-dashboard-target="Period comparison">
                 <span>Period comparison</span>
-                <small>Compare two selected periods.</small>
+                <small>Prepare a request to compare two selected periods.</small>
               </button>
 
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="reviewMode" data-dashboard-select-key="selectedReviewMode" data-dashboard-select-id="Similarity review" data-dashboard-target="Similarity review">
@@ -6133,7 +6133,10 @@
 
               </div>
               <article class="screen3-context-subpanel screen3-comparison-preview-panel">
-                <h4>Comparison Readiness / Outcome</h4>
+                <h4>Comparison Readiness / Request Handoff</h4>
+                <p class="meta">
+                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not mean comparison was executed or that improvement/degradation was decided.
+                </p>
                 <div class="info-grid screen2-control-card-grid screen3-result-grid">
                 <div class="info-box screen2-control-info-box">
                   <strong>Status</strong>
@@ -6177,7 +6180,7 @@
 
                 <div class="info-box screen2-control-info-box wide">
                   <strong>Screen 4 Handoff</strong>
-                  <div><span data-screen3-result-field="comparison_screen4_handoff" data-default-value="Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists.">Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists.</span></div>
+                  <div><span data-screen3-result-field="comparison_screen4_handoff" data-default-value="Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.">Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.</span></div>
                 </div>
             </div>
               </article>
@@ -6421,7 +6424,7 @@
              aria-disabled="true">
             <strong>Build Comparison</strong>
             <span class="screen3-action-state-pill">Active readiness/request path; comparison execution blocked without comparison-ready inputs.</span>
-            <p>Build or request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.</p>
+            <p>Request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.</p>
             <span class="screen3-action-required-context">Required context: Target A resolved, Target B resolved, both comparable, comparison mode, and review mode.</span>
             <span class="screen3-action-missing-gate">Missing gates: Target A unresolved; Target B unresolved; target not comparable; target resolution/comparison payload missing; structured comparison payload missing; comparison artifact lifecycle missing</span>
             <span class="phase7cm-service-button screen3-action-submit-button">Submit governed action</span>
@@ -6619,9 +6622,9 @@
             </div>
               </article>
               <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
-                <h4>Comparison Result Summary</h4>
+                <h4>Comparison Request / Handoff Summary</h4>
                 <p class="meta">
-                  Screen 2 Control records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
+                  Screen 2 Control records comparison setup and request receipt. It does not compute comparison results, decide improvement/degradation, or change either target's deterministic truth. Screen 4 remains the deep historical/comparison evidence surface.
                 </p>
                 <div class="info-grid screen2-control-card-grid screen3-result-grid">
                 <div class="info-box screen2-control-info-box">
@@ -6722,7 +6725,7 @@
 
               <article class="screen3-explanation-article">
                 <h4>Comparison impact</h4>
-                <p>Comparison setup records target-resolution intent. Build Comparison is ready only when Target A and Target B resolve to comparable persisted data. Deep evidence appears in Screen 4 after a governed request returns an artifact/reference.</p>
+                <p>Comparison setup records target-resolution intent. Build Comparison is request-ready only when Target A and Target B resolve to comparable persisted data. Readiness is not a comparison result; deep evidence appears in Screen 4 after a governed deterministic comparison reference exists.</p>
               </article>
 
               <article class="screen3-explanation-article">
@@ -6743,7 +6746,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 27, 2026, 4:45 PM</div>
+    <div class="footer">Generated at May 27, 2026, 5:45 PM</div>
   </div>
 
   <script>

@@ -56,7 +56,8 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("Select Runtime Scope", rendered)
         self.assertIn("Work Area 2", rendered)
         self.assertIn("Resolve Comparison Targets", rendered)
-        self.assertIn("Target A and Target B are built from the selected AWR/report rows and windows", rendered)
+        self.assertIn("Target A and Target B identify selected candidate sides for later comparison review", rendered)
+        self.assertIn("Assignment records selection context only", rendered)
         self.assertIn("Work Area 3", rendered)
         self.assertIn("Submit Governed Action and Review Result", rendered)
         self.assertIn("Runtime Scope Filters", rendered)
@@ -194,7 +195,8 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "Resolution",
             "Readiness",
             "source_type + scope_type + scope_value + time_window + resolution_state + readiness_state",
-            "Comparison Readiness / Outcome",
+            "Comparison Readiness / Request Handoff",
+            "Readiness is not a comparison result",
             "Both Comparable",
             "Current DB history",
             "Similar AWRs",
@@ -261,7 +263,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "Existing run truth unchanged",
             "Screen 2 Control can request or execute only governed backend actions",
             "New deterministic outputs, when available, must be represented as separate run/output/artifact references",
-            "Build Comparison is ready only when Target A and Target B resolve to comparable persisted data",
+            "Build Comparison is request-ready only when Target A and Target B resolve to comparable persisted data",
             "learning candidates, materialization, runtime eligibility",
             "LLM/explanatory wording cannot alter validation, status, execution, deterministic truth",
         )

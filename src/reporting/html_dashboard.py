@@ -15874,14 +15874,14 @@ def _render_screen3_apply_selection_controls(
             "value": "Target A",
             "select_type": "screen3ApplySelectionTarget",
             "state_key": "screen3ActiveSelectionTarget",
-            "note": "Row and interval selections resolve Comparison Target A.",
+            "note": "Row and interval selections record candidate Target A context.",
         },
         {
             "label": "Target B",
             "value": "Target B",
             "select_type": "screen3ApplySelectionTarget",
             "state_key": "screen3ActiveSelectionTarget",
-            "note": "Row and interval selections resolve Comparison Target B.",
+            "note": "Row and interval selections record candidate Target B context.",
         },
     ]
     return f"""
@@ -16061,10 +16061,10 @@ def _render_screen3_operator_help_panel() -> str:
             <article class="screen3-context-subpanel screen3-operator-help-panel">
               <h4>How to use this screen</h4>
               <ol class="screen3-operator-steps">
-                <li><strong>Choose assignment.</strong> Runtime Scope prepares a selected AWR/report for a governed analysis or re-run request. Target A and Target B define the two sides of a comparison.</li>
+                <li><strong>Choose assignment.</strong> Runtime Scope prepares a selected AWR/report for a governed analysis or re-run request. Target A and Target B record selected candidate sides for later comparison review.</li>
                 <li><strong>Select AWR/report row.</strong> The row you click is applied only to the active assignment.</li>
                 <li><strong>Optional interval/window.</strong> Select a window for the same assignment when period-level comparison is needed.</li>
-                <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can proceed.</li>
+                <li><strong>Review readiness.</strong> Target A and Target B must both resolve to comparable persisted data before Build Comparison can request downstream review. Readiness is not a comparison result.</li>
                 <li><strong>Submit governed action.</strong> Requests go through the workflow service; Screen 2 does not change diagnosis, scores, recommendations, parser output, learning, materialization, or runtime eligibility.</li>
               </ol>
             </article>
@@ -16383,7 +16383,7 @@ def _render_screen3_comparison_review_work_area(
             "value": "Period comparison",
             "select_type": "reviewMode",
             "state_key": "selectedReviewMode",
-            "note": "Compare two selected periods.",
+            "note": "Prepare a request to compare two selected periods.",
         },
         {
             "label": "Similarity review",
@@ -16414,7 +16414,7 @@ def _render_screen3_comparison_review_work_area(
             "Screen 4 Handoff",
             _screen2_result_value(
                 "comparison_screen4_handoff",
-                "Resolve both targets, then submit Build Comparison. Open Screen 4 after a reference exists.",
+                "Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.",
             ),
             "wide",
         ),
@@ -16425,7 +16425,7 @@ def _render_screen3_comparison_review_work_area(
             <div class="section-kicker">Work Area 2</div>
             <h3>Resolve Comparison Targets</h3>
             <p class="static-selection-note">
-              Target A and Target B are built from the selected AWR/report rows and windows. Build Comparison stays blocked until both targets resolve to comparable persisted data; Screen 4 reviews deep evidence only after a real artifact/reference exists.
+              Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
             </p>
             <article class="screen3-context-subpanel screen2-runtime-scope-empty-state"
                      data-screen2-runtime-scope-empty-state="true">
@@ -16465,7 +16465,10 @@ def _render_screen3_comparison_review_work_area(
                 {_render_screen3_target_resolution_card("B")}
               </div>
               <article class="screen3-context-subpanel screen3-comparison-preview-panel">
-                <h4>Comparison Readiness / Outcome</h4>
+                <h4>Comparison Readiness / Request Handoff</h4>
+                <p class="meta">
+                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not mean comparison was executed or that improvement/degradation was decided.
+                </p>
                 {_render_screen2_control_info_grid(preview_rows, extra_class="screen3-result-grid")}
               </article>
               <details class="screen3-secondary-selector-details screen3-target-picker-details">
@@ -16581,7 +16584,7 @@ def _render_screen3_safety_selection_impact_panel() -> str:
         ),
         (
             "Comparison impact",
-            "Comparison setup records target-resolution intent. Build Comparison is ready only when Target A and Target B resolve to comparable persisted data. Deep evidence appears in Screen 4 after a governed request returns an artifact/reference.",
+            "Comparison setup records target-resolution intent. Build Comparison is request-ready only when Target A and Target B resolve to comparable persisted data. Readiness is not a comparison result; deep evidence appears in Screen 4 after a governed deterministic comparison reference exists.",
         ),
         (
             "Object Storage impact",
@@ -16942,7 +16945,7 @@ def _render_screen3_comparison_setup_panel(
               </article>
               <article class="screen3-context-subpanel">
                 <h4>Comparison Target B</h4>
-                <p class="meta">Choose AWR/run B and snapshot/window B to compare two AWRs or two periods. Execution stays blocked until structured inputs exist.</p>
+                <p class="meta">Choose AWR/run B and snapshot/window B to prepare comparison review between two AWRs or two periods. Execution stays blocked until structured inputs exist.</p>
                 <div class="screen3-dynamic-option-grid"
                      data-screen3-runtime-options-target="comparison-target-b">
                   <p class="empty-state">Load runtime options to choose DB-backed Comparison Target B.</p>
@@ -16966,7 +16969,7 @@ def _render_screen3_comparison_setup_panel(
                     [
                         ("Window A start/end", "Choose Comparison Target A or a DB-backed interval."),
                         ("Window B start/end", "Choose Comparison Target B, prior interval, worst interval, or full window."),
-                        ("Compare selected periods", "Build Comparison uses Target A/B and Review Mode as governed request context."),
+                        ("Prepare selected periods", "Build Comparison uses Target A/B and Review Mode as governed request context."),
                     ],
                     extra_class="selector-compact-grid",
                 )}
@@ -16987,7 +16990,7 @@ def _render_screen3_review_mode_panel(screen_model: dict[str, Any]) -> str:
         ("Diagnosis", "Use the selected scope to review current diagnostic posture."),
         ("Historical proof", "Use the selected scope to review historical trend and evidence context."),
         ("Anomaly review", "Focus the request on detected anomaly windows/events."),
-        ("Period comparison", "Compare two selected windows/periods."),
+        ("Period comparison", "Prepare a governed request for two selected windows/periods."),
         ("Similarity review", "Use similar AWR/context where available."),
     ]
     items = [
@@ -17192,9 +17195,9 @@ def _render_screen3_request_execution_result_panel() -> str:
                 {_render_screen2_control_info_grid(target_rows, extra_class="screen3-result-grid")}
               </article>
               <article class="screen3-context-subpanel screen3-result-subcard screen3-comparison-result-summary">
-                <h4>Comparison Result Summary</h4>
+                <h4>Comparison Request / Handoff Summary</h4>
                 <p class="meta">
-                  Screen 2 Control records comparison setup and request outcome. Screen 4 remains the deep historical/comparison evidence surface.
+                  Screen 2 Control records comparison setup and request receipt. It does not compute comparison results, decide improvement/degradation, or change either target's deterministic truth. Screen 4 remains the deep historical/comparison evidence surface.
                 </p>
                 {_render_screen2_control_info_grid(comparison_rows, extra_class="screen3-result-grid")}
               </article>
@@ -17241,11 +17244,11 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
         ),
         (
             "Execution impact",
-            "Analyze/Re-run/Build Comparison may execute only through governed wrappers. If runner/artifact lifecycle gates are missing, the action is blocked and recorded with missing gates.",
+            "Analyze/Re-run may execute only through governed wrappers. Build Comparison remains a request/readiness path until structured comparison backend and artifact lifecycle gates exist; blocked requests are recorded with missing gates.",
         ),
         (
             "Comparison impact",
-            "Comparison setup records selected comparison intent and may create a comparison artifact/reference only when structured comparison inputs and backend gates are available. Screen 4 remains the review surface for deep historical/comparison evidence.",
+            "Comparison setup records selected comparison intent only. It does not compute comparison results, decide improvement/degradation, or create comparison violin data. Screen 4 remains the review surface for deep historical/comparison evidence after deterministic comparison output exists.",
         ),
         (
             "Object Storage impact",
@@ -17320,7 +17323,7 @@ def _render_screen3_reanalysis_action_ui(
         (
             "Build Comparison",
             "build_comparison",
-            "Build or request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.",
+            "Request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.",
             "Active readiness/request path; comparison execution blocked without comparison-ready inputs.",
             "Target A resolved, Target B resolved, both comparable, comparison mode, and review mode.",
             "Target A unresolved; Target B unresolved; target not comparable; target resolution/comparison payload missing; structured comparison payload missing; comparison artifact lifecycle missing",

@@ -424,7 +424,8 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <h4>Selected Runtime Scope / Assignment Summary</h4>
   <p>Effective Snapshot / Window</p>
   <h3>Work Area 2 - Resolve Comparison Targets</h3>
-  <p>Target A and Target B are built from the selected AWR/report rows and windows.</p>
+  <p>Target A and Target B identify selected candidate sides for later comparison review.</p>
+  <p>Assignment records selection context only.</p>
   <p>Only its selected row gets the strong table highlight.</p>
   <h4>Comparison Target A</h4>
   <h4>Comparison Target B</h4>
@@ -434,7 +435,8 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Source Type / Scope Type / Scope Value / Time window / Resolution / Readiness / Missing gates</p>
   <p>Resolved AWRs</p>
   <p>Resolved Windows</p>
-  <p>Comparison Readiness / Outcome</p>
+  <p>Comparison Readiness / Request Handoff</p>
+  <p>Readiness is not a comparison result</p>
   <p>Comparison &amp; Review Controls</p>
   <p>Both Comparable</p>
   <p>load_required</p>
@@ -452,7 +454,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <h3 class="screen3-governed-actions-card">Governed Actions</h3>
   <h3>Request / Execution Result</h3>
   <p>screen3-result-summary-banner</p>
-  <h4>Comparison Result Summary</h4>
+  <h4>Comparison Request / Handoff Summary</h4>
   <p>Requested Artifact / Reference</p>
   <p>Screen 4 Handoff</p>
   <dl>

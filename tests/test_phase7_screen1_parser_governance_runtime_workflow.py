@@ -100,11 +100,16 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
             source,
         )
         self.assertIn("Optional IO section absence", source)
-        self.assertIn("New AWR Field Mapping Candidates", source)
+        self.assertIn("New AWR Mapping Candidates", source)
         self.assertIn(
-            "No new AWR field mapping candidates are available for review.",
+            "No new AWR mapping candidates are available for review.",
             source,
         )
+        self.assertIn(
+            "Newly discovered AWR sections, elements, fields, metrics, or structures",
+            source,
+        )
+        self.assertNotIn("New AWR Field Mapping Candidates", source)
         self.assertIn("Current Generated Run / Intake Evidence", source)
         self.assertIn("Generated evidence reflects a generated dashboard artifact.", source)
         self.assertIn("Browser-side source intake does", source)
@@ -527,7 +532,12 @@ class Phase7Screen1ParserGovernanceRuntimeWorkflowTest(unittest.TestCase):
         self.assertIn("Expected source profile", primary)
         self.assertIn("Parser expectation gap", primary)
         self.assertNotIn("Request parser mapping approval", primary)
-        self.assertIn("No new AWR field mapping candidates are available for review.", primary)
+        self.assertIn("New AWR Mapping Candidates", primary)
+        self.assertIn("No new AWR mapping candidates are available for review.", primary)
+        self.assertIn(
+            "before they can affect parser behavior, scoring, diagnostics, recommendations, or runtime behavior",
+            primary,
+        )
         self.assertIn("No fake candidates are shown.", primary)
         self.assertNotIn("data-screen1-field-submit", primary)
         self.assertIn("Current Generated Run / Intake Evidence", primary)

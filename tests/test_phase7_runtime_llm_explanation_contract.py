@@ -64,10 +64,23 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         forbidden = self.contract.RUNTIME_EXPLANATION_FORBIDDEN_MUTATIONS["screen_1"]
 
         self.assertIn("new AWR sections/elements/signals", allowed)
+        self.assertIn("New AWR Mapping Candidates", allowed)
+        self.assertIn("parser health state", allowed)
+        self.assertIn("unknown parser signal meaning", allowed)
+        self.assertIn("artifact readiness meaning", allowed)
+        self.assertIn("downstream handoff eligibility meaning", allowed)
+        self.assertIn("deterministic analysis separation", allowed)
         self.assertIn("parser mapping candidates", allowed)
         self.assertIn("potential feature/domain candidates", allowed)
+        self.assertIn("approve parser mappings", forbidden)
+        self.assertIn("reject parser mappings", forbidden)
+        self.assertIn("map parser candidates", forbidden)
         self.assertIn("create scoring features", forbidden)
         self.assertIn("assign diagnostic domains", forbidden)
+        self.assertIn("load runtime options", forbidden)
+        self.assertIn("assign Target A/B", forbidden)
+        self.assertIn("decide comparison readiness", forbidden)
+        self.assertIn("change future-run behavior", forbidden)
 
     def test_home_source_path_scope_explains_paths_without_workflow_control(self) -> None:
         allowed = self.contract.RUNTIME_EXPLANATION_ALLOWED_SCOPES["index_source_mode"]
@@ -237,6 +250,12 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             "The provider compared evidence.",
             "The explanation unlocked downstream screens.",
             "The explanation set dashboardEvidenceReady.",
+            "The provider approved parser mapping.",
+            "The explanation rejected the parser mapping.",
+            "The wording mapped the parser candidate.",
+            "The explanation created scoring features.",
+            "The provider assigned diagnostic domains.",
+            "The explanation changed artifact readiness.",
             "This explanation activated runtime eligibility.",
             "Phase 8 is active and sizing is active.",
             "Future runs will use the trained model.",

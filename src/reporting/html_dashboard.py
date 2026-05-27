@@ -10641,6 +10641,7 @@ def _render_screen_1_page(
           parser_review_payload or {},
           report_data or {},
       )}
+      {_render_screen1_field_mapping_candidates_section(parser_governance_payload or {})}
       {_render_screen1_parser_review_unknown_signals_section(
           parser_review_payload or {},
           report_data or {},
@@ -10652,7 +10653,6 @@ def _render_screen_1_page(
           parser_governance_payload or {},
           report_data or {},
       )}
-      {_render_screen1_field_mapping_candidates_section(parser_governance_payload or {})}
       {_render_screen1_knowledge_artifact_context_section(parser_governance_payload or {})}
     </div>
     """
@@ -11730,7 +11730,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 	        <section class="screen1-governance-boundary">
 		          <h3>Governance Boundary</h3>
 		          <p>
-		            Submitting a parser governance review records reviewer context as DB-backed governed workflow state when the configured database is available, and also records a JSON audit envelope. It may create governed input for downstream learning/materialization review, but it does not change the current parser output, diagnosis, scoring, recommendations, runtime decisions, approvals, ML behavior, learning candidates, materialization state, runtime eligibility, or dashboard truth. Future-run influence is possible only if a later governed <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> path approves, materializes, and marks a parser change runtime-eligible. The wording on this panel is static product explanation; the review does not invoke a Screen 1 LLM route, prompt, provider, or runtime call.
+		            Submitting a parser governance review records reviewer context as DB-backed governed workflow state when the configured database is available, and also records a JSON audit envelope. It may create governed input for downstream learning/materialization review, but it does not change the current parser output, diagnosis, scoring, recommendations, runtime decisions, approvals, ML behavior, learning candidates, materialization state, runtime eligibility, or dashboard truth. Future-run influence is possible only if a later governed <a class="inline-nav-hint" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">Screen 6 / Learning Governance</a> path approves, materializes, and marks a parser change runtime-eligible. LLM-assisted wording may explain Screen 1 parser/source governance meaning, but parser output, governed workflow state, DB persistence, and current screen state remain authoritative. The wording on this panel is static product explanation; the review does not invoke a Screen 1 LLM route, prompt, provider, or runtime call.
 		          </p>
 	          <p>
 	            This protects current diagnostic truth while still allowing parser improvements
@@ -11763,7 +11763,7 @@ def _render_screen1_parser_governance_runtime_workflow(
 		              request. The browser posts that request to the governed dashboard workflow
 		              service, which validates it, persists DB-backed governed workflow metadata
 		              when configured database connectivity is available, and records a JSON audit envelope.
-		              The explanatory wording here is static dashboard copy, not dynamic LLM behavior.
+		              The explanatory wording here is static dashboard copy, not dynamic LLM behavior. Any future Screen 1 LLM-assisted wording remains explanatory only and cannot approve, reject, map, materialize, activate, or change parser/source governance truth.
 		            </p>
 		          </article>
 	          <article>
@@ -11813,11 +11813,11 @@ def _render_screen1_field_mapping_candidates_section(
 ) -> str:
     field_candidates = _screen1_awr_field_mapping_candidates(parser_governance_payload)
     field_empty_state = (
-        "No new AWR field mapping candidates are available for review."
+        "No new AWR mapping candidates are available for review."
         if not field_candidates
         else (
             f"{len(field_candidates)} parser mapping candidate "
-            f"{_pluralize_record(len(field_candidates))} detected for later field review."
+            f"{_pluralize_record(len(field_candidates))} detected for governed mapping review."
         )
     )
     return f"""
@@ -11826,15 +11826,15 @@ def _render_screen1_field_mapping_candidates_section(
                id="screen1-field-mapping-candidates"
                data-screen1-field-review-empty="true">
         <div class="section-kicker">PARSER MAPPING</div>
-        <h2>New AWR Field Mapping Candidates</h2>
+        <h2>New AWR Mapping Candidates</h2>
         <p class="meta">
-          Field approval will appear here when governed parser mapping candidate records exist.
+          Newly discovered AWR sections, elements, fields, metrics, or structures
+          will appear here when governed parser mapping candidate records exist.
         </p>
         <div class="screen1-empty-state">
           <strong>{escape(field_empty_state)}</strong>
           <p>
-            If the parser later discovers unmapped AWR fields and a governed candidate record
-            is created, those candidates will appear here for review. No fake candidates are shown.
+            If the parser later discovers unmapped AWR sections, elements, fields, metrics, or structures and a governed candidate record is created, those candidates will appear here for review. They require governed mapping review before they can affect parser behavior, scoring, diagnostics, recommendations, or runtime behavior. No fake candidates are shown.
           </p>
         </div>
       </section>

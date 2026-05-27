@@ -103,9 +103,9 @@ REQUIRED_OPERATOR_WORKFLOW_SNIPPETS: tuple[str, ...] = (
     "does not update AWR_UNKNOWN_SIGNAL_HISTORY",
     "create AWR_PARSER_MAPPING_CANDIDATE rows",
     "screen_6_fleet_overview.html",
-    "New AWR Field Mapping Candidates",
-    "No new AWR field mapping candidates are available for review.",
-    "Field approval will appear here when governed parser mapping candidate records exist.",
+    "New AWR Mapping Candidates",
+    "No new AWR mapping candidates are available for review.",
+    "Newly discovered AWR sections, elements, fields, metrics, or structures",
     "No fake candidates are shown.",
 )
 
@@ -265,7 +265,8 @@ def validate_screen1_parser_governance(
         run_report_index >= 0
         and full_report_index > run_report_index
         and parser_health_index > full_report_index
-        and parser_review_index > parser_health_index
+        and field_mapping_index > parser_health_index
+        and parser_review_index > field_mapping_index
         and governance_index > parser_review_index
     )
     full_report_context = (
@@ -279,8 +280,13 @@ def validate_screen1_parser_governance(
         else ""
     )
     parser_health_section = (
-        generated_text[parser_health_index:parser_review_index]
-        if parser_health_index >= 0 and parser_review_index > parser_health_index
+        generated_text[parser_health_index:field_mapping_index]
+        if parser_health_index >= 0 and field_mapping_index > parser_health_index
+        else ""
+    )
+    field_mapping_section = (
+        generated_text[field_mapping_index:parser_review_index]
+        if field_mapping_index >= 0 and parser_review_index > field_mapping_index
         else ""
     )
     parser_review_section = (
@@ -289,8 +295,8 @@ def validate_screen1_parser_governance(
         else ""
     )
     governance_section = (
-        generated_text[governance_index:field_mapping_index]
-        if governance_index >= 0 and field_mapping_index > governance_index
+        generated_text[governance_index:knowledge_index]
+        if governance_index >= 0 and knowledge_index > governance_index
         else ""
     )
     full_report_visible_text = visible_text(full_report_section)
@@ -404,10 +410,10 @@ def validate_screen1_parser_governance(
         run_report_index >= 0
         and full_report_index > run_report_index
         and parser_health_index > full_report_index
-        and parser_review_index > parser_health_index
+        and field_mapping_index > parser_health_index
+        and parser_review_index > field_mapping_index
         and governance_index > parser_review_index
-        and field_mapping_index > governance_index
-        and knowledge_index > field_mapping_index
+        and knowledge_index > governance_index
         and (historical_index < 0 or historical_index > knowledge_index)
     )
     heading_cleanup_ready = all(
@@ -478,15 +484,11 @@ def validate_screen1_parser_governance(
         and primary_text.count('data-screen1-backlog-item="true"') == 1
         and "Request parser mapping approval" not in primary_text
     )
-    field_mapping_section = (
-        generated_text[field_mapping_index:knowledge_index]
-        if field_mapping_index >= 0 and knowledge_index > field_mapping_index
-        else ""
-    )
     field_candidate_empty_state_ready = (
-        "New AWR Field Mapping Candidates" in field_mapping_section
-        and "No new AWR field mapping candidates are available for review." in field_mapping_section
-        and "Field approval will appear here when governed parser mapping candidate records exist." in field_mapping_section
+        "New AWR Mapping Candidates" in field_mapping_section
+        and "No new AWR mapping candidates are available for review." in field_mapping_section
+        and "Newly discovered AWR sections, elements, fields, metrics, or structures" in field_mapping_section
+        and "before they can affect parser behavior, scoring, diagnostics, recommendations, or runtime behavior" in field_mapping_section
         and "No fake candidates are shown." in field_mapping_section
         and "Optional IO section absence is handled as parser backlog review" not in field_mapping_section
         and "data-screen1-field-submit" not in field_mapping_section
@@ -727,7 +729,7 @@ def validate_screen1_parser_governance(
         check_result(
             "field_mapping_candidates_empty_state_ready",
             field_candidate_empty_state_ready,
-            "New AWR field mapping candidates show an empty state when no persisted candidates exist.",
+            "New AWR mapping candidates show an empty state when no persisted candidates exist.",
         ),
         check_result(
             "file_table_visible",

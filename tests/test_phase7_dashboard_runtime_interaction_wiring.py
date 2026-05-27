@@ -452,7 +452,11 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Similarity review</p>
   <h3>Work Area 3 - Submit Governed Action and Review Result</h3>
   <h3 class="screen3-governed-actions-card">Governed Actions</h3>
-  <h3>Request / Execution Result</h3>
+  <h3>Request / Result Receipt</h3>
+  <p>Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference.</p>
+  <p>Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only.</p>
+  <p>A governed request/audit record may be created only when the backend returns that state.</p>
+  <p>Backend status is service-returned only. Missing gates mean request receipt, not analysis execution or comparison output.</p>
   <p>screen3-result-summary-banner</p>
   <h4>Comparison Request / Handoff Summary</h4>
   <p>Requested Artifact / Reference</p>
@@ -481,7 +485,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
     <dt>Validation status</dt>
     <dt>Audit ID/reference</dt>
     <dt>Persistence</dt>
-    <dt>Execution status</dt>
+    <dt>Backend / Gate Status</dt>
     <dt>Output artifact</dt>
     <dt>New run/output reference</dt>
     <dt>Existing run truth</dt>

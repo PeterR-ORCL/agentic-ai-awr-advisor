@@ -1972,7 +1972,11 @@ def validate_generated_screen3_control_center(
         "Runtime Scope",
         "Review Mode",
         "Governed Actions",
-        "Request / Execution Result",
+        "Request / Result Receipt",
+        "Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference",
+        "Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only",
+        "A governed request/audit record may be created only when the backend returns that state",
+        "Backend status is service-returned only. Missing gates mean request receipt, not analysis execution or comparison output",
         "Runtime Safety and Selection Impact",
         "Comparison Request / Handoff Summary",
         "Comparison Readiness / Request Handoff",
@@ -2245,7 +2249,7 @@ def validate_generated_screen3_control_center(
         ("Validation status", ("Validation status", "Validation", 'data-screen3-result-field="validation_status"')),
         ("Audit ID/reference", ("Audit ID/reference", "Audit reference", 'data-screen3-result-field="audit_reference"')),
         ("Persistence", ("Persistence", 'data-screen3-result-field="persistence"')),
-        ("Execution status", ("Execution status", 'data-screen3-result-field="execution_status"')),
+        ("Backend / Gate Status", ("Backend / Gate Status", 'data-screen3-result-field="execution_status"')),
         ("Output artifact", ("Output artifact", 'data-screen3-result-field="output_artifact"')),
         ("New run/output reference", ("New run/output reference", 'data-screen3-result-field="new_run_output_reference"')),
         ("Existing run truth", ("Existing run truth", 'data-screen3-result-field="existing_run_truth"')),
@@ -2257,7 +2261,7 @@ def validate_generated_screen3_control_center(
             for alternative in alternatives
         ):
             offenders.append(
-                "generated Screen 3 Request / Execution Result field missing: " + field
+                "generated Screen 3 Request / Result Receipt field missing: " + field
             )
 
     action_primary_region_end_candidates = [

@@ -117,7 +117,16 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertNotIn("<h4>Comparison Controls</h4>", rendered)
         self.assertIn("Review Mode", rendered)
         self.assertIn("Governed Actions", rendered)
-        self.assertIn("Request / Execution Result", rendered)
+        self.assertIn("Request / Result Receipt", rendered)
+        self.assertIn(
+            "Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference",
+            rendered,
+        )
+        self.assertIn(
+            "Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only",
+            rendered,
+        )
+        self.assertNotIn("Request / Execution Result", rendered)
         self.assertIn("Runtime Safety and Selection Impact", rendered)
         self.assertNotIn("Technical Audit / Debug Details", rendered)
         self.assertIn("Generated at build time", source)
@@ -261,11 +270,12 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "Local selection changes only browser/local request context",
             "A workflow record is created only after a governed action is submitted",
             "Existing run truth unchanged",
-            "Screen 2 Control can request or execute only governed backend actions",
+            "Screen 2 Control submits governed backend requests",
+            "Backend execution status is service-returned only",
             "New deterministic outputs, when available, must be represented as separate run/output/artifact references",
             "Build Comparison is request-ready only when Target A and Target B resolve to comparable persisted data",
             "learning candidates, materialization, runtime eligibility",
-            "LLM/explanatory wording cannot alter validation, status, execution, deterministic truth",
+            "LLM/explanatory wording cannot alter validation, status, deterministic truth",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

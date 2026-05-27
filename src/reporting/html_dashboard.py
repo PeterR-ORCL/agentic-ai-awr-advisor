@@ -5752,7 +5752,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         nextState.screen3LastNewRunOutputReference = summary.new_run_output_reference || '';
         nextState.screen3LastNextStep = missingGates.length
           ? screen3SubmittedActionMessage(productLabel || 'runtime', responseStatus || 'blocked', missingGates)
-          : 'Review returned request, audit, and artifact references.';
+          : 'Review backend-returned request, audit, and output references only when present.';
         writeDashboardState(nextState);
         document.querySelectorAll('[data-screen3-execution-result-panel="true"]').forEach(function (panel) {
           setScreen3ResultField(panel, 'status', responseStatus || responsePayload.status || 'Not reported');
@@ -5795,7 +5795,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             'next_step',
             missingGates.length
               ? screen3SubmittedActionMessage(productLabel || 'runtime', responseStatus || 'blocked', missingGates)
-              : 'Review returned request, audit, and artifact references.'
+              : 'Review backend-returned request, audit, and output references only when present.'
           );
         });
       }
@@ -6054,10 +6054,10 @@ def _build_dashboard_interactivity_javascript() -> str:
           return 'Blocked safely: required backend gates are missing. Existing run truth unchanged.';
         }
         if (responseStatus === 'accepted') {
-          return 'Accepted: ' + actionLabel + ' request was recorded. Review Request / Execution Result for references.';
+          return 'Accepted: ' + actionLabel + ' request was recorded. Review Request / Result Receipt for backend-returned references.';
         }
         if (responseStatus === 'completed') {
-          return 'Completed: ' + actionLabel + ' returned a governed result. Review Request / Execution Result.';
+          return 'Completed: ' + actionLabel + ' returned governed backend status. Review Request / Result Receipt for any output reference.';
         }
         return 'Screen 2 Control ' + actionLabel + ' request ' + responseStatus + '. Existing run truth unchanged.';
       }
@@ -16470,7 +16470,7 @@ def _render_screen3_comparison_review_work_area(
               <article class="screen3-context-subpanel screen3-comparison-preview-panel">
                 <h4>Comparison Readiness / Request Handoff</h4>
                 <p class="meta">
-                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not mean comparison was executed or that improvement/degradation was decided.
+                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not produce comparison execution, improvement decisions, or degradation decisions.
                 </p>
                 {_render_screen2_control_info_grid(preview_rows, extra_class="screen3-result-grid")}
               </article>
@@ -16611,8 +16611,8 @@ def _render_screen3_safety_selection_impact_panel() -> str:
           <section class="evidence-pane selector-pane screen3-work-area screen3-safety-impact-panel">
             <h3>Runtime Safety and Selection Impact</h3>
             <p class="static-selection-note">
-              Screen 2 Control can request or execute only governed backend actions. Existing deterministic truth is not overwritten.
-              LLM/explanatory wording cannot alter validation, status, execution, deterministic truth, source selection, or governance records.
+              Screen 2 Control submits governed backend requests. Backend execution status is service-returned only, and existing deterministic truth is not overwritten.
+              LLM/explanatory wording cannot alter validation, status, deterministic truth, source selection, execution state, or governance records.
             </p>
             <div class="screen3-explanation-list screen3-safety-impact-grid">
               {article_html}
@@ -17035,7 +17035,7 @@ def _render_screen3_selection_impact_panel() -> str:
         ),
         (
             "Where to review result",
-            "After submitting a governed action, review the Request / Execution Result panel on this page.",
+            "After submitting a governed action, review the Request / Result Receipt panel on this page.",
         ),
     ]
     article_html = "".join(
@@ -17105,7 +17105,7 @@ def _render_screen3_request_execution_result_panel() -> str:
     action_rows = [
         ("Validation", _screen2_result_value("validation_status", "Not evaluated")),
         ("Persistence", _screen2_result_value("persistence", "Not reported")),
-        ("Execution Status", _screen2_result_value("execution_status", "Not executed")),
+        ("Backend / Gate Status", _screen2_result_value("execution_status", "Not executed")),
         ("Existing Run Truth", _screen2_result_value("existing_run_truth", "Existing run truth unchanged"), "wide"),
     ]
     selected_scope_rows = [
@@ -17163,9 +17163,11 @@ def _render_screen3_request_execution_result_panel() -> str:
     return f"""
           <section class="evidence-pane selector-pane screen3-result-panel"
                    data-screen3-execution-result-panel="true">
-            <h3>Request / Execution Result</h3>
+            <h3>Request / Result Receipt</h3>
             <p class="static-selection-note">
-              This central panel is the place to look after submission. It reports what was submitted, what happened, which records or references were returned, and confirms old run truth remains unchanged.
+              This central panel is the place to look after submission. It reports what the governed backend returned: accepted, rejected, blocked, recorded, validation status, request ID, transaction ID, audit reference, and any output reference. Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference.
+              Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only.
+              A governed request/audit record may be created only when the backend returns that state.
             </p>
             <div class="screen3-result-summary-banner">
               {_render_screen2_control_info_grid(
@@ -17223,7 +17225,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
     articles = [
         (
             "So what?",
-            "Screen 2 Control turns a selected source/run/scope into a governed runtime request. It gives the operator a safe path to request or execute re-analysis/comparison without overwriting existing deterministic truth.",
+            "Screen 2 Control turns a selected source/run/scope into a governed runtime request. It gives the operator a safe path to record analysis intent or comparison-preparation intent through the governed backend service without overwriting existing deterministic truth.",
         ),
         (
             "Why this matters",
@@ -17239,7 +17241,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
         ),
         (
             "What changes",
-            "A governed request/audit record may be created. If a safe execution path is available, a new output/artifact/run reference may be created.",
+            "A governed request/audit record may be created only when the backend returns that state. A new output/artifact/run reference exists only when a governed deterministic service returns it.",
         ),
         (
             "What does not change",
@@ -17247,7 +17249,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
         ),
         (
             "Execution impact",
-            "Analyze/Re-run may execute only through governed wrappers. Build Comparison remains a request/readiness path until structured comparison backend and artifact lifecycle gates exist; blocked requests are recorded with missing gates.",
+            "Analyze/Re-run are request paths unless a governed deterministic runner and new-output lifecycle return an output reference. Build Comparison remains a request/readiness path until structured comparison backend and artifact lifecycle gates exist; blocked requests are recorded with missing gates.",
         ),
         (
             "Comparison impact",
@@ -17290,7 +17292,7 @@ def _render_screen3_runtime_boundary_panel() -> str:
           <section class="evidence-pane selector-pane screen3-runtime-boundary-panel">
             <h3>Runtime Safety Boundary</h3>
             <p class="static-selection-note">
-              Screen 2 Control can request or execute only governed backend actions. Existing diagnostic truth is not overwritten.
+              Screen 2 Control submits governed backend requests. Execution, if available, remains backend-owned, gated, and represented only by returned output references. Existing diagnostic truth is not overwritten.
               New deterministic outputs, when available, are represented as new run/output/artifact references.
             </p>
             <p class="static-selection-note">
@@ -17310,7 +17312,7 @@ def _render_screen3_reanalysis_action_ui(
         (
             "Analyze Selection",
             "analyze_selection",
-            "Validate the selected source/run/scope and persist a governed analysis request. Execution runs only if a server-side deterministic runner and new-output lifecycle are available.",
+            "Validate the selected source/run/scope and persist a governed analysis request. The request stays recorded or blocked unless a server-side deterministic runner and new-output lifecycle return an output reference.",
             "Active governed request; execution blocked until runner/artifact gates are connected.",
             "Selected source/context and selected runtime scope.",
             "runtime scope missing; source missing; deterministic runner missing; output lifecycle missing",
@@ -17318,7 +17320,7 @@ def _render_screen3_reanalysis_action_ui(
         (
             "Re-run Analysis",
             "rerun_analysis",
-            "Request deterministic re-analysis for the selected scope. A completed execution must create a new run/output reference and never overwrite existing run truth.",
+            "Request deterministic re-analysis for the selected scope. Any completed backend result must return a new run/output reference and never overwrite existing run truth.",
             "Active governed request; execution blocked until new-run/output gates are connected.",
             "Persisted source/scope and new-output lifecycle for execution.",
             "persisted source/scope missing; deterministic runner missing; new output lifecycle missing",
@@ -17357,7 +17359,7 @@ def _render_screen3_reanalysis_action_ui(
             <h3>Governed Actions</h3>
             <p class="static-selection-note">
               These actions submit selected source, runtime scope, comparison setup, and review mode to the governed workflow service.
-              Execution happens only when the backend wrapper, readiness gate, and output artifact lifecycle are available.
+              Backend status is service-returned only. Missing gates mean request receipt, not analysis execution or comparison output.
             </p>
             <div class="screen3-action-grid">
               {action_cards}
@@ -17449,7 +17451,7 @@ def _render_screen3_action_control_card(
               Required context: {escape(required_context)}
               Submitted context: selected source/scope/comparison/review payload through the governed workflow service.
               Existing run truth, diagnosis, score, recommendation, parser output, learning state, materialization, and runtime eligibility do not change.
-              Result location: Request / Execution Result.
+              Result location: Request / Result Receipt.
             </p>
           </details>
 	          <div class="screen3-action-status"

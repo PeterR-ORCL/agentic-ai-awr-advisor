@@ -42,6 +42,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, source)
                 self.assertIn(phrase, rendered)
+        self.assertNotIn("Request / Execution Result", rendered)
 
     def test_controls_are_governed_and_source_gated(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
@@ -55,7 +56,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             "Missing gates:",
             "Submit governed action",
             "Action details",
-            "Result location: Request / Execution Result",
+            "Result location: Request / Result Receipt",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -67,15 +68,19 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
 
         required = (
             "Runtime Safety and Selection Impact",
-            "Screen 2 Control can request or execute only governed backend actions",
+            "Screen 2 Control submits governed backend requests",
             "Existing deterministic truth is not overwritten",
-            "Screen 2 Control can request or execute only governed backend actions",
+            "Backend execution status is service-returned only",
             "learning candidates, materialization, runtime eligibility",
             "Existing run truth is immutable",
+            "Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference",
+            "Request ID, transaction ID, audit reference, persistence, and output fields are displayed from the service response only",
+            "A governed request/audit record may be created only when the backend returns that state",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+        self.assertNotIn("Screen 2 Control can request or execute only governed backend actions", rendered)
 
     def test_no_unsafe_direct_execution_paths(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH).lower()
@@ -130,7 +135,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             "New Source Artifact",
             "Object Storage Metadata",
             "Screen 1 validation/intake required",
-            "Ready for Analysis / Review / Action / Learning",
+            "Existing Evidence Scope Ready for Downstream Review",
         )
         for phrase in dynamic_path_states:
             with self.subTest(phrase=phrase):
@@ -151,7 +156,7 @@ class DashboardScreen3ReAnalysisActionTests(unittest.TestCase):
             "Resolve Comparison Targets",
             "Review Mode",
             "Runtime Safety and Selection Impact",
-            "Request / Execution Result",
+            "Request / Result Receipt",
             "DB Persistence",
             "Object Storage validation",
             "Existing run truth unchanged",

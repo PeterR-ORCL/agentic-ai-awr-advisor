@@ -33,6 +33,9 @@ from src.analysis.engineered_metric_catalog import (
 from src.analysis.frontend_contract import build_phase5_screen_models
 from src.analysis.issue_detector import detect_issues
 from src.analysis.output_layer import build_analysis_output
+# Phase 4I recommendation authority: keep the canonical decision-driven engine
+# here. The lower-level src.recommendation package is specialized and must not
+# silently replace this path.
 from src.analysis.recommendation_engine import generate_decision_recommendations
 from src.analysis.similarity_intelligence import (
     build_disabled_similarity_intelligence,
@@ -5651,8 +5654,9 @@ if __name__ == "__main__":
     decision = build_decision(
         decision_input=decision_input,
     )
-    # Recommendations are decision-driven; legacy issue-based recommendations
-    # remain deprecated and are no longer the authoritative path.
+    # Phase 4I recommendations are decision-driven and canonical here. Keep
+    # the generated ActionRecommendation objects intact for build_analysis_output;
+    # dashboard issue-shape adaptation below is compatibility-only.
     decision_recommendations = generate_decision_recommendations(decision)
     compatibility_recommendations = _dashboard_decision_recommendation_dicts(
         decision_recommendations

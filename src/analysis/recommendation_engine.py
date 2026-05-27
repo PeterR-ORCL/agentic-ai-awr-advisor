@@ -1,3 +1,13 @@
+"""Authoritative deterministic recommendation generation for Phase 4I output.
+
+The canonical Phase 4I path is ``generate_decision_recommendations``. It
+consumes the deterministic ``AwrDecision`` object, applies the governed domain
+catalog/order, and returns ``ActionRecommendation`` objects for the stable
+analysis output contract. Do not replace this path with
+``src.recommendation.recommendation_engine`` without an explicit architecture
+decision and updated Phase 4I tests.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

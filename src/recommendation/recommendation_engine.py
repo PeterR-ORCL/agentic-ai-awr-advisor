@@ -1,3 +1,12 @@
+"""Lower-level CPU-oriented recommendation helper.
+
+This module is specialized around CPU recommendation signals and is not the
+authoritative Phase 4I recommendation path. Phase 4I output must use
+``src.analysis.recommendation_engine.generate_decision_recommendations`` unless
+a future architecture decision explicitly promotes this module and updates the
+Phase 4I recommendation tests.
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

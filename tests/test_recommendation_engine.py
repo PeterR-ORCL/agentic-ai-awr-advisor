@@ -1,12 +1,58 @@
 from __future__ import annotations
 
+from pathlib import Path
 import unittest
 
+from src.analysis import recommendation_engine as canonical_recommendation_engine
 from src.analysis.recommendation_engine import generate_decision_recommendations
 from src.models.decision import AwrDecision
+from src.models.recommendation import ActionRecommendation
+from src.recommendation import recommendation_engine as specialized_recommendation_engine
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class RecommendationEngineTests(unittest.TestCase):
+    def test_authoritative_phase4i_import_path_is_analysis_engine(self) -> None:
+        self.assertIs(
+            generate_decision_recommendations,
+            canonical_recommendation_engine.generate_decision_recommendations,
+        )
+        self.assertEqual(
+            generate_decision_recommendations.__module__,
+            "src.analysis.recommendation_engine",
+        )
+        self.assertNotEqual(
+            generate_decision_recommendations,
+            specialized_recommendation_engine.generate_recommendations,
+        )
+
+        analysis_source = (ROOT / "src" / "analysis" / "recommendation_engine.py").read_text()
+        analysis_imports = "\n".join(
+            line
+            for line in analysis_source.splitlines()
+            if line.startswith(("import ", "from "))
+        )
+        self.assertNotIn("src.recommendation", analysis_imports)
+
+    def test_run_analysis_uses_phase4i_recommendation_path_before_output_contract(self) -> None:
+        run_analysis_source = (ROOT / "scripts" / "run_analysis.py").read_text()
+
+        self.assertIn(
+            "from src.analysis.recommendation_engine import generate_decision_recommendations",
+            run_analysis_source,
+        )
+        self.assertNotIn(
+            "from src.recommendation.recommendation_engine import generate_recommendations",
+            run_analysis_source,
+        )
+        generation_index = run_analysis_source.index(
+            "decision_recommendations = generate_decision_recommendations(decision)"
+        )
+        output_index = run_analysis_source.index("analysis_output = build_analysis_output")
+        self.assertLess(generation_index, output_index)
+        self.assertIn("recommendations=decision_recommendations", run_analysis_source)
+
     def test_primary_issue_only(self) -> None:
         decision = AwrDecision(
             awr_id=201,
@@ -101,6 +147,30 @@ class RecommendationEngineTests(unittest.TestCase):
             self.assertEqual(recommendations[0].issue, issue)
             self.assertGreaterEqual(recommendations[0].confidence, 0.0)
             self.assertLessEqual(recommendations[0].confidence, 1.0)
+
+    def test_lower_level_cpu_helper_is_not_phase4i_authority(self) -> None:
+        decision = AwrDecision(
+            awr_id=301,
+            overall_status="WARNING",
+            primary_issue="IO",
+            secondary_issues=[],
+            severity_score=42.0,
+            confidence=0.7,
+            evidence={"domain_scores": {"IO": 0.5}},
+        )
+
+        canonical_recommendations = generate_decision_recommendations(decision)
+        specialized_recommendations = specialized_recommendation_engine.generate_recommendations(
+            primary_issue="IO",
+            secondary_issues=[],
+            overall_status="WARNING",
+            severity=42.0,
+            feature_vector={},
+        )
+
+        self.assertEqual([item.issue for item in canonical_recommendations], ["IO"])
+        self.assertIsInstance(canonical_recommendations[0], ActionRecommendation)
+        self.assertEqual(specialized_recommendations, [])
 
 
 if __name__ == "__main__":

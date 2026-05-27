@@ -136,6 +136,74 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertIn("select source path", envelope["forbidden_mutations"])
         self.assertIn("set dashboardEvidenceReady", envelope["forbidden_mutations"])
 
+    def test_screen2_runtime_scope_contract_explains_control_state_without_mutation(self) -> None:
+        allowed = self.contract.RUNTIME_EXPLANATION_ALLOWED_SCOPES["screen_2"]
+        forbidden = self.contract.RUNTIME_EXPLANATION_FORBIDDEN_MUTATIONS["screen_2"]
+
+        for phrase in (
+            "existing platform evidence meaning",
+            "runtime options inventory meaning",
+            "selected run/report/scope meaning",
+            "snapshot/window context meaning",
+            "Target A meaning",
+            "Target B meaning",
+            "comparison readiness versus comparison result",
+            "request/result receipt meaning",
+            "cached state is not authoritative truth",
+            "downstream Screen 3 analysis context",
+            "downstream Screen 4 comparison review handoff",
+            "deterministic analysis separation",
+        ):
+            with self.subTest(allowed=phrase):
+                self.assertIn(phrase, allowed)
+
+        for phrase in (
+            "select existing evidence",
+            "select DB/report row",
+            "load runtime options outside governed backend service",
+            "choose runtime scope",
+            "choose snapshot/window context",
+            "assign Target A/B",
+            "decide comparison readiness",
+            "set dashboardEvidenceReady",
+            "unlock downstream screens",
+            "execute analysis",
+            "execute comparison",
+            "compare evidence",
+            "perform comparison outcome analysis",
+            "decide improvement/degradation",
+            "change evidence values",
+            "change thresholds",
+            "change action/outcome truth",
+            "create hidden DB writes",
+            "create hidden workflow records",
+            "create hidden governance/audit records",
+            "change future-run behavior",
+        ):
+            with self.subTest(forbidden=phrase):
+                self.assertIn(phrase, forbidden)
+
+    def test_screen2_runtime_scope_contract_uses_service_truth_without_mutation(self) -> None:
+        envelope = self.contract.build_runtime_explanation_contract(
+            "screen_2",
+            truth_source="governed_workflow_service_response",
+            provider_mode="mock",
+        )
+
+        self.assertEqual(
+            envelope["screen_role"],
+            "Screen 2 - Runtime Scope & Analysis Control",
+        )
+        self.assertEqual(envelope["truth_source"], "governed_workflow_service_response")
+        self.assertEqual(envelope["truth_source_authority"], "governed_service_result")
+        self.assertTrue(envelope["non_mutating_explanation_only"])
+        self.assertFalse(envelope["records_created_expected"])
+        self.assertIsNone(envelope["audit_reference_expected"])
+        self.assertIn("runtime options inventory meaning", envelope["allowed_explanation_scope"])
+        self.assertIn("request/result receipt meaning", envelope["allowed_explanation_scope"])
+        self.assertIn("choose runtime scope", envelope["forbidden_mutations"])
+        self.assertIn("decide improvement/degradation", envelope["forbidden_mutations"])
+
     def test_all_product_screens_have_allowed_and_forbidden_scopes(self) -> None:
         expected = {
             "index_source_mode",
@@ -217,6 +285,48 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
                     validate({**payload, field: True}, expected_screen_id="index_source_mode"),
                 )
 
+    def test_screen2_payload_validation_rejects_runtime_control_mutation_fields(self) -> None:
+        validate = self.contract.validate_runtime_explanation_payload
+        payload = {
+            "screen_id": "screen_2",
+            "request_type": "screen2_runtime_scope_explanation",
+            "provider_mode": "mock",
+            "non_mutating_explanation_only": True,
+        }
+
+        self.assertEqual(validate(payload, expected_screen_id="screen_2"), "")
+        for field in (
+            "existing_run_selection",
+            "db_report_row_selection",
+            "runtime_options_load",
+            "runtime_scope_selection",
+            "snapshot_window_selection",
+            "target_assignment",
+            "comparison_readiness_decision",
+            "comparison_action",
+            "comparison_outcome_decision",
+            "improvement_degradation_decision",
+            "analysis_action",
+            "readiness_update",
+            "dashboardEvidenceReady_update",
+            "evidence_update",
+            "threshold_update",
+            "action_outcome_update",
+            "materialization_action",
+            "runtime_eligibility_action",
+            "downstream_unlock",
+            "hidden_db_write",
+            "hidden_workflow_record",
+            "hidden_governance_record",
+            "hidden_audit_record",
+            "action_type",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(
+                    "mutation/workflow fields",
+                    validate({**payload, field: True}, expected_screen_id="screen_2"),
+                )
+
     def test_payload_validation_can_allow_explicit_governed_record_context(self) -> None:
         validate = self.contract.validate_runtime_explanation_payload
         payload = {
@@ -246,10 +356,18 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             "The provider parsed AWR content.",
             "The provider loaded runtime options.",
             "The explanation selected existing run context.",
+            "The explanation selected existing evidence.",
+            "The wording selected DB/report row context.",
+            "The provider selected snapshot/window context.",
             "The explanation performed deterministic analysis.",
             "The provider compared evidence.",
             "The explanation unlocked downstream screens.",
             "The explanation set dashboardEvidenceReady.",
+            "The provider decided improvement from comparison.",
+            "The provider decided degradation from comparison.",
+            "The explanation changed action/outcome truth.",
+            "The explanation created hidden DB write.",
+            "The explanation created hidden audit record.",
             "The provider approved parser mapping.",
             "The explanation rejected the parser mapping.",
             "The wording mapped the parser candidate.",

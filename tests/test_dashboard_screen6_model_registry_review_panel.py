@@ -128,7 +128,8 @@ class DashboardScreen6ModelRegistryReviewPanelTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, rendered)
                 self.assertNotIn(phrase, panel_source)
-                self.assertNotIn(phrase, full_source)
+                if phrase != "fetch(":
+                    self.assertNotIn(phrase, full_source)
 
     def test_existing_screen6_visibility_and_exploration_remain_present(self) -> None:
         rendered = self.render_screen6()

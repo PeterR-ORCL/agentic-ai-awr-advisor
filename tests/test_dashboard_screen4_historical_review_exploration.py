@@ -43,6 +43,10 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Deep Analysis",
             "Historical Review is active.",
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
+            "Uses Target A/B context prepared in Screen 2.",
+            "Prepared targets are selected context only",
+            "selected targets and cache-restored state do not create comparison evidence.",
+            "Screen 4 does not compute comparison in the browser.",
             "Deep Analysis is reserved for future structured expert evidence review.",
             "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
             "Deterministic evidence remains authoritative.",
@@ -54,6 +58,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             'data-screen4-mode-state="active"',
             'data-screen4-mode="comparative-review"',
             'data-screen4-mode-state="prepared-only"',
+            'data-screen4-screen2-handoff="prepared-context-only"',
             'data-screen4-mode="deep-analysis"',
             'data-screen4-mode-state="reserved"',
         )
@@ -79,6 +84,9 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "screen 4 assigns readiness",
             "screen 4 computed comparison",
             "screen 4 created workflow record",
+            "comparison output exists now",
+            "comparison deltas are available",
+            "improvement/degradation/stable result",
         )
         for phrase in forbidden:
             with self.subTest(phrase=phrase):
@@ -103,6 +111,10 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "screen 1 and screen 2 handoff to screen 4",
             "screen 4 must not treat comparison readiness as comparison evidence",
             "screen 4 uses the handoff to vary the visible review context",
+            "prepared targets are selected context only",
+            "selected targets and cache-restored state do not create comparison evidence",
+            "screen 4 does not compute comparison in the browser",
+            "manual generated-html patching must not be the only artifact update",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

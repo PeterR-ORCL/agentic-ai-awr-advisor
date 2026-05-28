@@ -18099,8 +18099,10 @@ def _render_screen4_mode_selector_shell() -> str:
             "subtitle": "Unavailable until deterministic comparison output exists",
             "body": (
                 "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
-                "Screen 2 prepares Target A/B and comparison readiness; Screen 4 will review already-computed "
-                "Target A-vs-B evidence, future deltas, and future comparison violin panels only after that output exists."
+                "Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; "
+                "selected targets and cache-restored state do not create comparison evidence. Screen 4 will review "
+                "already-computed Target A-vs-B evidence, future deltas, and future comparison violin panels only "
+                "after that output exists. Screen 4 does not compute comparison in the browser."
             ),
             "chips": ("Unavailable", "No browser comparison"),
         },
@@ -18119,6 +18121,11 @@ def _render_screen4_mode_selector_shell() -> str:
     )
     cards = []
     for mode in modes:
+        handoff_attr = (
+            ' data-screen4-screen2-handoff="prepared-context-only"'
+            if mode["mode"] == "Comparative Review"
+            else ""
+        )
         chips = "".join(
             f'<span class="scope-chip">{escape(chip)}</span>'
             for chip in mode["chips"]
@@ -18127,7 +18134,7 @@ def _render_screen4_mode_selector_shell() -> str:
             f"""
               <article class="screen4-selector-card{mode["class"]}"
                        data-screen4-mode="{escape(_screen4_state_id(mode["mode"]), quote=True)}"
-                       data-screen4-mode-state="{escape(_screen4_state_id(mode["state"]), quote=True)}">
+                       data-screen4-mode-state="{escape(_screen4_state_id(mode["state"]), quote=True)}"{handoff_attr}>
                 <strong>{escape(mode["state"])}</strong>
                 <span>{escape(mode["mode"])}</span>
                 <p>{escape(mode["subtitle"])}</p>

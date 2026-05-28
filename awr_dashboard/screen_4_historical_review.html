@@ -5046,7 +5046,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 27, 2026, 6:41 PM">
+<body data-dashboard-generated-at="May 28, 2026, 5:42 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5071,9 +5071,9 @@
         <h1>Screen 4 - Evidence Review</h1>
 
       <div class="runtime-badge" data-dashboard-runtime-badge="true">
-        <span class="status-pill success">FULL DB MODE</span>
+        <span class="status-pill error">GENERATED DB WARNING</span>
         <div class="runtime-meta">
-          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-pass">Connected</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Check with Load Options">Check with Load Options</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-pass">Enabled</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-pass">Available</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-pass">Active</strong></span></span>
+          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-error">Failed</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Check with Load Options">Check with Load Options</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-pass">Enabled</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-error">Unavailable</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-muted">Off</strong></span></span>
         </div>
       </div>
 
@@ -5181,7 +5181,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 27, 2026, 6:41 PM</div>
+        <div class="hero-meta">Generated: May 28, 2026, 5:42 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link active" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5279,7 +5279,7 @@
 
             <div class="info-box">
               <strong>Similarity Context</strong>
-              <div>5 nearest-neighbor case(s); No stable cluster</div>
+              <div>Similarity evidence Insufficient data for a reliable conclusion</div>
             </div>
             </div>
           </section>
@@ -5311,11 +5311,11 @@
 
               <article class="screen4-selector-card"
                        data-screen4-mode="comparative-review"
-                       data-screen4-mode-state="prepared-only">
+                       data-screen4-mode-state="prepared-only" data-screen4-screen2-handoff="prepared-context-only">
                 <strong>Prepared only</strong>
                 <span>Comparative Review</span>
                 <p>Unavailable until deterministic comparison output exists</p>
-                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Screen 2 prepares Target A/B and comparison readiness; Screen 4 will review already-computed Target A-vs-B evidence, future deltas, and future comparison violin panels only after that output exists.</p>
+                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; selected targets and cache-restored state do not create comparison evidence. Screen 4 will review already-computed Target A-vs-B evidence, future deltas, and future comparison violin panels only after that output exists. Screen 4 does not compute comparison in the browser.</p>
                 <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No browser comparison</span></div>
               </article>
 
@@ -5331,6 +5331,7 @@
 
         </div>
       </section>
+
 
       <section class="card secondary screen4-historical-exploration">
         <div class="section-kicker">Screen 4 Historical Review Exploration</div>
@@ -5943,9 +5944,9 @@
                 data-dashboard-selectable="true"
                 data-dashboard-select-type="comparison-baseline"
                 data-dashboard-select-key="selectedComparisonBaseline"
-                data-dashboard-select-id="baseline-comparison-mode"
+                data-dashboard-select-id="baseline-historical-period-context"
                 data-dashboard-filter-key="selectedComparisonBaseline"
-                data-dashboard-filter-value="baseline-comparison-mode"
+                data-dashboard-filter-value="baseline-historical-period-context"
                 data-selected="false"
                 aria-selected="false"
                 tabindex="0"
@@ -6008,96 +6009,6 @@
                 <span>Drift Summary</span>
                 <p>Period comparison should be read through the current deterministic posture. The latest interval differs from the worst interval and should be interpreted in broader historical context.</p>
                 <p>Existing historical baseline context only. No baseline change.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="similar-case"
-                data-dashboard-select-key="selectedSimilarCase"
-                data-dashboard-select-id="similar-96"
-                data-dashboard-filter-key="selectedSimilarCase"
-                data-dashboard-filter-value="similar-96"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Similar Case</strong>
-                <span>Similar Case 96</span>
-                <p>MLTBAL1</p>
-                <p>Deterministic similar-case row already present. No similarity recomputation.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="similar-case"
-                data-dashboard-select-key="selectedSimilarCase"
-                data-dashboard-select-id="similar-104"
-                data-dashboard-filter-key="selectedSimilarCase"
-                data-dashboard-filter-value="similar-104" data-dashboard-select-domain="CPU"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Similar Case</strong>
-                <span>Similar Case 104</span>
-                <p>RECIO</p>
-                <p>Deterministic similar-case row already present. No similarity recomputation.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="similar-case"
-                data-dashboard-select-key="selectedSimilarCase"
-                data-dashboard-select-id="similar-92"
-                data-dashboard-filter-key="selectedSimilarCase"
-                data-dashboard-filter-value="similar-92" data-dashboard-select-domain="CPU"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Similar Case</strong>
-                <span>Similar Case 92</span>
-                <p>FPOSCPU</p>
-                <p>Deterministic similar-case row already present. No similarity recomputation.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="similar-case"
-                data-dashboard-select-key="selectedSimilarCase"
-                data-dashboard-select-id="similar-87"
-                data-dashboard-filter-key="selectedSimilarCase"
-                data-dashboard-filter-value="similar-87" data-dashboard-select-domain="CPU"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Similar Case</strong>
-                <span>Similar Case 87</span>
-                <p>CNTREND</p>
-                <p>Deterministic similar-case row already present. No similarity recomputation.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="similar-case"
-                data-dashboard-select-key="selectedSimilarCase"
-                data-dashboard-select-id="similar-106"
-                data-dashboard-filter-key="selectedSimilarCase"
-                data-dashboard-filter-value="similar-106" data-dashboard-select-domain="IO"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Similar Case</strong>
-                <span>Similar Case 106</span>
-                <p>SPRWAT</p>
-                <p>Deterministic similar-case row already present. No similarity recomputation.</p>
               </article>
     </div>
           </section>
@@ -6420,183 +6331,7 @@
       <section class="card secondary">
         <div class="section-kicker">Similarity Intelligence</div>
         <h2>Similarity Evidence</h2>
-        <div class="info-grid">
-            <div class="info-box">
-              <strong>Similar AWRs</strong>
-              <div>5</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Cluster</strong>
-              <div>No stable similarity cluster has been established for this dataset.</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Rarity</strong>
-              <div>Pattern appears common within the current similarity space.</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Anomaly Support</strong>
-              <div>No</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Reason</strong>
-              <div>Nearest similar cases provide mixed support for the current anomaly interpretation.</div>
-            </div>
-            </div>
-        <div class="meta similarity-note">Identical or near-identical similarity values may indicate duplicate-like cases under the current vector precision. Treat this as nearest-neighbor context, not a validated fleet pattern.</div><div class="stack">
-            <article class="item similarity-case">
-              <div class="meta">Nearest-neighbor case · AWR 96</div>
-              <h3>MLTBAL1</h3>
-              <div class="info-grid similarity-case-grid">
-            <div class="info-box">
-              <strong>Similarity</strong>
-              <div>1.000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Distance</strong>
-              <div>0.0000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Domain</strong>
-              <div>DG</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Risk</strong>
-              <div>LOW</div>
-            </div>
-            </div>
-            </article>
-
-            <article class="item similarity-case">
-              <div class="meta">Nearest-neighbor case · AWR 104</div>
-              <h3>RECIO</h3>
-              <div class="info-grid similarity-case-grid">
-            <div class="info-box">
-              <strong>Similarity</strong>
-              <div>1.000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Distance</strong>
-              <div>0.0000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Domain</strong>
-              <div>CPU</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Risk</strong>
-              <div>LOW</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Workload</strong>
-              <div>IO_BOUND</div>
-            </div>
-            </div>
-            </article>
-
-            <article class="item similarity-case">
-              <div class="meta">Nearest-neighbor case · AWR 92</div>
-              <h3>FPOSCPU</h3>
-              <div class="info-grid similarity-case-grid">
-            <div class="info-box">
-              <strong>Similarity</strong>
-              <div>1.000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Distance</strong>
-              <div>0.0000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Domain</strong>
-              <div>CPU</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Risk</strong>
-              <div>LOW</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Workload</strong>
-              <div>CPU_BOUND</div>
-            </div>
-            </div>
-            </article>
-
-            <article class="item similarity-case">
-              <div class="meta">Nearest-neighbor case · AWR 87</div>
-              <h3>CNTREND</h3>
-              <div class="info-grid similarity-case-grid">
-            <div class="info-box">
-              <strong>Similarity</strong>
-              <div>1.000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Distance</strong>
-              <div>0.0000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Domain</strong>
-              <div>CPU</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Risk</strong>
-              <div>LOW</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Workload</strong>
-              <div>CPU_BOUND</div>
-            </div>
-            </div>
-            </article>
-
-            <article class="item similarity-case">
-              <div class="meta">Nearest-neighbor case · AWR 106</div>
-              <h3>SPRWAT</h3>
-              <div class="info-grid similarity-case-grid">
-            <div class="info-box">
-              <strong>Similarity</strong>
-              <div>1.000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Distance</strong>
-              <div>0.0000</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Domain</strong>
-              <div>IO</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Risk</strong>
-              <div>LOW</div>
-            </div>
-
-            <div class="info-box">
-              <strong>Workload</strong>
-              <div>IO_BOUND</div>
-            </div>
-            </div>
-            </article>
-            </div>
+        <div class="item"><div class="meta">Similarity unavailable — DB-backed similarity requires database connectivity. Local diagnostic analysis remains available.</div></div>
       </section>
 
       <section class="card secondary">
@@ -6728,7 +6463,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 27, 2026, 6:41 PM</div>
+    <div class="footer">Generated at May 28, 2026, 5:42 PM</div>
   </div>
 
   <script>

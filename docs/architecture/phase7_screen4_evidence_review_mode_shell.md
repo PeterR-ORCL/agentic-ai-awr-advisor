@@ -20,6 +20,8 @@ Screen 4 does not compute A-vs-B comparison, assign comparison readiness, decide
 
 7CV-C added a static/local Screen 4 mode selector shell. Historical Review is active. Comparative Review remains prepared-only until deterministic comparison output exists. Deep Analysis remains reserved until future structured expert evidence review exists. The selector does not call backend or provider routes and does not persist state.
 
+7CV-E adds only a Screen 2-to-Screen 4 handoff placeholder. Comparative Review may display that Target A/B context is prepared in Screen 2, but prepared targets are selected context only and do not create comparison evidence.
+
 ## 4. Screen 4 Role Contract
 
 Screen 4 owns supporting evidence review. It may show deterministic evidence, governed historical context, selected runtime context, historical trend/anomaly/similarity context, and unavailable-state placeholders for future governed evidence review.
@@ -112,7 +114,7 @@ Screen 1 may pass or display selected/new source context, generated artifact rea
 
 Screen 2 may pass or display selected existing evidence/run context, selected runtime scope, selected target context, Target A/Target B preparation context, comparison readiness prepared by Screen 2, runtime-control context, and selected evidence mode/context. Screen 4 must not treat comparison readiness as comparison evidence, a UI-selected target as a diagnosis change, cache-restored selection as authoritative backend truth, or any comparison result, improvement/degradation/stable label, or domain delta as truth unless deterministic comparison output exists.
 
-Screen 4 uses the handoff to vary the visible review context. It remains read-only and does not mutate upstream source governance, runtime scope, target selection, comparison readiness, deterministic output, recommendations, action/outcome state, or learning governance.
+Screen 4 uses the handoff to vary the visible review context. It may show a prepared-context-only placeholder that says Target A/B context comes from Screen 2, deterministic comparison output is required before comparison evidence can be reviewed, selected targets and cache-restored state do not create comparison evidence, and Screen 4 does not compute comparison in the browser. It remains read-only and does not mutate upstream source governance, runtime scope, target selection, comparison readiness, deterministic output, recommendations, action/outcome state, or learning governance.
 
 ## 8. Current vs Future Capability Map
 
@@ -172,6 +174,8 @@ Do not treat shared JavaScript search hits as ownership evidence. Ownership requ
 7CV-D must not add a backend route, comparison computation, comparison violin implementation, deep analysis internals, artifact rename, route rename, screen id rename, cache key rename, provider route, or generated comparison truth.
 
 7CV-E may add a Screen 2-to-Screen 4 handoff placeholder only if it displays prepared Target A/Target B context without claiming comparison output exists. Comparative Review must render unavailable/prepared-state copy until deterministic comparison output exists. Deep Analysis must render unavailable/preview-only scope copy until 7CY. Historical Review may continue existing content without changing its current behavior.
+
+If `src/reporting/html_dashboard.py` changes during 7CV-E or later 7CV work, generated dashboard artifacts must be refreshed through the source dashboard generation flow using `.venv/bin/python`. Manual generated-HTML patching must not be the only artifact update.
 
 Tests should verify no mutation, no provider route, no comparison truth claims, no comparison readiness assignment, no comparison violin rendering, and no Screen 3/5/6 boundary drift.
 

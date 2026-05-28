@@ -121,6 +121,27 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
 
+    def test_unavailable_db_context_wording_uses_learning_governance_role(self) -> None:
+        model = self.sample_screen6_model()
+        model["similarity_enabled"] = False
+        model["clusters"] = {"similar_cases": []}
+        rendered = dashboard_module()._render_screen_6_page(
+            model,
+            governance_payload=self.sample_governance_payload(),
+            semantic_recall_payload=self.sample_semantic_payload(),
+            learning_visibility_payload=self.sample_learning_payload(),
+        )
+
+        self.assertIn("Learning Governance", rendered)
+        self.assertIn("Learning Governance Context", rendered)
+        self.assertIn(
+            "Learning governance context unavailable — DB context was not available during dashboard generation.",
+            rendered,
+        )
+        self.assertIn("Local deterministic analysis remains available on Screens 1-5", rendered)
+        self.assertNotIn("Fleet intelligence unavailable", rendered)
+        self.assertNotIn("DB connection failed or was not checked", rendered)
+
     def test_no_unsafe_controls_or_write_runtime_are_introduced(self) -> None:
         dashboard = dashboard_module()
         rendered = self.render_screen6_exploration_only().lower()

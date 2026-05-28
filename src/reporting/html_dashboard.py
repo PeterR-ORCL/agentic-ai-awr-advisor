@@ -1612,12 +1612,27 @@ def _build_dashboard_interactivity_javascript() -> str:
         };
       }
 
+      function screen3CachedWorkflowStatusLabel(value) {
+        const safeValue = safeStateValue(value || 'Available');
+        if (!safeValue) {
+          return 'Available (cached)';
+        }
+        const normalized = safeValue.toLowerCase();
+        if (
+          normalized.indexOf('(cached)') >= 0 ||
+          normalized.indexOf('last checked') >= 0
+        ) {
+          return safeValue;
+        }
+        return safeValue + ' (cached)';
+      }
+
       function screen3RuntimeOptionsStateFromCache(cache) {
         if (!cache || typeof cache !== 'object') {
           return {};
         }
         const state = {};
-        state.screen3LiveServiceStatus = safeStateValue(cache.service_status || 'Available');
+        state.screen3LiveServiceStatus = screen3CachedWorkflowStatusLabel(cache.service_status || 'Available');
         state.screen3RuntimeOptionsStatus = safeStateValue(cache.runtime_options_status || 'restored from cache');
         state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',
@@ -8196,11 +8211,7 @@ def _hero_title_for_page(page_key: str, product: dict[str, Any]) -> str:
 
 def _render_runtime_status_badge(report_data: dict[str, Any]) -> str:
     status = _runtime_status_from_report(report_data)
-    mode_class = (
-        "error"
-        if status["db_connectivity"].upper() == "FAILED"
-        else _status_pill_class(status["runtime_mode"])
-    )
+    mode_class = _status_pill_class(status["runtime_mode"])
     return f"""
       <div class="runtime-badge" data-dashboard-runtime-badge="true">
         <span class="status-pill {escape(mode_class)}">{escape(status["runtime_mode"])}</span>
@@ -8260,6 +8271,21 @@ def _render_runtime_badge_early_hydration_script() -> str:
               return 'state-muted';
             }
 
+            function cachedWorkflowStatusLabel(value) {
+              const safeValue = safeRuntimeBadgeValue(value);
+              if (!safeValue) {
+                return '';
+              }
+              const normalized = safeValue.toLowerCase();
+              if (
+                normalized.indexOf('(cached)') >= 0 ||
+                normalized.indexOf('last checked') >= 0
+              ) {
+                return safeValue;
+              }
+              return safeValue + ' (cached)';
+            }
+
             function readStoredWorkflowStatus() {
               try {
                 const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
@@ -8267,7 +8293,7 @@ def _render_runtime_badge_early_hydration_script() -> str:
                   const dashboardState = JSON.parse(rawState);
                   const storedStatus = safeRuntimeBadgeValue(dashboardState && dashboardState.screen3LiveServiceStatus);
                   if (storedStatus) {
-                    return storedStatus;
+                    return cachedWorkflowStatusLabel(storedStatus);
                   }
                 }
               } catch (error) {
@@ -8283,7 +8309,7 @@ def _render_runtime_badge_early_hydration_script() -> str:
                     cache.options &&
                     typeof cache.options === 'object'
                   ) {
-                    return safeRuntimeBadgeValue(cache.service_status || 'Available');
+                    return cachedWorkflowStatusLabel(cache.service_status || 'Available');
                   }
                 }
               } catch (error) {
@@ -8299,7 +8325,7 @@ def _render_runtime_badge_early_hydration_script() -> str:
               const nextValue = (
                 safeRuntimeBadgeValue(value) ||
                 safeRuntimeBadgeValue(workflowStatus.getAttribute('data-empty-label')) ||
-                'Check with Load Options'
+                'Not checked'
               );
               workflowStatus.textContent = nextValue;
               workflowStatus.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
@@ -8334,7 +8360,7 @@ def _render_runtime_state_line(
         '<strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" '
         'data-dashboard-runtime-workflow-status="true" '
         'data-dashboard-state-key="screen3LiveServiceStatus" '
-        'data-empty-label="Check with Load Options">Check with Load Options</strong>'
+        'data-empty-label="Not checked">Not checked</strong>'
         "</span>"
         '<span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: '
         f'<strong class="{escape(llm_class)}">{escape(llm_state)}</strong>'
@@ -8353,7 +8379,31 @@ def _render_runtime_state_line(
 
 def _llm_runtime_state(report_data: dict[str, Any]) -> tuple[str, str]:
     llm_explanation = _to_dict(report_data.get("llm_explanation"))
-    state = "Enabled" if bool(llm_explanation.get("enabled")) else "Disabled"
+    metadata = _to_dict(llm_explanation.get("metadata"))
+    provider = str(
+        llm_explanation.get("provider")
+        or metadata.get("provider")
+        or report_data.get("ai_provider")
+        or ""
+    ).strip().lower()
+    model = str(llm_explanation.get("model") or report_data.get("ai_model") or "").strip().lower()
+    output_status = str(
+        llm_explanation.get("provider_output_status")
+        or metadata.get("provider_output_status")
+        or ""
+    ).strip().lower()
+    if output_status in {"failed", "error", "unavailable"}:
+        state = "Unavailable"
+    elif provider in {"offline", "stub", "mock"} or model in {"offline", "offline-fixture"}:
+        state = "Offline"
+    elif "offline" in provider or "offline" in model:
+        state = "Offline"
+    elif bool(llm_explanation.get("enabled")):
+        state = "Enabled"
+    elif llm_explanation:
+        state = "Offline"
+    else:
+        state = "Not checked"
     return state, _runtime_state_class(state, "llm")
 
 
@@ -8414,14 +8464,27 @@ def _runtime_status_from_report(report_data: dict[str, Any]) -> dict[str, str]:
     elif connected:
         runtime_mode = "DB CONNECTED - SIMILARITY UNAVAILABLE"
     else:
-        runtime_mode = "GENERATED DB WARNING"
+        runtime_mode = "Dashboard generated without DB context"
     similarity_status = "Available" if connected and db_ready else "Unavailable"
-    display_db_connectivity = "Connected" if connected else "Failed"
+    display_db_connectivity = _display_db_connectivity_state(db_connectivity)
     return {
         "runtime_mode": runtime_mode,
         "db_connectivity": display_db_connectivity,
         "similarity_status": similarity_status,
     }
+
+
+def _display_db_connectivity_state(db_connectivity: Any) -> str:
+    normalized = _normalized_status_token(db_connectivity)
+    if normalized == "CONNECTED":
+        return "Connected"
+    if normalized in {"FAILED", "FAIL", "ERROR", "CONNECTION FAILED"}:
+        return "Connection failed"
+    if normalized in {"NOT CONNECTED", "DISCONNECTED"}:
+        return "Not connected"
+    if normalized in {"NOT CHECKED", "UNKNOWN", "N/A", "NA", "NOT AVAILABLE"}:
+        return "Not checked"
+    return str(db_connectivity or "Not checked").strip() or "Not checked"
 
 
 def _build_parser_review_payload() -> dict[str, Any]:
@@ -21504,11 +21567,12 @@ def _render_screen_6_page(
         )}
       </section>
       <section class="card prominent">
-        <div class="section-kicker">Fleet Intelligence</div>
-        <h2>Fleet intelligence unavailable — DB connection failed or was not checked.</h2>
+        <div class="section-kicker">Learning Governance Context</div>
+        <h2>Learning governance context unavailable — DB context was not available during dashboard generation.</h2>
         <p class="meta">
-          Local analysis is available on Screens 1-5. Start the database and rerun analysis
-          to enable AWR reuse, feature-vector lookup, similarity, and fleet intelligence.
+          Local deterministic analysis remains available on Screens 1-5. Connect DB context
+          and rerun analysis to enable AWR reuse, feature-vector lookup, similarity, and
+          governed learning context.
         </p>
       </section>
       {screen6_exploration_html}
@@ -29326,6 +29390,16 @@ def _confidence_state_class(value: Any) -> str:
 def _status_semantic_class(value: Any, context: str | None = None) -> str:
     normalized = _normalized_status_token(value)
     context_key = str(context or "").strip().lower()
+    if context_key in {"db", "llm", "memory", "runtime", "workflow"} and normalized in {
+        "AVAILABLE (CACHED)",
+        "DISABLED",
+        "NOT CHECKED",
+        "OFF",
+        "OFFLINE",
+    }:
+        return "muted"
+    if normalized == "CONNECTION FAILED":
+        return "error"
     if context_key == "similarity" and (
         normalized == "UNAVAILABLE" or normalized.startswith("SIMILARITY UNAVAILABLE")
     ):
@@ -29386,7 +29460,7 @@ def _status_semantic_class(value: Any, context: str | None = None) -> str:
         "MISSING",
         "TUNE FIRST",
         "DB CONNECTED - SIMILARITY UNAVAILABLE",
-        "GENERATED DB WARNING",
+        "DASHBOARD GENERATED WITHOUT DB CONTEXT",
     }:
         return "warning"
     if normalized in {

@@ -517,6 +517,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.</p>
   <p>Cache Status</p>
   <p>Generated at build time</p>
+  <p>Dashboard generated without DB context</p>
   <p>AI DB:</p>
   <p>Workflow:</p>
   <p>LLM:</p>
@@ -524,7 +525,8 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>data-dashboard-runtime-workflow-status="true"</p>
   <p>runtime-badge-hydrated</p>
   <p>readStoredWorkflowStatus</p>
-  <p>Check with Load Options</p>
+  <p>Not checked</p>
+  <p>Available (cached)</p>
   <p>Advanced target picker: external / baseline options</p>
   <a data-phase7-action-control="true"
      data-screen-id="screen_3"

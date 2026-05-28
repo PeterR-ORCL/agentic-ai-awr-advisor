@@ -119,7 +119,9 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("screen3-selected-advanced-row", source)
         self.assertIn("initializeScreen3Tables", source)
         self.assertIn("position: sticky", source)
-        self.assertIn("Check with Load Options", source)
+        self.assertIn("Not checked", source)
+        self.assertIn("Available (cached)", source)
+        self.assertNotIn("Check with Load Options", source)
         self.assertIn("The next row click updates only this assignment", rendered)
         self.assertIn("Only its selected row gets the strong table highlight", rendered)
         self.assertIn("Snapshot / Interval Selection", rendered)
@@ -310,6 +312,72 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         dashboard = dashboard_module()
 
         self.assertEqual("state-error", dashboard._similarity_runtime_state_class("Unavailable"))
+
+    def test_runtime_badge_uses_truthful_build_and_cache_status_wording(self) -> None:
+        dashboard = dashboard_module()
+        rendered = dashboard._render_runtime_status_badge(
+            {
+                "ingestion_context": {
+                    "db_ingestion": {
+                        "summary": {
+                            "db_connectivity": "Not checked",
+                            "db_similarity_ready": False,
+                        }
+                    }
+                },
+                "llm_explanation": {
+                    "enabled": True,
+                    "provider": "offline",
+                    "model": "offline-fixture",
+                },
+                "memory_runtime": {
+                    "enabled": False,
+                    "success": True,
+                    "state": "Off",
+                },
+            }
+        )
+
+        self.assertIn("Dashboard generated without DB context", rendered)
+        self.assertNotIn("GENERATED DB WARNING", rendered)
+        self.assertIn("AI DB:", rendered)
+        self.assertIn('<strong class="state-muted">Not checked</strong>', rendered)
+        self.assertIn('data-empty-label="Not checked">Not checked</strong>', rendered)
+        self.assertIn("LLM:", rendered)
+        self.assertIn('<strong class="state-muted">Offline</strong>', rendered)
+        self.assertIn("Similarity:", rendered)
+        self.assertIn('<strong class="state-error">Unavailable</strong>', rendered)
+        self.assertIn("Memory:", rendered)
+        self.assertIn('<strong class="state-muted">Off</strong>', rendered)
+
+    def test_runtime_badge_distinguishes_db_connectivity_states(self) -> None:
+        dashboard = dashboard_module()
+
+        cases = (
+            ("Connected", "Connected", "state-pass"),
+            ("Failed", "Connection failed", "state-error"),
+            ("Not connected", "Not connected", "state-muted"),
+            ("Not checked", "Not checked", "state-muted"),
+        )
+        for raw_state, display_state, css_class in cases:
+            with self.subTest(raw_state=raw_state):
+                status = dashboard._runtime_status_from_report(
+                    {
+                        "ingestion_context": {
+                            "db_ingestion": {
+                                "summary": {
+                                    "db_connectivity": raw_state,
+                                    "db_similarity_ready": raw_state == "Connected",
+                                }
+                            }
+                        }
+                    }
+                )
+                self.assertEqual(display_state, status["db_connectivity"])
+                self.assertEqual(
+                    css_class,
+                    dashboard._db_runtime_state_class(status["db_connectivity"]),
+                )
 
     def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()

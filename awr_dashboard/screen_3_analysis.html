@@ -5046,7 +5046,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 28, 2026, 5:42 PM">
+<body data-dashboard-generated-at="May 28, 2026, 6:16 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5071,9 +5071,9 @@
         <h1>Screen 3 - Diagnostic Snapshot</h1>
 
       <div class="runtime-badge" data-dashboard-runtime-badge="true">
-        <span class="status-pill error">GENERATED DB WARNING</span>
+        <span class="status-pill warning">Dashboard generated without DB context</span>
         <div class="runtime-meta">
-          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-error">Failed</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Check with Load Options">Check with Load Options</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-pass">Enabled</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-error">Unavailable</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-muted">Off</strong></span></span>
+          <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-muted">Not checked</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Not checked">Not checked</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-muted">Offline</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-error">Unavailable</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-muted">Off</strong></span></span>
         </div>
       </div>
 
@@ -5122,6 +5122,21 @@
               return 'state-muted';
             }
 
+            function cachedWorkflowStatusLabel(value) {
+              const safeValue = safeRuntimeBadgeValue(value);
+              if (!safeValue) {
+                return '';
+              }
+              const normalized = safeValue.toLowerCase();
+              if (
+                normalized.indexOf('(cached)') >= 0 ||
+                normalized.indexOf('last checked') >= 0
+              ) {
+                return safeValue;
+              }
+              return safeValue + ' (cached)';
+            }
+
             function readStoredWorkflowStatus() {
               try {
                 const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
@@ -5129,7 +5144,7 @@
                   const dashboardState = JSON.parse(rawState);
                   const storedStatus = safeRuntimeBadgeValue(dashboardState && dashboardState.screen3LiveServiceStatus);
                   if (storedStatus) {
-                    return storedStatus;
+                    return cachedWorkflowStatusLabel(storedStatus);
                   }
                 }
               } catch (error) {
@@ -5145,7 +5160,7 @@
                     cache.options &&
                     typeof cache.options === 'object'
                   ) {
-                    return safeRuntimeBadgeValue(cache.service_status || 'Available');
+                    return cachedWorkflowStatusLabel(cache.service_status || 'Available');
                   }
                 }
               } catch (error) {
@@ -5161,7 +5176,7 @@
               const nextValue = (
                 safeRuntimeBadgeValue(value) ||
                 safeRuntimeBadgeValue(workflowStatus.getAttribute('data-empty-label')) ||
-                'Check with Load Options'
+                'Not checked'
               );
               workflowStatus.textContent = nextValue;
               workflowStatus.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
@@ -5181,7 +5196,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 28, 2026, 5:42 PM</div>
+        <div class="hero-meta">Generated: May 28, 2026, 6:16 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link active" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -6092,11 +6107,11 @@
             <button type="button"
                     class="screen2-explanation-button"
                     data-screen2-generate-explanation="true"
-                    data-screen2-explanation-provider-mode="oci">
+                    data-screen2-explanation-provider-mode="local">
               Generate Focused Explanation
             </button>
             <div class="screen2-explanation-control-copy">
-              <strong>Provider mode: OCI</strong>
+              <strong>Provider mode: LOCAL</strong>
               <p>
                 Calls the local dashboard explanation service for wording only when a provider is enabled.
                 No workflow request, audit record, governance record, diagnosis update, runtime change,
@@ -6200,7 +6215,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 28, 2026, 5:42 PM</div>
+    <div class="footer">Generated at May 28, 2026, 6:16 PM</div>
   </div>
 
   <script>
@@ -6726,12 +6741,27 @@
         };
       }
 
+      function screen3CachedWorkflowStatusLabel(value) {
+        const safeValue = safeStateValue(value || 'Available');
+        if (!safeValue) {
+          return 'Available (cached)';
+        }
+        const normalized = safeValue.toLowerCase();
+        if (
+          normalized.indexOf('(cached)') >= 0 ||
+          normalized.indexOf('last checked') >= 0
+        ) {
+          return safeValue;
+        }
+        return safeValue + ' (cached)';
+      }
+
       function screen3RuntimeOptionsStateFromCache(cache) {
         if (!cache || typeof cache !== 'object') {
           return {};
         }
         const state = {};
-        state.screen3LiveServiceStatus = safeStateValue(cache.service_status || 'Available');
+        state.screen3LiveServiceStatus = screen3CachedWorkflowStatusLabel(cache.service_status || 'Available');
         state.screen3RuntimeOptionsStatus = safeStateValue(cache.runtime_options_status || 'restored from cache');
         state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',

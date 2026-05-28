@@ -147,6 +147,7 @@
       flex-wrap: nowrap;
       width: max-content;
       max-width: 100%;
+      min-height: 23px;
     }
     .runtime-mini-pill {
       display: inline-flex;
@@ -158,16 +159,20 @@
       max-width: none;
       min-width: 0;
       min-height: 21px;
-      border: 1px solid rgba(159, 176, 199, 0.2);
+      border: 1px solid rgba(183, 192, 204, 0.42);
       border-radius: 999px;
       padding: 2px 6px;
-      background: rgba(11, 20, 34, 0.58);
-      color: var(--muted);
+      background: rgba(13, 20, 30, 0.80);
+      box-shadow:
+        inset 0 0 0 1px rgba(183, 192, 204, 0.10),
+        0 1px 0 rgba(232, 238, 247, 0.04);
+      color: #b8c0cc;
       font-size: 11px;
       line-height: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      transition: none;
     }
     .runtime-mini-pill strong {
       display: inline-block;
@@ -176,6 +181,7 @@
       line-height: 1;
       position: relative;
       top: -0.5px;
+      transition: none;
     }
     .state-pass {
       color: var(--pass);
@@ -189,9 +195,13 @@
     .state-accent {
       color: var(--accent);
     }
+    .state-cached {
+      color: #b5f0bd;
+      opacity: 1;
+    }
     .state-muted {
-      color: var(--muted);
-      opacity: 0.85;
+      color: #cbd5e1;
+      opacity: 1;
     }
     .state-error {
       color: var(--high);
@@ -2981,6 +2991,14 @@
       border: 1px solid rgba(246, 184, 76, 0.34);
       color: #fff8ed;
     }
+    .runtime-badge .status-pill.warning {
+      border-color: rgba(255, 148, 112, 0.72);
+      box-shadow:
+        inset 0 0 0 1px rgba(246, 184, 76, 0.20),
+        0 0 0 1px rgba(255, 148, 112, 0.14);
+      transition: none;
+      white-space: nowrap;
+    }
     .status-pill.error {
       background: rgba(255, 107, 107, 0.16);
       border: 1px solid rgba(255, 107, 107, 0.34);
@@ -5024,6 +5042,9 @@
         min-width: 0;
         max-width: 100%;
       }
+      .runtime-mini-pill[data-runtime-badge-kind] {
+        min-width: 0;
+      }
       .nav-link {
         flex: 0 0 auto;
         width: auto;
@@ -5046,7 +5067,7 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="May 28, 2026, 6:16 PM">
+<body data-dashboard-generated-at="May 28, 2026, 6:56 PM">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5070,7 +5091,7 @@
         <div class="eyebrow">AWR PERFORMANCE INTELLIGENCE</div>
         <h1>Screen 1 - Ingestion</h1>
 
-      <div class="runtime-badge" data-dashboard-runtime-badge="true">
+      <div class="runtime-badge" data-dashboard-runtime-badge="true" data-runtime-badge-hydration="in-place">
         <span class="status-pill warning">Dashboard generated without DB context</span>
         <div class="runtime-meta">
           <span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="build-db" title="Generated at build time DB status">AI DB: <strong class="state-muted">Not checked</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="workflow" title="Local dashboard workflow service status. Click Load available runtime options to check the service, validate the runtime-control options route, and verify the DB-backed runtime option path. This is separate from build-time DB status.">Workflow: <strong class="state-muted" data-dashboard-state-input="true" data-dashboard-state-status-class="runtime" data-dashboard-runtime-workflow-status="true" data-dashboard-state-key="screen3LiveServiceStatus" data-empty-label="Not checked">Not checked</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="llm" title="LLM explanation layer status only; deterministic and governed values remain authoritative.">LLM: <strong class="state-muted">Offline</strong></span></span><span class="runtime-state-line runtime-state-pills"><span class="runtime-mini-pill" data-runtime-badge-kind="similarity">Similarity: <strong class="state-error">Unavailable</strong></span><span class="runtime-mini-pill" data-runtime-badge-kind="memory">Memory: <strong class="state-muted">Off</strong></span></span>
@@ -5096,6 +5117,9 @@
 
             function runtimeBadgeStateClass(value) {
               const normalized = safeRuntimeBadgeValue(value).toLowerCase();
+              if (normalized === 'available (cached)') {
+                return 'state-cached';
+              }
               if (
                 normalized === 'connected' ||
                 normalized === 'available' ||
@@ -5178,10 +5202,40 @@
                 safeRuntimeBadgeValue(workflowStatus.getAttribute('data-empty-label')) ||
                 'Not checked'
               );
-              workflowStatus.textContent = nextValue;
-              workflowStatus.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
-              workflowStatus.classList.add(runtimeBadgeStateClass(nextValue));
-              workflowStatus.setAttribute('data-dashboard-state-value', nextValue);
+              const nextClass = runtimeBadgeStateClass(nextValue);
+              const stateClasses = [
+                'state-pass',
+                'state-warning',
+                'state-error',
+                'state-low',
+                'state-accent',
+                'state-cached',
+                'state-muted',
+              ];
+              if (workflowStatus.textContent !== nextValue) {
+                workflowStatus.textContent = nextValue;
+              }
+              const alreadyStable = (
+                workflowStatus.classList.contains(nextClass) &&
+                stateClasses.every(function (className) {
+                  return className === nextClass || !workflowStatus.classList.contains(className);
+                })
+              );
+              if (!alreadyStable) {
+                workflowStatus.classList.remove(
+                  'state-pass',
+                  'state-warning',
+                  'state-error',
+                  'state-low',
+                  'state-accent',
+                  'state-cached',
+                  'state-muted'
+                );
+                workflowStatus.classList.add(nextClass);
+              }
+              if (workflowStatus.getAttribute('data-dashboard-state-value') !== nextValue) {
+                workflowStatus.setAttribute('data-dashboard-state-value', nextValue);
+              }
             }
 
             applyWorkflowStatus(readStoredWorkflowStatus());
@@ -5196,7 +5250,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: May 28, 2026, 6:16 PM</div>
+        <div class="hero-meta">Generated: May 28, 2026, 6:56 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link active" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5666,7 +5720,7 @@
 
               <div class="info-box screen1-generated-evidence-info-box">
                 <strong title="Generated Time">Generated Time</strong>
-                <div>May 28, 2026, 6:16 PM</div>
+                <div>May 28, 2026, 6:56 PM</div>
               </div>
 
 
@@ -7167,7 +7221,7 @@
     </div>
 
 
-    <div class="footer">Generated at May 28, 2026, 6:16 PM</div>
+    <div class="footer">Generated at May 28, 2026, 6:56 PM</div>
   </div>
 
   <script>
@@ -8081,6 +8135,9 @@
 
       function dashboardRuntimeStateClass(value) {
         const normalized = safeStateValue(value || '').toLowerCase();
+        if (normalized === 'available (cached)') {
+          return 'state-cached';
+        }
         if (
           normalized === 'connected' ||
           normalized === 'available' ||
@@ -8107,12 +8164,65 @@
         return 'state-muted';
       }
 
+      function dashboardWorkflowStatusDisplayValue(value, state, element) {
+        const safeValue = safeStateValue(
+          value ||
+          (element && element.getAttribute && element.getAttribute('data-empty-label')) ||
+          ''
+        );
+        if (!safeValue) {
+          return 'Not checked';
+        }
+        const normalized = safeValue.toLowerCase();
+        if (
+          normalized === 'not checked' ||
+          normalized === 'checking' ||
+          normalized.indexOf('(cached)') >= 0 ||
+          normalized.indexOf('last checked') >= 0 ||
+          normalized.indexOf('error') >= 0 ||
+          normalized.indexOf('failed') >= 0 ||
+          normalized.indexOf('unavailable') >= 0
+        ) {
+          return safeValue;
+        }
+        if (screen3RuntimeOptionsLiveLoaded(state)) {
+          return safeValue;
+        }
+        return screen3CachedWorkflowStatusLabel(safeValue);
+      }
+
       function updateDashboardRuntimeStateClass(element, value) {
         if (!element || !element.classList || !element.hasAttribute('data-dashboard-state-status-class')) {
           return;
         }
-        element.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
-        element.classList.add(dashboardRuntimeStateClass(value || element.getAttribute('data-empty-label') || ''));
+        const nextClass = dashboardRuntimeStateClass(value || element.getAttribute('data-empty-label') || '');
+        const stateClasses = [
+          'state-pass',
+          'state-warning',
+          'state-error',
+          'state-low',
+          'state-accent',
+          'state-cached',
+          'state-muted',
+        ];
+        const alreadyStable = (
+          element.classList.contains(nextClass) &&
+          stateClasses.every(function (className) {
+            return className === nextClass || !element.classList.contains(className);
+          })
+        );
+        if (!alreadyStable) {
+          element.classList.remove(
+            'state-pass',
+            'state-warning',
+            'state-error',
+            'state-low',
+            'state-accent',
+            'state-cached',
+            'state-muted'
+          );
+          element.classList.add(nextClass);
+        }
       }
 
       function updateDashboardStateInputs(state, root) {
@@ -8134,10 +8244,20 @@
             element.tagName !== 'TEXTAREA' &&
             element.tagName !== 'SELECT'
           ) {
-            element.textContent = value || element.getAttribute('data-empty-label') || 'not selected';
+            const displayValue = element.hasAttribute('data-dashboard-runtime-workflow-status')
+              ? dashboardWorkflowStatusDisplayValue(value, safeState, element)
+              : (value || element.getAttribute('data-empty-label') || 'not selected');
+            if (element.textContent !== displayValue) {
+              element.textContent = displayValue;
+            }
           }
-          updateDashboardRuntimeStateClass(element, value);
-          element.setAttribute('data-dashboard-state-value', value);
+          const statusValue = element.hasAttribute('data-dashboard-runtime-workflow-status')
+            ? dashboardWorkflowStatusDisplayValue(value, safeState, element)
+            : value;
+          updateDashboardRuntimeStateClass(element, statusValue);
+          if (element.getAttribute('data-dashboard-state-value') !== statusValue) {
+            element.setAttribute('data-dashboard-state-value', statusValue);
+          }
         });
       }
 

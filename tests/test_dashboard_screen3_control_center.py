@@ -161,6 +161,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("Workflow:", source)
         self.assertIn("LLM:", source)
         self.assertIn("data-dashboard-runtime-badge=\"true\"", source)
+        self.assertIn("data-runtime-badge-hydration=\"in-place\"", source)
         self.assertIn("data-dashboard-runtime-workflow-status=\"true\"", source)
         self.assertIn("runtime-badge-hydrated", source)
         self.assertIn("readStoredWorkflowStatus", source)
@@ -340,6 +341,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
 
         self.assertIn("Dashboard generated without DB context", rendered)
         self.assertNotIn("GENERATED DB WARNING", rendered)
+        self.assertIn('data-runtime-badge-hydration="in-place"', rendered)
         self.assertIn("AI DB:", rendered)
         self.assertIn('<strong class="state-muted">Not checked</strong>', rendered)
         self.assertIn('data-empty-label="Not checked">Not checked</strong>', rendered)
@@ -378,6 +380,34 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
                     css_class,
                     dashboard._db_runtime_state_class(status["db_connectivity"]),
                 )
+        self.assertEqual(
+            "state-cached",
+            dashboard._runtime_state_class("Available (cached)", "workflow"),
+        )
+
+    def test_runtime_badge_visual_stability_and_neutral_styling(self) -> None:
+        styles = importlib.import_module("src.reporting.dashboard.styles")._shared_page_styles()
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        self.assertIn(".runtime-mini-pill", styles)
+        self.assertIn("background: rgba(13, 20, 30, 0.80)", styles)
+        self.assertIn("border: 1px solid rgba(183, 192, 204, 0.42)", styles)
+        self.assertNotIn(".runtime-mini-pill[data-runtime-badge-kind=\"workflow\"] {\n      min-width:", styles)
+        self.assertIn(".state-cached", styles)
+        self.assertIn("color: #b5f0bd", styles)
+        self.assertIn("color: #cbd5e1", styles)
+        self.assertIn("opacity: 1", styles)
+        self.assertIn(".runtime-badge .status-pill.warning", styles)
+        self.assertIn("border-color: rgba(255, 148, 112, 0.72)", styles)
+        self.assertIn("transition: none", styles)
+        self.assertIn("data-runtime-badge-hydration=\"in-place\"", source)
+        self.assertIn("return 'state-cached'", source)
+        self.assertIn("dashboardWorkflowStatusDisplayValue", source)
+        self.assertIn("screen3CachedWorkflowStatusLabel(safeValue)", source)
+        self.assertIn("screen3RuntimeOptionsLiveLoaded(state)", source)
+        self.assertIn("workflowStatus.textContent !== nextValue", source)
+        self.assertIn("element.textContent !== displayValue", source)
+        self.assertIn("alreadyStable", source)
 
     def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()

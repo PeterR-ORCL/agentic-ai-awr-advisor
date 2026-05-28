@@ -2070,6 +2070,7 @@ def validate_generated_screen3_control_center(
         "Workflow:",
         "LLM:",
         "data-dashboard-runtime-badge=\"true\"",
+        "data-runtime-badge-hydration=\"in-place\"",
         "data-dashboard-runtime-workflow-status=\"true\"",
         "runtime-badge-hydrated",
         "readStoredWorkflowStatus",

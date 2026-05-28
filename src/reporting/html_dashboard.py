@@ -2000,6 +2000,9 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function dashboardRuntimeStateClass(value) {
         const normalized = safeStateValue(value || '').toLowerCase();
+        if (normalized === 'available (cached)') {
+          return 'state-cached';
+        }
         if (
           normalized === 'connected' ||
           normalized === 'available' ||
@@ -2026,12 +2029,65 @@ def _build_dashboard_interactivity_javascript() -> str:
         return 'state-muted';
       }
 
+      function dashboardWorkflowStatusDisplayValue(value, state, element) {
+        const safeValue = safeStateValue(
+          value ||
+          (element && element.getAttribute && element.getAttribute('data-empty-label')) ||
+          ''
+        );
+        if (!safeValue) {
+          return 'Not checked';
+        }
+        const normalized = safeValue.toLowerCase();
+        if (
+          normalized === 'not checked' ||
+          normalized === 'checking' ||
+          normalized.indexOf('(cached)') >= 0 ||
+          normalized.indexOf('last checked') >= 0 ||
+          normalized.indexOf('error') >= 0 ||
+          normalized.indexOf('failed') >= 0 ||
+          normalized.indexOf('unavailable') >= 0
+        ) {
+          return safeValue;
+        }
+        if (screen3RuntimeOptionsLiveLoaded(state)) {
+          return safeValue;
+        }
+        return screen3CachedWorkflowStatusLabel(safeValue);
+      }
+
       function updateDashboardRuntimeStateClass(element, value) {
         if (!element || !element.classList || !element.hasAttribute('data-dashboard-state-status-class')) {
           return;
         }
-        element.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
-        element.classList.add(dashboardRuntimeStateClass(value || element.getAttribute('data-empty-label') || ''));
+        const nextClass = dashboardRuntimeStateClass(value || element.getAttribute('data-empty-label') || '');
+        const stateClasses = [
+          'state-pass',
+          'state-warning',
+          'state-error',
+          'state-low',
+          'state-accent',
+          'state-cached',
+          'state-muted',
+        ];
+        const alreadyStable = (
+          element.classList.contains(nextClass) &&
+          stateClasses.every(function (className) {
+            return className === nextClass || !element.classList.contains(className);
+          })
+        );
+        if (!alreadyStable) {
+          element.classList.remove(
+            'state-pass',
+            'state-warning',
+            'state-error',
+            'state-low',
+            'state-accent',
+            'state-cached',
+            'state-muted'
+          );
+          element.classList.add(nextClass);
+        }
       }
 
       function updateDashboardStateInputs(state, root) {
@@ -2053,10 +2109,20 @@ def _build_dashboard_interactivity_javascript() -> str:
             element.tagName !== 'TEXTAREA' &&
             element.tagName !== 'SELECT'
           ) {
-            element.textContent = value || element.getAttribute('data-empty-label') || 'not selected';
+            const displayValue = element.hasAttribute('data-dashboard-runtime-workflow-status')
+              ? dashboardWorkflowStatusDisplayValue(value, safeState, element)
+              : (value || element.getAttribute('data-empty-label') || 'not selected');
+            if (element.textContent !== displayValue) {
+              element.textContent = displayValue;
+            }
           }
-          updateDashboardRuntimeStateClass(element, value);
-          element.setAttribute('data-dashboard-state-value', value);
+          const statusValue = element.hasAttribute('data-dashboard-runtime-workflow-status')
+            ? dashboardWorkflowStatusDisplayValue(value, safeState, element)
+            : value;
+          updateDashboardRuntimeStateClass(element, statusValue);
+          if (element.getAttribute('data-dashboard-state-value') !== statusValue) {
+            element.setAttribute('data-dashboard-state-value', statusValue);
+          }
         });
       }
 
@@ -8213,7 +8279,7 @@ def _render_runtime_status_badge(report_data: dict[str, Any]) -> str:
     status = _runtime_status_from_report(report_data)
     mode_class = _status_pill_class(status["runtime_mode"])
     return f"""
-      <div class="runtime-badge" data-dashboard-runtime-badge="true">
+      <div class="runtime-badge" data-dashboard-runtime-badge="true" data-runtime-badge-hydration="in-place">
         <span class="status-pill {escape(mode_class)}">{escape(status["runtime_mode"])}</span>
         <div class="runtime-meta">
           {_render_runtime_state_line(report_data, status)}
@@ -8245,6 +8311,9 @@ def _render_runtime_badge_early_hydration_script() -> str:
 
             function runtimeBadgeStateClass(value) {
               const normalized = safeRuntimeBadgeValue(value).toLowerCase();
+              if (normalized === 'available (cached)') {
+                return 'state-cached';
+              }
               if (
                 normalized === 'connected' ||
                 normalized === 'available' ||
@@ -8327,10 +8396,40 @@ def _render_runtime_badge_early_hydration_script() -> str:
                 safeRuntimeBadgeValue(workflowStatus.getAttribute('data-empty-label')) ||
                 'Not checked'
               );
-              workflowStatus.textContent = nextValue;
-              workflowStatus.classList.remove('state-pass', 'state-warning', 'state-error', 'state-low', 'state-accent', 'state-muted');
-              workflowStatus.classList.add(runtimeBadgeStateClass(nextValue));
-              workflowStatus.setAttribute('data-dashboard-state-value', nextValue);
+              const nextClass = runtimeBadgeStateClass(nextValue);
+              const stateClasses = [
+                'state-pass',
+                'state-warning',
+                'state-error',
+                'state-low',
+                'state-accent',
+                'state-cached',
+                'state-muted',
+              ];
+              if (workflowStatus.textContent !== nextValue) {
+                workflowStatus.textContent = nextValue;
+              }
+              const alreadyStable = (
+                workflowStatus.classList.contains(nextClass) &&
+                stateClasses.every(function (className) {
+                  return className === nextClass || !workflowStatus.classList.contains(className);
+                })
+              );
+              if (!alreadyStable) {
+                workflowStatus.classList.remove(
+                  'state-pass',
+                  'state-warning',
+                  'state-error',
+                  'state-low',
+                  'state-accent',
+                  'state-cached',
+                  'state-muted'
+                );
+                workflowStatus.classList.add(nextClass);
+              }
+              if (workflowStatus.getAttribute('data-dashboard-state-value') !== nextValue) {
+                workflowStatus.setAttribute('data-dashboard-state-value', nextValue);
+              }
             }
 
             applyWorkflowStatus(readStoredWorkflowStatus());
@@ -8435,6 +8534,8 @@ def _runtime_state_class(value: Any, context: str | None = None) -> str:
     semantic = _status_semantic_class(value, context)
     if semantic == "pass":
         return "state-pass"
+    if semantic == "cached":
+        return "state-cached"
     if semantic == "warning":
         return "state-warning"
     if semantic == "error":
@@ -29390,6 +29491,8 @@ def _confidence_state_class(value: Any) -> str:
 def _status_semantic_class(value: Any, context: str | None = None) -> str:
     normalized = _normalized_status_token(value)
     context_key = str(context or "").strip().lower()
+    if context_key in {"runtime", "workflow"} and normalized == "AVAILABLE (CACHED)":
+        return "cached"
     if context_key in {"db", "llm", "memory", "runtime", "workflow"} and normalized in {
         "AVAILABLE (CACHED)",
         "DISABLED",

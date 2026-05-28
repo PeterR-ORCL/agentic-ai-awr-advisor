@@ -143,6 +143,7 @@ def _shared_page_styles() -> str:
       flex-wrap: nowrap;
       width: max-content;
       max-width: 100%;
+      min-height: 23px;
     }
     .runtime-mini-pill {
       display: inline-flex;
@@ -154,16 +155,20 @@ def _shared_page_styles() -> str:
       max-width: none;
       min-width: 0;
       min-height: 21px;
-      border: 1px solid rgba(159, 176, 199, 0.2);
+      border: 1px solid rgba(183, 192, 204, 0.42);
       border-radius: 999px;
       padding: 2px 6px;
-      background: rgba(11, 20, 34, 0.58);
-      color: var(--muted);
+      background: rgba(13, 20, 30, 0.80);
+      box-shadow:
+        inset 0 0 0 1px rgba(183, 192, 204, 0.10),
+        0 1px 0 rgba(232, 238, 247, 0.04);
+      color: #b8c0cc;
       font-size: 11px;
       line-height: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      transition: none;
     }
     .runtime-mini-pill strong {
       display: inline-block;
@@ -172,6 +177,7 @@ def _shared_page_styles() -> str:
       line-height: 1;
       position: relative;
       top: -0.5px;
+      transition: none;
     }
     .state-pass {
       color: var(--pass);
@@ -185,9 +191,13 @@ def _shared_page_styles() -> str:
     .state-accent {
       color: var(--accent);
     }
+    .state-cached {
+      color: #b5f0bd;
+      opacity: 1;
+    }
     .state-muted {
-      color: var(--muted);
-      opacity: 0.85;
+      color: #cbd5e1;
+      opacity: 1;
     }
     .state-error {
       color: var(--high);
@@ -2977,6 +2987,14 @@ def _shared_page_styles() -> str:
       border: 1px solid rgba(246, 184, 76, 0.34);
       color: #fff8ed;
     }
+    .runtime-badge .status-pill.warning {
+      border-color: rgba(255, 148, 112, 0.72);
+      box-shadow:
+        inset 0 0 0 1px rgba(246, 184, 76, 0.20),
+        0 0 0 1px rgba(255, 148, 112, 0.14);
+      transition: none;
+      white-space: nowrap;
+    }
     .status-pill.error {
       background: rgba(255, 107, 107, 0.16);
       border: 1px solid rgba(255, 107, 107, 0.34);
@@ -5019,6 +5037,9 @@ def _shared_page_styles() -> str:
         justify-content: flex-start;
         min-width: 0;
         max-width: 100%;
+      }
+      .runtime-mini-pill[data-runtime-badge-kind] {
+        min-width: 0;
       }
       .nav-link {
         flex: 0 0 auto;

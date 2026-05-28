@@ -522,6 +522,7 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Workflow:</p>
   <p>LLM:</p>
   <p>data-dashboard-runtime-badge="true"</p>
+  <p>data-runtime-badge-hydration="in-place"</p>
   <p>data-dashboard-runtime-workflow-status="true"</p>
   <p>runtime-badge-hydrated</p>
   <p>readStoredWorkflowStatus</p>

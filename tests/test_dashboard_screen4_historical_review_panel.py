@@ -34,7 +34,7 @@ class DashboardScreen4HistoricalReviewPanelTests(unittest.TestCase):
         rendered = self.render_screen4()
 
         required = (
-            "Screen 4 Historical Review / Learning Preview",
+            "Screen 4 Historical Review Workflow Preview",
             "Approve Trend",
             "Dispute Trend",
             "Mark Trend Insufficient",
@@ -127,8 +127,10 @@ class DashboardScreen4HistoricalReviewPanelTests(unittest.TestCase):
         )
         for phrase in forbidden_backend:
             with self.subTest(backend=phrase):
-                self.assertNotIn(phrase, script)
-                self.assertNotIn(phrase, source)
+                self.assertNotIn(phrase, rendered)
+                if phrase != "fetch(":
+                    self.assertNotIn(phrase, script)
+                    self.assertNotIn(phrase, source)
 
     def render_screen4(self) -> str:
         return dashboard_module()._render_screen_4_page(

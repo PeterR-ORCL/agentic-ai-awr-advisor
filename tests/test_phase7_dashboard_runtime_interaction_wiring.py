@@ -559,7 +559,11 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         "<p>No review evidence is selected yet.</p>"
         "</section>"
         '<div data-dashboard-evidence-gated-content="true" hidden>'
-        "Evidence Review / Historical &amp; Comparison Context. "
+        "Evidence Review / Historical Context. "
+        "Evidence Review Modes. "
+        "Historical Review is active. "
+        "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
+        "Deep Analysis is reserved for future structured expert evidence review. "
         "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output. "
         "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists. "
         "it does not compute comparison meaning or decide improvement/degradation."

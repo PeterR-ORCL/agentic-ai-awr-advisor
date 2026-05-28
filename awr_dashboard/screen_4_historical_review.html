@@ -5203,7 +5203,7 @@
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
       <section class="card secondary screen4-summary-card">
         <div class="section-kicker">Screen 4</div>
-        <h2>Evidence Review / Historical &amp; Comparison Context</h2>
+        <h2>Evidence Review / Historical Context</h2>
         <div class="meta">
           Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.
         </div>
@@ -5241,8 +5241,8 @@
             </div>
 
             <div class="info-box">
-              <strong>Comparison Mode</strong>
-              <div>multi-snapshot comparison</div>
+              <strong>Historical Period Context</strong>
+              <div>multi-snapshot historical period review</div>
             </div>
 
             <div class="info-box">
@@ -5283,6 +5283,48 @@
             </div>
             </div>
           </section>
+        </div>
+      </section>
+
+      <section class="card secondary screen4-mode-selector-shell">
+        <div class="section-kicker">Screen 4 Evidence Review Mode Shell</div>
+        <h2>Evidence Review Modes</h2>
+        <p class="meta">
+          Browser state and cache restore display continuity only; they do not create evidence truth.
+          Historical Review is the only active mode in this phase.
+        </p>
+        <div class="screen4-selector-grid">
+
+              <article class="screen4-selector-card active"
+                       data-screen4-mode="historical-review"
+                       data-screen4-mode-state="active">
+                <strong>Active</strong>
+                <span>Historical Review</span>
+                <p>Current evidence mode</p>
+                <p>Historical Review is active. Reviews deterministic trends, anomalies, historical baseline context, historical period context, and similarity evidence already available on this page.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Current</span><span class="scope-chip">Deterministic evidence</span></div>
+              </article>
+
+              <article class="screen4-selector-card"
+                       data-screen4-mode="comparative-review"
+                       data-screen4-mode-state="prepared-only">
+                <strong>Prepared only</strong>
+                <span>Comparative Review</span>
+                <p>Unavailable until deterministic comparison output exists</p>
+                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Screen 2 prepares Target A/B and comparison readiness; Screen 4 will review already-computed Target A-vs-B evidence, future deltas, and future comparison violin panels only after that output exists.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No browser comparison</span></div>
+              </article>
+
+              <article class="screen4-selector-card"
+                       data-screen4-mode="deep-analysis"
+                       data-screen4-mode-state="reserved">
+                <strong>Reserved</strong>
+                <span>Deep Analysis</span>
+                <p>Future structured expert evidence review</p>
+                <p>Deep Analysis is reserved for future structured expert evidence review. Future 7CY may cover waits, top events, top SQL, DB time, I/O, commit latency, memory/PGA/temp, RAC/GC, ADG, topology/platform, derived metrics, and raw evidence drilldown. No raw drilldown is active yet.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No raw drilldown</span></div>
+              </article>
+
         </div>
       </section>
 
@@ -5447,7 +5489,7 @@
                 <strong>Historical Window</strong>
                 <span>Historical Window</span>
                 <p>24 / 106h</p>
-                <p>Existing Screen 4 comparison window. No trend recalculation.</p>
+                <p>Existing Screen 4 historical period window. No trend recalculation.</p>
               </article>
 
               <article
@@ -5904,10 +5946,10 @@
                 aria-selected="false"
                 tabindex="0"
               >
-                <strong>Comparison Baseline</strong>
-                <span>Comparison Mode</span>
-                <p>multi-snapshot comparison</p>
-                <p>Existing comparison baseline context only. No baseline change.</p>
+                <strong>Historical Baseline</strong>
+                <span>Historical Period Context</span>
+                <p>multi-snapshot historical period review</p>
+                <p>Existing historical baseline context only. No baseline change.</p>
               </article>
 
               <article
@@ -5922,10 +5964,10 @@
                 aria-selected="false"
                 tabindex="0"
               >
-                <strong>Comparison Baseline</strong>
+                <strong>Historical Baseline</strong>
                 <span>Latest vs Prior</span>
                 <p>The latest interval differs from the worst interval and should be interpreted in broader historical context.</p>
-                <p>Existing comparison baseline context only. No baseline change.</p>
+                <p>Existing historical baseline context only. No baseline change.</p>
               </article>
 
               <article
@@ -5940,10 +5982,10 @@
                 aria-selected="false"
                 tabindex="0"
               >
-                <strong>Comparison Baseline</strong>
+                <strong>Historical Baseline</strong>
                 <span>Latest vs Trend</span>
                 <p>The latest interval differs from the worst interval and should be interpreted in broader historical context.</p>
-                <p>Existing comparison baseline context only. No baseline change.</p>
+                <p>Existing historical baseline context only. No baseline change.</p>
               </article>
 
               <article
@@ -5958,10 +6000,10 @@
                 aria-selected="false"
                 tabindex="0"
               >
-                <strong>Comparison Baseline</strong>
+                <strong>Historical Baseline</strong>
                 <span>Drift Summary</span>
                 <p>Period comparison should be read through the current deterministic posture. The latest interval differs from the worst interval and should be interpreted in broader historical context.</p>
-                <p>Existing comparison baseline context only. No baseline change.</p>
+                <p>Existing historical baseline context only. No baseline change.</p>
               </article>
 
               <article
@@ -6062,7 +6104,7 @@
 
       <section class="card secondary screen4-historical-review-preview-panel">
         <div class="section-kicker">Screen 4 Historical Review Preview</div>
-        <h2>Screen 4 Historical Review / Learning Preview</h2>
+        <h2>Screen 4 Historical Review Workflow Preview</h2>
         <p class="meta">
           Disabled / preview-only historical review controls for future governed
           workflow. These controls do not submit, route, write, or execute.

@@ -2328,6 +2328,9 @@ def validate_screens3_6_runtime_explanation_copy(
             "A-vs-B comparison review and future comparison violin panels remain a Screen 4 responsibility once deterministic comparison output exists",
         ),
         "awr_dashboard/screen_4_historical_review.html": (
+            "Historical Review is active",
+            "Comparative Review requires deterministic comparison output before evidence can be reviewed here",
+            "Deep Analysis is reserved for future structured expert evidence review",
             "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output",
             "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists",
             "it does not compute comparison meaning or decide improvement/degradation",
@@ -3086,7 +3089,7 @@ def validate_generated_default_evidence_gating(
         ),
         "awr_dashboard/screen_4_historical_review.html": (
             "No review evidence is selected yet.",
-            ("Evidence Review / Historical &amp; Comparison Context", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
+            ("Evidence Review / Historical Context", "Evidence Review Modes", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
         ),
         "awr_dashboard/screen_5_recommendation_action.html": (
             "No recommendation/action context is selected yet.",

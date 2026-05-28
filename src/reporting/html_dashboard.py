@@ -17995,7 +17995,7 @@ def _render_screen_4_page(
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
       <section class="card secondary screen4-summary-card">
         <div class="section-kicker">Screen 4</div>
-        <h2>Evidence Review / Historical &amp; Comparison Context</h2>
+        <h2>Evidence Review / Historical Context</h2>
         <div class="meta">
           Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.
         </div>
@@ -18023,7 +18023,7 @@ def _render_screen_4_page(
             {_render_info_grid(
                 [
                     ("Current Window", current_selection_summary.get("current_window")),
-                    ("Comparison Mode", current_selection_summary.get("comparison_mode")),
+                    ("Historical Period Context", current_selection_summary.get("comparison_mode")),
                     (
                         "Latest vs Prior",
                         _screen4_compact_selection_text(
@@ -18055,6 +18055,7 @@ def _render_screen_4_page(
           </section>
         </div>
       </section>
+      {_render_screen4_mode_selector_shell()}
       {screen4_exploration_html}
       {screen4_review_preview_html}
       {ordered_visual_sections}
@@ -18074,6 +18075,79 @@ def _render_screen_4_page(
           else ""
       }
     </div>
+    """
+
+
+def _render_screen4_mode_selector_shell() -> str:
+    modes = (
+        {
+            "state": "Active",
+            "class": " active",
+            "mode": "Historical Review",
+            "subtitle": "Current evidence mode",
+            "body": (
+                "Historical Review is active. Reviews deterministic trends, anomalies, "
+                "historical baseline context, historical period context, and similarity "
+                "evidence already available on this page."
+            ),
+            "chips": ("Current", "Deterministic evidence"),
+        },
+        {
+            "state": "Prepared only",
+            "class": "",
+            "mode": "Comparative Review",
+            "subtitle": "Unavailable until deterministic comparison output exists",
+            "body": (
+                "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
+                "Screen 2 prepares Target A/B and comparison readiness; Screen 4 will review already-computed "
+                "Target A-vs-B evidence, future deltas, and future comparison violin panels only after that output exists."
+            ),
+            "chips": ("Unavailable", "No browser comparison"),
+        },
+        {
+            "state": "Reserved",
+            "class": "",
+            "mode": "Deep Analysis",
+            "subtitle": "Future structured expert evidence review",
+            "body": (
+                "Deep Analysis is reserved for future structured expert evidence review. Future 7CY may cover waits, "
+                "top events, top SQL, DB time, I/O, commit latency, memory/PGA/temp, RAC/GC, ADG, topology/platform, "
+                "derived metrics, and raw evidence drilldown. No raw drilldown is active yet."
+            ),
+            "chips": ("Unavailable", "No raw drilldown"),
+        },
+    )
+    cards = []
+    for mode in modes:
+        chips = "".join(
+            f'<span class="scope-chip">{escape(chip)}</span>'
+            for chip in mode["chips"]
+        )
+        cards.append(
+            f"""
+              <article class="screen4-selector-card{mode["class"]}"
+                       data-screen4-mode="{escape(_screen4_state_id(mode["mode"]), quote=True)}"
+                       data-screen4-mode-state="{escape(_screen4_state_id(mode["state"]), quote=True)}">
+                <strong>{escape(mode["state"])}</strong>
+                <span>{escape(mode["mode"])}</span>
+                <p>{escape(mode["subtitle"])}</p>
+                <p>{escape(mode["body"])}</p>
+                <div class="scope-chip-row">{chips}</div>
+              </article>
+            """
+        )
+    return f"""
+      <section class="card secondary screen4-mode-selector-shell">
+        <div class="section-kicker">Screen 4 Evidence Review Mode Shell</div>
+        <h2>Evidence Review Modes</h2>
+        <p class="meta">
+          Browser state and cache restore display continuity only; they do not create evidence truth.
+          Historical Review is the only active mode in this phase.
+        </p>
+        <div class="screen4-selector-grid">
+          {"".join(cards)}
+        </div>
+      </section>
     """
 
 
@@ -18205,7 +18279,7 @@ def _render_screen4_historical_review_preview_panel(
     return f"""
       <section class="card secondary screen4-historical-review-preview-panel">
         <div class="section-kicker">Screen 4 Historical Review Preview</div>
-        <h2>Screen 4 Historical Review / Learning Preview</h2>
+        <h2>Screen 4 Historical Review Workflow Preview</h2>
         <p class="meta">
           Disabled / preview-only historical review controls for future governed
           workflow. These controls do not submit, route, write, or execute.
@@ -18302,7 +18376,7 @@ def _build_screen4_historical_exploration_model(
         header.get("comparison_window"),
     )
     for label, raw_value, note in (
-        ("Historical Window", window_summary, "Existing Screen 4 comparison window. No trend recalculation."),
+        ("Historical Window", window_summary, "Existing Screen 4 historical period window. No trend recalculation."),
         ("Current Window", current_selection_summary.get("current_window"), "Current selection context already rendered."),
         ("Latest Interval", comparison_review.get("latest_interval"), "Existing latest interval. No re-windowing."),
         ("Worst Interval", comparison_review.get("worst_interval"), "Existing worst interval. No baseline change."),
@@ -18469,7 +18543,7 @@ def _screen4_baseline_similarity_selector_items(
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     baseline_pairs = (
-        ("Comparison Mode", current_selection_summary.get("comparison_mode")),
+        ("Historical Period Context", current_selection_summary.get("comparison_mode")),
         ("Latest vs Prior", current_selection_summary.get("latest_vs_prior")),
         ("Latest vs Trend", comparison_review.get("latest_vs_trend")),
         ("Drift Summary", comparison_review.get("drift_summary")),
@@ -18484,7 +18558,7 @@ def _screen4_baseline_similarity_selector_items(
             select_type="comparison-baseline",
             state_key="selectedComparisonBaseline",
             display_value=value,
-            note="Existing comparison baseline context only. No baseline change.",
+            note="Existing historical baseline context only. No baseline change.",
         )
     if similarity_evidence.get("enabled"):
         for index, case in enumerate(similarity_evidence.get("similar_cases") or []):
@@ -18565,6 +18639,11 @@ def _render_screen4_selector_group(
 
 def _render_screen4_selector_card(item: dict[str, Any]) -> str:
     select_type = _display_value(item.get("select_type"))
+    select_type_label = (
+        "Historical Baseline"
+        if select_type == "comparison-baseline"
+        else select_type.replace("-", " ").title()
+    )
     state_key = _display_value(item.get("state_key"))
     value = _display_value(item.get("value"))
     domain = _display_value(item.get("domain")) if _has_display_value(item.get("domain")) else ""
@@ -18587,7 +18666,7 @@ def _render_screen4_selector_card(item: dict[str, Any]) -> str:
                 aria-selected="false"
                 tabindex="0"
               >
-                <strong>{escape(select_type.replace("-", " ").title())}</strong>
+                <strong>{escape(select_type_label)}</strong>
                 <span>{escape(_display_value(item.get("label")))}</span>
                 {
                     f'<p>{escape(_display_value(item.get("display_value")))}</p>'

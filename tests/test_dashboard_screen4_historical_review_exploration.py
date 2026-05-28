@@ -30,6 +30,51 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
 
         self.assertTrue(hasattr(dashboard, "_render_screen4_historical_exploration"))
         self.assertTrue(hasattr(dashboard, "_build_screen4_historical_exploration_model"))
+        self.assertTrue(hasattr(dashboard, "_render_screen4_mode_selector_shell"))
+
+    def test_screen4_mode_selector_shell_exists_with_locked_modes(self) -> None:
+        rendered = self.render_screen4()
+
+        required_phrases = (
+            "Screen 4 Evidence Review Mode Shell",
+            "Evidence Review Modes",
+            "Historical Review",
+            "Comparative Review",
+            "Deep Analysis",
+            "Historical Review is active.",
+            "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
+            "Deep Analysis is reserved for future structured expert evidence review.",
+            "Browser state and cache restore display continuity only; they do not create evidence truth.",
+            'data-screen4-mode="historical-review"',
+            'data-screen4-mode-state="active"',
+            'data-screen4-mode="comparative-review"',
+            'data-screen4-mode-state="prepared-only"',
+            'data-screen4-mode="deep-analysis"',
+            'data-screen4-mode-state="reserved"',
+        )
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+    def test_screen4_mode_selector_shell_is_static_and_non_mutating(self) -> None:
+        rendered = self.render_screen4().lower()
+
+        forbidden = (
+            "data-screen4-provider-route",
+            "/phase7/dashboard/screen4",
+            "comparison-output-created",
+            "computed a-vs-b delta",
+            "target a improved",
+            "target b improved",
+            "target a degraded",
+            "target b degraded",
+            "comparison-violin-panel",
+            "materialization approved",
+            "runtime eligibility approved",
+        )
+        for phrase in forbidden:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, rendered)
 
     def test_screen4_historical_exploration_exists_with_summary_and_safety_labels(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)

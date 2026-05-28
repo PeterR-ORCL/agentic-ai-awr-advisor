@@ -598,7 +598,7 @@ def build_review_comparison_screen_model(
             "scope": scope_label,
             "current_window": comparison_context.get("comparison_window"),
             "comparison_mode": (
-                "multi-snapshot comparison"
+                "multi-snapshot historical period review"
                 if snapshot_count and snapshot_count > 1
                 else "single-window review"
             ),

@@ -2328,6 +2328,9 @@ def validate_screens3_6_runtime_explanation_copy(
             "A-vs-B comparison review and future comparison violin panels remain a Screen 4 responsibility once deterministic comparison output exists",
         ),
         "awr_dashboard/screen_4_historical_review.html": (
+            "Screen 4 reflects upstream selected source, run, scope, and target context for display only",
+            "Deterministic evidence remains authoritative",
+            "Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state",
             "Historical Review is active",
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here",
             "Deep Analysis is reserved for future structured expert evidence review",

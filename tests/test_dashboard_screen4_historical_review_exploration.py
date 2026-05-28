@@ -44,7 +44,12 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Historical Review is active.",
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
             "Deep Analysis is reserved for future structured expert evidence review.",
+            "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
+            "Deterministic evidence remains authoritative.",
+            "Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state.",
             "Browser state and cache restore display continuity only; they do not create evidence truth.",
+            'data-screen4-context-contract="selected-context-display-only"',
+            'data-screen4-evidence-context-boundary="true"',
             'data-screen4-mode="historical-review"',
             'data-screen4-mode-state="active"',
             'data-screen4-mode="comparative-review"',
@@ -71,10 +76,37 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "comparison-violin-panel",
             "materialization approved",
             "runtime eligibility approved",
+            "screen 4 assigns readiness",
+            "screen 4 computed comparison",
+            "screen 4 created workflow record",
         )
         for phrase in forbidden:
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, rendered)
+
+    def test_screen4_evidence_context_contract_doc_locks_handoff_boundaries(self) -> None:
+        doc_path = DOCS / "phase7_screen4_evidence_review_mode_shell.md"
+        self.assertTrue(doc_path.is_file())
+        text = read_text(doc_path).lower()
+
+        required_phrases = (
+            "cross-screen runtime rule",
+            "screens 3-6 must vary by the source, run, scope, target, and comparison-preparation context selected in screens 1-2",
+            "that variation is presentation and context selection only unless a governed backend workflow explicitly owns the behavior",
+            "screen 1 may establish new-source intake",
+            "screen 2 may establish existing platform evidence",
+            "selected runtime context comes from screen 1 source intake/source-governance handoff and screen 2 runtime scope",
+            "it is a context selector only",
+            "browser cache continuity comes from localstorage",
+            "future unavailable output refers to planned deterministic comparison",
+            "llm explanatory wording is wording only",
+            "screen 1 and screen 2 handoff to screen 4",
+            "screen 4 must not treat comparison readiness as comparison evidence",
+            "screen 4 uses the handoff to vary the visible review context",
+        )
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
 
     def test_screen4_historical_exploration_exists_with_summary_and_safety_labels(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)

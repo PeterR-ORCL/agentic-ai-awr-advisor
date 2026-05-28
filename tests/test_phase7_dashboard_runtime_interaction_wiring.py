@@ -561,6 +561,9 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         '<div data-dashboard-evidence-gated-content="true" hidden>'
         "Evidence Review / Historical Context. "
         "Evidence Review Modes. "
+        "Screen 4 reflects upstream selected source, run, scope, and target context for display only. "
+        "Deterministic evidence remains authoritative. "
+        "Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state. "
         "Historical Review is active. "
         "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
         "Deep Analysis is reserved for future structured expert evidence review. "

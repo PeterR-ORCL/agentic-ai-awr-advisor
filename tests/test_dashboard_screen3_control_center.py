@@ -165,6 +165,10 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("data-dashboard-runtime-workflow-status=\"true\"", source)
         self.assertIn("runtime-badge-hydrated", source)
         self.assertIn("readStoredWorkflowStatus", source)
+        self.assertIn("screen3LiveServiceStatusSource", source)
+        self.assertIn("screen3LiveServiceStatusCheckedAt", source)
+        self.assertIn("screen3WorkflowRuntimeFreshChecked", source)
+        self.assertIn("dashboardRuntimeModeSuppressesCachedWorkflow", source)
         self.assertIn("Local dashboard workflow service status", source)
         self.assertNotIn("Live Service", source)
         self.assertIn("State source:", rendered)
@@ -340,7 +344,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         )
 
         self.assertIn("Dashboard generated without DB context", rendered)
-        self.assertNotIn("GENERATED DB WARNING", rendered)
+        self.assertNotIn("GENERATED DB" + " WARNING", rendered)
         self.assertIn('data-runtime-badge-hydration="in-place"', rendered)
         self.assertIn("AI DB:", rendered)
         self.assertIn('<strong class="state-muted">Not checked</strong>', rendered)
@@ -405,9 +409,23 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("dashboardWorkflowStatusDisplayValue", source)
         self.assertIn("screen3CachedWorkflowStatusLabel(safeValue)", source)
         self.assertIn("screen3RuntimeOptionsLiveLoaded(state)", source)
+        self.assertIn("screen3WorkflowRuntimeFreshChecked(state)", source)
+        self.assertIn("dashboardRuntimeModeSuppressesCachedWorkflow()", source)
+        self.assertIn("return 'Not checked'", source)
         self.assertIn("workflowStatus.textContent !== nextValue", source)
         self.assertIn("element.textContent !== displayValue", source)
         self.assertIn("alreadyStable", source)
+
+    def test_workflow_badge_cache_suppression_semantics_are_explicit(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        self.assertIn("function dashboardRuntimeModeSuppressesCachedWorkflow()", source)
+        self.assertIn("toLowerCase() === 'full db mode'", source)
+        self.assertIn("if (dashboardRuntimeModeSuppressesCachedWorkflow() && !screen3WorkflowRuntimeFreshChecked(state))", source)
+        self.assertIn("screen3WorkflowRuntimeFreshChecked(state)", source)
+        self.assertIn("return screen3CachedWorkflowStatusLabel(safeValue)", source)
+        self.assertNotIn("refreshWorkflowHealthStatusOnPageLoad", source)
+        self.assertNotIn("recordWorkflowHealthStatus", source)
 
     def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()

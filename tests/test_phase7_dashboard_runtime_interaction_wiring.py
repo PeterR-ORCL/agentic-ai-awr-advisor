@@ -526,6 +526,10 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>data-dashboard-runtime-workflow-status="true"</p>
   <p>runtime-badge-hydrated</p>
   <p>readStoredWorkflowStatus</p>
+  <p>screen3LiveServiceStatusSource</p>
+  <p>screen3LiveServiceStatusCheckedAt</p>
+  <p>screen3WorkflowRuntimeFreshChecked</p>
+  <p>dashboardRuntimeModeSuppressesCachedWorkflow</p>
   <p>Not checked</p>
   <p>Available (cached)</p>
   <p>Advanced target picker: external / baseline options</p>

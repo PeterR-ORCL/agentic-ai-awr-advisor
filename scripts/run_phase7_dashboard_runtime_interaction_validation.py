@@ -2065,7 +2065,6 @@ def validate_generated_screen3_control_center(
         "Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response",
         "Cache Status",
         "Generated at build time",
-        "Dashboard generated without DB context",
         "AI DB:",
         "Workflow:",
         "LLM:",
@@ -2074,6 +2073,10 @@ def validate_generated_screen3_control_center(
         "data-dashboard-runtime-workflow-status=\"true\"",
         "runtime-badge-hydrated",
         "readStoredWorkflowStatus",
+        "screen3LiveServiceStatusSource",
+        "screen3LiveServiceStatusCheckedAt",
+        "screen3WorkflowRuntimeFreshChecked",
+        "dashboardRuntimeModeSuppressesCachedWorkflow",
         "Not checked",
         "Available (cached)",
         "State source:",
@@ -2120,6 +2123,13 @@ def validate_generated_screen3_control_center(
         for marker in required_markers
         if marker not in screen3_text and marker not in normalized_screen3_text
     ]
+    if (
+        "Dashboard generated without DB context" not in screen3_text
+        and "FULL DB MODE" not in screen3_text
+    ):
+        offenders.append(
+            "missing runtime-control marker: dashboard build/runtime mode badge"
+        )
 
     primary_region_end_candidates = [
         pos

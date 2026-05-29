@@ -139,7 +139,7 @@ class DashboardScreen6FleetGovernanceLearningExplorationTests(unittest.TestCase)
             rendered,
         )
         self.assertIn("Local deterministic analysis remains available on Screens 1-5", rendered)
-        self.assertNotIn("Fleet intelligence unavailable", rendered)
+        self.assertNotIn("Fleet intelligence " + "unavailable", rendered)
         self.assertNotIn("DB connection failed or was not checked", rendered)
 
     def test_no_unsafe_controls_or_write_runtime_are_introduced(self) -> None:

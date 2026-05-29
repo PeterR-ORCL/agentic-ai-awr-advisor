@@ -195,6 +195,8 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "screen3RuntimeOptionsSourceTables",
     "screen3RuntimeOptionsCoverageMessage",
     "screen3LiveServiceStatus",
+    "screen3LiveServiceStatusSource",
+    "screen3LiveServiceStatusCheckedAt",
     "screen3LastRequestedAction",
     "screen3LastActionStatus",
     "screen3LastRequestId",
@@ -2050,10 +2052,18 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           return safeValue;
         }
-        if (screen3RuntimeOptionsLiveLoaded(state)) {
+        if (dashboardRuntimeModeSuppressesCachedWorkflow() && !screen3WorkflowRuntimeFreshChecked(state)) {
+          return 'Not checked';
+        }
+        if (screen3RuntimeOptionsLiveLoaded(state) || screen3WorkflowRuntimeFreshChecked(state)) {
           return safeValue;
         }
         return screen3CachedWorkflowStatusLabel(safeValue);
+      }
+
+      function dashboardRuntimeModeSuppressesCachedWorkflow() {
+        const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
+        return safeStateValue(modePill && modePill.textContent).toLowerCase() === 'full db mode';
       }
 
       function updateDashboardRuntimeStateClass(element, value) {
@@ -2588,6 +2598,15 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function screen3WorkflowRuntimeFreshChecked(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const source = safeStateValue(safeState.screen3LiveServiceStatusSource || '').toLowerCase();
+        return Boolean(
+          safeState.screen3LiveServiceStatusCheckedAt &&
+          source === 'runtime-options-response'
+        );
+      }
+
       function screen3RuntimeOptionsAreLoaded(state) {
         const safeState = sanitizeDashboardState(state || {});
         return screen3RuntimeOptionsLiveLoaded(safeState);
@@ -2677,6 +2696,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3RuntimeOptionsLoadedRows = '';
           state.screen3RuntimeOptionsCount = '';
           state.screen3RuntimeOptionsCacheStatus = '';
+          state.screen3LiveServiceStatusSource = '';
+          state.screen3LiveServiceStatusCheckedAt = '';
           writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
         }
         [
@@ -2738,6 +2759,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
         state.screen3RuntimeOptionsCoverageMessage = 'Load runtime options to see queried tables and row counts.';
         state.screen3RuntimeOptionsCacheStatus = 'No runtime options cache restored.';
+        state.screen3LiveServiceStatusSource = '';
+        state.screen3LiveServiceStatusCheckedAt = '';
         state.screen3LastRequestedAction = '';
         state.screen3LastActionStatus = '';
         state.screen3LastValidationStatus = '';
@@ -5052,7 +5075,6 @@ def _build_dashboard_interactivity_javascript() -> str:
       );
       const SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS = 2500;
       const SCREEN1_SOURCE_INTAKE_POLL_TIMEOUT_MS = 10 * 60 * 1000;
-
       function readActionPayload(element) {
         const rawPayload = element.getAttribute('data-action-payload') || '{}';
         try {
@@ -7376,6 +7398,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LiveServiceStatus = routeUnavailable
             ? 'Unavailable'
             : (result.ok ? 'Available' : 'Error');
+          state.screen3LiveServiceStatusSource = 'runtime-options-response';
+          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
           state.screen3RuntimeOptionsMessage = serviceMessage;
           state.screen3RuntimeOptionsCount = String(body.option_count || body.run_count || 0);
           state.screen3RuntimeOptionsLoadedRows = String(selectableRowCount);
@@ -7485,6 +7509,8 @@ def _build_dashboard_interactivity_javascript() -> str:
             ? 'Runtime options source tables were not refreshed because the service was unavailable.'
             : 'Runtime options source tables were not checked because the service was unavailable.';
           state.screen3LiveServiceStatus = 'Error';
+          state.screen3LiveServiceStatusSource = 'runtime-options-response';
+          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
             ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are continuity context only and not active evidence.'
             : 'No runtime options cache is available.';
@@ -8356,6 +8382,10 @@ def _render_runtime_badge_early_hydration_script() -> str:
             }
 
             function readStoredWorkflowStatus() {
+              const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
+              if (safeRuntimeBadgeValue(modePill && modePill.textContent).toLowerCase() === 'full db mode') {
+                return '';
+              }
               try {
                 const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
                 if (rawState) {

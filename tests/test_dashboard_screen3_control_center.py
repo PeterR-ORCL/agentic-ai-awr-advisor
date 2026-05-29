@@ -427,6 +427,130 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertNotIn("refreshWorkflowHealthStatusOnPageLoad", source)
         self.assertNotIn("recordWorkflowHealthStatus", source)
 
+    def test_screen2_runtime_options_visible_state_reconciles_with_rows(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        for key in (
+            "screen3RuntimeOptionsStatus",
+            "screen3RuntimeOptionsDbPersistenceStatus",
+            "screen3RuntimeOptionsLoadedRows",
+            "screen3RuntimeOptionsCount",
+            "screen3RuntimeOptionsLoadedAt",
+            "screen3RuntimeOptionsIncludedTables",
+            "screen3RuntimeOptionsCacheStatus",
+            "screen3RuntimeOptionsMessage",
+            "screen3RuntimeOptionsSourceTables",
+            "screen3RuntimeOptionsCoverageMessage",
+            "screen3LiveServiceStatus",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, source)
+
+        self.assertIn("function updateScreen3RuntimeOptionPanels(responseBody, stateOverride)", source)
+        self.assertIn("const refreshedState = stateOverride", source)
+        self.assertIn("? sanitizeDashboardState(stateOverride)", source)
+        self.assertIn(": readDashboardState();", source)
+        self.assertIn("updateScreen3RuntimeOptionPanels(body, state)", source)
+        self.assertIn(
+            "updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache), restoredState)",
+            source,
+        )
+        self.assertIn("screen3LiveServiceStatusSource = 'browser-cache'", source)
+        self.assertIn("function screen3RuntimeOptionsRestoredFromCache(state)", source)
+        self.assertIn("return screen3RuntimeOptionsLiveLoaded(safeState) ||", source)
+        self.assertIn("screen3RuntimeOptionsRestoredFromCache(safeState);", source)
+        self.assertIn("screen3WorkflowRuntimeFreshChecked(safeState)", source)
+        self.assertIn(
+            "Cached runtime options are available for continuity only; they are not active evidence.",
+            source,
+        )
+        self.assertIn("screen2ShouldHydrateFromPersistentState()", source)
+        self.assertIn("isScreen2ControlPage() && Boolean(readScreen3RuntimeOptionsCache())", source)
+        self.assertIn("readLocalStorageState()", source)
+        self.assertIn("parseHashState(window.location.hash)", source)
+        self.assertIn("if (!screen3RuntimeOptionsAreLoaded(nextState))", source)
+        self.assertNotIn(
+            "const refreshedState = readDashboardState();\n"
+            "        updateDashboardStateInputs(refreshedState, document);",
+            source,
+        )
+
+    def test_screen2_target_assignment_preserves_loaded_runtime_options_state(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+        select_start = source.index("function selectDashboardElement(element)")
+        select_end = source.index("function handleDashboardStateInput(event)")
+        select_function = source[select_start:select_end]
+        assignment_refresh_start = source.index("function refreshScreen3RuntimeAssignmentUi(root, state)")
+        assignment_refresh_end = source.index("function selectDashboardElement(element)")
+        assignment_refresh_function = source[assignment_refresh_start:assignment_refresh_end]
+        continuity_start = source.index("function copyScreen2RuntimeOptionsContinuityState(target, source)")
+        continuity_end = source.index("function readDashboardStateBeforeScreen2EvidenceEnforcement()")
+        continuity_function = source[continuity_start:continuity_end]
+
+        self.assertIn("function readDashboardStateBeforeScreen2EvidenceEnforcement()", source)
+        self.assertIn("readLocalStorageState()", source)
+        self.assertIn("parseHashState(window.location.hash)", source)
+        self.assertIn("withoutInactiveSourceSelection(state)", source)
+        self.assertIn(
+            "['screen3ApplySelectionTarget', 'runtimeScope', 'snapshot'].indexOf(selectType) >= 0",
+            select_function,
+        )
+        self.assertIn("readDashboardStateBeforeScreen2EvidenceEnforcement()", select_function)
+        self.assertIn("screen2RuntimeOptionsContinuityStateForSelection(", select_function)
+        self.assertNotIn("const nextState = readDashboardState();", select_function)
+        self.assertIn("function screen2CurrentActiveSelectionTarget(state)", source)
+        self.assertIn("const activeSelectionTarget = screen2CurrentActiveSelectionTarget(nextState)", select_function)
+        self.assertIn("nextState.screen3ActiveSelectionTarget = activeSelectionTarget", select_function)
+        self.assertIn("function valueForRuntimeScopeRow(element)", source)
+        self.assertIn("data-screen3-row-id", source)
+        self.assertIn("const selectedRowId = valueForRuntimeScopeRow(element)", select_function)
+        self.assertIn("nextState.screen3SelectedTargetARowId = selectedRowId", select_function)
+        self.assertIn("nextState.screen3SelectedTargetBRowId = selectedRowId", select_function)
+        self.assertIn("nextState.screen3SelectedRuntimeScopeRowId = selectedRowId", select_function)
+        self.assertIn("nextState.screen3SelectedTargetAIntervalId = selectedIntervalId", select_function)
+        self.assertIn("nextState.screen3SelectedTargetBIntervalId = selectedIntervalId", select_function)
+        self.assertIn("data-screen3-runtime-row-apply-button", source)
+        self.assertIn("cell.setAttribute('data-screen3-runtime-row-apply-button', 'true')", source)
+        self.assertIn("cell.setAttribute('data-screen3-row-id', rowIdentity)", source)
+        self.assertIn("cell.setAttribute('data-dashboard-select-type', 'runtimeScope')", source)
+        self.assertIn("cell.setAttribute('data-dashboard-select-id', rowIdentity)", source)
+        self.assertIn("function screen3RuntimeApplyElement(element)", source)
+        self.assertIn(
+            "const applyControl = element.closest('[data-screen3-runtime-row-apply-button=\"true\"]')",
+            source,
+        )
+        self.assertIn("const runtimeApplyElement = screen3RuntimeApplyElement(event.target)", source)
+        self.assertIn("selectDashboardElement(runtimeApplyElement)", source)
+        self.assertIn("function refreshScreen3RuntimeAssignmentUi(root, state)", source)
+        self.assertIn("updateDashboardStateInputs(safeState, scope)", assignment_refresh_function)
+        self.assertIn("markSelectedElement(safeState, scope)", assignment_refresh_function)
+        self.assertIn("updateScreen3RuntimeFilters(safeState, scope)", assignment_refresh_function)
+        self.assertIn("updateScreen3RowApplyLabels(safeState, scope)", assignment_refresh_function)
+        self.assertIn("const writtenState = writeDashboardState(nextState)", select_function)
+        self.assertIn("if (selectType === 'screen3ApplySelectionTarget')", select_function)
+        self.assertIn("refreshScreen3RuntimeAssignmentUi(document, nextState)", select_function)
+        self.assertNotIn("screen3RuntimeOptionsLoadedRows = '0'", select_function)
+        self.assertNotIn("screen3RuntimeOptionsCount = '0'", select_function)
+
+        for key in (
+            "screen3RuntimeOptionsStatus",
+            "screen3RuntimeOptionsLoadedRows",
+            "screen3RuntimeOptionsCount",
+            "screen3RuntimeOptionsIncludedTables",
+            "screen3RuntimeOptionsLoadedAt",
+            "screen3RuntimeOptionsDbPersistenceStatus",
+            "screen3RuntimeOptionsCacheStatus",
+            "screen3RuntimeOptionsSourceTables",
+            "screen3RuntimeOptionsCoverageMessage",
+            "screen3LiveServiceStatus",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, continuity_function)
+
+        self.assertIn("Object.assign({}, storedState, safeBase)", source)
+        self.assertIn("copyScreen2RuntimeOptionsContinuityState(", source)
+        self.assertIn("screen3ReconcileCachedSelectionState(restoredState, cache)", source)
+
     def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()
         rendered = self.render_screen3().lower()

@@ -1526,7 +1526,7 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function screen2ShouldHydrateFromPersistentState() {
-        return false;
+        return isScreen2ControlPage() && Boolean(readScreen3RuntimeOptionsCache());
       }
 
       function readLocalStorageState() {
@@ -1635,6 +1635,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         const state = {};
         state.screen3LiveServiceStatus = screen3CachedWorkflowStatusLabel(cache.service_status || 'Available');
+        state.screen3LiveServiceStatusSource = 'browser-cache';
+        state.screen3LiveServiceStatusCheckedAt = '';
         state.screen3RuntimeOptionsStatus = safeStateValue(cache.runtime_options_status || 'restored from cache');
         state.screen3RuntimeOptionsMessage = screen3RuntimeOptionsCacheStatusText(
           'Runtime options restored from browser cache',
@@ -1651,6 +1653,10 @@ def _build_dashboard_interactivity_javascript() -> str:
           'Runtime options restored from browser cache',
           cache.cached_at
         ) + ' Continuity only; not active backend truth.';
+        state.screen2RuntimeOptionsLoadRequestId = '';
+        state.screen2RuntimeScopeSelectionEpoch = '';
+        state.screen2RuntimeScopeReadyAt = '';
+        state.screen2ExistingEvidenceReady = '';
         return state;
       }
 
@@ -1759,18 +1765,29 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (!cache) {
           return null;
         }
+        const persistedState = sanitizeDashboardState(Object.assign(
+          {},
+          readDefaultDashboardState(document),
+          readLocalStorageState(),
+          parseHashState(window.location.hash)
+        ));
         const state = Object.assign(
           {},
-          readDashboardState(),
+          persistedState,
           screen3RuntimeOptionsStateFromCache(cache)
         );
+        state.selectedSourceMode = state.selectedSourceMode || 'existing_run';
+        state.sourceSelectionMethod = state.sourceSelectionMethod || 'existing_run_reference';
+        state.sourceSelectionActivated = 'true';
+        state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         if (messageOverride) {
           state.screen3RuntimeOptionsMessage = safeStateValue(messageOverride);
           state.screen3RuntimeOptionsCacheStatus = safeStateValue(messageOverride);
         }
         const reconciledState = screen3ReconcileCachedSelectionState(state, cache);
-        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache));
-        return writeDashboardState(reconciledState, { updateHash: false });
+        const restoredState = writeDashboardState(reconciledState, { updateHash: false });
+        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache), restoredState);
+        return restoredState;
       }
 
       function showScreen3CachedRuntimeOptionsAfterRefreshFailure(cache, state, message) {
@@ -1779,14 +1796,106 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         const cachedState = Object.assign(
           {},
-          screen3RuntimeOptionsStateFromCache(cache),
-          sanitizeDashboardState(state || {})
+          sanitizeDashboardState(state || {}),
+          screen3RuntimeOptionsStateFromCache(cache)
         );
+        cachedState.selectedSourceMode = cachedState.selectedSourceMode || 'existing_run';
+        cachedState.sourceSelectionMethod = cachedState.sourceSelectionMethod || 'existing_run_reference';
+        cachedState.sourceSelectionActivated = 'true';
+        cachedState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         cachedState.screen3RuntimeOptionsMessage = safeStateValue(message);
         cachedState.screen3RuntimeOptionsCacheStatus = safeStateValue(message);
         const reconciledState = screen3ReconcileCachedSelectionState(cachedState, cache);
-        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache));
-        return writeDashboardState(reconciledState, { updateHash: false });
+        const restoredState = writeDashboardState(reconciledState, { updateHash: false });
+        updateScreen3RuntimeOptionPanels(screen3RuntimeOptionsBodyFromCache(cache), restoredState);
+        return restoredState;
+      }
+
+      function copyScreen2RuntimeOptionsContinuityState(target, source) {
+        const nextState = sanitizeDashboardState(target || {});
+        const sourceState = sanitizeDashboardState(source || {});
+        [
+          'screen3RuntimeOptionsStatus',
+          'screen3RuntimeOptionsMessage',
+          'screen3RuntimeOptionsCount',
+          'screen3RuntimeOptionsLoadedRows',
+          'screen3RuntimeOptionsIncludedTables',
+          'screen3RuntimeOptionsLoadedAt',
+          'screen3RuntimeOptionsDbPersistenceStatus',
+          'screen3RuntimeOptionsCacheStatus',
+          'screen3RuntimeOptionsSourceTables',
+          'screen3RuntimeOptionsCoverageMessage',
+          'screen3LiveServiceStatus',
+          'screen3LiveServiceStatusSource',
+          'screen3LiveServiceStatusCheckedAt',
+          'screen2RuntimeOptionsLoadRequestId',
+          'existingRunLookupStatus',
+          'existingRunLookupMessage',
+          'existingRunLookupCount'
+        ].forEach(function (stateKey) {
+          if (Object.prototype.hasOwnProperty.call(sourceState, stateKey)) {
+            nextState[stateKey] = sourceState[stateKey];
+          }
+        });
+        return nextState;
+      }
+
+      function screen2RuntimeOptionsContinuityStateForSelection(baseState, selectType) {
+        const safeBase = sanitizeDashboardState(baseState || {});
+        if (!isScreen2ControlPage()) {
+          return safeBase;
+        }
+        if (['screen3ApplySelectionTarget', 'runtimeScope', 'snapshot'].indexOf(selectType) < 0) {
+          return safeBase;
+        }
+        if (screen3RuntimeOptionsAreLoaded(safeBase)) {
+          return safeBase;
+        }
+        const storedState = readLocalStorageState();
+        if (screen3RuntimeOptionsAreLoaded(storedState)) {
+          return copyScreen2RuntimeOptionsContinuityState(
+            Object.assign({}, storedState, safeBase),
+            storedState
+          );
+        }
+        const cache = readScreen3RuntimeOptionsCache();
+        if (!cache) {
+          return safeBase;
+        }
+        const cacheState = screen3RuntimeOptionsStateFromCache(cache);
+        if (!screen3RuntimeOptionsAreLoaded(cacheState)) {
+          return safeBase;
+        }
+        const restoredState = copyScreen2RuntimeOptionsContinuityState(
+          Object.assign({}, storedState, safeBase),
+          cacheState
+        );
+        restoredState.selectedSourceMode = restoredState.selectedSourceMode || 'existing_run';
+        restoredState.sourceSelectionMethod = restoredState.sourceSelectionMethod || 'existing_run_reference';
+        restoredState.sourceSelectionActivated = 'true';
+        restoredState.sourceSelectionSessionId = restoredState.sourceSelectionSessionId ||
+          issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+        return screen3ReconcileCachedSelectionState(restoredState, cache);
+      }
+
+      function readDashboardStateBeforeScreen2EvidenceEnforcement() {
+        const defaultState = readDefaultDashboardState(document);
+        const storedState = readLocalStorageState();
+        const hashState = parseHashState(window.location.hash);
+        const explicitState = Object.assign(
+          {},
+          storedState,
+          hashState
+        );
+        let state = Object.assign({}, defaultState, explicitState);
+        if (
+          explicitState.selectedSourceMode &&
+          explicitState.selectedSourceMode !== defaultState.selectedSourceMode &&
+          !Object.prototype.hasOwnProperty.call(explicitState, 'selectedSourcePath')
+        ) {
+          delete state.selectedSourcePath;
+        }
+        return withoutInactiveSourceSelection(state);
       }
 
       function readDashboardState() {
@@ -1870,6 +1979,22 @@ def _build_dashboard_interactivity_javascript() -> str:
           safeStateValue(element.getAttribute('data-dashboard-select-domain')) ||
           safeStateValue(element.getAttribute('data-dashboard-target'))
         );
+      }
+
+      function valueForRuntimeScopeRow(element) {
+        return valueForSelectable(element) ||
+          safeStateValue(element && element.getAttribute && element.getAttribute('data-screen3-row-id'));
+      }
+
+      function screen3RuntimeApplyElement(element) {
+        if (!element || !(element instanceof Element)) {
+          return null;
+        }
+        const applyControl = element.closest('[data-screen3-runtime-row-apply-button="true"]');
+        if (applyControl) {
+          return applyControl;
+        }
+        return element.closest('[data-screen3-runtime-scope-row="true"]');
       }
 
       function applySelectableStateOverrides(element, state) {
@@ -2593,8 +2718,23 @@ def _build_dashboard_interactivity_javascript() -> str:
         return Boolean(
           rows > 0 &&
           safeState.screen2RuntimeOptionsLoadRequestId &&
-          operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
+          screen3WorkflowRuntimeFreshChecked(safeState) &&
           safeStateValue(safeState.screen3RuntimeOptionsCacheStatus || '').toLowerCase().indexOf('live-loaded') >= 0
+        );
+      }
+
+      function screen3RuntimeOptionsRestoredFromCache(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const rows = screen3NumericStateValue(safeState.screen3RuntimeOptionsLoadedRows);
+        const cacheStatus = safeStateValue(safeState.screen3RuntimeOptionsCacheStatus || '').toLowerCase();
+        const serviceStatus = safeStateValue(safeState.screen3LiveServiceStatus || '').toLowerCase();
+        return Boolean(
+          rows > 0 &&
+          (
+            cacheStatus.indexOf('restored from browser cache') >= 0 ||
+            cacheStatus.indexOf('continuity only') >= 0 ||
+            serviceStatus.indexOf('(cached)') >= 0
+          )
         );
       }
 
@@ -2609,15 +2749,14 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function screen3RuntimeOptionsAreLoaded(state) {
         const safeState = sanitizeDashboardState(state || {});
-        return screen3RuntimeOptionsLiveLoaded(safeState);
+        return screen3RuntimeOptionsLiveLoaded(safeState) ||
+          screen3RuntimeOptionsRestoredFromCache(safeState);
       }
 
       function screen3RuntimeScopeIsSelected(state) {
         const safeState = sanitizeDashboardState(state || {});
         return Boolean(
           screen3RuntimeOptionsAreLoaded(safeState) &&
-          safeState.screen2RuntimeScopeSelectionEpoch &&
-          operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch) &&
           safeState.selectedRuntimeScope &&
           (
             safeState.selectedRuntimeScopeSourceTable ||
@@ -2656,7 +2795,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           safeState.selectedSourceMode === 'existing_run' &&
           safeState.screen2RuntimeOptionsLoadRequestId &&
           operatorSessionTokenMatches('screen2RuntimeOptionsLoadRequestId', safeState.screen2RuntimeOptionsLoadRequestId) &&
-          screen3RuntimeOptionsAreLoaded(safeState) &&
+          screen3RuntimeOptionsLiveLoaded(safeState) &&
           screen3RuntimeScopeIsSelected(safeState) &&
           safeState.screen2RuntimeScopeReadyAt &&
           operatorSessionTokenMatches('screen2RuntimeScopeSelectionEpoch', safeState.screen2RuntimeScopeSelectionEpoch)
@@ -2850,15 +2989,20 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (!isScreen2ControlPage()) {
           return nextState;
         }
-        if (!screen3RuntimeOptionsLiveLoaded(nextState)) {
+        if (!screen3RuntimeOptionsAreLoaded(nextState)) {
           clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
           resetScreen2RuntimeOptionsDisplayState(nextState);
           resetScreen2TargetAndComparisonState(nextState);
           return updateScreen2ExistingEvidenceReadiness(nextState);
         }
         if (!screen3RuntimeScopeIsSelected(nextState)) {
-          clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: false });
-          resetScreen2TargetAndComparisonState(nextState);
+          nextState.screen2ExistingEvidenceReady = '';
+          nextState.screen2RuntimeScopeReadyAt = '';
+          if (!screen1ArtifactEvidenceReady(nextState)) {
+            nextState.currentOperatorEvidenceSession = '';
+            nextState.dashboardEvidenceReady = '';
+            nextState.dashboardEvidenceSessionId = '';
+          }
           return updateScreen2ExistingEvidenceReadiness(nextState);
         }
         return updateScreen2ExistingEvidenceReadiness(nextState);
@@ -4691,16 +4835,38 @@ def _build_dashboard_interactivity_javascript() -> str:
         return safeState;
       }
 
+      function refreshScreen3RuntimeAssignmentUi(root, state) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        updateDashboardStateInputs(safeState, scope);
+        markSelectedElement(safeState, scope);
+        updateScreen3RuntimeFilters(safeState, scope);
+        applyScreen3TableStates(scope);
+        updateScreen3RowApplyLabels(safeState, scope);
+        updateScreen3ResultPanelFromSelection(safeState, scope);
+        preserveDashboardStateInNavigation(safeState, scope);
+        return safeState;
+      }
+
       function selectDashboardElement(element) {
         if (!element || element.getAttribute('data-dashboard-selectable') === 'false') {
           return {};
         }
         const key = stateKeyForSelectable(element);
-        const value = valueForSelectable(element);
-	        if (!isDashboardStateKey(key) || !value) {
-	          return {};
-	        }
-	        const nextState = readDashboardState();
+        const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
+        const value = selectType === 'runtimeScope'
+          ? valueForRuntimeScopeRow(element)
+          : valueForSelectable(element);
+		        if (!isDashboardStateKey(key) || !value) {
+		          return {};
+		        }
+        const selectionBaseState = ['screen3ApplySelectionTarget', 'runtimeScope', 'snapshot'].indexOf(selectType) >= 0
+          ? readDashboardStateBeforeScreen2EvidenceEnforcement()
+          : readDashboardState();
+		        const nextState = screen2RuntimeOptionsContinuityStateForSelection(
+          selectionBaseState,
+          selectType
+        );
         const previousState = Object.assign({}, nextState);
 	        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
 	          const selectedDomain = safeStateValue(element.getAttribute('data-dashboard-select-domain'));
@@ -4750,10 +4916,14 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          nextState[key] = value;
         }
         applySelectableStateOverrides(element, nextState);
-        const selectType = safeStateValue(element.getAttribute('data-dashboard-select-type'));
         if (selectType === 'runtimeScope') {
-          const selectedRowId = valueForSelectable(element);
-          const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
+          const selectedRowId = valueForRuntimeScopeRow(element);
+          nextState.selectedSourceMode = 'existing_run';
+          nextState.sourceSelectionMethod = 'existing_run_reference';
+          nextState.sourceSelectionActivated = 'true';
+          nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
+          const activeSelectionTarget = screen2CurrentActiveSelectionTarget(nextState);
+          nextState.screen3ActiveSelectionTarget = activeSelectionTarget;
           if (activeSelectionTarget === 'Target A') {
             nextState.screen3SelectedTargetARowId = selectedRowId;
           } else if (activeSelectionTarget === 'Target B') {
@@ -4802,7 +4972,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           }
         } else if (selectType === 'snapshot') {
           const selectedIntervalId = valueForSelectable(element);
-          const activeSelectionTarget = screen3ActiveSelectionTarget(nextState);
+          const activeSelectionTarget = screen2CurrentActiveSelectionTarget(nextState);
+          nextState.screen3ActiveSelectionTarget = activeSelectionTarget;
           if (activeSelectionTarget === 'Target A') {
             nextState.screen3SelectedTargetAIntervalId = selectedIntervalId;
           } else if (activeSelectionTarget === 'Target B') {
@@ -4871,7 +5042,11 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.objectStorageValidationMessage = '';
         }
         updateScreen2ExistingEvidenceReadiness(nextState);
-        return writeDashboardState(nextState);
+        const writtenState = writeDashboardState(nextState);
+        if (selectType === 'screen3ApplySelectionTarget') {
+          refreshScreen3RuntimeAssignmentUi(document, nextState);
+        }
+        return writtenState;
       }
 
       function handleDashboardStateInput(event) {
@@ -5318,6 +5493,19 @@ def _build_dashboard_interactivity_javascript() -> str:
         return ['Runtime Scope', 'Target A', 'Target B'].indexOf(activeTarget) >= 0
           ? activeTarget
           : 'Runtime Scope';
+      }
+
+      function screen2CurrentActiveSelectionTarget(state) {
+        const explicitState = Object.assign(
+          {},
+          readLocalStorageState(),
+          parseHashState(window.location.hash)
+        );
+        return screen3ActiveSelectionTarget(Object.assign({}, state || {}, {
+          screen3ActiveSelectionTarget: explicitState.screen3ActiveSelectionTarget ||
+            (state && state.screen3ActiveSelectionTarget) ||
+            'Runtime Scope'
+        }));
       }
 
       function screen3ActiveTargetSuffix(state) {
@@ -6978,7 +7166,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         row.setAttribute('data-screen3-sort-end', safeStateValue(item.snapshot_end || item.awr_end_time || screen3RuntimeWindow(item)));
         row.setAttribute('data-screen3-sort-snapshot_count', safeStateValue(snapshotCount));
         row.setAttribute('data-screen3-sort-readiness', safeStateValue(readinessState));
-        screen3ApplyStateAttributes(row, {
+        const runtimeScopeStateAttributes = {
           selectedRuntimeScope: screen3RuntimeOptionLabel(item, runReference),
           selectedRuntimeScopeSourceTable: sourceTable,
           selectedRuntimeScopeAwrCount: item.awr_count || item.resolved_awr_count || '1',
@@ -7002,7 +7190,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           selectedRuntimeScopeResolutionState: 'resolved_persisted_data',
           selectedRuntimeScopeReadinessState: readinessState,
           existingRunLookupStatus: 'valid'
-        });
+        };
+        screen3ApplyStateAttributes(row, runtimeScopeStateAttributes);
         [
           ['use', 'Apply row'],
           ['source_table', sourceTable],
@@ -7021,6 +7210,16 @@ def _build_dashboard_interactivity_javascript() -> str:
           const cell = screen3AppendCell(row, entry[1], entry[0]);
           if (entry[0] === 'use') {
             cell.setAttribute('data-screen3-row-apply-label', 'true');
+            cell.setAttribute('data-screen3-runtime-row-apply-button', 'true');
+            cell.setAttribute('data-screen3-row-id', rowIdentity);
+            cell.setAttribute('data-dashboard-selectable', 'true');
+            cell.setAttribute('data-dashboard-select-type', 'runtimeScope');
+            cell.setAttribute('data-dashboard-select-key', 'selectedRuntimeScope');
+            cell.setAttribute('data-dashboard-select-id', rowIdentity);
+            cell.setAttribute('data-dashboard-target', rowIdentity);
+            cell.setAttribute('role', 'button');
+            cell.setAttribute('tabindex', '0');
+            screen3ApplyStateAttributes(cell, runtimeScopeStateAttributes);
           }
         });
         return row;
@@ -7181,7 +7380,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         });
       }
 
-      function updateScreen3RuntimeOptionPanels(responseBody) {
+      function updateScreen3RuntimeOptionPanels(responseBody, stateOverride) {
         const body = responseBody && typeof responseBody === 'object' ? responseBody : {};
         const options = body.options && typeof body.options === 'object' ? body.options : {};
         const runs = Array.isArray(options.runs) ? options.runs : [];
@@ -7301,7 +7500,9 @@ def _build_dashboard_interactivity_javascript() -> str:
         // inventory. The advanced picker intentionally stays focused on
         // generated, external, and baseline target types so it cannot become a
         // duplicate endless inventory table.
-        const refreshedState = readDashboardState();
+        const refreshedState = stateOverride
+          ? sanitizeDashboardState(stateOverride)
+          : readDashboardState();
         updateDashboardStateInputs(refreshedState, document);
         markSelectedElement(refreshedState, document);
         updateScreen3RuntimeFilters(refreshedState, document);
@@ -7476,23 +7677,19 @@ def _build_dashboard_interactivity_javascript() -> str:
             if (fallbackCache) {
               const cachedMessage = (
                 refreshRequested
-                  ? 'Refresh failed; cached runtime options were not activated'
-                  : 'Load failed; cached runtime options were not activated'
+                  ? 'Refresh failed; cached runtime options were restored for continuity only'
+                  : 'Load failed; cached runtime options were restored for continuity only'
               ) + (fallbackCache.cached_at ? ' from ' + fallbackCache.cached_at : '') + '.';
-              state.screen3RuntimeOptionsMessage = cachedMessage + ' Re-query the workflow service before using runtime options for active evidence readiness.';
-              state.screen3RuntimeOptionsCacheStatus = 'Cached runtime options are available for continuity only; they are not active evidence. A current service response and operator selection are still required.';
-              state.screen3RuntimeOptionsCount = '0';
-              state.screen3RuntimeOptionsLoadedRows = '0';
-              state.screen2RuntimeOptionsLoadRequestId = '';
-              writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
-              clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
-              writeDashboardState(state);
-              updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
+              showScreen3CachedRuntimeOptionsAfterRefreshFailure(
+                fallbackCache,
+                state,
+                cachedMessage + ' Re-query the workflow service before using runtime options for active evidence readiness.'
+              );
               return;
             }
           }
           writeDashboardState(state);
-          updateScreen3RuntimeOptionPanels(body);
+          updateScreen3RuntimeOptionPanels(body, state);
         }).catch(function () {
           const state = readDashboardState();
           const fallbackCache = readScreen3RuntimeOptionsCache();
@@ -7520,14 +7717,14 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain hidden as continuity context; retry Refresh options when service is available.'
+            ? 'Workflow service unavailable. Cached runtime options remain visible as continuity context; retry Refresh options when service is available.'
             : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
           if (fallbackCache) {
-            state.screen2RuntimeOptionsLoadRequestId = '';
-            writeOperatorSessionValue('screen2RuntimeOptionsLoadRequestId', '');
-            clearScreen2ExistingEvidenceState(state, { clearRuntimeOptions: false });
-            writeDashboardState(state);
-            updateScreen3RuntimeOptionPanels({ options: {}, runs: [], run_count: 0 });
+            showScreen3CachedRuntimeOptionsAfterRefreshFailure(
+              fallbackCache,
+              state,
+              'Refresh failed; cached runtime options were restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.'
+            );
             return;
           }
           writeDashboardState(state);
@@ -8150,6 +8347,12 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (!event || !(event.target instanceof Element)) {
           return;
         }
+        const runtimeApplyElement = screen3RuntimeApplyElement(event.target);
+        if (runtimeApplyElement) {
+          event.preventDefault();
+          selectDashboardElement(runtimeApplyElement);
+          return;
+        }
         const element = event.target.closest(SELECTABLE_SELECTOR);
         selectDashboardElement(element);
       }
@@ -8211,11 +8414,13 @@ def _build_dashboard_interactivity_javascript() -> str:
           });
           dashboardInteractivityInitialized = true;
         }
-        const appliedState = applyDashboardState(readDashboardState(), scope);
-        if (!screen2ShouldHydrateFromPersistentState()) {
-          return appliedState;
+        if (screen2ShouldHydrateFromPersistentState()) {
+          const restoredState = restoreScreen3RuntimeOptionsFromCache(scope);
+          if (restoredState) {
+            return restoredState;
+          }
         }
-        return restoreScreen3RuntimeOptionsFromCache(scope) || appliedState;
+        return applyDashboardState(readDashboardState(), scope);
       }
 
       window.DashboardInteractivityFoundation = Object.freeze({
@@ -15615,16 +15820,23 @@ def _render_screen3_runtime_scope_fallback_row(
         "selectedRuntimeScopeResolutionState": "current_generated_context",
         "selectedRuntimeScopeReadinessState": "analysis_required",
     }
+    row_id = "current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown"
     attrs = _screen3_selectable_attrs(
         select_type="runtimeScope",
         state_key="selectedRuntimeScope",
-        select_id="current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown",
+        select_id=row_id,
+        state_values=row_state,
+    )
+    apply_control_attrs = _screen3_selectable_attrs(
+        select_type="runtimeScope",
+        state_key="selectedRuntimeScope",
+        select_id=row_id,
         state_values=row_state,
     )
     attrs += (
         f' data-screen3-runtime-scope-row="true"'
         f' data-screen3-table-row="true"'
-        f' data-screen3-row-id="current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown"'
+        f' data-screen3-row-id="{escape(row_id, quote=True)}"'
         f' data-screen3-filter-application="{escape(application, quote=True)}"'
         f' data-screen3-filter-db="{escape(values["db_name"], quote=True)}"'
         f' data-screen3-filter-dbid="{escape(values["dbid"], quote=True)}"'
@@ -15666,7 +15878,14 @@ def _render_screen3_runtime_scope_fallback_row(
         + ">"
         + "".join(
             f'<td data-screen3-cell-key="{escape(key, quote=True)}"'
-            + (' data-screen3-row-apply-label="true"' if key == "use" else "")
+            + (
+                ' data-screen3-row-apply-label="true"'
+                ' data-screen3-runtime-row-apply-button="true"'
+                f' data-screen3-row-id="{escape(row_id, quote=True)}"'
+                f" {apply_control_attrs}"
+                if key == "use"
+                else ""
+            )
             + f">{escape(value or 'Not available')}</td>"
             for key, value in cells
         )
@@ -15945,7 +16164,7 @@ def _render_screen3_runtime_option_loader_content() -> str:
               Loading options prepares selectable runtime-scope candidates only; active downstream readiness still requires a current row, window, and Runtime Scope or Target assignment.
             </p>
             <p class="meta">
-              Cached Screen 2 state restores operator context only. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth. Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
+              Cached Screen 2 state restores operator context only. Cached runtime options are available for continuity only; they are not active evidence. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth. Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
             </p>
             {_render_screen2_control_info_grid(rows, extra_class="screen3-runtime-options-status-grid")}
             <details class="screen3-technical-details screen3-runtime-coverage-details">

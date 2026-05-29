@@ -1326,6 +1326,21 @@ def _build_dashboard_interactivity_javascript() -> str:
         'screen2RuntimeScopeSelectionEpoch',
         'screen2RuntimeScopeReadyAt'
       ]);
+      const SCREEN1_SOURCE_INTAKE_DURABLE_STATE_KEYS = Object.freeze([
+        'sourceHandoffRequestId',
+        'sourceHandoffAuditStatus',
+        'screen1GeneratedArtifactReady',
+        'screen1GeneratedRunExecuted',
+        'screen1SelectedGeneratedArtifactReady',
+        'screen1SourceIntakeExecutionStatus',
+        'screen1GeneratedArtifactPath',
+        'screen1ArtifactEvidenceReady',
+        'screen1ArtifactReadyRequestId',
+        'generatedArtifactAvailable',
+        'currentOperatorEvidenceSession',
+        'dashboardEvidenceSessionId',
+        'dashboardEvidenceReady'
+      ]);
       const PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out']);
       const PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out']);
       let dashboardInteractivityInitialized = false;
@@ -1473,14 +1488,70 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function screen1SourceIntakeStoredRequestId(state) {
+        const safeState = state || {};
+        return safeStateValue(safeState.sourceHandoffRequestId || safeState.screen1ArtifactReadyRequestId || '');
+      }
+
+      function screen1SourceIntakeStoredStatus(state) {
+        const safeState = state || {};
+        return safeStateValue(
+          safeState.screen1SourceIntakeExecutionStatus ||
+          safeState.screen1GeneratedArtifactReady ||
+          safeState.screen1ArtifactEvidenceReady ||
+          safeState.screen1GeneratedRunExecuted ||
+          safeState.screen1SelectedGeneratedArtifactReady ||
+          ''
+        ).toLowerCase();
+      }
+
+      function screen1SourceIntakeHasPersistedRequest(state) {
+        const safeState = state || {};
+        return Boolean(
+          screen1SourceIntakeStoredRequestId(safeState) ||
+          safeStateValue(safeState.sourceHandoffAuditStatus || '') ||
+          safeStateValue(safeState.screen1GeneratedArtifactPath || '')
+        );
+      }
+
+      function screen1SourceIntakeStateIsCompletedArtifactReady(state) {
+        const safeState = state || {};
+        const status = screen1SourceIntakeStoredStatus(safeState);
+        const requestBound = Boolean(screen1SourceIntakeStoredRequestId(safeState));
+        return Boolean(
+          requestBound &&
+          (
+            status === 'completed_artifact_ready' ||
+            dashboardStateFlagIsReady(safeState.screen1ArtifactEvidenceReady) ||
+            dashboardStateFlagIsReady(safeState.screen1GeneratedArtifactReady) ||
+            dashboardStateFlagIsReady(safeState.screen1GeneratedRunExecuted) ||
+            dashboardStateFlagIsReady(safeState.screen1SelectedGeneratedArtifactReady)
+          )
+        );
+      }
+
+      function preserveScreen1SourceIntakeDurableState(state) {
+        const preserved = {};
+        SCREEN1_SOURCE_INTAKE_DURABLE_STATE_KEYS.forEach(function (key) {
+          if (state && state[key]) {
+            preserved[key] = state[key];
+          }
+        });
+        return preserved;
+      }
+
       function withoutInactiveSourceSelection(state) {
         const nextState = sanitizeDashboardState(state || {});
         if (sourceSelectionIsCurrent(nextState)) {
           return nextState;
         }
+        const durableScreen1State = screen1SourceIntakeHasPersistedRequest(nextState)
+          ? preserveScreen1SourceIntakeDurableState(nextState)
+          : {};
         PHASE7CM_SOURCE_SELECTION_STATE_KEYS.forEach(function (key) {
           delete nextState[key];
         });
+        Object.assign(nextState, durableScreen1State);
         nextState.sourceSelectionActivated = '';
         return sanitizeDashboardState(nextState);
       }
@@ -2770,6 +2841,9 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function screen1ArtifactEvidenceReady(state) {
         const safeState = sanitizeDashboardState(state || {});
+        if (screen1SourceIntakeStateIsCompletedArtifactReady(safeState)) {
+          return true;
+        }
         const requestBound = Boolean(
           safeState.screen1ArtifactReadyRequestId ||
           safeState.sourceHandoffRequestId ||
@@ -4609,6 +4683,79 @@ def _build_dashboard_interactivity_javascript() -> str:
       function updateSourceWorkflowSummary(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state);
+        if (!sourceSelectionIsCurrent(safeState) && screen1SourceIntakeHasPersistedRequest(safeState)) {
+          const requestId = screen1SourceIntakeStoredRequestId(safeState);
+          const status = screen1SourceIntakeStoredStatus(safeState) || 'status not checked';
+          const artifactReady = screen1SourceIntakeStateIsCompletedArtifactReady(safeState);
+          const artifactPath = safeStateValue(safeState.screen1GeneratedArtifactPath || '');
+          const auditStatus = safeStateValue(safeState.sourceHandoffAuditStatus || '');
+          const contextStatus = artifactReady ? 'ready' : (screen1SourceIntakeStatusIsTerminal(status) ? 'terminal' : 'submitted');
+          const summaryValues = {
+            active: artifactReady ? 'Completed source intake request' : 'Stored source intake request',
+            metadata: requestId ? 'Request ID: ' + requestId : 'Request ID not available.',
+            validation: status.replace(/_/g, ' '),
+            missing: artifactReady
+              ? 'Generated artifact readiness is recorded from backend status.'
+              : 'Backend status reconciliation is required before generated evidence is ready.',
+            handoff: artifactReady
+              ? 'Screen 1 generated artifact context is available for governed handoff review.'
+              : 'Source intake request context is stored; backend readiness is not artifact-ready.',
+            action: artifactReady
+              ? 'Source intake completed with artifact-ready status.'
+              : 'Stored source intake status: ' + status.replace(/_/g, ' '),
+            next_step: artifactReady
+              ? 'Review generated evidence on Screen 1, then continue to Screen 2 for governed runtime scope selection.'
+              : 'Refresh or keep this page open so Screen 1 can reconcile the stored Request ID with backend status.',
+            pipeline_mode: artifactReady ? 'Current source mode: completed backend source intake' : 'Current source mode: stored source intake request',
+            pipeline_active: artifactReady ? 'Active source: generated artifact from completed source intake' : 'Active source: stored request awaiting backend reconciliation',
+            pipeline_validation: 'Current source validation: ' + status.replace(/_/g, ' '),
+            pipeline_handoff: artifactReady ? 'Current target: Screen 2 Control after governed handoff review' : 'Current target: Screen 1 status reconciliation',
+            pipeline_node_source: artifactPath ? 'Generated artifact: ' + artifactPath : 'Generated artifact path not reported.',
+            config_type: 'Current source type: governed source intake request',
+            config_location: artifactPath ? 'Current generated artifact: ' + artifactPath : 'Current source location: stored request context',
+            config_candidates: auditStatus ? 'Audit record: ' + auditStatus : 'Audit record not reported.',
+            config_rejected: artifactReady ? 'No artifact-ready rejection reported.' : 'Artifact readiness has not been confirmed.',
+            config_validation: 'Current source intake status: ' + status.replace(/_/g, ' '),
+            config_handoff: artifactReady ? 'Generated artifact is ready according to backend status.' : 'Generated artifact is not ready.'
+          };
+          Object.keys(summaryValues).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-summary-card="' + key + '"]').forEach(function (element) {
+              element.textContent = summaryValues[key];
+              element.setAttribute('data-phase7-source-summary-status', contextStatus);
+              if (key.indexOf('pipeline_') === 0) {
+                element.setAttribute('title', summaryValues[key]);
+              }
+            });
+          });
+          const resultDetails = [
+            requestId ? 'Request ID: ' + requestId : '',
+            auditStatus ? 'Audit record: ' + auditStatus : '',
+            artifactPath ? 'Generated artifact: ' + artifactPath : ''
+          ].filter(Boolean).join(' | ');
+          const validationValues = {
+            local_folder: artifactReady
+              ? 'Local source intake completed through the governed backend path.'
+              : 'Stored local source intake request; backend artifact readiness is not confirmed.',
+            local_file: 'Available when Local file is selected.',
+            existing_run: 'Existing platform evidence lookup belongs to Screen 2 Control.',
+            object_storage: 'Object Storage metadata validation appears after Validate Object Storage Source.',
+            service: 'Governed workflow service: source-intake status is reconciled through /phase7/dashboard/actions/status using the stored Request ID.',
+            result: artifactReady
+              ? 'Source intake completed with artifact-ready status. ' + (resultDetails || 'Backend completion context is stored.')
+              : 'Source intake request is stored but not artifact-ready. ' + (resultDetails || 'Backend status reconciliation is required.')
+          };
+          Object.keys(validationValues).forEach(function (key) {
+            scope.querySelectorAll('[data-phase7-source-validation-card="' + key + '"]').forEach(function (element) {
+              element.textContent = validationValues[key];
+              element.setAttribute('data-phase7-source-validation-status', contextStatus);
+            });
+          });
+          scope.querySelectorAll('[data-phase7-source-submit-label]').forEach(function (element) {
+            element.textContent = sourceSubmitLabel(safeState.selectedSourceMode || 'local_staged');
+          });
+          updateScreen1ParserGovernanceSummary(safeState, scope);
+          return;
+        }
         if (!sourceSelectionIsCurrent(safeState)) {
           const values = {
             active: 'No source selected',
@@ -6267,6 +6414,12 @@ def _build_dashboard_interactivity_javascript() -> str:
         const payload = responsePayload || {};
         const summary = payload.source_summary || {};
         const readyValue = ready ? 'completed_artifact_ready' : '';
+        const requestId = safeStateValue(
+          payload.request_id ||
+          nextState.sourceHandoffRequestId ||
+          nextState.screen1ArtifactReadyRequestId ||
+          ''
+        );
         nextState.sourceSelectionActivated = nextState.sourceSelectionActivated || (ready ? 'true' : '');
         if (ready && !nextState.sourceSelectionSessionId) {
           nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
@@ -6275,7 +6428,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         nextState.screen1GeneratedRunExecuted = readyValue;
         nextState.screen1SelectedGeneratedArtifactReady = readyValue;
         nextState.screen1ArtifactEvidenceReady = readyValue;
-        nextState.screen1ArtifactReadyRequestId = ready ? safeStateValue(payload.request_id || nextState.sourceHandoffRequestId || '') : '';
+        nextState.screen1ArtifactReadyRequestId = ready ? requestId : '';
         if (ready && nextState.screen1ArtifactReadyRequestId) {
           writeOperatorSessionValue('screen1ArtifactReadyRequestId', nextState.screen1ArtifactReadyRequestId);
         }
@@ -6286,8 +6439,12 @@ def _build_dashboard_interactivity_javascript() -> str:
         nextState.screen1SourceIntakeExecutionStatus = ready
           ? 'completed_artifact_ready'
           : safeStateValue(summary.execution_status || payload.status || '');
-        nextState.sourceHandoffRequestId = safeStateValue(payload.request_id || '');
-        nextState.sourceHandoffAuditStatus = safeStateValue(payload.audit_reference || '');
+        nextState.sourceHandoffRequestId = requestId;
+        nextState.sourceHandoffAuditStatus = safeStateValue(
+          payload.audit_reference ||
+          nextState.sourceHandoffAuditStatus ||
+          ''
+        );
         nextState.screen1GeneratedArtifactPath = safeStateValue(summary.dashboard_artifact_path || '');
         writeDashboardState(nextState);
         updateScreen1GeneratedArtifactGate(nextState, document);
@@ -6786,6 +6943,64 @@ def _build_dashboard_interactivity_javascript() -> str:
         return rows.concat(Array.isArray(extraRows) ? extraRows : []);
       }
 
+      function screen1SourceIntakePayloadFromState(actionRequest, state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const requestId = screen1SourceIntakeStoredRequestId(safeState);
+        const status = screen1SourceIntakeStoredStatus(safeState) || 'pending';
+        const artifactReady = screen1SourceIntakeStateIsCompletedArtifactReady(safeState);
+        const artifactPath = safeStateValue(safeState.screen1GeneratedArtifactPath || '');
+        return {
+          status: status,
+          request_id: requestId,
+          audit_reference: safeStateValue(safeState.sourceHandoffAuditStatus || ''),
+          message: artifactReady
+            ? 'Source intake completed. Generated dashboard artifact is ready.'
+            : 'Stored source intake request context is awaiting backend status reconciliation.',
+          source_summary: {
+            execution_status: status,
+            artifact_ready: artifactReady,
+            dashboard_regenerated: artifactReady,
+            dashboard_artifact_path: artifactPath,
+            runner_message: artifactReady
+              ? 'Backend status recorded completed_artifact_ready.'
+              : 'Backend status has not confirmed artifact readiness.'
+          }
+        };
+      }
+
+      function hydrateScreen1SourceIntakeStatusFromState(root, state) {
+        if (!isScreen1IngestionPage()) {
+          return false;
+        }
+        const scope = root || document;
+        const element = screen1SourceIntakeActionElement(scope);
+        if (!element) {
+          return false;
+        }
+        const safeState = sanitizeDashboardState(state || {});
+        const actionRequest = screen1SourceIntakeActionRequestFromState(element, safeState);
+        if (!actionRequest) {
+          return false;
+        }
+        const payload = screen1SourceIntakePayloadFromState(actionRequest, safeState);
+        const artifactPath = safeStateValue(payload.source_summary && payload.source_summary.dashboard_artifact_path || '');
+        const extraRows = [
+          {
+            label: 'Hydration source',
+            value: 'Restored from persisted backend status; Screen 1 will reconcile the Request ID when backend status is reachable.'
+          }
+        ];
+        if (artifactPath) {
+          extraRows.push({ label: 'Generated artifact path', value: artifactPath });
+        }
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          payload.status || 'pending',
+          responseRows(actionRequest, payload, extraRows)
+        );
+        return true;
+      }
+
       function verifyScreen1SourceIntakeService() {
         return invokePhase7Get(PHASE7_HEALTH_ENDPOINT).then(function (result) {
           const body = result.body || {};
@@ -6818,7 +7033,101 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function screen1SourceIntakeStatusIsRunning(status) {
+        const safeStatus = safeStateValue(status || '').toLowerCase();
+        return safeStatus === 'accepted' || safeStatus === 'pending' || safeStatus === 'running';
+      }
+
+      function screen1SourceIntakeStatusIsTerminal(status) {
+        const safeStatus = safeStateValue(status || '').toLowerCase();
+        return (
+          safeStatus === 'completed' ||
+          safeStatus === 'completed_artifact_ready' ||
+          safeStatus === 'failed' ||
+          safeStatus === 'failed_safely' ||
+          safeStatus === 'rejected' ||
+          safeStatus === 'blocked' ||
+          safeStatus === 'timed_out'
+        );
+      }
+
+      function screen1SourceIntakePayloadWithRequest(actionRequest, payload) {
+        const body = Object.assign({}, payload || {});
+        const requestId = safeStateValue(body.request_id || (actionRequest && actionRequest.request_id) || '');
+        if (requestId) {
+          body.request_id = requestId;
+        }
+        const summary = Object.assign({}, body.source_summary || {});
+        if (!summary.execution_status && body.status) {
+          summary.execution_status = body.status;
+        }
+        if (summary.artifact_ready !== true) {
+          summary.artifact_ready = false;
+        }
+        body.source_summary = summary;
+        return body;
+      }
+
+      function screen1SourceIntakeActionElement(root) {
+        const scope = root || document;
+        if (!scope.querySelectorAll) {
+          return null;
+        }
+        const controls = Array.prototype.slice.call(scope.querySelectorAll(PHASE7_ACTION_SELECTOR));
+        for (let index = 0; index < controls.length; index += 1) {
+          if (isScreen1SourceIntakeExecutionAction(controls[index])) {
+            return controls[index];
+          }
+        }
+        return null;
+      }
+
+      function screen1SourceIntakeActionRequestFromState(element, state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const requestId = safeStateValue(safeState.sourceHandoffRequestId || safeState.screen1ArtifactReadyRequestId || '');
+        if (!requestId) {
+          return null;
+        }
+        const basePayload = element ? readActionPayload(element) : {};
+        return {
+          request_id: requestId,
+          screen_id: 'screen_1',
+          action_type: 'screen1_source_intake_execute',
+          workflow_type: 'screen1_source_intake_execution',
+          target_type: element ? safeStateValue(element.getAttribute('data-target-type')) : 'source_intake',
+          target_id: element ? safeStateValue(element.getAttribute('data-target-id')) : 'SCREEN1-SOURCE-INTAKE-EXECUTE',
+          payload: Object.assign({}, basePayload, {
+            selectedSourceMode: safeState.selectedSourceMode || '',
+            source_mode: safeState.selectedSourceMode || '',
+            selectedSourcePath: safeState.selectedSourcePath || '',
+            backend_visible_path: safeState.selectedSourcePath || ''
+          })
+        };
+      }
+
+      function clearScreen1SourceIntakePolling() {
+        if (window.__screen1SourceIntakePollingTimer) {
+          clearTimeout(window.__screen1SourceIntakePollingTimer);
+        }
+        window.__screen1SourceIntakePollingTimer = null;
+        window.__screen1SourceIntakePollingRequestId = '';
+      }
+
+      function scheduleScreen1SourceIntakePoll(element, actionRequest, startedAt) {
+        const requestId = safeStateValue(actionRequest && actionRequest.request_id);
+        if (!requestId) {
+          return;
+        }
+        clearScreen1SourceIntakePolling();
+        window.__screen1SourceIntakePollingRequestId = requestId;
+        window.__screen1SourceIntakePollingTimer = setTimeout(function () {
+          window.__screen1SourceIntakePollingTimer = null;
+          pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
+        }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+      }
+
       function completeScreen1SourceIntake(element, actionRequest, payload) {
+        clearScreen1SourceIntakePolling();
         setScreen1GeneratedArtifactReadyState(true, payload);
         setScreen1SourceIntakeStatusMarkup(
           element,
@@ -6835,8 +7144,25 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
       }
 
+      function finishScreen1SourceIntakeCompleted(element, actionRequest, payload) {
+        const safePayload = screen1SourceIntakePayloadWithRequest(actionRequest, payload || {});
+        clearScreen1SourceIntakePolling();
+        setScreen1GeneratedArtifactReadyState(false, safePayload);
+        setScreen1SourceIntakeStatusMarkup(
+          element,
+          safePayload.status || 'completed',
+          responseRows(actionRequest, safePayload, [
+            {
+              label: 'Next step',
+              value: 'Backend source intake completed without an artifact-ready flag. Generated evidence remains gated until backend status reports artifact readiness.'
+            }
+          ])
+        );
+      }
+
       function failScreen1SourceIntake(element, actionRequest, status, payload, message) {
-        const safePayload = payload || {};
+        const safePayload = screen1SourceIntakePayloadWithRequest(actionRequest, payload || {});
+        clearScreen1SourceIntakePolling();
         setScreen1GeneratedArtifactReadyState(false, safePayload);
         setScreen1SourceIntakeStatusMarkup(
           element,
@@ -6875,10 +7201,14 @@ def _build_dashboard_interactivity_javascript() -> str:
           return;
         }
         invokePhase7Get(screen1SourceIntakeStatusEndpoint(requestId)).then(function (result) {
-          const body = result.body || {};
+          const body = screen1SourceIntakePayloadWithRequest(actionRequest, result.body || {});
           const status = safeStateValue(body.status || '');
           if (screen1SourceIntakeResponseArtifactReady(body)) {
             completeScreen1SourceIntake(element, actionRequest, body);
+            return;
+          }
+          if (status === 'completed') {
+            finishScreen1SourceIntakeCompleted(element, actionRequest, body);
             return;
           }
           if (!result.ok && status !== 'running' && status !== 'pending' && status !== 'accepted') {
@@ -6891,7 +7221,7 @@ def _build_dashboard_interactivity_javascript() -> str:
             );
             return;
           }
-          if (status === 'failed' || status === 'failed_safely' || status === 'rejected' || status === 'blocked') {
+          if (screen1SourceIntakeStatusIsTerminal(status)) {
             failScreen1SourceIntake(
               element,
               actionRequest,
@@ -6909,9 +7239,7 @@ def _build_dashboard_interactivity_javascript() -> str:
               { label: 'Polling', value: 'Backend intake/generation is still running. This page will keep checking.' }
             ])
           );
-          setTimeout(function () {
-            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
-          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+          scheduleScreen1SourceIntakePoll(element, actionRequest, startedAt);
         }).catch(function (error) {
           setScreen1GeneratedArtifactReadyState(false, {
             status: 'running',
@@ -6926,10 +7254,107 @@ def _build_dashboard_interactivity_javascript() -> str:
               { label: 'Next check', value: 'Retrying automatically.' }
             ])
           );
-          setTimeout(function () {
-            pollScreen1SourceIntakeStatus(element, actionRequest, startedAt);
-          }, SCREEN1_SOURCE_INTAKE_POLL_INTERVAL_MS);
+          scheduleScreen1SourceIntakePoll(element, actionRequest, startedAt);
         });
+      }
+
+      function reconcileScreen1SourceIntakeStatus(root, state) {
+        if (!isScreen1IngestionPage()) {
+          return null;
+        }
+        const scope = root || document;
+        const element = screen1SourceIntakeActionElement(scope);
+        if (!element) {
+          return null;
+        }
+        const safeState = sanitizeDashboardState(Object.assign(
+          {},
+          readLocalStorageState(),
+          state || {},
+          parseHashState(window.location.hash)
+        ));
+        const currentStatus = safeStateValue(safeState.screen1SourceIntakeExecutionStatus || '').toLowerCase();
+        const actionRequest = screen1SourceIntakeActionRequestFromState(element, safeState);
+        if (!actionRequest) {
+          return null;
+        }
+        const requestId = safeStateValue(actionRequest.request_id);
+        const terminalStoredStatus = screen1SourceIntakeStatusIsTerminal(currentStatus);
+        if (terminalStoredStatus) {
+          hydrateScreen1SourceIntakeStatusFromState(scope, safeState);
+        } else {
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            currentStatus || 'pending',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Reconciliation', value: 'Checking backend source intake status for the stored Request ID.' }
+            ])
+          );
+        }
+        invokePhase7Get(screen1SourceIntakeStatusEndpoint(requestId)).then(function (result) {
+          const body = screen1SourceIntakePayloadWithRequest(actionRequest, result.body || {});
+          const status = safeStateValue(body.status || '');
+          if (screen1SourceIntakeResponseArtifactReady(body)) {
+            clearScreen1SourceIntakePolling();
+            setScreen1GeneratedArtifactReadyState(true, body);
+            setScreen1SourceIntakeStatusMarkup(
+              element,
+              'completed_artifact_ready',
+              responseRows(actionRequest, body, [
+                { label: 'Reconciliation', value: 'Backend status confirms generated artifact readiness.' }
+              ])
+            );
+            return;
+          }
+          if (status === 'completed') {
+            finishScreen1SourceIntakeCompleted(element, actionRequest, body);
+            return;
+          }
+          if (!result.ok && !screen1SourceIntakeStatusIsRunning(status)) {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status || 'failed_safely',
+              body,
+              body.message || 'Screen 1 source intake status endpoint returned a failure.'
+            );
+            return;
+          }
+          if (screen1SourceIntakeStatusIsTerminal(status)) {
+            failScreen1SourceIntake(
+              element,
+              actionRequest,
+              status,
+              body,
+              body.message || 'Screen 1 source intake did not produce an artifact-ready result.'
+            );
+            return;
+          }
+          setScreen1GeneratedArtifactReadyState(false, body);
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            status || 'running',
+            responseRows(actionRequest, body, [
+              { label: 'Polling', value: 'Backend intake/generation is still running. Polling resumed after page navigation.' }
+            ])
+          );
+          scheduleScreen1SourceIntakePoll(element, actionRequest, Date.now());
+        }).catch(function (error) {
+          if (terminalStoredStatus) {
+            hydrateScreen1SourceIntakeStatusFromState(scope, safeState);
+            return;
+          }
+          setScreen1SourceIntakeStatusMarkup(
+            element,
+            currentStatus || 'running',
+            screen1ActionRequestRows(actionRequest, [
+              { label: 'Status check', value: 'Could not reach status endpoint yet: ' + safeStateValue(error && error.message) },
+              { label: 'Next check', value: 'Retrying automatically.' }
+            ])
+          );
+          scheduleScreen1SourceIntakePoll(element, actionRequest, Date.now());
+        });
+        return actionRequest;
       }
 
       function screen3RuntimeOptionValue(option, fallback) {
@@ -8177,6 +8602,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (isScreen1SourceIntakeExecutionAction(element)) {
           setScreen1GeneratedArtifactReadyState(false, {
             status: 'running',
+            request_id: actionRequest.request_id,
             source_summary: { execution_status: 'running' }
           });
         }
@@ -8225,18 +8651,20 @@ def _build_dashboard_interactivity_javascript() -> str:
                 rejectedMessageLower.indexOf('screen1_source_intake_execute') < 0 && rejectedMessageLower.indexOf('action_type') >= 0
               );
 	              if (isScreen1SourceIntakeExecutionAction(element)) {
-	                setScreen1GeneratedArtifactReadyState(false, result.payload || {
-	                  status: 'failed_safely',
-	                  source_summary: { execution_status: 'failed_safely' }
-	                });
-	                failScreen1SourceIntake(
-	                  element,
-	                  actionRequest,
-	                  'failed',
-	                  result.payload || {
-	                    status: 'failed',
-	                    request_id: actionRequest.request_id,
-	                    source_summary: { execution_status: 'failed', artifact_ready: false }
+                  const rejectedPayload = screen1SourceIntakePayloadWithRequest(actionRequest, result.payload || {
+		                  status: 'failed_safely',
+		                  source_summary: { execution_status: 'failed_safely' }
+		                });
+                  actionRequest.request_id = rejectedPayload.request_id || actionRequest.request_id;
+		                setScreen1GeneratedArtifactReadyState(false, rejectedPayload);
+		                failScreen1SourceIntake(
+		                  element,
+		                  actionRequest,
+		                  'failed',
+		                  rejectedPayload || {
+		                    status: 'failed',
+		                    request_id: actionRequest.request_id,
+		                    source_summary: { execution_status: 'failed', artifact_ready: false }
 	                  },
 	                  staleScreen1ExecutionService
 	                    ? 'The running workflow service does not support Screen 1 source intake execution yet. Restart the updated dashboard_workflow_service.py or verify the action registry includes screen1_source_intake_execute. Command: ' +
@@ -8269,29 +8697,35 @@ def _build_dashboard_interactivity_javascript() -> str:
               updateScreen3ExecutionResultPanelFromResponse(element, responseStatus, result.payload);
               return;
             }
-	            if (isScreen1SourceIntakeExecutionAction(element)) {
-	              const summary = result.payload.source_summary || {};
-	              const artifactReady = (
-	                responseStatus === 'completed_artifact_ready' ||
-	                summary.artifact_ready === true ||
-	                safeStateValue(summary.execution_status) === 'completed_artifact_ready'
-	              );
-	              if (artifactReady) {
-	                completeScreen1SourceIntake(element, actionRequest, result.payload);
-	                return;
-	              }
-	              setScreen1GeneratedArtifactReadyState(false, result.payload);
-	              setScreen1SourceIntakeStatusMarkup(
-	                element,
-	                responseStatus,
-	                responseRows(actionRequest, result.payload, [
-	                  { label: 'Polling', value: 'Checking backend source intake status until completion or safe failure.' }
-	                ])
-	              );
-	              if (responseStatus === 'accepted' || responseStatus === 'pending' || responseStatus === 'running') {
-	                pollScreen1SourceIntakeStatus(element, actionRequest, Date.now());
-	              }
-	              return;
+		            if (isScreen1SourceIntakeExecutionAction(element)) {
+                  const screen1Payload = screen1SourceIntakePayloadWithRequest(actionRequest, result.payload);
+                  actionRequest.request_id = screen1Payload.request_id || actionRequest.request_id;
+		              const summary = screen1Payload.source_summary || {};
+		              const artifactReady = (
+		                responseStatus === 'completed_artifact_ready' ||
+		                summary.artifact_ready === true ||
+		                safeStateValue(summary.execution_status) === 'completed_artifact_ready'
+		              );
+		              if (artifactReady) {
+		                completeScreen1SourceIntake(element, actionRequest, screen1Payload);
+		                return;
+		              }
+                  if (responseStatus === 'completed') {
+                    finishScreen1SourceIntakeCompleted(element, actionRequest, screen1Payload);
+                    return;
+                  }
+		              setScreen1GeneratedArtifactReadyState(false, screen1Payload);
+		              setScreen1SourceIntakeStatusMarkup(
+		                element,
+		                responseStatus,
+		                responseRows(actionRequest, screen1Payload, [
+		                  { label: 'Polling', value: 'Checking backend source intake status until completion or safe failure.' }
+		                ])
+		              );
+		              if (screen1SourceIntakeStatusIsRunning(responseStatus)) {
+		                pollScreen1SourceIntakeStatus(element, actionRequest, Date.now());
+		              }
+		              return;
 	            }
 	            setActionStatus(
 	              element,
@@ -8408,20 +8842,23 @@ def _build_dashboard_interactivity_javascript() -> str:
           document.addEventListener('input', handleDashboardStateInput);
           document.addEventListener('change', handleDashboardStateInput);
           document.addEventListener('change', handlePhase7SourcePickerChange);
-          document.addEventListener('change', handleExistingRunOptionChange);
-          window.addEventListener('hashchange', function () {
-            applyDashboardState(readDashboardState());
-          });
-          dashboardInteractivityInitialized = true;
-        }
+	          document.addEventListener('change', handleExistingRunOptionChange);
+	          window.addEventListener('hashchange', function () {
+	            const appliedState = applyDashboardState(readDashboardState());
+              reconcileScreen1SourceIntakeStatus(document, appliedState);
+	          });
+	          dashboardInteractivityInitialized = true;
+	        }
         if (screen2ShouldHydrateFromPersistentState()) {
           const restoredState = restoreScreen3RuntimeOptionsFromCache(scope);
           if (restoredState) {
             return restoredState;
           }
         }
-        return applyDashboardState(readDashboardState(), scope);
-      }
+	        const appliedState = applyDashboardState(readDashboardState(), scope);
+          reconcileScreen1SourceIntakeStatus(scope, appliedState);
+          return appliedState;
+	      }
 
       window.DashboardInteractivityFoundation = Object.freeze({
         label: DASHBOARD_FOUNDATION_LABEL,
@@ -8459,13 +8896,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         runAnalysisCoupling: false,
         buildDashboardActionRequest: buildDashboardActionRequest,
         submitDashboardAction: submitDashboardAction,
-        handleScreen3RuntimeOptionsLoadClick: handleScreen3RuntimeOptionsLoadClick,
-        handleScreen3RuntimeFilterButtonClick: handleScreen3RuntimeFilterButtonClick,
-        handleExistingRunLookupClick: handleExistingRunLookupClick,
-        handleObjectStorageValidationClick: handleObjectStorageValidationClick,
-        screen1GeneratedArtifactReady: screen1GeneratedArtifactReady,
-        updateScreen1GeneratedArtifactGate: updateScreen1GeneratedArtifactGate
-      });
+	        handleScreen3RuntimeOptionsLoadClick: handleScreen3RuntimeOptionsLoadClick,
+	        handleScreen3RuntimeFilterButtonClick: handleScreen3RuntimeFilterButtonClick,
+	        handleExistingRunLookupClick: handleExistingRunLookupClick,
+	        handleObjectStorageValidationClick: handleObjectStorageValidationClick,
+	        reconcileScreen1SourceIntakeStatus: reconcileScreen1SourceIntakeStatus,
+	        screen1GeneratedArtifactReady: screen1GeneratedArtifactReady,
+	        updateScreen1GeneratedArtifactGate: updateScreen1GeneratedArtifactGate
+	      });
 
       document.addEventListener('DOMContentLoaded', function () {
         initializeDashboardInteractivity(document);
@@ -11751,7 +12189,10 @@ def _render_screen1_parser_review_unknown_signals_section(
             extra_class="screen1-unknown-signals-summary-grid",
         )
     else:
-        signal_summary_html = _render_empty_item("No persisted parser review signals are available.")
+        signal_summary_html = _render_empty_item(
+            "No persisted parser review signals are available. "
+            "Persisted parser governance backlog item, not a new runtime parser failure."
+        )
 
     return f"""
       <section class="card secondary screen1-parser-review-unknown-signals"

@@ -826,6 +826,77 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("screen1SourceIntakeServiceRestartCommand", source)
         self.assertIn("Workflow service supports screen1_source_intake_execute", source)
 
+    def test_screen1_source_intake_reconciles_stored_request_on_page_load(self) -> None:
+        source = read_dashboard_source_text()
+
+        self.assertIn("function reconcileScreen1SourceIntakeStatus(root, state)", source)
+        self.assertIn("screen1SourceIntakeActionRequestFromState(element, safeState)", source)
+        self.assertIn("invokePhase7Get(screen1SourceIntakeStatusEndpoint(requestId))", source)
+        self.assertIn("readLocalStorageState()", source)
+        self.assertIn("parseHashState(window.location.hash)", source)
+        self.assertIn("reconcileScreen1SourceIntakeStatus(scope, appliedState)", source)
+        self.assertIn("reconcileScreen1SourceIntakeStatus(document, appliedState)", source)
+        self.assertIn("Polling resumed after page navigation", source)
+        self.assertIn("scheduleScreen1SourceIntakePoll(element, actionRequest, Date.now())", source)
+
+    def test_screen1_source_intake_status_matrix_stops_terminal_statuses(self) -> None:
+        source = read_dashboard_source_text()
+
+        self.assertIn("function screen1SourceIntakeStatusIsRunning(status)", source)
+        self.assertIn("function screen1SourceIntakeStatusIsTerminal(status)", source)
+        for status in (
+            "accepted",
+            "pending",
+            "running",
+            "completed",
+            "completed_artifact_ready",
+            "failed",
+            "failed_safely",
+            "rejected",
+            "timed_out",
+        ):
+            self.assertIn(status, source)
+        self.assertIn("finishScreen1SourceIntakeCompleted(element, actionRequest, body)", source)
+        self.assertIn("failScreen1SourceIntake(", source)
+        self.assertIn("clearScreen1SourceIntakePolling()", source)
+
+    def test_screen1_source_intake_persists_request_id_before_backend_response(self) -> None:
+        source = read_dashboard_source_text()
+
+        self.assertIn("request_id: actionRequest.request_id", source)
+        self.assertIn("payload.request_id ||", source)
+        self.assertIn("nextState.sourceHandoffRequestId ||", source)
+        self.assertIn("nextState.sourceHandoffRequestId = requestId", source)
+        self.assertIn("screen1SourceIntakePayloadWithRequest(actionRequest, result.payload)", source)
+
+    def test_screen1_completed_source_intake_hydrates_visible_ui_from_persisted_state(self) -> None:
+        source = read_dashboard_source_text()
+
+        self.assertIn("SCREEN1_SOURCE_INTAKE_DURABLE_STATE_KEYS", source)
+        self.assertIn("screen1SourceIntakeStateIsCompletedArtifactReady", source)
+        self.assertIn("screen1SourceIntakeHasPersistedRequest(nextState)", source)
+        self.assertIn("Object.assign(nextState, durableScreen1State)", source)
+        self.assertIn("if (screen1SourceIntakeStateIsCompletedArtifactReady(safeState))", source)
+        self.assertIn("Completed source intake request", source)
+        self.assertIn("Source intake completed with artifact-ready status", source)
+        self.assertIn("No source intake request has been submitted.", source)
+        self.assertLess(
+            source.index("screen1SourceIntakeHasPersistedRequest(safeState)"),
+            source.index("active: 'No source selected'"),
+        )
+
+    def test_screen1_terminal_source_intake_status_panel_hydrates_without_reload_loop(self) -> None:
+        source = read_dashboard_source_text()
+
+        self.assertIn("function screen1SourceIntakePayloadFromState(actionRequest, state)", source)
+        self.assertIn("function hydrateScreen1SourceIntakeStatusFromState(root, state)", source)
+        self.assertIn("dashboard_regenerated: artifactReady", source)
+        self.assertIn("Generated artifact path", source)
+        self.assertIn("const terminalStoredStatus = screen1SourceIntakeStatusIsTerminal(currentStatus)", source)
+        self.assertIn("hydrateScreen1SourceIntakeStatusFromState(scope, safeState)", source)
+        self.assertIn("Backend status confirms generated artifact readiness", source)
+        self.assertIn("setScreen1GeneratedArtifactReadyState(true, body)", source)
+
     def test_pipeline_source_summary_is_compact_and_overflow_safe(self) -> None:
         module = validation_module()
         source = read_dashboard_source_text()

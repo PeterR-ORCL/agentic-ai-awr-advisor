@@ -551,6 +551,110 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("copyScreen2RuntimeOptionsContinuityState(", source)
         self.assertIn("screen3ReconcileCachedSelectionState(restoredState, cache)", source)
 
+    def test_existing_platform_evidence_selected_context_gates_downstream_display(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+        styles = read_text(ROOT / "src" / "reporting" / "dashboard" / "styles.py")
+
+        self.assertIn("function screen2ExistingEvidenceContextSelected(state)", source)
+        self.assertIn("function screen2ExistingEvidenceFreshReady(state)", source)
+        self.assertIn("function dashboardSelectedEvidenceContextAvailable(state)", source)
+        self.assertIn("function dashboardEvidenceContextMode(state)", source)
+        self.assertIn("screen2_existing_evidence_live", source)
+        self.assertIn("screen2_existing_evidence_cached", source)
+        self.assertIn("function preserveScreen2ExistingEvidenceContextState(state)", source)
+        self.assertIn("SCREEN2_EXISTING_EVIDENCE_CONTEXT_STATE_KEYS", source)
+        self.assertIn("screen3SelectedRuntimeScopeRowId", source)
+        self.assertIn("screen3SelectedTargetARowId", source)
+        self.assertIn("screen3SelectedTargetBRowId", source)
+        self.assertIn("selectedRuntimeScope", source)
+        self.assertIn("screen3RuntimeOptionsAreLoaded(safeState)", source)
+        self.assertIn("screen2ExistingEvidenceContextSelected(safeState)", source)
+        self.assertIn(
+            "if (!dashboardSelectedEvidenceContextAvailable(safeState) && !sourceSelectionIsCurrent(safeState))",
+            source,
+        )
+        self.assertIn("const contextAvailable = dashboardSelectedEvidenceContextAvailable(safeState)", source)
+        self.assertIn("data-dashboard-evidence-context-available", source)
+        self.assertIn("body[data-dashboard-evidence-context-available=\"true\"]", styles)
+        self.assertIn(
+            "Screen 2 selected existing evidence is restored from browser cache for display continuity only.",
+            source,
+        )
+        self.assertIn(
+            "Screen 2 selected existing evidence is current from a fresh runtime-options response.",
+            source,
+        )
+        self.assertIn("Target A Context", source)
+        self.assertIn("Target B Context", source)
+        self.assertIn("Runtime Scope selection required for Diagnostic Snapshot", source)
+        self.assertNotIn("comparison output created by selected context", source.lower())
+
+    def test_screen2_runtime_selection_deselect_controls_are_scoped(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+        styles = read_text(ROOT / "src" / "reporting" / "dashboard" / "styles.py")
+        select_start = source.index("function selectDashboardElement(element)")
+        select_end = source.index("function handleDashboardStateInput(event)")
+        select_function = source[select_start:select_end]
+        clear_start = source.index("function handleScreen3RuntimeSelectionClearClick(event)")
+        clear_end = source.index("function handleDashboardSelectableClick(event)")
+        clear_handler = source[clear_start:clear_end]
+
+        self.assertIn("SCREEN3_RUNTIME_SCOPE_SELECTION_KEYS", source)
+        self.assertIn("SCREEN3_TARGET_A_SELECTION_KEYS", source)
+        self.assertIn("SCREEN3_TARGET_B_SELECTION_KEYS", source)
+        self.assertIn("function clearScreen3RuntimeScopeSelection(state)", source)
+        self.assertIn("function clearScreen3ComparisonTargetSelection(state, targetName)", source)
+        self.assertIn("function clearScreen3RuntimeSelection(state, selectionName)", source)
+        self.assertIn("function screen3RuntimeRowAlreadySelectedForTarget(state, targetName, rowId)", source)
+        self.assertIn(
+            "screen3RuntimeRowAlreadySelectedForTarget(previousState, activeSelectionTarget, selectedRowId)",
+            select_function,
+        )
+        self.assertIn("clearScreen3RuntimeSelection(nextState, activeSelectionTarget)", select_function)
+        self.assertIn("refreshScreen3RuntimeAssignmentUi(document, nextState)", select_function)
+
+        for value in ("runtime-scope", "target-a", "target-b", "comparison-targets", "all"):
+            with self.subTest(value=value):
+                self.assertIn(f'data-screen3-clear-runtime-selection="{value}"', source)
+
+        self.assertIn("SCREEN3_RUNTIME_SELECTION_CLEAR_SELECTOR", source)
+        self.assertIn("handleScreen3RuntimeSelectionClearClick", source)
+        self.assertIn("document.addEventListener('click', handleScreen3RuntimeSelectionClearClick)", source)
+        self.assertIn("readDashboardStateBeforeScreen2EvidenceEnforcement()", clear_handler)
+        self.assertIn("screen2RuntimeOptionsContinuityStateForSelection(", clear_handler)
+        self.assertIn("clearScreen3RuntimeSelection(nextState, clearMode)", clear_handler)
+        self.assertIn("updateScreen2ExistingEvidenceReadiness(nextState)", clear_handler)
+        self.assertIn("writeDashboardState(nextState)", clear_handler)
+        self.assertIn("refreshScreen3RuntimeAssignmentUi(document, nextState)", clear_handler)
+        self.assertNotIn("screen3RuntimeOptionsLoadedRows = '0'", clear_handler)
+        self.assertNotIn("screen3RuntimeOptionsCount = '0'", clear_handler)
+        self.assertIn(".screen3-selection-clear-controls", styles)
+
+        target_a_keys = source[
+            source.index("const SCREEN3_TARGET_A_SELECTION_KEYS"):
+            source.index("const SCREEN3_TARGET_B_SELECTION_KEYS")
+        ]
+        target_b_keys = source[
+            source.index("const SCREEN3_TARGET_B_SELECTION_KEYS"):
+            source.index("function clearDashboardStateKeys")
+        ]
+        runtime_keys = source[
+            source.index("const SCREEN3_RUNTIME_SCOPE_SELECTION_KEYS"):
+            source.index("const SCREEN3_TARGET_A_SELECTION_KEYS")
+        ]
+        self.assertIn("'screen3SelectedRuntimeScopeRowId'", runtime_keys)
+        self.assertIn("'selectedRuntimeScope'", runtime_keys)
+        self.assertNotIn("'screen3SelectedTargetARowId'", runtime_keys)
+        self.assertNotIn("'screen3SelectedTargetBRowId'", runtime_keys)
+        self.assertIn("'screen3SelectedTargetARowId'", target_a_keys)
+        self.assertIn("'selectedComparisonTargetA'", target_a_keys)
+        self.assertNotIn("'screen3SelectedRuntimeScopeRowId'", target_a_keys)
+        self.assertNotIn("'screen3SelectedTargetBRowId'", target_a_keys)
+        self.assertIn("'screen3SelectedTargetBRowId'", target_b_keys)
+        self.assertIn("'selectedComparisonTargetB'", target_b_keys)
+        self.assertNotIn("'screen3SelectedRuntimeScopeRowId'", target_b_keys)
+        self.assertNotIn("'screen3SelectedTargetARowId'", target_b_keys)
+
     def test_no_unsafe_direct_runtime_paths_are_introduced(self) -> None:
         dashboard = dashboard_module()
         rendered = self.render_screen3().lower()

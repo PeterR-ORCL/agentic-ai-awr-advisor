@@ -1128,6 +1128,7 @@ def _build_dashboard_interactivity_javascript() -> str:
       const SCREEN3_OPTIONS_LOAD_SELECTOR = '[data-screen3-runtime-options-load="true"]';
       const SCREEN3_RUNTIME_FILTER_APPLY_SELECTOR = '[data-screen3-runtime-filters-apply="true"]';
       const SCREEN3_RUNTIME_FILTER_CLEAR_SELECTOR = '[data-screen3-runtime-filters-clear="true"]';
+      const SCREEN3_RUNTIME_SELECTION_CLEAR_SELECTOR = '[data-screen3-clear-runtime-selection]';
 	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
 	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
 	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
@@ -1341,6 +1342,89 @@ def _build_dashboard_interactivity_javascript() -> str:
         'dashboardEvidenceSessionId',
         'dashboardEvidenceReady'
       ]);
+      const SCREEN2_EXISTING_EVIDENCE_CONTEXT_STATE_KEYS = Object.freeze([
+        'selectedSourceMode',
+        'sourceSelectionMethod',
+        'sourceSelectionActivated',
+        'selectedRunReference',
+        'existingRunLookupStatus',
+        'existingRunLookupMessage',
+        'existingRunLookupCount',
+        'selectedApplication',
+        'selectedDb',
+        'selectedDbid',
+        'selectedHost',
+        'selectedSystem',
+        'selectedInstance',
+        'selectedAwr',
+        'selectedRun',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'screen3ActiveSelectionTarget',
+        'screen3RuntimeScopeSelectionSource',
+        'screen3TargetASelectionSource',
+        'screen3TargetBSelectionSource',
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedTargetARowId',
+        'screen3SelectedTargetBRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'screen3SelectedTargetAIntervalId',
+        'screen3SelectedTargetBIntervalId',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetB',
+        'selectedComparisonTargetASourceType',
+        'selectedComparisonTargetBSourceType',
+        'selectedComparisonTargetAScopeType',
+        'selectedComparisonTargetBScopeType',
+        'selectedComparisonTargetAScopeValue',
+        'selectedComparisonTargetBScopeValue',
+        'selectedComparisonTargetATimeWindow',
+        'selectedComparisonTargetBTimeWindow',
+        'selectedComparisonTargetAResolutionState',
+        'selectedComparisonTargetBResolutionState',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonTargetAResolutionSummary',
+        'selectedComparisonTargetBResolutionSummary',
+        'selectedComparisonTargetAAwrCount',
+        'selectedComparisonTargetBAwrCount',
+        'selectedComparisonTargetASnapshotCount',
+        'selectedComparisonTargetBSnapshotCount',
+        'selectedComparisonTargetAMissingGates',
+        'selectedComparisonTargetBMissingGates',
+        'selectedComparisonAwrA',
+        'selectedComparisonAwrB',
+        'selectedComparisonSnapshotA',
+        'selectedComparisonSnapshotB',
+        'selectedComparisonWindowA',
+        'selectedComparisonWindowB',
+        'screen3RuntimeOptionsStatus',
+        'screen3RuntimeOptionsMessage',
+        'screen3RuntimeOptionsCount',
+        'screen3RuntimeOptionsLoadedRows',
+        'screen3RuntimeOptionsIncludedTables',
+        'screen3RuntimeOptionsLoadedAt',
+        'screen3RuntimeOptionsDbPersistenceStatus',
+        'screen3RuntimeOptionsCacheStatus',
+        'screen3RuntimeOptionsSourceTables',
+        'screen3RuntimeOptionsCoverageMessage',
+        'screen3LiveServiceStatus',
+        'screen3LiveServiceStatusSource',
+        'screen3LiveServiceStatusCheckedAt',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeOptionsLoadRequestId',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt'
+      ]);
       const PHASE7CM_ALLOWED_LOCAL_FILE_EXTENSIONS = Object.freeze(['out']);
       const PHASE7CM_AWR_CANDIDATE_EXTENSIONS = Object.freeze(['out']);
       let dashboardInteractivityInitialized = false;
@@ -1540,6 +1624,21 @@ def _build_dashboard_interactivity_javascript() -> str:
         return preserved;
       }
 
+      function preserveScreen2ExistingEvidenceContextState(state) {
+        const preserved = {};
+        SCREEN2_EXISTING_EVIDENCE_CONTEXT_STATE_KEYS.forEach(function (key) {
+          if (state && state[key]) {
+            preserved[key] = state[key];
+          }
+        });
+        if (Object.keys(preserved).length) {
+          preserved.selectedSourceMode = 'existing_run';
+          preserved.sourceSelectionMethod = preserved.sourceSelectionMethod || 'existing_run_reference';
+          preserved.sourceSelectionActivated = 'true';
+        }
+        return sanitizeDashboardState(preserved);
+      }
+
       function withoutInactiveSourceSelection(state) {
         const nextState = sanitizeDashboardState(state || {});
         if (sourceSelectionIsCurrent(nextState)) {
@@ -1548,11 +1647,17 @@ def _build_dashboard_interactivity_javascript() -> str:
         const durableScreen1State = screen1SourceIntakeHasPersistedRequest(nextState)
           ? preserveScreen1SourceIntakeDurableState(nextState)
           : {};
+        const durableScreen2State = screen2ExistingEvidenceContextSelected(nextState)
+          ? preserveScreen2ExistingEvidenceContextState(nextState)
+          : {};
         PHASE7CM_SOURCE_SELECTION_STATE_KEYS.forEach(function (key) {
           delete nextState[key];
         });
         Object.assign(nextState, durableScreen1State);
-        nextState.sourceSelectionActivated = '';
+        Object.assign(nextState, durableScreen2State);
+        if (!durableScreen2State.selectedSourceMode) {
+          nextState.sourceSelectionActivated = '';
+        }
         return sanitizeDashboardState(nextState);
       }
 
@@ -1971,9 +2076,11 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
+        const storedState = isDownstreamEvidencePage() ? readLocalStorageState() : {};
         const hashState = parseHashState(window.location.hash);
         const explicitState = Object.assign(
           {},
+          storedState,
           hashState
         );
         let state = Object.assign({}, defaultState, explicitState);
@@ -2862,7 +2969,29 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
-      function screen2ExistingEvidenceReady(state) {
+      function screen2ExistingEvidenceContextSelected(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const runtimeScopeContext = Boolean(
+          safeState.screen3SelectedRuntimeScopeRowId ||
+          safeState.selectedRuntimeScope ||
+          safeState.selectedRunReference ||
+          safeState.selectedRuntimeScopeResolutionState
+        );
+        const comparisonTargetContext = Boolean(
+          safeState.screen3SelectedTargetARowId ||
+          safeState.screen3SelectedTargetBRowId ||
+          safeState.selectedComparisonTargetA ||
+          safeState.selectedComparisonTargetB ||
+          safeState.selectedComparisonTargetAScopeValue ||
+          safeState.selectedComparisonTargetBScopeValue
+        );
+        return Boolean(
+          screen3RuntimeOptionsAreLoaded(safeState) &&
+          (runtimeScopeContext || comparisonTargetContext)
+        );
+      }
+
+      function screen2ExistingEvidenceFreshReady(state) {
         const safeState = sanitizeDashboardState(state || {});
         return Boolean(
           sourceSelectionIsCurrent(safeState) &&
@@ -2876,11 +3005,15 @@ def _build_dashboard_interactivity_javascript() -> str:
         );
       }
 
+      function screen2ExistingEvidenceReady(state) {
+        return screen2ExistingEvidenceFreshReady(state);
+      }
+
       function dashboardEvidenceIsReady(state) {
         const safeState = sanitizeDashboardState(state || {});
         return Boolean(
           safeState.currentOperatorEvidenceSession &&
-          (screen1ArtifactEvidenceReady(safeState) || screen2ExistingEvidenceReady(safeState))
+          (screen1ArtifactEvidenceReady(safeState) || screen2ExistingEvidenceFreshReady(safeState))
         );
       }
 
@@ -2889,10 +3022,173 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (screen1ArtifactEvidenceReady(safeState)) {
           return 'screen1_artifact_ready';
         }
-        if (screen2ExistingEvidenceReady(safeState)) {
+        if (screen2ExistingEvidenceFreshReady(safeState)) {
           return 'screen2_existing_evidence_ready';
         }
         return '';
+      }
+
+      function dashboardEvidenceContextMode(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (screen2ExistingEvidenceContextSelected(safeState)) {
+          return screen3RuntimeOptionsLiveLoaded(safeState)
+            ? 'screen2_existing_evidence_live'
+            : 'screen2_existing_evidence_cached';
+        }
+        if (screen1ArtifactEvidenceReady(safeState)) {
+          return 'screen1_generated_artifact';
+        }
+        return 'none';
+      }
+
+      function dashboardSelectedEvidenceContextAvailable(state) {
+        return dashboardEvidenceContextMode(state) !== 'none';
+      }
+
+      function dashboardEvidenceContextLabel(state) {
+        const mode = dashboardEvidenceContextMode(state);
+        if (mode === 'screen1_generated_artifact') {
+          return 'Screen 1 generated artifact is ready from governed backend source intake.';
+        }
+        if (mode === 'screen2_existing_evidence_live') {
+          return 'Screen 2 selected existing evidence is current from a fresh runtime-options response.';
+        }
+        if (mode === 'screen2_existing_evidence_cached') {
+          return 'Screen 2 selected existing evidence is restored from browser cache for display continuity only.';
+        }
+        return 'No selected evidence context yet.';
+      }
+
+      const SCREEN3_RUNTIME_SCOPE_SELECTION_KEYS = Object.freeze([
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'screen3RuntimeScopeSelectionSource',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSummary',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'selectedApplication',
+        'selectedDb',
+        'selectedDbid',
+        'selectedHost',
+        'selectedSystem',
+        'selectedInstance',
+        'selectedAwr',
+        'selectedRun',
+        'selectedRunReference',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt'
+      ]);
+
+      const SCREEN3_TARGET_A_SELECTION_KEYS = Object.freeze([
+        'screen3SelectedTargetARowId',
+        'screen3SelectedTargetAIntervalId',
+        'screen3TargetASelectionSource',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetASourceType',
+        'selectedComparisonTargetAScopeType',
+        'selectedComparisonTargetAScopeValue',
+        'selectedComparisonTargetATimeWindow',
+        'selectedComparisonTargetAResolutionState',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetAResolutionSummary',
+        'selectedComparisonTargetAAwrCount',
+        'selectedComparisonTargetASnapshotCount',
+        'selectedComparisonTargetAMissingGates',
+        'selectedComparisonAwrA',
+        'selectedComparisonSnapshotA',
+        'selectedComparisonWindowA',
+        'selectedComparisonBothComparable'
+      ]);
+
+      const SCREEN3_TARGET_B_SELECTION_KEYS = Object.freeze([
+        'screen3SelectedTargetBRowId',
+        'screen3SelectedTargetBIntervalId',
+        'screen3TargetBSelectionSource',
+        'selectedComparisonTargetB',
+        'selectedComparisonTargetBSourceType',
+        'selectedComparisonTargetBScopeType',
+        'selectedComparisonTargetBScopeValue',
+        'selectedComparisonTargetBTimeWindow',
+        'selectedComparisonTargetBResolutionState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonTargetBResolutionSummary',
+        'selectedComparisonTargetBAwrCount',
+        'selectedComparisonTargetBSnapshotCount',
+        'selectedComparisonTargetBMissingGates',
+        'selectedComparisonAwrB',
+        'selectedComparisonSnapshotB',
+        'selectedComparisonWindowB',
+        'selectedComparisonBothComparable'
+      ]);
+
+      function clearDashboardStateKeys(state, keys) {
+        const nextState = state || {};
+        (keys || []).forEach(function (key) {
+          nextState[key] = '';
+        });
+        return nextState;
+      }
+
+      function clearScreen3RuntimeScopeSelection(state) {
+        const nextState = clearDashboardStateKeys(state, SCREEN3_RUNTIME_SCOPE_SELECTION_KEYS);
+        writeOperatorSessionValue('screen2RuntimeScopeSelectionEpoch', '');
+        return nextState;
+      }
+
+      function clearScreen3ComparisonTargetSelection(state, targetName) {
+        if (targetName === 'Target A') {
+          return clearDashboardStateKeys(state, SCREEN3_TARGET_A_SELECTION_KEYS);
+        }
+        if (targetName === 'Target B') {
+          return clearDashboardStateKeys(state, SCREEN3_TARGET_B_SELECTION_KEYS);
+        }
+        return state || {};
+      }
+
+      function clearScreen3RuntimeSelection(state, selectionName) {
+        const nextState = state || {};
+        if (selectionName === 'Runtime Scope' || selectionName === 'runtime-scope') {
+          clearScreen3RuntimeScopeSelection(nextState);
+        } else if (selectionName === 'Target A' || selectionName === 'target-a') {
+          clearScreen3ComparisonTargetSelection(nextState, 'Target A');
+        } else if (selectionName === 'Target B' || selectionName === 'target-b') {
+          clearScreen3ComparisonTargetSelection(nextState, 'Target B');
+        } else if (selectionName === 'comparison-targets') {
+          clearScreen3ComparisonTargetSelection(nextState, 'Target A');
+          clearScreen3ComparisonTargetSelection(nextState, 'Target B');
+        } else if (selectionName === 'all') {
+          clearScreen3RuntimeScopeSelection(nextState);
+          clearScreen3ComparisonTargetSelection(nextState, 'Target A');
+          clearScreen3ComparisonTargetSelection(nextState, 'Target B');
+        }
+        return nextState;
+      }
+
+      function screen3SelectedRuntimeRowIdForTarget(state, targetName) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (targetName === 'Target A') {
+          return safeState.screen3SelectedTargetARowId || '';
+        }
+        if (targetName === 'Target B') {
+          return safeState.screen3SelectedTargetBRowId || '';
+        }
+        return safeState.screen3SelectedRuntimeScopeRowId || '';
+      }
+
+      function screen3RuntimeRowAlreadySelectedForTarget(state, targetName, rowId) {
+        const selectedRowId = safeStateValue(screen3SelectedRuntimeRowIdForTarget(state, targetName));
+        const clickedRowId = safeStateValue(rowId || '');
+        return Boolean(selectedRowId && clickedRowId && selectedRowId === clickedRowId);
       }
 
       function clearScreen2ExistingEvidenceState(state, options) {
@@ -3108,6 +3404,20 @@ def _build_dashboard_interactivity_javascript() -> str:
         return [dbLabel, hostLabel, windowText].filter(Boolean).join(' · ') || 'Selected row';
       }
 
+      function screen3ComparisonTargetCompactSummary(state, targetName) {
+        const safeState = sanitizeDashboardState(state || {});
+        const targetA = targetName === 'Target A';
+        const rowId = targetA ? safeState.screen3SelectedTargetARowId : safeState.screen3SelectedTargetBRowId;
+        const label = targetA ? safeState.selectedComparisonTargetA : safeState.selectedComparisonTargetB;
+        const scopeValue = targetA ? safeState.selectedComparisonTargetAScopeValue : safeState.selectedComparisonTargetBScopeValue;
+        const windowText = targetA ? safeState.selectedComparisonTargetATimeWindow : safeState.selectedComparisonTargetBTimeWindow;
+        const readiness = targetA ? safeState.selectedComparisonTargetAReadinessState : safeState.selectedComparisonTargetBReadinessState;
+        if (!(rowId || label || scopeValue || windowText || readiness)) {
+          return '';
+        }
+        return [label || scopeValue || rowId, windowText, readiness].filter(Boolean).join(' · ');
+      }
+
       function screen3RuntimeEvidencePathReadiness(state) {
         const safeState = sanitizeDashboardState(state || {});
         const mode = safeState.selectedSourceMode || (safeState.selectedRunReference ? 'existing_run' : '');
@@ -3115,8 +3425,14 @@ def _build_dashboard_interactivity_javascript() -> str:
         const artifactReady = screen1GeneratedArtifactReady(safeState);
         const runtimeOptionsLoaded = screen3RuntimeOptionsAreLoaded(safeState);
         const runtimeScopeSelected = screen3RuntimeScopeIsSelected(safeState);
+        const existingEvidenceContextSelected = screen2ExistingEvidenceContextSelected(safeState);
+        const contextMode = dashboardEvidenceContextMode(safeState);
+        const comparisonTargetContextSelected = Boolean(
+          screen3ComparisonTargetCompactSummary(safeState, 'Target A') ||
+          screen3ComparisonTargetCompactSummary(safeState, 'Target B')
+        );
 
-        if (!sourceCurrent) {
+        if (!sourceCurrent && !artifactReady && !existingEvidenceContextSelected) {
           return {
             path: 'None selected',
             readiness: 'No valid runtime evidence path yet',
@@ -3135,16 +3451,31 @@ def _build_dashboard_interactivity_javascript() -> str:
           };
         }
 
-        if (mode === 'existing_run') {
+        if (mode === 'existing_run' || existingEvidenceContextSelected) {
           if (runtimeScopeSelected) {
+            const restoredContext = contextMode === 'screen2_existing_evidence_cached';
             return {
               path: 'Existing Platform Evidence',
-              readiness: 'Runtime scope selected',
-              handoff: 'Existing Evidence Scope Ready for Downstream Review',
-              guidance: 'Current existing evidence scope, window, and target assignment are selected for governed downstream review.'
+              readiness: restoredContext
+                ? 'Runtime scope restored from browser cache'
+                : 'Runtime scope selected',
+              handoff: restoredContext
+                ? 'Existing Evidence Scope Restored for Display Continuity'
+                : 'Existing Evidence Scope Ready for Downstream Review',
+              guidance: restoredContext
+                ? 'Restored Screen 2 existing evidence is display continuity only; refresh runtime options before treating it as current backend truth.'
+                : 'Current existing evidence scope, window, and target assignment are selected for governed downstream review.'
             };
           }
           if (runtimeOptionsLoaded) {
+            if (comparisonTargetContextSelected) {
+              return {
+                path: 'Existing Platform Evidence',
+                readiness: 'Runtime Scope selection required for Diagnostic Snapshot',
+                nextStep: 'Select Runtime Scope',
+                guidance: 'Target A/B are selected as comparison-prep context only. Select Runtime Scope before Screen 3 presents Diagnostic Snapshot context.'
+              };
+            }
             return {
               path: 'Existing Platform Evidence',
               readiness: 'Runtime options loaded; row/scope selection required',
@@ -3205,6 +3536,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         }
         add('Path', readiness.path, 'None selected', { emphasis: true });
         add('Readiness', readiness.readiness, 'No valid runtime evidence path yet', { emphasis: true });
+        add('Evidence Context', dashboardEvidenceContextLabel(safeState), 'No selected evidence context yet', { emphasis: true });
         if (readiness.handoff) {
           add('Handoff / Next Step', readiness.handoff, '', { emphasis: true });
         } else if (readiness.nextStep) {
@@ -3221,6 +3553,10 @@ def _build_dashboard_interactivity_javascript() -> str:
             optional: !safeState.selectedRunReference && !screen3RuntimeScopeIsSelected(safeState)
           });
         }
+        const targetASummary = screen3ComparisonTargetCompactSummary(safeState, 'Target A');
+        const targetBSummary = screen3ComparisonTargetCompactSummary(safeState, 'Target B');
+        add('Target A Context', targetASummary, 'Target A not selected', { optional: !targetASummary });
+        add('Target B Context', targetBSummary, 'Target B not selected', { optional: !targetBSummary });
         return rows;
       }
 
@@ -3228,7 +3564,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
         scope.querySelectorAll('[data-screen3-source-context-summary="true"]').forEach(function (container) {
-          if (!sourceSelectionIsCurrent(safeState)) {
+          if (!dashboardSelectedEvidenceContextAvailable(safeState) && !sourceSelectionIsCurrent(safeState)) {
             container.innerHTML = '';
             container.setAttribute('data-screen3-source-context-mode', 'none');
             return;
@@ -3444,17 +3780,25 @@ def _build_dashboard_interactivity_javascript() -> str:
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
         const ready = dashboardEvidenceIsReady(safeState);
+        const contextAvailable = dashboardSelectedEvidenceContextAvailable(safeState);
+        const contextMode = dashboardEvidenceContextMode(safeState);
         if (document.body) {
           document.body.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+          document.body.setAttribute('data-dashboard-evidence-context-available', contextAvailable ? 'true' : 'false');
+          document.body.setAttribute('data-dashboard-evidence-context-mode', contextMode);
         }
         scope.querySelectorAll('[data-dashboard-evidence-gate-empty="true"]').forEach(function (element) {
-          element.hidden = ready;
+          element.hidden = contextAvailable;
           element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
+          element.setAttribute('data-dashboard-evidence-context-available', contextAvailable ? 'true' : 'false');
+          element.setAttribute('data-dashboard-evidence-context-mode', contextMode);
         });
         scope.querySelectorAll('[data-dashboard-evidence-gated-content="true"]').forEach(function (element) {
-          element.hidden = !ready;
+          element.hidden = !contextAvailable;
           element.setAttribute('data-dashboard-evidence-ready', ready ? 'true' : 'false');
-          if (ready) {
+          element.setAttribute('data-dashboard-evidence-context-available', contextAvailable ? 'true' : 'false');
+          element.setAttribute('data-dashboard-evidence-context-mode', contextMode);
+          if (contextAvailable) {
             applyScreen3TableStates(element);
           }
         });
@@ -4882,14 +5226,14 @@ def _build_dashboard_interactivity_javascript() -> str:
       function updateScreen3SourceHandoffEmptyState(state, root) {
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
-        const hasSourceContext = sourceSelectionIsCurrent(safeState) && Boolean(
+        const hasSourceContext = dashboardSelectedEvidenceContextAvailable(safeState) || (sourceSelectionIsCurrent(safeState) && Boolean(
           safeState.selectedSourceMode ||
           safeState.selectedRunReference ||
           safeState.objectStorageNamespace ||
           safeState.selectedSourcePath ||
           safeState.selectedLocalFileName ||
           safeState.sourceHandoffRequestId
-        );
+        ));
         scope.querySelectorAll('[data-screen3-source-handoff-empty="true"]').forEach(function (element) {
           element.hidden = hasSourceContext;
           element.setAttribute('data-screen3-source-handoff-state', hasSourceContext ? 'received' : 'missing');
@@ -5013,9 +5357,21 @@ def _build_dashboard_interactivity_javascript() -> str:
 		        const nextState = screen2RuntimeOptionsContinuityStateForSelection(
           selectionBaseState,
           selectType
-        );
+	        );
         const previousState = Object.assign({}, nextState);
-	        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
+        if (selectType === 'runtimeScope') {
+          const selectedRowId = valueForRuntimeScopeRow(element);
+          const activeSelectionTarget = screen2CurrentActiveSelectionTarget(nextState);
+          if (screen3RuntimeRowAlreadySelectedForTarget(previousState, activeSelectionTarget, selectedRowId)) {
+            nextState.screen3ActiveSelectionTarget = activeSelectionTarget;
+            clearScreen3RuntimeSelection(nextState, activeSelectionTarget);
+            updateScreen2ExistingEvidenceReadiness(nextState);
+            const writtenState = writeDashboardState(nextState);
+            refreshScreen3RuntimeAssignmentUi(document, nextState);
+            return writtenState;
+          }
+        }
+        if (SCREEN2_FOCUS_STATE_KEYS.indexOf(key) !== -1) {
 	          const selectedDomain = safeStateValue(element.getAttribute('data-dashboard-select-domain'));
 	          const selectedLabel = screen2LabelForSelectable(element, value);
 	          const inferredDomain = key === 'selectedDiagnosticSection'
@@ -8777,6 +9133,28 @@ def _build_dashboard_interactivity_javascript() -> str:
         submitDashboardAction(element);
       }
 
+      function handleScreen3RuntimeSelectionClearClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const element = event.target.closest(SCREEN3_RUNTIME_SELECTION_CLEAR_SELECTOR);
+        if (!element) {
+          return;
+        }
+        event.preventDefault();
+        const clearMode = safeStateValue(element.getAttribute('data-screen3-clear-runtime-selection'));
+        const baseState = screen2RuntimeOptionsContinuityStateForSelection(
+          readDashboardStateBeforeScreen2EvidenceEnforcement(),
+          'runtimeScope'
+        );
+        const nextState = sanitizeDashboardState(baseState || {});
+        clearScreen3RuntimeSelection(nextState, clearMode);
+        updateScreen2ExistingEvidenceReadiness(nextState);
+        const writtenState = writeDashboardState(nextState);
+        refreshScreen3RuntimeAssignmentUi(document, nextState);
+        return writtenState;
+      }
+
       function handleDashboardSelectableClick(event) {
         if (!event || !(event.target instanceof Element)) {
           return;
@@ -8825,8 +9203,9 @@ def _build_dashboard_interactivity_javascript() -> str:
           document.addEventListener('click', handleDashboardSelectableClick);
 	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
 	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
-	          document.addEventListener('click', handleScreen2GenerateExplanationClick);
+          document.addEventListener('click', handleScreen2GenerateExplanationClick);
           document.addEventListener('click', handlePhase7ActionClick);
+          document.addEventListener('click', handleScreen3RuntimeSelectionClearClick);
           document.addEventListener('click', handleScreen3RuntimeOptionsLoadClick);
           document.addEventListener('click', handleScreen3RuntimeFilterButtonClick);
           document.addEventListener('click', handleScreen3TableSortClick);
@@ -16751,6 +17130,23 @@ def _render_screen3_apply_selection_controls(
                 {escape(body)}
               </p>
               {_render_screen3_pill_controls(items, "Select where runtime rows and intervals should apply.")}
+              <div class="screen3-selection-clear-controls" aria-label="Clear runtime selections">
+                <button type="button"
+                        class="phase7cm-service-button secondary"
+                        data-screen3-clear-runtime-selection="runtime-scope">Clear Runtime Scope</button>
+                <button type="button"
+                        class="phase7cm-service-button secondary"
+                        data-screen3-clear-runtime-selection="target-a">Clear Target A</button>
+                <button type="button"
+                        class="phase7cm-service-button secondary"
+                        data-screen3-clear-runtime-selection="target-b">Clear Target B</button>
+                <button type="button"
+                        class="phase7cm-service-button secondary"
+                        data-screen3-clear-runtime-selection="comparison-targets">Clear comparison targets</button>
+                <button type="button"
+                        class="phase7cm-service-button secondary"
+                        data-screen3-clear-runtime-selection="all">Clear all selections</button>
+              </div>
             </article>
     """
 

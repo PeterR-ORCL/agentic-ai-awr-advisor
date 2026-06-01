@@ -35,10 +35,12 @@ def _shared_page_styles() -> str:
       display: none !important;
     }
     body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gated-content="true"],
+    body[data-dashboard-evidence-context-available="true"] [data-dashboard-evidence-gated-content="true"],
     [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-ready-content="true"] {
       display: block !important;
     }
     body[data-dashboard-evidence-ready="true"] [data-dashboard-evidence-gate-empty="true"],
+    body[data-dashboard-evidence-context-available="true"] [data-dashboard-evidence-gate-empty="true"],
     [data-screen1-generated-artifact-ready="true"] [data-screen1-artifact-empty-state="true"] {
       display: none !important;
     }
@@ -617,6 +619,16 @@ def _shared_page_styles() -> str:
       border: 1px solid rgba(159, 176, 199, 0.16);
       border-radius: 8px;
       background: rgba(8, 15, 26, 0.34);
+    }
+    .screen3-selection-clear-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .screen3-selection-clear-controls .phase7cm-service-button {
+      min-height: 32px;
+      padding: 7px 10px;
     }
     .screen3-comparison-target-panel,
     .screen3-comparison-preview-panel {

@@ -82,6 +82,8 @@ claim artifact readiness without backend execution returning
 
 Required fields are namespace, bucket, object name or prefix, and region. The
 current validation route is `/phase7/dashboard/object-storage/validate`.
+The detailed Screen 1 Object Storage source-intake contract is defined in
+`phase7cs_object_storage_source_intake_contract.md`.
 
 Allowed browser behavior is collecting and submitting Object Storage metadata.
 The browser must not expose credentials, call OCI APIs, list buckets, read
@@ -145,6 +147,9 @@ A safe Object Storage progression is:
 8. Return `completed_artifact_ready` only from the backend when the generated
    dashboard artifact is current.
 9. Keep Screens 3/4/5/6 gated until valid evidence handoff is active.
+
+The FU3 Object Storage source-intake contract formalizes these stages and keeps
+FU4/FU5 implementation work bounded to governed backend handoff behavior.
 
 The older `src/ingest/awr_adb_loader.py` path may remain a historical project
 capability, but it must not be wired directly into Screen 1 UI. If reused, it

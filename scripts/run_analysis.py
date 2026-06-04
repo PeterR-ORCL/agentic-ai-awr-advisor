@@ -66,6 +66,25 @@ SNAPSHOT_TIME_FORMATS = (
     "%d-%b-%Y %H:%M:%S",
     "%Y-%m-%d %H:%M:%S",
 )
+SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH = (
+    "/phase7/dashboard/screen3/evidence-context/explanation"
+)
+PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS = (
+    "/phase7/dashboard/health",
+    "/phase7/dashboard/actions",
+    "/phase7/dashboard/existing-runs",
+    SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH,
+)
+PHASE7_DASHBOARD_RUNTIME_DIR = Path(__file__).resolve().parents[1] / ".runtime"
+PHASE7_DASHBOARD_WORKFLOW_SERVICE_LOG_PATH = (
+    PHASE7_DASHBOARD_RUNTIME_DIR / "dashboard_workflow_service.log"
+)
+PHASE7_DASHBOARD_WORKFLOW_SERVICE_PID_PATH = (
+    PHASE7_DASHBOARD_RUNTIME_DIR / "dashboard_workflow_service.pid"
+)
+PHASE7_DASHBOARD_WORKFLOW_SERVICE_STATUS_PATH = (
+    PHASE7_DASHBOARD_RUNTIME_DIR / "dashboard_workflow_service.status.json"
+)
 
 
 def _load_local_env_file() -> tuple[bool, Path]:
@@ -131,6 +150,83 @@ def _phase7_dashboard_action_endpoint() -> str:
 def _phase7_dashboard_endpoint_is_local(endpoint: str) -> bool:
     parsed = urlparse(endpoint)
     return (parsed.hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}
+
+
+def _phase7_dashboard_service_command(host: str, port: int) -> str:
+    return (
+        "PYTHONPATH=. .venv/bin/python scripts/dashboard_workflow_service.py "
+        f"--host {host} --port {port}"
+    )
+
+
+def _phase7_dashboard_required_route_summary() -> str:
+    return ", ".join(PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS)
+
+
+def _phase7_dashboard_runtime_metadata() -> tuple[Path, Path, Path]:
+    return (
+        PHASE7_DASHBOARD_WORKFLOW_SERVICE_LOG_PATH,
+        PHASE7_DASHBOARD_WORKFLOW_SERVICE_PID_PATH,
+        PHASE7_DASHBOARD_WORKFLOW_SERVICE_STATUS_PATH,
+    )
+
+
+def _phase7_dashboard_write_runtime_status(
+    *,
+    host: str,
+    port: int,
+    process_id: int | None,
+    log_path: Path,
+    pid_path: Path,
+    status_path: Path,
+    reused_existing_service: bool,
+) -> None:
+    PHASE7_DASHBOARD_RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    if process_id is not None:
+        pid_path.write_text(f"{process_id}\n", encoding="utf-8")
+    route_status = {
+        route: True for route in PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS
+    }
+    payload = {
+        "service": "dashboard_workflow_service",
+        "host": host,
+        "port": port,
+        "pid": process_id,
+        "base_url": f"http://{host}:{port}",
+        "health_url": f"http://{host}:{port}/phase7/dashboard/health",
+        "log_path": str(log_path),
+        "pid_path": str(pid_path),
+        "required_routes": list(PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS),
+        "required_route_status": route_status,
+        "reused_existing_service": reused_existing_service,
+        "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    }
+    status_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _phase7_dashboard_running_service_process_id(port: int) -> int | None:
+    for process_id in _phase7_dashboard_port_process_ids(port):
+        if "dashboard_workflow_service.py" in _phase7_dashboard_process_command(process_id):
+            return process_id
+    return None
+
+
+def _print_phase7_dashboard_runtime_contract(host: str, port: int) -> None:
+    log_path, pid_path, status_path = _phase7_dashboard_runtime_metadata()
+    print(
+        "Dashboard runtime contract: run_analysis.py generates dashboard HTML "
+        "and starts or reuses a persistent local workflow service for interactive "
+        "runtime buttons."
+    )
+    print(f"Dashboard workflow service health: http://{host}:{port}/phase7/dashboard/health")
+    print(f"Manual service command: {_phase7_dashboard_service_command(host, port)}")
+    print(f"Dashboard workflow service PID file: {pid_path}")
+    print(f"Dashboard workflow service log: {log_path}")
+    print(f"Dashboard workflow service status file: {status_path}")
+    print(
+        "Required runtime routes: "
+        f"{_phase7_dashboard_required_route_summary()}."
+    )
 
 
 def _phase7_dashboard_local_service_running(host: str, port: int) -> bool:
@@ -214,6 +310,18 @@ def _phase7_dashboard_local_service_supports_health(host: str, port: int) -> boo
     return payload.get("service") == "dashboard_workflow_service"
 
 
+def _phase7_dashboard_local_service_advertises_required_routes(
+    host: str,
+    port: int,
+) -> bool:
+    health_payload = _phase7_dashboard_local_service_health_payload(host, port)
+    supported_endpoints = set(health_payload.get("supported_endpoints") or [])
+    return all(
+        route in supported_endpoints
+        for route in PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS
+    )
+
+
 def _phase7_dashboard_local_service_supports_screen2_explanation(host: str, port: int) -> bool:
     health_payload = _phase7_dashboard_local_service_health_payload(host, port)
     supported_endpoints = set(health_payload.get("supported_endpoints") or [])
@@ -295,6 +403,40 @@ def _phase7_dashboard_local_service_supports_screen3_options(host: str, port: in
     return bool(source_tables) and isinstance(target_resolution, dict)
 
 
+def _phase7_dashboard_local_service_supports_screen3_evidence_context_explanation(
+    host: str,
+    port: int,
+) -> bool:
+    health_payload = _phase7_dashboard_local_service_health_payload(host, port)
+    supported_endpoints = set(health_payload.get("supported_endpoints") or [])
+    if SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH not in supported_endpoints:
+        return False
+    status_code, payload = _phase7_dashboard_local_service_post_json_payload(
+        host,
+        port,
+        SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH,
+        {
+            "screen_id": "screen_3",
+            "request_type": "screen3_evidence_context_explanation",
+            "context_type": "evidence_context",
+            "provider_mode": "off",
+            "non_mutating_explanation_only": True,
+            "selected_scope_identity": {},
+            "evidence_inventory": {},
+            "context_classification": {},
+            "artifact_alignment": {},
+            "screen4_graphics_eligibility_hints": {},
+            "truth_boundary": {},
+        },
+    )
+    return (
+        status_code == 200
+        and payload.get("status") == "provider_off"
+        and payload.get("records_created") is False
+        and not payload.get("audit_reference")
+    )
+
+
 def _phase7_dashboard_local_service_supports_screen1_source_intake(
     host: str, port: int
 ) -> bool:
@@ -315,8 +457,12 @@ def _phase7_dashboard_local_service_supports_screen1_source_intake(
 def _phase7_dashboard_local_service_supports_required_routes(host: str, port: int) -> bool:
     return (
         _phase7_dashboard_local_service_supports_health(host, port)
+        and _phase7_dashboard_local_service_advertises_required_routes(host, port)
         and _phase7_dashboard_local_service_supports_screen2_explanation(host, port)
         and _phase7_dashboard_local_service_supports_screen3_options(host, port)
+        and _phase7_dashboard_local_service_supports_screen3_evidence_context_explanation(
+            host, port
+        )
         and _phase7_dashboard_local_service_supports_screen1_source_intake(host, port)
     )
 
@@ -392,30 +538,48 @@ def _ensure_dashboard_workflow_service() -> None:
     ).strip().lower()
     if autostart in {"0", "false", "no", "off"}:
         print("Dashboard workflow service autostart: disabled by environment.")
+        _print_phase7_dashboard_runtime_contract(
+            str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1")),
+            int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765")),
+        )
         return
 
     action_endpoint = _phase7_dashboard_action_endpoint()
+    host = str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1"))
+    port = int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765"))
     if not _phase7_dashboard_endpoint_is_local(action_endpoint):
         print(
             "Dashboard workflow service autostart: skipped for non-local "
             f"configured endpoint {action_endpoint}."
         )
+        _print_phase7_dashboard_runtime_contract(host, port)
         return
 
-    host = str(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_HOST", "127.0.0.1"))
-    port = int(os.getenv("PHASE7_DASHBOARD_WORKFLOW_SERVICE_PORT", "8765"))
     if _phase7_dashboard_local_service_running(host, port):
         if _phase7_dashboard_local_service_supports_required_routes(host, port):
+            log_path, pid_path, status_path = _phase7_dashboard_runtime_metadata()
+            _phase7_dashboard_write_runtime_status(
+                host=host,
+                port=port,
+                process_id=_phase7_dashboard_running_service_process_id(port),
+                log_path=log_path,
+                pid_path=pid_path,
+                status_path=status_path,
+                reused_existing_service=True,
+            )
             print(f"Dashboard workflow service is running at http://{host}:{port}")
+            print(f"Dashboard workflow service PID file: {pid_path}")
+            print(f"Dashboard workflow service log: {log_path}")
+            print(f"Dashboard workflow service status file: {status_path}")
             print("Keep this service running for interactive dashboard features.")
+            _print_phase7_dashboard_runtime_contract(host, port)
             return
         if _phase7_dashboard_stop_stale_local_service(host, port):
             print(
                 "Dashboard workflow service is already listening at "
                 f"http://{host}:{port}, but it does not expose the current "
-                "required runtime routes: /phase7/dashboard/health and "
-                "/phase7/dashboard/screen2/explanation and "
-                "/phase7/dashboard/screen3/options, or the current "
+                "required runtime routes: "
+                f"{_phase7_dashboard_required_route_summary()}, or the current "
                 "Screen 1 source intake action registry. A stale local "
                 "dashboard_workflow_service.py process was stopped; starting "
                 "the current service now."
@@ -424,18 +588,17 @@ def _ensure_dashboard_workflow_service() -> None:
             print(
                 "Dashboard workflow service is already listening at "
                 f"http://{host}:{port}, but it does not expose the current "
-                "required runtime routes: /phase7/dashboard/health and "
-                "/phase7/dashboard/screen2/explanation and "
-                "/phase7/dashboard/screen3/options, or the current "
+                "required runtime routes: "
+                f"{_phase7_dashboard_required_route_summary()}, or the current "
                 "Screen 1 source intake action registry. This usually means "
                 "an older service process is still running. Stop the stale "
                 f"process on port {port} (for example: lsof -i :{port}, "
-                "then terminate that PID) and restart with: .venv/bin/python "
-                "scripts/dashboard_workflow_service.py --host "
-                f"{host} --port {port}. Generated dashboard pages remain "
+                "then terminate that PID) and restart with: "
+                f"{_phase7_dashboard_service_command(host, port)}. Generated dashboard pages remain "
                 "viewable, but interactive features are unavailable until "
                 "the current workflow service is running."
             )
+            _print_phase7_dashboard_runtime_contract(host, port)
             return
 
     queue_dir = Path(
@@ -444,7 +607,8 @@ def _ensure_dashboard_workflow_service() -> None:
             str(Path(tempfile.gettempdir()) / "awr_phase7_dashboard_actions"),
         )
     )
-    log_path = Path(tempfile.gettempdir()) / "phase7cm-dashboard-workflow-service.log"
+    log_path, pid_path, status_path = _phase7_dashboard_runtime_metadata()
+    PHASE7_DASHBOARD_RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     service_script = Path(__file__).resolve().with_name(
         "dashboard_workflow_service.py"
     )
@@ -460,6 +624,10 @@ def _ensure_dashboard_workflow_service() -> None:
     ]
     env = os.environ.copy()
     env["AWR_PHASE7_DASHBOARD_ACTION_QUEUE"] = str(queue_dir)
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = "." + (
+        os.pathsep + existing_pythonpath if existing_pythonpath else ""
+    )
     process: subprocess.Popen[bytes] | None = None
     try:
         with log_path.open("a", encoding="utf-8") as log_handle:
@@ -469,14 +637,20 @@ def _ensure_dashboard_workflow_service() -> None:
                 env=env,
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
+                close_fds=True,
                 start_new_session=True,
             )
+        pid_path.write_text(f"{process.pid}\n", encoding="utf-8")
     except OSError as exc:
         print(f"Dashboard workflow service: unable to start local service: {exc}")
         return
 
     for _ in range(80):
         if process is not None and process.poll() is not None:
+            try:
+                pid_path.unlink(missing_ok=True)
+            except OSError:
+                pass
             print(
                 "Dashboard workflow service: local service process exited before "
                 f"becoming reachable; check {log_path}."
@@ -486,19 +660,38 @@ def _ensure_dashboard_workflow_service() -> None:
             _phase7_dashboard_local_service_running(host, port)
             and _phase7_dashboard_local_service_supports_required_routes(host, port)
         ):
+            _phase7_dashboard_write_runtime_status(
+                host=host,
+                port=port,
+                process_id=process.pid if process is not None else None,
+                log_path=log_path,
+                pid_path=pid_path,
+                status_path=status_path,
+                reused_existing_service=False,
+            )
             print(
                 "Dashboard workflow service: started local demo service at "
                 f"http://{host}:{port}/phase7/dashboard/actions "
                 f"(log: {log_path})."
             )
             print(f"Dashboard workflow service is running at http://{host}:{port}")
+            print(f"Dashboard workflow service PID: {process.pid if process is not None else 'unknown'}")
+            print(f"Dashboard workflow service PID file: {pid_path}")
+            print(f"Dashboard workflow service status file: {status_path}")
             print("Keep this service running for interactive dashboard features.")
+            _print_phase7_dashboard_runtime_contract(host, port)
             return
         time.sleep(0.25)
     print(
         "Dashboard workflow service: local service start requested but endpoint "
         f"{host}:{port} did not become reachable; check {log_path}."
     )
+    if process is not None and process.poll() is not None:
+        try:
+            pid_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    _print_phase7_dashboard_runtime_contract(host, port)
 
 
 def _normalize_terminology(text: str) -> str:
@@ -596,6 +789,10 @@ def _format_generated_at_local() -> str:
     year = local_now.year
     time_text = local_now.strftime("%I:%M %p").lstrip("0")
     return f"{month} {day}, {year}, {time_text}"
+
+
+def _dashboard_generated_session_id() -> str:
+    return f"dashboard-run-{time.time_ns()}"
 
 
 def _format_datetime_display(value: datetime | None) -> str:
@@ -5673,6 +5870,7 @@ if __name__ == "__main__":
     )
     feature_visual_series = _build_feature_visual_series(snapshot_contexts)
     generated_at_display = _format_generated_at_local()
+    dashboard_generated_session_id = _dashboard_generated_session_id()
     decision_posture = multi_snapshot_analysis["decision_posture"]
     db_ingestion_context = _db_ingestion_not_checked_context(
         "DB ingestion status not reported by current run."
@@ -5902,6 +6100,7 @@ if __name__ == "__main__":
         **canonical_payload,
         "title": canonical_payload["product"]["title"],
         "generated_at": generated_at_display,
+        "dashboard_generated_session_id": dashboard_generated_session_id,
         "executive_summary": executive_summary,
         "metadata": canonical_payload["metadata"],
         "scores": canonical_payload["scores"],

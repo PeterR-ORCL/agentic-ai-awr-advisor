@@ -354,12 +354,13 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <div>None selected. No valid runtime evidence path yet. Choose a path from Platform Entry.</div>
   <h3>Load Runtime Options</h3>
   <div hidden>
-  <h3>Work Area 1 - Select Runtime Scope</h3>
+  <p>Runtime Scope Selection</p>
+  <h3>Select Runtime Scope</h3>
   <h3>Load Runtime Options</h3>
   <p>screen2-control-card-grid</p>
   <p>screen2-control-info-box</p>
   <button type="button" class="phase7cm-service-button screen3-runtime-options-button" data-screen3-runtime-options-load="true">Load available runtime options</button>
-  <p>Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.</p>
+  <p>Dashboard workflow service is available, but it does not expose the runtime-control options route. Restart dashboard_workflow_service.py.</p>
   <p>/phase7/dashboard/screen3/options</p>
   <p>screen3_load_runtime_options</p>
   <p>screen3-runtime-filter-panel</p>
@@ -423,13 +424,13 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>AWR / Run and Snapshot / Time Window</p>
   <h4>Selected Runtime Scope / Assignment Summary</h4>
   <p>Effective Snapshot / Window</p>
-  <h3>Work Area 2 - Resolve Comparison Targets</h3>
+  <p>Comparison Target Preparation</p>
+  <h3>Resolve Comparison Targets</h3>
   <p>Target A and Target B identify selected candidate sides for later comparison review.</p>
   <p>Cached Target A/B labels restore operator context only; readiness must be confirmed by current governed backend metadata before downstream comparison review.</p>
   <p>Assignment records selection context only.</p>
   <p>Only its selected row gets the strong table highlight.</p>
-  <h4>Comparison Target A</h4>
-  <h4>Comparison Target B</h4>
+  <p>Targets: Target A unresolved · Target B unresolved</p>
   <p>Target A Resolution</p>
   <p>Target B Resolution</p>
   <p>source_type + scope_type + scope_value + time_window + resolution_state + readiness_state</p>
@@ -451,7 +452,8 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Anomaly review</p>
   <p>Period comparison</p>
   <p>Similarity review</p>
-  <h3>Work Area 3 - Submit Governed Action and Review Result</h3>
+  <p>Governed Request Handoff</p>
+  <h3>Submit Governed Action and Review Result</h3>
   <h3 class="screen3-governed-actions-card">Governed Actions</h3>
   <h3>Request / Result Receipt</h3>
   <p>Request receipt is not deterministic analysis truth unless a governed deterministic service returns a real output artifact reference.</p>
@@ -510,11 +512,11 @@ PHASE7CP_SCREEN3_FIXTURE = """
   <p>Runtime options restored from browser cache</p>
   <p>it is not current backend, runtime-options, readiness, request, or evidence truth</p>
   <p>Continuity only; not active backend truth</p>
-  <p>Refresh failed; cached runtime options were not activated</p>
-  <p>Cached runtime options are available for continuity only; they are not active evidence.</p>
+  <p>Dashboard workflow service unavailable. Cached runtime options can remain visible for continuity only</p>
+  <p>Cached runtime options are restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.</p>
   <p>Cached Screen 2 state restores operator context only.</p>
   <p>failed refresh must remain visible and must not promote cache to current truth.</p>
-  <p>Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.</p>
+  <p>Cached Screen 2 state restores operator context only.</p>
   <p>Cache Status</p>
   <p>Generated at build time</p>
   <p>Dashboard generated without DB context</p>
@@ -552,7 +554,7 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         "<p>No diagnostic evidence is selected yet.</p>"
         "</section>"
         '<div data-dashboard-evidence-gated-content="true" hidden>'
-        "Why This Posture. "
+        "Current Diagnostic Drivers. "
         "The Diagnostic Snapshot explains the currently selected deterministic evidence context. "
         "If this context is Target A or Target B, Screen 3 explains that target's individual deterministic diagnostic output only. "
         "Target labels do not change diagnosis, scores, confidence, severity, recommendations, evidence, or thresholds. "
@@ -575,7 +577,9 @@ PHASE7M_DOWNSTREAM_GATE_FIXTURES = {
         "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
         "Uses Target A/B context prepared in Screen 2. "
         "Prepared targets are selected context only. "
-        "selected targets and cache-restored state do not create comparison evidence. "
+        "Target A/B prepared-only state is not comparison output. "
+        "Selected targets and cache-restored state do not create comparison evidence. "
+        "Deterministic comparison output is required before A/B diagrams or future comparison violin panels can render. "
         "Screen 4 does not compute comparison in the browser. "
         "Deep Analysis is reserved for future structured expert evidence review. "
         "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output. "
@@ -1516,10 +1520,19 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             "/phase7/dashboard/actions/status",
             payload["supported_endpoints"],
         )
+        self.assertIn(
+            "/phase7/dashboard/screen3/evidence-context/explanation",
+            payload["supported_endpoints"],
+        )
         self.assertEqual(
             "/phase7/dashboard/actions/status",
             payload["screen1_source_intake_status_endpoint"],
         )
+        self.assertIn(
+            payload["screen3_evidence_context_explanation_provider_mode"],
+            payload["supported_provider_modes"],
+        )
+        self.assertFalse(payload["creates_screen3_evidence_context_records"])
         self.assertIn(
             "screen1_source_intake_execute",
             payload["supported_action_types"],
@@ -1566,7 +1579,19 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
             source,
         )
         self.assertIn(
+            "PHASE7_DASHBOARD_REQUIRED_RUNTIME_ENDPOINTS",
+            source,
+        )
+        self.assertIn(
+            "_phase7_dashboard_local_service_advertises_required_routes(host, port)",
+            source,
+        )
+        self.assertIn(
             "_phase7_dashboard_local_service_supports_screen3_options(host, port)",
+            source,
+        )
+        self.assertIn(
+            "_phase7_dashboard_local_service_supports_screen3_evidence_context_explanation",
             source,
         )
         self.assertIn(
@@ -1579,6 +1604,82 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
         )
         self.assertIn(
             "/phase7/dashboard/actions/status",
+            source,
+        )
+        self.assertIn(
+            "/phase7/dashboard/health",
+            source,
+        )
+        self.assertIn(
+            "/phase7/dashboard/actions",
+            source,
+        )
+        self.assertIn(
+            "/phase7/dashboard/existing-runs",
+            source,
+        )
+        self.assertIn(
+            "/phase7/dashboard/screen3/evidence-context/explanation",
+            source,
+        )
+        self.assertIn(
+            "Dashboard runtime contract: run_analysis.py generates dashboard HTML",
+            source,
+        )
+        self.assertIn(
+            "Dashboard workflow service health: http://{host}:{port}/phase7/dashboard/health",
+            source,
+        )
+        self.assertIn(
+            "PYTHONPATH=. .venv/bin/python scripts/dashboard_workflow_service.py ",
+            source,
+        )
+        self.assertIn(
+            'PHASE7_DASHBOARD_RUNTIME_DIR = Path(__file__).resolve().parents[1] / ".runtime"',
+            source,
+        )
+        self.assertIn(
+            'PHASE7_DASHBOARD_WORKFLOW_SERVICE_LOG_PATH',
+            source,
+        )
+        self.assertIn(
+            'PHASE7_DASHBOARD_WORKFLOW_SERVICE_PID_PATH',
+            source,
+        )
+        self.assertIn(
+            'PHASE7_DASHBOARD_WORKFLOW_SERVICE_STATUS_PATH',
+            source,
+        )
+        self.assertIn(
+            'env["PYTHONPATH"] = "."',
+            source,
+        )
+        self.assertIn(
+            "start_new_session=True",
+            source,
+        )
+        self.assertIn(
+            "close_fds=True",
+            source,
+        )
+        self.assertIn(
+            "_phase7_dashboard_write_runtime_status",
+            source,
+        )
+        self.assertIn(
+            "Dashboard workflow service PID file",
+            source,
+        )
+        self.assertIn(
+            "Dashboard workflow service status file",
+            source,
+        )
+        self.assertIn(
+            f"--host {{host}} --port {{port}}",
+            source,
+        )
+        self.assertIn(
+            "records_created",
             source,
         )
 

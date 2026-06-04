@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 import importlib
+import os
 import unittest
 
 
@@ -26,6 +28,69 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
             "confidence": "LOW",
             "deterministic_facts": "log file sync = 8.4",
             "non_mutating_explanation_only": True,
+        }
+
+    def valid_screen3_evidence_context_payload(self) -> dict[str, object]:
+        return {
+            "screen_id": "screen_3",
+            "request_type": "screen3_evidence_context_explanation",
+            "context_type": "evidence_context",
+            "provider_mode": "mock",
+            "non_mutating_explanation_only": True,
+            "selected_scope_identity": {
+                "context_type": "single_awr",
+                "runtime_scope": "AWR_ID:101 | RECCPU | reccpu1",
+                "dbid": "8101004001",
+                "db_name": "RECCPU",
+                "instance_name": "reccpu1",
+                "host": "reccpu-db01",
+                "window_begin": "2026-04-04T11:00:00",
+                "window_end": "2026-04-04T12:00:00",
+                "truth_source": "browser_cache_continuity",
+                "evidence_path": "Existing platform evidence",
+                "freshness": "Cached continuity only",
+            },
+            "evidence_inventory": {
+                "exact_selected_scope_evidence": "Cached continuity only",
+                "same_db_historical_evidence": "Context only",
+                "fleet_population_evidence": "Not inventoried",
+                "oem_ash_evidence": "Not inventoried",
+                "rac_evidence": "Not inventoried",
+                "dataguard_evidence": "Not inventoried",
+                "exadata_evidence": "Not inventoried",
+                "comparison_prepared_only": "Prepared only",
+                "deterministic_comparison_output": "No deterministic comparison output",
+                "comparison_status": "Prepared only",
+            },
+            "context_classification": {
+                "primary": "single_awr",
+                "flags": [
+                    "selected_runtime_scope",
+                    "comparison_prepared_only",
+                    "cached_continuity_only",
+                ],
+                "cache_status": "Cached continuity only",
+            },
+            "artifact_alignment": {
+                "status": "same_db_different_window",
+                "match_basis": ["DB identity matches; window differs"],
+                "mismatch_reason": "Same database historical evidence is available as context only.",
+            },
+            "screen4_graphics_eligibility_hints": {
+                "single_awr_graphics": "eligible_if_screen4_has_selected_scope_evidence",
+                "historical_trend_panels": "eligible_if_aligned_historical_evidence_exists",
+                "distribution_violins": "requires_aligned_multi_sample_evidence",
+                "comparison_graphics": "unavailable_without_deterministic_comparison_output",
+            },
+            "truth_boundary": {
+                "browser_cache_is_truth": False,
+                "selection_changes_diagnosis": False,
+                "selection_creates_historical_truth": False,
+                "target_ab_creates_comparison_truth": False,
+                "llm_changes_truth": False,
+            },
+            "cache_live_status": "Cached continuity only",
+            "target_ab_prepared_only": True,
         }
 
     def test_truth_source_registry_marks_cache_and_provider_non_authoritative(self) -> None:
@@ -232,6 +297,42 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertIn("request/result receipt meaning", envelope["allowed_explanation_scope"])
         self.assertIn("choose runtime scope", envelope["forbidden_mutations"])
         self.assertIn("decide improvement/degradation", envelope["forbidden_mutations"])
+
+    def test_screen3_evidence_context_scope_explains_review_context_not_graphics(self) -> None:
+        allowed = self.contract.RUNTIME_EXPLANATION_ALLOWED_SCOPES["screen_3"]
+        forbidden = self.contract.RUNTIME_EXPLANATION_FORBIDDEN_MUTATIONS["screen_3"]
+
+        for phrase in (
+            "already-computed evidence context",
+            "downstream evidence availability",
+            "artifact alignment meaning",
+            "Screen 4 review readiness meaning",
+            "graphics eligibility fallback explanation",
+            "single AWR versus historical context wording",
+            "same-DB historical context as context only",
+            "cached continuity wording",
+            "Target A/B prepared-only wording",
+        ):
+            with self.subTest(allowed=phrase):
+                self.assertIn(phrase, allowed)
+
+        for phrase in (
+            "classify evidence context",
+            "decide evidence availability",
+            "decide artifact alignment",
+            "decide graphics eligibility",
+            "choose graphics",
+            "render Screen 4 graphics",
+            "compute trends",
+            "compute anomalies",
+            "compute similarity",
+            "compare Target A vs Target B",
+            "compute comparison result",
+            "change recommendations",
+            "change runtime eligibility",
+        ):
+            with self.subTest(forbidden=phrase):
+                self.assertIn(phrase, forbidden)
 
     def test_screens3_through6_scopes_are_screen_specific_and_non_mutating(self) -> None:
         expected = {
@@ -666,6 +767,108 @@ class Phase7RuntimeLLMExplanationContractTest(unittest.TestCase):
         self.assertEqual(rejected["status"], "rejected")
         self.assertFalse(rejected["records_created"])
         self.assertIsNone(rejected["audit_reference"])
+
+    def test_screen3_evidence_context_explanation_route_is_non_mutating(self) -> None:
+        service = importlib.import_module("scripts.dashboard_workflow_service")
+        payload = self.valid_screen3_evidence_context_payload()
+
+        self.assertIn(
+            service.SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH,
+            service.SUPPORTED_ENDPOINT_PATHS,
+        )
+
+        result = service.generate_screen3_evidence_context_explanation(payload)
+
+        self.assertEqual(result["status"], "generated")
+        self.assertEqual(result["provider_mode"], "mock")
+        self.assertFalse(result["records_created"])
+        self.assertIsNone(result["audit_reference"])
+        self.assertFalse(result["records_created_expected"])
+        self.assertIsNone(result["audit_reference_expected"])
+        self.assertEqual(result["provider_output_status"], "generated")
+        self.assertEqual(result["boundary_validation_result"], "passed")
+        self.assertIn("Screen 3 currently treats", result["explanation"])
+        self.assertIn("Single AWR", result["explanation"])
+        self.assertIn("same-DB historical context is Context only", result["explanation"])
+        self.assertIn("comparison output is No deterministic comparison output", result["explanation"])
+        self.assertIn("Screen 4 must still verify deterministic evidence and alignment", result["explanation"])
+        self.assertIn("Target A/B selections are prepared context only", result["explanation"])
+        self.assertIn("does not change diagnosis", result["explanation"])
+
+        rejected = service.generate_screen3_evidence_context_explanation(
+            {**payload, "create_audit_record": True}
+        )
+        self.assertEqual(rejected["status"], "rejected")
+        self.assertFalse(rejected["records_created"])
+        self.assertIsNone(rejected["audit_reference"])
+
+    def test_screen3_evidence_context_explanation_accepts_nested_contract_payload(self) -> None:
+        service = importlib.import_module("scripts.dashboard_workflow_service")
+        env_key = "SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODE"
+        previous = os.environ.get(env_key)
+        os.environ[env_key] = "mock"
+        try:
+            result = service.generate_screen3_evidence_context_explanation(
+                {
+                    "screen_id": "screen_3",
+                    "request_type": "screen3_evidence_context_explanation",
+                    "context_type": "evidence_context",
+                    "non_mutating_explanation_only": True,
+                    "evidence_context_contract": {
+                        "selected_scope_identity": {
+                            "context_type": "single_awr",
+                            "db_name": "TESTDB",
+                            "dbid": "123",
+                            "instance_name": "test1",
+                            "host": "test-host",
+                            "run_reference": "AWR_ID:1",
+                        },
+                        "artifact_alignment": {
+                            "status": "unknown_alignment",
+                            "reason": "test",
+                        },
+                        "truth_boundary": {
+                            "llm_changes_truth": False,
+                        },
+                    },
+                }
+            )
+        finally:
+            if previous is None:
+                os.environ.pop(env_key, None)
+            else:
+                os.environ[env_key] = previous
+
+        self.assertEqual(result["status"], "generated")
+        self.assertEqual(result["provider_mode"], "mock")
+        self.assertFalse(result["records_created"])
+        self.assertIsNone(result["audit_reference"])
+        self.assertFalse(result["records_created_expected"])
+        self.assertIsNone(result["audit_reference_expected"])
+        self.assertEqual(result["boundary_validation_result"], "passed")
+        self.assertIn("AWR_ID:1", result["explanation"])
+        self.assertIn("Single AWR", result["explanation"])
+        self.assertIn("does not change diagnosis", result["explanation"])
+
+    def test_screen3_evidence_context_explanation_health_metadata(self) -> None:
+        service = importlib.import_module("scripts.dashboard_workflow_service")
+
+        self.assertIn(
+            service.HEALTH_ENDPOINT_PATH,
+            service.SUPPORTED_ENDPOINT_PATHS,
+        )
+        self.assertIn(
+            service.SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH,
+            service.SUPPORTED_ENDPOINT_PATHS,
+        )
+        self.assertIn(
+            "screen3_evidence_context_explanation_provider_mode",
+            inspect.getsource(service.Phase7DashboardWorkflowHandler._health_payload),
+        )
+        self.assertIn(
+            "creates_screen3_evidence_context_records",
+            inspect.getsource(service.Phase7DashboardWorkflowHandler._health_payload),
+        )
 
 
 if __name__ == "__main__":

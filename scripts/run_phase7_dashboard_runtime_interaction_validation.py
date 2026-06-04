@@ -1954,13 +1954,13 @@ def validate_generated_screen3_control_center(
         "Evidence path status",
         "completed artifact state from Screen 1",
         "DB-backed runtime options to select scope, interval, and comparison targets",
-        "Work Area 1",
+        "Runtime Scope Selection",
         "Select Runtime Scope",
-        "Work Area 2",
+        "Comparison Target Preparation",
         "Resolve Comparison Targets",
         "Target A and Target B identify selected candidate sides for later comparison review",
         "Assignment records selection context only",
-        "Work Area 3",
+        "Governed Request Handoff",
         "Submit Governed Action and Review Result",
         "Load Runtime Options",
         "Runtime Scope Filters",
@@ -2055,14 +2055,16 @@ def validate_generated_screen3_control_center(
         "Runtime options restored from browser cache",
         "it is not current backend, runtime-options, readiness, request, or evidence truth",
         "Continuity only; not active backend truth",
-        "cached runtime options were not activated",
-        "Cached runtime options are available for continuity only; they are not active evidence.",
+        "Dashboard workflow service unavailable",
+        "Cached runtime options can remain visible for continuity only",
+        "Cached runtime options are restored for continuity only",
+        "Re-query the workflow service before using runtime options for active evidence readiness",
         "Cached Screen 2 state restores operator context only",
         "failed refresh must remain visible and must not promote cache to current truth",
         "Cached Target A/B labels restore operator context only",
         "readiness must be confirmed by current governed backend metadata",
         "If receipt fields are restored from browser state, they are prior backend-returned context only until a current backend response supersedes them",
-        "Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response",
+        "Cached Screen 2 state restores operator context only",
         "Cache Status",
         "Generated at build time",
         "AI DB:",
@@ -2176,7 +2178,7 @@ def validate_generated_screen3_control_center(
         offenders.append(
             "generated Screen 3 Load Runtime Options buttons still use default/unstyled inline-action-button class"
         )
-    if "Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py." not in screen3_text:
+    if "Dashboard workflow service is available, but it does not expose the runtime-control options route. Restart dashboard_workflow_service.py." not in screen3_text:
         offenders.append(
             "generated runtime-control page missing runtime-options route recovery message"
         )
@@ -2348,7 +2350,9 @@ def validate_screens3_6_runtime_explanation_copy(
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here",
             "Uses Target A/B context prepared in Screen 2",
             "Prepared targets are selected context only",
-            "selected targets and cache-restored state do not create comparison evidence",
+            "Target A/B prepared-only state is not comparison output",
+            "Selected targets and cache-restored state do not create comparison evidence",
+            "Deterministic comparison output is required before A/B diagrams or future comparison violin panels can render",
             "Screen 4 does not compute comparison in the browser",
             "Deep Analysis is reserved for future structured expert evidence review",
             "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output",
@@ -3109,7 +3113,7 @@ def validate_generated_default_evidence_gating(
         ),
         "awr_dashboard/screen_4_historical_review.html": (
             "No review evidence is selected yet.",
-            ("Evidence Review / Historical Context", "Evidence Review Modes", "Historical Verdict", "Anomaly Burden", "SPRTRN / 8101005004"),
+            ("Evidence Review / Historical Context", "Evidence Review Modes", "Historical Context Summary", "Anomaly Burden", "SPRTRN / 8101005004"),
         ),
         "awr_dashboard/screen_5_recommendation_action.html": (
             "No recommendation/action context is selected yet.",

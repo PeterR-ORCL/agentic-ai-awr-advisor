@@ -12,6 +12,7 @@ DOCS = ROOT / "docs" / "architecture"
 HTML_DASHBOARD_PATH = ROOT / "src" / "reporting" / "html_dashboard.py"
 AI_METADATA_PATH = ROOT / "src" / "reporting" / "ai_display_metadata.py"
 RUN_ANALYSIS_PATH = ROOT / "scripts" / "run_analysis.py"
+STYLES_PATH = ROOT / "src" / "reporting" / "dashboard" / "styles.py"
 
 
 def read_text(path: Path) -> str:
@@ -50,15 +51,43 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn('"screen_3": "Screen 3 - Diagnostic Snapshot"', source)
         self.assertIn("Existing run truth unchanged", rendered)
         self.assertIn("Runtime Evidence Path", rendered)
+        self.assertIn("screen3-work-area-evidence-path", rendered)
+        self.assertIn('class="inline-action-link phase7cm-service-button"', rendered)
         self.assertIn("Evidence path status", rendered)
         self.assertIn("Load Runtime Options", rendered)
-        self.assertIn("Work Area 1", rendered)
+        self.assertIn("data-screen2-runtime-explanation=\"true\"", rendered)
+        self.assertIn(
+            "Dashboard workflow service unavailable. run_analysis.py should have started it; check .runtime/dashboard_workflow_service.pid",
+            rendered,
+        )
+        self.assertIn("The browser does not query the database directly", rendered)
+        self.assertIn(
+            "Loading options prepares selectable runtime-scope candidates only; it does not create diagnostic truth",
+            rendered,
+        )
+        self.assertIn(
+            "Selecting Runtime Scope prepares Screen 3 diagnostic context and Screen 4 review context",
+            rendered,
+        )
+        self.assertIn(
+            "Target A/B assignments are prepared-only until deterministic comparison output exists",
+            rendered,
+        )
+        self.assertIn("they do not decide comparison posture labels", rendered)
+        self.assertIn(
+            "Cached runtime options are restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.",
+            rendered,
+        )
+        self.assertNotIn("Work Area 1", rendered)
+        self.assertIn("Runtime Scope Selection", rendered)
         self.assertIn("Select Runtime Scope", rendered)
-        self.assertIn("Work Area 2", rendered)
+        self.assertNotIn("Work Area 2", rendered)
+        self.assertIn("Comparison Target Preparation", rendered)
         self.assertIn("Resolve Comparison Targets", rendered)
         self.assertIn("Target A and Target B identify selected candidate sides for later comparison review", rendered)
         self.assertIn("Assignment records selection context only", rendered)
-        self.assertIn("Work Area 3", rendered)
+        self.assertNotIn("Work Area 3", rendered)
+        self.assertIn("Governed Request Handoff", rendered)
         self.assertIn("Submit Governed Action and Review Result", rendered)
         self.assertIn("Runtime Scope Filters", rendered)
         self.assertIn("screen3-filter-select", rendered)
@@ -99,8 +128,16 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             source,
         )
         self.assertIn("Continuity only; not active backend truth", source)
-        self.assertIn("Refresh failed; cached runtime options were not activated", source)
+        self.assertIn("Dashboard workflow service unavailable", source)
+        self.assertIn("Build-time AI DB connection remains separate from browser runtime workflow service", source)
+        self.assertIn("Cached runtime options can remain visible for continuity only", source)
         self.assertIn("Cache Status", rendered)
+        self.assertNotIn("First Loaded", rendered)
+        self.assertIn("Evidence Sources", rendered)
+        self.assertNotIn("Included Selectable Tables", rendered)
+        self.assertLess(rendered.index("Options"), rendered.index("Last Loaded"))
+        self.assertLess(rendered.index("Last Loaded"), rendered.index("Cache Status"))
+        self.assertLess(rendered.index("Cache Status"), rendered.index("Evidence Sources"))
         self.assertIn(
             "Cached Screen 2 state restores operator context only",
             rendered,
@@ -127,8 +164,52 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("Snapshot / Interval Selection", rendered)
         self.assertIn("Apply interval to", rendered)
         self.assertIn("Selected AWR / Report Row", rendered)
+        self.assertIn("screen3-selected-report-row-grid", rendered)
         self.assertIn("Selected Runtime Scope / Assignment Summary", rendered)
         self.assertIn("Comparison &amp; Review Controls", rendered)
+        self.assertIn("<h5>Comparison Mode</h5>", rendered)
+        self.assertIn("<h5>Review Mode</h5>", rendered)
+        selected_row_fragment = rendered[
+            rendered.index("Selected AWR / Report Row"):rendered.index("Selected Runtime Scope / Assignment Summary")
+        ]
+        selected_row_order = (
+            "Source Table",
+            "DB / DBID",
+            "Host / Instance",
+            "Base Snapshot Window",
+            "Assignment Target",
+            "Review Mode",
+            "Resolution State",
+            "Run / Report",
+        )
+        for earlier, later in zip(selected_row_order, selected_row_order[1:]):
+            with self.subTest(selected_row_order=f"{earlier} before {later}"):
+                self.assertLess(selected_row_fragment.index(earlier), selected_row_fragment.index(later))
+        assignment_summary_fragment = rendered[
+            rendered.index("Selected Runtime Scope / Assignment Summary"):rendered.index("Comparison &amp; Review Controls")
+        ]
+        assignment_summary_order = (
+            "Effective DB / DBID",
+            "Effective Host / Instance",
+            "Selected Row / Report",
+            "Effective Snapshot / Window",
+            "Runtime Scope Summary",
+            "Assignment Target",
+            "Review Mode",
+            "Target A State",
+            "Target B State",
+        )
+        for earlier, later in zip(assignment_summary_order, assignment_summary_order[1:]):
+            with self.subTest(assignment_summary_order=f"{earlier} before {later}"):
+                self.assertLess(assignment_summary_fragment.index(earlier), assignment_summary_fragment.index(later))
+        comparison_card_start = rendered.index("screen3-comparison-controls-card")
+        comparison_mode_start = rendered.index("<h5>Comparison Mode</h5>", comparison_card_start)
+        review_mode_start = rendered.index("<h5>Review Mode</h5>", comparison_mode_start)
+        comparison_fragment = rendered[comparison_mode_start:review_mode_start]
+        comparison_order = ("Current DB history", "Similar AWRs", "Fleet baseline", "Cluster baseline")
+        for earlier, later in zip(comparison_order, comparison_order[1:]):
+            with self.subTest(comparison_order=f"{earlier} before {later}"):
+                self.assertLess(comparison_fragment.index(earlier), comparison_fragment.index(later))
         self.assertIn(
             "Cached Target A/B labels restore operator context only",
             rendered,
@@ -169,6 +250,21 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("screen3LiveServiceStatusCheckedAt", source)
         self.assertIn("screen3WorkflowRuntimeFreshChecked", source)
         self.assertIn("dashboardRuntimeModeSuppressesCachedWorkflow", source)
+        self.assertIn("markDashboardWorkflowStatusCheckedThisPage", source)
+        self.assertIn("dashboardWorkflowStatusCheckedThisPage", source)
+        self.assertIn("dashboardWorkflowLiveStatusLabel", source)
+        self.assertIn("dashboardWorkflowLiveStatusStorageValue", source)
+        self.assertIn("currentSessionWorkflowLiveStatusState", source)
+        self.assertIn("restoreCurrentSessionWorkflowLiveStatus", source)
+        self.assertIn("setCurrentPageWorkflowStatus", source)
+        self.assertIn("dashboardWorkflowLiveStatusGenerationId", source)
+        self.assertIn("dashboardWorkflowLiveStatusCheckedAt", source)
+        self.assertIn("setCurrentPageWorkflowStatus('checking', 'runtime-options-response', nextState)", source)
+        self.assertIn("setCurrentPageWorkflowStatus(", source)
+        self.assertIn("'runtime-options-response',", source)
+        self.assertIn("setCurrentPageWorkflowStatus('unavailable', 'runtime-options-response', state)", source)
+        self.assertIn("setCurrentPageWorkflowStatus(workflowStatus, 'screen3-evidence-context-health')", source)
+        self.assertIn("setCurrentPageWorkflowStatus('unavailable', 'screen3-evidence-context-health')", source)
         self.assertIn("Local dashboard workflow service status", source)
         self.assertNotIn("Live Service", source)
         self.assertIn("State source:", rendered)
@@ -201,6 +297,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+        self.assertIn("selectedReviewMode", source)
         dynamic_required = (
             "data-dashboard-select-type', config.selectType",
             "data-dashboard-select-type', 'runtimeScope'",
@@ -247,6 +344,142 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         for phrase in required:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+
+    def test_diagnostic_snapshot_review_context_evidence_panel(self) -> None:
+        dashboard = dashboard_module()
+        rendered = self.render_diagnostic_screen3()
+        script = dashboard._build_dashboard_interactivity_javascript()
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        self.assertIn("Diagnostic Snapshot", rendered)
+        self.assertIn("Review Context &amp; Evidence Availability", rendered)
+        self.assertIn(
+            "Screen 3 summarizes the selected diagnostic context for downstream Screen 4 review",
+            rendered,
+        )
+        self.assertIn("This does not render Screen 4 graphics or change diagnostic truth", rendered)
+        self.assertNotIn("Downstream Evidence Availability", rendered)
+        self.assertIn("Selected Runtime Scope / Diagnostic Subject", rendered)
+        self.assertIn("Runtime Scope", rendered)
+        self.assertIn("Database", rendered)
+        self.assertIn("Instance", rendered)
+        self.assertIn("Host", rendered)
+        self.assertIn("Window", rendered)
+        self.assertIn("Source / run reference", rendered)
+        self.assertIn("Context Type", rendered)
+        self.assertIn("Evidence Source", rendered)
+        self.assertIn("Freshness", rendered)
+        self.assertIn("Evidence Availability", rendered)
+        self.assertIn("Selected AWR Evidence", rendered)
+        self.assertIn("Same-DB Historical Context", rendered)
+        self.assertIn("Fleet Context", rendered)
+        self.assertIn("OEM / ASH", rendered)
+        self.assertIn("RAC / Cluster", rendered)
+        self.assertIn("Data Guard", rendered)
+        self.assertIn("Exadata", rendered)
+        self.assertIn("Comparison Output", rendered)
+        self.assertIn("Artifact Alignment", rendered)
+        self.assertIn("Artifact alignment cannot be determined from available identity keys", rendered)
+        self.assertIn("Screen 4 Review Readiness", rendered)
+        self.assertIn("Review Context Explanation", rendered)
+        self.assertIn("Explain Review Context", rendered)
+        self.assertIn("Default deterministic review-context explanation is visible", rendered)
+        self.assertIn("uses only the already-computed evidence-context contract", rendered)
+        self.assertIn("Workflow service", rendered)
+        self.assertIn("Screen 3 explanation route", rendered)
+        self.assertIn("Provider configured", rendered)
+        self.assertIn("Runtime explanation", rendered)
+        self.assertIn("Truth boundary", rendered)
+        self.assertIn("Runtime explanation route not checked yet", rendered)
+        self.assertIn("Technical evidence-context contract", rendered)
+        self.assertIn("screen3-review-readiness-matrix", rendered)
+        self.assertIn("screen3-review-readiness-boundary", rendered)
+        self.assertIn("Graphics Boundary", rendered)
+        self.assertIn("diagnostic-posture-box", rendered)
+        self.assertNotIn("Why This Posture", rendered)
+        self.assertIn("Current Diagnostic Drivers", rendered)
+        drivers_start = rendered.index("Current Diagnostic Drivers")
+        self.assertGreater(rendered.index("diagnostic-posture-box", drivers_start), drivers_start)
+        self.assertIn("CPU Signal", rendered)
+        self.assertIn("I/O Signal", rendered)
+        self.assertIn("Commit Signal", rendered)
+        self.assertIn("Memory Signal", rendered)
+        self.assertIn("RAC Signal", rendered)
+        self.assertIn("ADG Signal", rendered)
+        self.assertIn(
+            "For downstream Screen 4 guard/runtime explanation. Not diagnostic truth by itself.",
+            rendered,
+        )
+        self.assertIn("Selection and cache restore do not create evidence truth", rendered)
+        self.assertIn("does not change diagnosis, scores, recommendations", rendered)
+        self.assertIn("comparison output, learning, materialization, or runtime eligibility", rendered)
+        self.assertIn("updateScreen3EvidenceContextPanel", script)
+        self.assertIn("screen3EvidenceArtifactAlignment", script)
+        self.assertIn("dashboardScreen3EvidenceContextExplanationProvider", script)
+        self.assertIn("refreshScreen3EvidenceContextExplanationAvailability", script)
+        self.assertIn("screen3EvidenceContextHealthRouteAvailable", script)
+        self.assertIn("PHASE7_DASHBOARD_HEALTH_ENDPOINT", script)
+        self.assertIn("/phase7/dashboard/screen3/evidence-context/explanation", script)
+        self.assertIn("/phase7/dashboard/health", script)
+        self.assertIn(
+            "Workflow service is available, but the Screen 3 explanation route is unavailable",
+            script,
+        )
+        self.assertIn("Workflow service unavailable. Start or restart dashboard_workflow_service.py", script)
+        self.assertIn("Explanation unavailable. Deterministic evidence context remains unchanged.", script)
+        self.assertIn("screen3EvidenceContextTruthSource", source)
+        self.assertIn("screen3EvidenceContextWorkflowLabel", script)
+        self.assertIn("data-screen3-evidence-context-workflow-status", rendered)
+        self.assertIn("disabled", rendered)
+
+        panel_start = rendered.index("screen3-downstream-evidence-panel")
+        subject_start = rendered.index("Selected Runtime Scope / Diagnostic Subject", panel_start)
+        technical_start = rendered.index("Technical evidence-context contract", panel_start)
+        panel_fragment = rendered[subject_start:technical_start]
+        for raw_key in (
+            "selectedRuntimeScope",
+            "screen3SelectedRuntimeScopeRowId",
+            "selectedAwr",
+            "selectedRun",
+            "selectedDbid",
+            "sourceSelectionSessionId",
+            "screen3LiveServiceStatus",
+            "screen3RuntimeOptionsCacheStatus",
+        ):
+            with self.subTest(raw_key=raw_key):
+                self.assertNotIn(raw_key, panel_fragment)
+
+        self.assertNotIn("selected_scope_identity", panel_fragment)
+        self.assertNotIn("screen4_graphics_eligibility_hints", panel_fragment)
+        self.assertIn("selected_scope_identity", rendered[technical_start:])
+        self.assertIn("screen4_graphics_eligibility_hints", rendered[technical_start:])
+        self.assertIn("Single-AWR Review", panel_fragment)
+        self.assertIn("Historical Review", panel_fragment)
+        self.assertIn("context only unless aligned historical evidence exists", panel_fragment.lower())
+        self.assertIn("Comparison Review", panel_fragment)
+        self.assertIn(
+            "Screen 4 may render graphics only when deterministic evidence and context alignment allow it",
+            panel_fragment,
+        )
+        self.assertEqual(panel_fragment.count("screen3-review-readiness-row"), 4)
+        self.assertEqual(panel_fragment.count("screen3-review-readiness-boundary"), 1)
+        self.assertNotIn("Provider mode:", panel_fragment)
+        self.assertNotIn("screen3-subject-chip", source)
+        self.assertNotIn("screen3-evidence-status-tile", source)
+        self.assertNotIn("screen3-review-readiness-grid", source)
+
+        forbidden_rendered = (
+            "Historical Trend Panels",
+            "comparison-violin-panel",
+            "screen4-chart-canvas",
+            "screen4/explanation",
+            "A/B delta",
+            "Target A beat Target B",
+            "learning candidate created",
+        )
+        for phrase in forbidden_rendered:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, rendered)
 
     def test_screen3_runtime_selection_uses_active_assignment_only(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
@@ -396,7 +629,14 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn(".runtime-mini-pill", styles)
         self.assertIn("background: rgba(13, 20, 30, 0.80)", styles)
         self.assertIn("border: 1px solid rgba(183, 192, 204, 0.42)", styles)
-        self.assertNotIn(".runtime-mini-pill[data-runtime-badge-kind=\"workflow\"] {\n      min-width:", styles)
+        self.assertIn("width: min(620px, calc(100vw - 32px))", styles)
+        self.assertIn("flex-wrap: wrap", styles)
+        self.assertIn("min-width: var(--runtime-pill-min-width, 82px)", styles)
+        self.assertIn("max-width: min(var(--runtime-pill-max-width, 150px), 100%)", styles)
+        self.assertIn(".runtime-mini-pill[data-runtime-badge-kind=\"workflow\"]", styles)
+        self.assertIn("--runtime-pill-min-width: 118px", styles)
+        self.assertIn("--runtime-pill-max-width: 160px", styles)
+        self.assertNotIn("--runtime-pill-width: 174px", styles)
         self.assertIn(".state-cached", styles)
         self.assertIn("color: #b5f0bd", styles)
         self.assertIn("color: #cbd5e1", styles)
@@ -407,14 +647,102 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("data-runtime-badge-hydration=\"in-place\"", source)
         self.assertIn("return 'state-cached'", source)
         self.assertIn("dashboardWorkflowStatusDisplayValue", source)
+        self.assertIn("generation-scoped live", source)
+        self.assertIn("workflowLiveStatusLabel(stored.dashboardWorkflowLiveStatus", source)
+        self.assertIn("stored.dashboardWorkflowLiveStatusGenerationId", source)
+        self.assertIn("storedGeneration !== currentGeneration", source)
+        self.assertIn("dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId()", source)
+        self.assertIn("storedState.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId()", source)
         self.assertIn("screen3CachedWorkflowStatusLabel(safeValue)", source)
         self.assertIn("screen3RuntimeOptionsLiveLoaded(state)", source)
         self.assertIn("screen3WorkflowRuntimeFreshChecked(state)", source)
+        self.assertIn("!dashboardWorkflowStatusCheckedThisPage() && !currentSessionStatus", source)
+        self.assertIn("'screen3-evidence-context-health'", source)
+        self.assertIn("'current-page-live-check'", source)
         self.assertIn("dashboardRuntimeModeSuppressesCachedWorkflow()", source)
         self.assertIn("return 'Not checked'", source)
         self.assertIn("workflowStatus.textContent !== nextValue", source)
         self.assertIn("element.textContent !== displayValue", source)
         self.assertIn("alreadyStable", source)
+
+    def test_screen3_review_readiness_and_evidence_status_layout_is_compact(self) -> None:
+        styles = importlib.import_module("src.reporting.dashboard.styles")._shared_page_styles()
+        source = read_text(HTML_DASHBOARD_PATH)
+
+        self.assertIn(".screen3-review-readiness-matrix", styles)
+        self.assertIn("grid-template-columns: repeat(5, minmax(0, 1fr))", styles)
+        self.assertIn("linear-gradient(180deg, rgba(90, 209, 255, 0.12)", styles)
+        self.assertIn(".screen3-evidence-availability-grid .screen2-control-info-box", styles)
+        self.assertIn("justify-items: center", styles)
+        self.assertIn(".screen3-evidence-availability-grid .screen3-review-context-pill", styles)
+        self.assertIn("margin: 0 auto", styles)
+        self.assertIn("screen3-evidence-status-card", styles)
+        self.assertIn("background: linear-gradient(180deg, rgba(90, 209, 255, 0.12), rgba(90, 209, 255, 0.05));", styles)
+        self.assertIn("screen3-evidence-status-card-unavailable", styles)
+        self.assertIn("screen2-evidence-path-status-card", source)
+        self.assertIn(".screen3-source-context-card.screen2-evidence-path-status-card", styles)
+
+    def test_fresh_generation_resets_stale_runtime_option_cache(self) -> None:
+        source = read_text(HTML_DASHBOARD_PATH)
+        run_analysis_source = read_text(RUN_ANALYSIS_PATH)
+
+        self.assertIn("data-dashboard-generated-session-id", source)
+        self.assertIn("dashboardGeneratedSessionId", source)
+        self.assertIn("dashboardRuntimeCacheGenerationId", source)
+        self.assertIn('report_data.get("dashboard_generated_session_id")', source)
+        self.assertIn("def _dashboard_generated_session_id(", source)
+        self.assertIn("def _dashboard_generated_session_id() -> str:", run_analysis_source)
+        self.assertIn("dashboard-run-", run_analysis_source)
+        self.assertIn("time.time_ns()", run_analysis_source)
+        self.assertIn('"dashboard_generated_session_id": dashboard_generated_session_id', run_analysis_source)
+        self.assertIn("DASHBOARD_RUNTIME_CACHE_RESET_KEYS", source)
+        self.assertIn("screen3RuntimeOptionsFirstLoadedAt", source)
+        self.assertIn("invalidateStaleDashboardRuntimeCache()", source)
+        self.assertIn("resetRuntimeCacheForNewDashboardGeneration", source)
+        self.assertIn("dashboardStateGenerationMatchesCurrent", source)
+        self.assertIn("stripRuntimeStateForNewDashboardGeneration", source)
+        self.assertIn("dashboardStateHasRuntimeCacheData", source)
+        self.assertIn("cache.dashboardRuntimeCacheGenerationId", source)
+        self.assertIn("cache.dashboardGeneratedSessionId", source)
+        self.assertIn("first_loaded_at", source)
+        self.assertIn("writeScreen3RuntimeOptionsCache(body, state)", source)
+        self.assertIn("window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY)", source)
+        self.assertIn("Fresh dashboard generation. Load available runtime options to query the live workflow service.", source)
+        self.assertIn("Runtime option cache reset for this dashboard generation.", source)
+        self.assertIn("next.screen3RuntimeOptionsLoadedAt = 'not loaded';", source)
+        reset_keys = source[
+            source.index("const DASHBOARD_RUNTIME_CACHE_RESET_KEYS"):
+            source.index("const SELECTABLE_SELECTOR")
+        ]
+        for key in (
+            "'selectedRunReference'",
+            "'selectedRuntimeScope'",
+            "'selectedSnapshotBegin'",
+            "'selectedSnapshotEnd'",
+            "'screen3SelectedRuntimeScopeRowId'",
+            "'screen3SelectedTargetARowId'",
+            "'screen3SelectedTargetBRowId'",
+            "'selectedComparisonMode'",
+            "'selectedReviewMode'",
+            "'selectedComparisonMissingGates'",
+            "'selectedComparisonTargetA'",
+            "'selectedComparisonTargetB'",
+            "'selectedComparisonTargetAScopeValue'",
+            "'selectedComparisonTargetBScopeValue'",
+            "'selectedComparisonSnapshotA'",
+            "'selectedComparisonSnapshotB'",
+            "'comparison_status'",
+            "'comparison_result_mode'",
+            "'comparison_result_target_a'",
+            "'comparison_result_target_b'",
+            "'comparison_artifact_reference'",
+            "'comparison_screen4_handoff'",
+            "'screen3RuntimeOptionsLoadedAt'",
+            "'screen3LiveServiceStatus'",
+            "'screen3EvidenceContextCacheStatus'",
+        ):
+            with self.subTest(reset_key=key):
+                self.assertIn(key, reset_keys)
 
     def test_workflow_badge_cache_suppression_semantics_are_explicit(self) -> None:
         source = read_text(HTML_DASHBOARD_PATH)
@@ -435,6 +763,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "screen3RuntimeOptionsDbPersistenceStatus",
             "screen3RuntimeOptionsLoadedRows",
             "screen3RuntimeOptionsCount",
+            "screen3RuntimeOptionsFirstLoadedAt",
             "screen3RuntimeOptionsLoadedAt",
             "screen3RuntimeOptionsIncludedTables",
             "screen3RuntimeOptionsCacheStatus",
@@ -461,14 +790,40 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
         self.assertIn("screen3RuntimeOptionsRestoredFromCache(safeState);", source)
         self.assertIn("screen3WorkflowRuntimeFreshChecked(safeState)", source)
         self.assertIn(
-            "Cached runtime options are available for continuity only; they are not active evidence.",
+            "Cached runtime options are restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.",
             source,
         )
         self.assertIn("screen2ShouldHydrateFromPersistentState()", source)
-        self.assertIn("isScreen2ControlPage() && Boolean(readScreen3RuntimeOptionsCache())", source)
+        self.assertIn("const cache = readScreen3RuntimeOptionsCache();", source)
+        self.assertIn("isScreen2ControlPage() && Boolean(cache && dashboardStateGenerationMatchesCurrent(cache))", source)
+        self.assertIn("stripRuntimeStateForNewDashboardGeneration(readLocalStorageState())", source)
+        self.assertIn("stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash))", source)
+        self.assertIn("window.history.replaceState(null, '', nextUrl)", source)
         self.assertIn("readLocalStorageState()", source)
         self.assertIn("parseHashState(window.location.hash)", source)
         self.assertIn("if (!screen3RuntimeOptionsAreLoaded(nextState))", source)
+        self.assertIn("function setScreen3RuntimeOptionsButtonsBusy(activeControl, busy, refreshRequested)", source)
+        self.assertIn("button.textContent = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';", source)
+        self.assertIn("nextState.screen3RuntimeOptionsStatus = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';", source)
+        self.assertIn("state.screen3RuntimeOptionsFirstLoadedAt = successfulLoadAt", source)
+        self.assertIn("state.screen3RuntimeOptionsLoadedAt = successfulLoadAt", source)
+        self.assertIn("data-screen2-runtime-assignment-empty-state", source)
+        self.assertIn("No runtime scope selected for this generated dashboard session.", source)
+        self.assertIn("data-screen2-runtime-assignment-summary-grid", source)
+        self.assertIn("screen3-comparison-handoff-grid", source)
+        self.assertIn(".screen3-comparison-handoff-grid", read_text(STYLES_PATH))
+        self.assertIn("grid-template-columns: repeat(auto-fit, minmax(135px, 1fr))", read_text(STYLES_PATH))
+        self.assertIn('data-screen2-comparison-target-detail="A"', source)
+        self.assertIn('data-screen2-comparison-target-detail="B"', source)
+        self.assertIn("element.hidden = !targetASelected;", source)
+        self.assertIn("element.hidden = !targetBSelected;", source)
+        self.assertIn("Target A unresolved", source)
+        self.assertIn("Target B unresolved", source)
+        self.assertNotIn(
+            '("Target A", _screen2_result_value("comparison_result_target_a", "Resolve source/scope/window first"), "wide")',
+            source,
+        )
+        self.assertIn("Opens after a governed comparison request returns artifact/reference.", source)
         self.assertNotIn(
             "const refreshedState = readDashboardState();\n"
             "        updateDashboardStateInputs(refreshedState, document);",
@@ -537,6 +892,7 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             "screen3RuntimeOptionsLoadedRows",
             "screen3RuntimeOptionsCount",
             "screen3RuntimeOptionsIncludedTables",
+            "screen3RuntimeOptionsFirstLoadedAt",
             "screen3RuntimeOptionsLoadedAt",
             "screen3RuntimeOptionsDbPersistenceStatus",
             "screen3RuntimeOptionsCacheStatus",
@@ -767,6 +1123,14 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
             report_data=self.sample_report_data(),
         )
 
+    def render_diagnostic_screen3(self) -> str:
+        return dashboard_module()._render_screen_2_page(
+            self.sample_diagnostic_screen3_model(),
+            ai_sections={},
+            decision_state={},
+            report_data=self.sample_report_data(),
+        )
+
     @staticmethod
     def sample_screen3_model() -> dict[str, object]:
         return {
@@ -843,6 +1207,73 @@ class DashboardScreen3ControlCenterTests(unittest.TestCase):
                 "worst_snapshot_summary": "Worst interval (09:00-10:00)",
                 "latest_vs_trend": "Latest interval aligns with the broader window.",
             },
+        }
+
+    @staticmethod
+    def sample_diagnostic_screen3_model() -> dict[str, object]:
+        return {
+            "header": {
+                "db_name": "ORCL",
+                "dbid": "123456",
+                "instance_name": "ORCL1",
+                "host_name": "dbhost01",
+                "window": "4 snapshots / 2 hours",
+            },
+            "decision_summary": {
+                "overall_status": "WARNING",
+                "display_severity_label": "High",
+                "decision_posture": "TUNE FIRST",
+                "primary_issue": "CPU",
+                "confidence": 0.82,
+                "health_summary": "CPU pressure visible.",
+                "historical_posture": "TUNE FIRST",
+            },
+            "normalized_decision": {
+                "primary_issue": "CPU",
+                "secondary_issues": ["COMMIT"],
+                "overall_status": "WARNING",
+                "display_severity_label": "High",
+                "confidence": 0.82,
+                "domain_scores": {"CPU": 72.0, "IO": 18.0, "COMMIT": 12.0},
+            },
+            "health_check": {
+                "summary_status": "WARNING",
+                "rows": [
+                    {"check": "DATA COMPLETENESS", "status": "OK", "observed_value": "Signals present"},
+                    {"check": "CPU", "status": "OK", "observed_value": "72"},
+                ],
+            },
+            "visual_summary": {
+                "cpu": {
+                    "card_title": "CPU",
+                    "selected_label": "DB CPU % DB Time",
+                    "status": "ok",
+                    "series": [40.0, 72.0],
+                    "labels": ["snap-1", "snap-2"],
+                    "reason": "Visible CPU pressure.",
+                },
+                "io": {
+                    "card_title": "IO",
+                    "selected_label": "User I/O % DB Time",
+                    "status": "weak",
+                    "series": [5.0, 8.0],
+                    "labels": ["snap-1", "snap-2"],
+                    "reason": "Weak I/O signal.",
+                },
+            },
+            "technical_sections": [
+                {"title": "Trend Findings", "items": ["CPU remained visible."]},
+                {"title": "Latest Snapshot Assessment", "items": ["Latest interval reviewed."]},
+            ],
+            "timeframe_selection": {
+                "comparison_window": "4 snapshots / 2 hours",
+                "window_a": "Latest snapshot (10:00-11:00)",
+                "window_b": "Worst interval (09:00-10:00)",
+            },
+            "root_cause_interpretation": {},
+            "trend_context": {},
+            "anomaly_context": {"anomaly_summary": {"count": 1}},
+            "explanation_panel": {},
         }
 
     def assert_no_learning_imports(self, path: Path) -> None:

@@ -31,6 +31,64 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         self.assertTrue(hasattr(dashboard, "_render_screen4_historical_exploration"))
         self.assertTrue(hasattr(dashboard, "_build_screen4_historical_exploration_model"))
         self.assertTrue(hasattr(dashboard, "_render_screen4_mode_selector_shell"))
+        self.assertTrue(hasattr(dashboard, "_render_screen4_historical_trend_panels"))
+        self.assertTrue(hasattr(dashboard, "_build_screen4_evidence_context"))
+        self.assertTrue(hasattr(dashboard, "_screen4_graphic_allowed"))
+        self.assertTrue(hasattr(dashboard, "_render_screen4_graphic_guard_empty_state"))
+
+    def test_screen4_evidence_context_graphics_guard_summary_exists(self) -> None:
+        rendered = self.render_screen4()
+
+        required_phrases = (
+            "Evidence Context &amp; Graphics Guard",
+            "Screen 4 Graphics Boundary",
+            "Screen 4 renders graphics only when deterministic evidence and context alignment allow it.",
+            "Selected runtime state does not create historical truth.",
+            "Prepared Target A/B state does not create comparison output.",
+            "Browser cache does not create evidence.",
+            "Selected Context",
+            "Generated historical artifact context",
+            "Artifact Alignment",
+            "Same-DB historical context only",
+            "Historical Review Eligibility",
+            "Context-only historical evidence",
+            "Single-AWR Review Eligibility",
+            "Selected-scope graphics not ready for this evidence context",
+            "Distribution / Violin Eligibility",
+            "Context-only distribution evidence",
+            "Fleet / Population",
+            "No fleet/population graphics until a fleet evidence contract exists.",
+            "Comparison Review Eligibility",
+            "Prepared only; no deterministic comparison output",
+            "Graphics Boundary",
+            "Page identity alone cannot select graphics.",
+            'data-screen4-evidence-context-guard="true"',
+            'data-screen4-graphics-selected-by="evidence-context"',
+            'data-screen4-page-identity-alone="blocked"',
+            'data-screen4-context-classification="same_db_historical_context"',
+            'data-screen4-artifact-alignment-status="same_db_historical_available"',
+            'data-screen4-comparison-output="unavailable"',
+        )
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+    def test_screen4_graphics_guard_marks_existing_graphics_context_only(self) -> None:
+        rendered = self.render_screen4()
+
+        for section_id in (
+            "screen4-historical-trend-panels",
+            "time-series-charts",
+            "workload-violin-panel",
+        ):
+            with self.subTest(section=section_id):
+                start = rendered.index(section_id)
+                fragment = rendered[start:start + 900]
+                self.assertIn('data-screen4-graphic-guard-state="context-only"', fragment)
+                self.assertIn(
+                    'data-screen4-artifact-alignment-status="same_db_historical_available"',
+                    fragment,
+                )
 
     def test_screen4_mode_selector_shell_exists_with_locked_modes(self) -> None:
         rendered = self.render_screen4()
@@ -45,7 +103,9 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
             "Uses Target A/B context prepared in Screen 2.",
             "Prepared targets are selected context only",
-            "selected targets and cache-restored state do not create comparison evidence.",
+            "Target A/B prepared-only state is not comparison output.",
+            "Selected targets and cache-restored state do not create comparison evidence.",
+            "Deterministic comparison output is required before A/B diagrams or future comparison violin panels can render.",
             "Screen 4 does not compute comparison in the browser.",
             "Deep Analysis is reserved for future structured expert evidence review.",
             "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
@@ -65,6 +125,30 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+
+    def test_screen4_fu6_product_wording_replaces_ambiguous_labels(self) -> None:
+        rendered = self.render_screen4()
+
+        required = (
+            "Historical Artifact Context",
+            "Historical Context Summary",
+            "Historical Context Posture",
+            "Historical review actions are preview-only",
+            "Historical supporting context only; this does not override Screen 3 selected-scope diagnosis.",
+        )
+        for phrase in required:
+            with self.subTest(required=phrase):
+                self.assertIn(phrase, rendered)
+
+        forbidden = (
+            "Current Selection Summary",
+            "Historical Verdict",
+            "Historical Posture",
+            "Historical review disabled in this phase",
+        )
+        for phrase in forbidden:
+            with self.subTest(forbidden=phrase):
+                self.assertNotIn(phrase, rendered)
 
     def test_screen4_mode_selector_shell_is_static_and_non_mutating(self) -> None:
         rendered = self.render_screen4().lower()
@@ -91,6 +175,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         for phrase in forbidden:
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, rendered)
+        self.assertNotIn("period comparison", rendered.lower())
 
     def test_screen4_evidence_context_contract_doc_locks_handoff_boundaries(self) -> None:
         doc_path = DOCS / "phase7_screen4_evidence_review_mode_shell.md"
@@ -127,12 +212,79 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         self.assertIn("Screen 4 Historical Review Exploration", source)
         self.assertIn("Screen 4 Historical Review Exploration", rendered)
         self.assertIn("data-dashboard-selected-summary", rendered)
+        self.assertIn('data-dashboard-selected-summary-kind="screen4-historical"', rendered)
         self.assertIn("Selected Historical Summary", rendered)
         self.assertIn("Read-only historical exploration", rendered)
         self.assertIn("Exploratory only", rendered)
         self.assertIn("No backend writes", rendered)
         self.assertIn("No approval controls", rendered)
         self.assertIn("No runtime activation", rendered)
+
+    def test_screen4_selected_summary_hydration_uses_product_safe_formatter(self) -> None:
+        dashboard = dashboard_module()
+        rendered = self.render_screen4()
+        script = dashboard._build_dashboard_interactivity_javascript()
+
+        summary_start = rendered.index("screen4-selected-historical-summary")
+        summary_fragment = rendered[summary_start: rendered.index("</p>", summary_start)]
+
+        self.assertIn('data-dashboard-selected-summary-kind="screen4-historical"', summary_fragment)
+        self.assertIn(
+            "Read-only historical exploration: no local selection. Historical output remains unchanged.",
+            summary_fragment,
+        )
+        for raw_key in (
+            "selectedAwr",
+            "selectedRun",
+            "selectedDb",
+            "selectedDbid",
+            "selectedInstance",
+            "screen3RuntimeOptionsStatus",
+            "screen3LiveServiceStatus",
+            "sourceSelectionSessionId",
+        ):
+            with self.subTest(raw_key=raw_key):
+                self.assertNotIn(raw_key, summary_fragment)
+
+        self.assertIn("function buildScreen4HistoricalSelectedSummary", script)
+        self.assertIn("data-dashboard-selected-summary-kind", script)
+        self.assertIn("Evidence path", script)
+        self.assertIn("Runtime Scope", script)
+        self.assertIn("Context Status", script)
+        self.assertIn("Cached selection restored for UI continuity", script)
+        self.assertIn(
+            "selection state does not create diagnosis, recommendation, comparison output, action, outcome, learning state, materialization, or runtime eligibility",
+            script,
+        )
+        formatter = script[
+            script.index("function buildScreen4HistoricalSelectedSummary"):
+            script.index("function buildGenericSelectedSummary")
+        ]
+        self.assertNotIn("Active selections:", formatter)
+        self.assertNotIn("key + ': '", formatter)
+
+    def test_screen4_historical_context_labels_are_product_safe(self) -> None:
+        rendered = self.render_screen4()
+
+        required = (
+            "Historical Period Context",
+            "Latest vs Historical Context",
+            "Supporting Memory Context",
+            "Memory context is supporting historical evidence only and does not change diagnosis, recommendation",
+            "learning state, materialization, or runtime eligibility",
+        )
+        for phrase in required:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        forbidden = (
+            "Period Comparison",
+            "Memory Review",
+            "Latest vs Trend",
+        )
+        for phrase in forbidden:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, rendered)
 
     def test_selector_metadata_exists_for_historical_categories(self) -> None:
         rendered = self.render_screen4()
@@ -191,6 +343,116 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+
+    def test_screen4_historical_trend_panels_productize_existing_evidence(self) -> None:
+        rendered = self.render_screen4()
+
+        required_phrases = (
+            "Historical Trend Panels",
+            "Deterministic historical trend evidence for the generated historical artifact.",
+            "This is context-only historical evidence, not selected runtime-scope truth unless",
+            "artifact alignment is exact or contains the selected scope.",
+            "Trend evidence is context only and does not change diagnosis, recommendation, or",
+            "runtime behavior.",
+            "Source is deterministic/generated trend evidence already present in the dashboard payload.",
+            "Graphics are not selected by page identity alone; they require deterministic evidence and context alignment.",
+            "Browser cache may restore UI context only; it does not create trend evidence truth.",
+            "Trend Evidence Available",
+            "Artifact Alignment",
+            "Guard State",
+            "Historical Samples",
+            "Metric Groups",
+            "Coverage",
+            "Current / Latest Interval",
+            "Worst Historical Interval",
+            "Trend Direction",
+            "Insufficient History",
+            "Metric",
+            "Domain",
+            "Latest",
+            "Baseline / Prior",
+            "Evidence Note",
+            "DB CPU % DB Time",
+            "CPU",
+            "Upward pressure",
+            "Existing deterministic trend evidence; displayed as historical context only.",
+            'data-screen4-mode-section="historical-review"',
+            'data-screen4-historical-trend-panels="true"',
+            'data-screen4-trend-truth-boundary="deterministic-generated-context-only"',
+            'data-screen4-graphic-guard-state="context-only"',
+            'data-screen4-artifact-alignment-status="same_db_historical_available"',
+        )
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        trend_section = rendered[
+            rendered.index("screen4-historical-trend-panels"):
+            rendered.index("time-series-charts")
+        ]
+        forbidden = (
+            "Target A beat Target B",
+            "A/B result",
+            "comparison result",
+            "recommendation updated",
+            "diagnosis changed",
+            "LLM found",
+            "AI decided",
+            "learning candidate created",
+            "runtime eligibility approved",
+            "comparison-violin-panel",
+        )
+        for phrase in forbidden:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase.lower(), trend_section.lower())
+
+    def test_screen4_historical_trend_panels_empty_state_is_safe(self) -> None:
+        dashboard = dashboard_module()
+        rendered = dashboard._render_screen4_historical_trend_panels(
+            self.sample_screen4_model(),
+            chart_payload={"time_series_charts": {"snapshot_labels": []}},
+            time_series_groups=[],
+        )
+
+        self.assertIn(
+            "No deterministic historical trend evidence is available for this run or selected evidence context.",
+            rendered,
+        )
+        self.assertIn(
+            "This does not change the diagnostic snapshot or recommendation output.",
+            rendered,
+        )
+        self.assertIn("No deterministic trend coverage available", rendered)
+        self.assertNotIn("data-screen4-provider-route", rendered)
+        self.assertNotIn("comparison-violin-panel", rendered)
+        self.assertNotIn("learning candidate created", rendered.lower())
+
+    def test_screen4_historical_trend_panels_respect_blocked_guard(self) -> None:
+        dashboard = dashboard_module()
+        rendered = dashboard._render_screen4_historical_trend_panels(
+            self.sample_screen4_model(),
+            chart_payload=self.sample_chart_payload(),
+            time_series_groups=self.sample_time_series_groups(),
+            evidence_context={
+                "historical_trend_panels_allowed": False,
+                "historical_trend_panels_context_only": False,
+                "artifact_alignment_status": "different_artifact",
+                "artifact_alignment_label": "Different artifact; context only",
+            },
+        )
+
+        self.assertIn('data-screen4-graphic-guard-state="blocked"', rendered)
+        self.assertIn(
+            'data-screen4-artifact-alignment-status="different_artifact"',
+            rendered,
+        )
+        self.assertIn(
+            "Historical trend graphics are not rendered because this evidence context is not aligned",
+            rendered,
+        )
+        self.assertNotIn("<th>Metric</th>", rendered)
+        self.assertNotIn("Target A beat Target B", rendered)
+        self.assertNotIn("comparison-violin-panel", rendered)
 
     def test_no_unsafe_controls_or_write_runtime_are_introduced(self) -> None:
         dashboard = dashboard_module()
@@ -370,6 +632,14 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             },
             "historical_summary": {"summary": "CPU remained visible across the window."},
             "trend_review": {
+                "trends": {
+                    "time_series": {
+                        "trend_directions": {
+                            "cpu": "degrading",
+                        },
+                    },
+                    "findings": ["CPU stayed visible across snapshots."],
+                },
                 "trend_summary": {
                     "summary": "CPU trend remained visible.",
                     "findings": ["CPU stayed visible across snapshots."],
@@ -418,6 +688,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         return {
             "time_series_charts": {
                 "snapshot_labels": ["snap-1", "snap-2", "snap-3", "snap-4"],
+                "cpu_trend": [18.0, 24.0, 31.0, 42.0],
             },
             "violin_panel": {},
         }

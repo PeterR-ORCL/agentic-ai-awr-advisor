@@ -82,7 +82,7 @@ class DashboardScreen4HistoricalReviewPanelTests(unittest.TestCase):
 
         safety_labels = (
             "Preview only",
-            "Historical review disabled in this phase",
+            "Historical review actions are preview-only",
             "No trend truth mutation",
             "No anomaly truth mutation",
             "No scoring change",
@@ -171,6 +171,14 @@ class DashboardScreen4HistoricalReviewPanelTests(unittest.TestCase):
             },
             "historical_summary": {"summary": "CPU remained visible across the window."},
             "trend_review": {
+                "trends": {
+                    "time_series": {
+                        "trend_directions": {
+                            "cpu": "degrading",
+                        },
+                    },
+                    "findings": ["CPU stayed visible across snapshots."],
+                },
                 "trend_summary": {
                     "summary": "CPU trend remained visible.",
                     "findings": ["CPU stayed visible across snapshots."],
@@ -225,6 +233,7 @@ class DashboardScreen4HistoricalReviewPanelTests(unittest.TestCase):
         return {
             "time_series_charts": {
                 "snapshot_labels": ["snap-1", "snap-2", "snap-3", "snap-4"],
+                "cpu_trend": [18.0, 24.0, 31.0, 42.0],
             },
             "violin_panel": {},
         }

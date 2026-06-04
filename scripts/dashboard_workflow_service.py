@@ -45,19 +45,27 @@ EXISTING_RUNS_ENDPOINT_PATH = "/phase7/dashboard/existing-runs"
 SCREEN3_OPTIONS_ENDPOINT_PATH = "/phase7/dashboard/screen3/options"
 OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH = "/phase7/dashboard/object-storage/validate"
 SCREEN2_EXPLANATION_ENDPOINT_PATH = "/phase7/dashboard/screen2/explanation"
+SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH = (
+    "/phase7/dashboard/screen3/evidence-context/explanation"
+)
 HEALTH_ENDPOINT_PATH = "/phase7/dashboard/health"
 ACTION_STATUS_ENDPOINT_PATH = "/phase7/dashboard/actions/status"
 SCREEN2_EXPLANATION_PROVIDER_MODES = RUNTIME_EXPLANATION_PROVIDER_MODES
+SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODES = RUNTIME_EXPLANATION_PROVIDER_MODES
 SUPPORTED_ENDPOINT_PATHS = (
     ENDPOINT_PATH,
     EXISTING_RUNS_ENDPOINT_PATH,
     SCREEN3_OPTIONS_ENDPOINT_PATH,
     OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH,
     SCREEN2_EXPLANATION_ENDPOINT_PATH,
+    SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH,
     HEALTH_ENDPOINT_PATH,
     ACTION_STATUS_ENDPOINT_PATH,
 )
 SCREEN2_EXPLANATION_FORBIDDEN_FIELDS = RUNTIME_EXPLANATION_GLOBAL_FORBIDDEN_FIELDS
+SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_FORBIDDEN_FIELDS = (
+    RUNTIME_EXPLANATION_GLOBAL_FORBIDDEN_FIELDS
+)
 
 
 class DashboardWorkflowHTTPServer(ThreadingHTTPServer):
@@ -201,6 +209,11 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
             status_code = int(result_payload.pop("_http_status", 200))
             self._send_json(result_payload, status_code=status_code)
             return
+        if self.path == SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH:
+            result_payload = generate_screen3_evidence_context_explanation(payload)
+            status_code = int(result_payload.pop("_http_status", 200))
+            self._send_json(result_payload, status_code=status_code)
+            return
         governance_connection_factory = getattr(
             self.server,
             "phase7_governance_connection_factory",
@@ -248,6 +261,7 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
     def _health_payload(self) -> dict[str, Any]:
         host, port = self.server.server_address[:2]
         provider_mode = _default_screen2_provider_mode()
+        screen3_provider_mode = _default_screen3_evidence_context_provider_mode()
         return {
             "status": "ok",
             "service": "dashboard_workflow_service",
@@ -263,9 +277,11 @@ class Phase7DashboardWorkflowHandler(BaseHTTPRequestHandler):
             },
             "supported_provider_modes": sorted(SCREEN2_EXPLANATION_PROVIDER_MODES),
             "screen2_explanation_provider_mode": provider_mode,
+            "screen3_evidence_context_explanation_provider_mode": screen3_provider_mode,
             "db_connectivity_status": "not_checked",
             "mutates_runtime_truth": False,
             "creates_screen2_records": False,
+            "creates_screen3_evidence_context_records": False,
         }
 
 
@@ -340,6 +356,17 @@ def _default_screen2_provider_mode() -> str:
         if key == "AI_PROVIDER" and value in {"oracle", "oci-genai", "oci_genai"}:
             return "oci"
     return "off"
+
+
+def _default_screen3_evidence_context_provider_mode() -> str:
+    for key in (
+        "PHASE7_SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODE",
+        "SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODE",
+    ):
+        value = str(os.environ.get(key, "") or "").strip().lower()
+        if value in SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODES:
+            return value
+    return _default_screen2_provider_mode()
 
 
 def start_screen1_source_intake_execution(
@@ -843,6 +870,306 @@ def _screen2_explanation_violates_boundary(explanation: str) -> bool:
     return runtime_explanation_violates_boundary(explanation)
 
 
+def generate_screen3_evidence_context_explanation(payload: dict[str, Any]) -> dict[str, Any]:
+    """Explain already-computed Screen 3 evidence-context contract fields."""
+
+    payload = _normalize_screen3_evidence_context_explanation_payload(payload)
+    validation_error = _validate_screen3_evidence_context_explanation_payload(payload)
+    if validation_error:
+        return normalize_runtime_explanation_response(
+            {
+                "status": "rejected",
+                "message": validation_error,
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 400,
+            },
+            boundary_validation_result="request_rejected",
+        )
+
+    provider_mode = normalize_runtime_explanation_provider_mode(payload.get("provider_mode"))
+    if provider_mode == "off":
+        return normalize_runtime_explanation_response(
+            {
+                "status": "provider_off",
+                "provider_mode": "off",
+                "message": "Explanation unavailable. Deterministic evidence context remains unchanged.",
+                "explanation": "",
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 200,
+            },
+            boundary_validation_result="not_applicable",
+        )
+    if provider_mode in {"mock", "local"}:
+        return normalize_runtime_explanation_response(
+            {
+                "status": "generated",
+                "provider_mode": provider_mode,
+                "message": (
+                    "Mock review-context explanation generated from already-computed evidence context. "
+                    if provider_mode == "mock"
+                    else "Local review-context explanation generated from already-computed evidence context. "
+                )
+                + "Deterministic values remain unchanged.",
+                "explanation": _screen3_evidence_context_canned_explanation(
+                    payload,
+                    provider_mode=provider_mode,
+                ),
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 200,
+            },
+            boundary_validation_result="passed",
+        )
+    if provider_mode == "oci":
+        try:
+            from src.analysis.ai_provider_adapter import generate_ai_response
+
+            result = generate_ai_response(
+                "oci",
+                _screen3_evidence_context_system_role(),
+                _screen3_evidence_context_prompt(payload),
+                ["Review context explanation"],
+            )
+            explanation = _sanitize_screen2_provider_text(str(result.get("content") or ""))
+        except Exception:
+            return normalize_runtime_explanation_response(
+                {
+                    "status": "provider_failed",
+                    "provider_mode": "oci",
+                    "message": "Explanation unavailable. Deterministic evidence context remains unchanged.",
+                    "explanation": "",
+                    "records_created": False,
+                    "audit_reference": None,
+                    "_http_status": 502,
+                },
+                boundary_validation_result="not_checked",
+            )
+        if not explanation or runtime_explanation_violates_boundary(explanation):
+            return normalize_runtime_explanation_response(
+                {
+                    "status": "provider_rejected",
+                    "provider_mode": "oci",
+                    "message": "Explanation unavailable. Deterministic evidence context remains unchanged.",
+                    "explanation": "",
+                    "records_created": False,
+                    "audit_reference": None,
+                    "_http_status": 502,
+                },
+                boundary_validation_result="rejected",
+            )
+        return normalize_runtime_explanation_response(
+            {
+                "status": "generated",
+                "provider_mode": "oci",
+                "message": "Review context explanation generated server-side. Deterministic values remain unchanged.",
+                "explanation": explanation,
+                "records_created": False,
+                "audit_reference": None,
+                "_http_status": 200,
+            },
+            boundary_validation_result="passed",
+        )
+    return normalize_runtime_explanation_response(
+        {
+            "status": "rejected",
+            "message": "Unsupported Screen 3 evidence-context explanation provider mode.",
+            "records_created": False,
+            "audit_reference": None,
+            "_http_status": 400,
+        },
+        boundary_validation_result="request_rejected",
+    )
+
+
+def _normalize_screen3_evidence_context_explanation_payload(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Accept both browser-flat and direct nested evidence-context contracts."""
+
+    if not isinstance(payload, dict):
+        return payload
+    normalized = dict(payload)
+    contract = normalized.get("evidence_context_contract")
+    if isinstance(contract, dict):
+        for key in (
+            "selected_scope_identity",
+            "evidence_inventory",
+            "context_classification",
+            "artifact_alignment",
+            "screen4_graphics_eligibility_hints",
+            "truth_boundary",
+        ):
+            if key not in normalized and isinstance(contract.get(key), dict):
+                normalized[key] = contract[key]
+    if not normalized.get("provider_mode"):
+        normalized["provider_mode"] = _default_screen3_evidence_context_provider_mode()
+    for key in (
+        "selected_scope_identity",
+        "evidence_inventory",
+        "context_classification",
+        "artifact_alignment",
+        "screen4_graphics_eligibility_hints",
+        "truth_boundary",
+    ):
+        if key not in normalized:
+            normalized[key] = {}
+    return normalized
+
+
+def _validate_screen3_evidence_context_explanation_payload(payload: dict[str, Any]) -> str:
+    if not isinstance(payload, dict):
+        return "Screen 3 evidence-context explanation request must be a JSON object."
+    if payload.get("screen_id") != "screen_3":
+        return "Screen 3 evidence-context explanation request must use screen_id=screen_3."
+    if payload.get("request_type") != "screen3_evidence_context_explanation":
+        return "Screen 3 evidence-context explanation request must use request_type=screen3_evidence_context_explanation."
+    if payload.get("context_type") != "evidence_context":
+        return "Screen 3 evidence-context explanation request must use context_type=evidence_context."
+    if payload.get("non_mutating_explanation_only") is not True:
+        return "Screen 3 evidence-context explanation request must be marked non-mutating."
+    provider_mode = normalize_runtime_explanation_provider_mode(payload.get("provider_mode"))
+    if provider_mode not in SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODES:
+        return "Unsupported Screen 3 evidence-context explanation provider mode."
+    shared_validation_error = validate_runtime_explanation_payload(
+        payload,
+        expected_screen_id="screen_3",
+        forbidden_fields=SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_FORBIDDEN_FIELDS,
+    )
+    if shared_validation_error:
+        return shared_validation_error
+    for key in (
+        "selected_scope_identity",
+        "evidence_inventory",
+        "context_classification",
+        "artifact_alignment",
+        "screen4_graphics_eligibility_hints",
+        "truth_boundary",
+    ):
+        if not isinstance(payload.get(key), dict):
+            return f"Screen 3 evidence-context explanation request is missing {key}."
+    return ""
+
+
+def _screen3_evidence_context_canned_explanation(
+    payload: dict[str, Any],
+    *,
+    provider_mode: str,
+) -> str:
+    identity = _screen3_payload_dict(payload, "selected_scope_identity")
+    inventory = _screen3_payload_dict(payload, "evidence_inventory")
+    classification = _screen3_payload_dict(payload, "context_classification")
+    alignment = _screen3_payload_dict(payload, "artifact_alignment")
+    truth = _screen3_payload_dict(payload, "truth_boundary")
+    context_type = _screen3_payload_label(
+        classification.get("primary") or identity.get("context_type"),
+        "Unknown context",
+    )
+    runtime_scope = _screen3_payload_text(identity.get("runtime_scope") or identity.get("run_reference"), "the selected evidence context")
+    evidence_path = _screen3_payload_label(identity.get("evidence_path"), "Evidence path unknown")
+    freshness = _screen3_payload_label(identity.get("freshness"), "Source status unknown")
+    selected_evidence = _screen3_payload_text(
+        inventory.get("exact_selected_scope_evidence"),
+        "Unknown",
+    )
+    same_db_history = _screen3_payload_text(
+        inventory.get("same_db_historical_evidence"),
+        "Not inventoried",
+    )
+    comparison_status = _screen3_payload_text(
+        inventory.get("deterministic_comparison_output"),
+        "No deterministic comparison output",
+    )
+    alignment_summary = _screen3_payload_text(
+        alignment.get("product_summary") or alignment.get("mismatch_reason"),
+        "Artifact alignment cannot be determined from available identity keys.",
+    )
+    cache_text = (
+        "Cache restore is continuity only, not evidence truth."
+        if truth.get("browser_cache_is_truth") is False
+        else "Cache authority was not asserted."
+    )
+    mode_label = provider_mode.upper()
+    return (
+        f"{mode_label} explanation: Screen 3 currently treats {runtime_scope} as {context_type} "
+        f"through {evidence_path}, with freshness shown as {freshness}. Selected AWR evidence is "
+        f"{selected_evidence}; same-DB historical context is {same_db_history}; comparison output is "
+        f"{comparison_status}. {alignment_summary} Screen 4 must still verify deterministic evidence "
+        "and alignment before rendering review graphics. "
+        f"{cache_text} Target A/B selections are prepared context only until deterministic comparison "
+        "output exists. This explanation does not change diagnosis, scores, recommendations, comparison "
+        "output, Screen 4 graphics eligibility, learning, materialization, runtime eligibility, or runtime behavior."
+    )
+
+
+def _screen3_evidence_context_system_role() -> str:
+    return (
+        "You write concise product-facing Oracle AWR review-context explanation text. "
+        "Use only the already-computed Screen 3 evidence-context contract. "
+        "The deterministic engine has already classified context, inventory, and alignment. "
+        "You explain the meaning only. Do not classify evidence, decide availability, decide graphics eligibility, "
+        "choose graphics, render graphics, compute trends, compute anomalies, compare Target A/B, diagnose, score, "
+        "recommend, persist records, materialize rules, change runtime eligibility, or change future-run behavior. "
+        "Return plain text only, with no Markdown headings, no bullets, and no leading # characters."
+    )
+
+
+def _screen3_evidence_context_prompt(payload: dict[str, Any]) -> str:
+    context = {
+        "selected_scope_identity": _screen3_payload_dict(payload, "selected_scope_identity"),
+        "evidence_inventory": _screen3_payload_dict(payload, "evidence_inventory"),
+        "context_classification": _screen3_payload_dict(payload, "context_classification"),
+        "artifact_alignment": _screen3_payload_dict(payload, "artifact_alignment"),
+        "screen4_graphics_eligibility_hints": _screen3_payload_dict(
+            payload,
+            "screen4_graphics_eligibility_hints",
+        ),
+        "truth_boundary": _screen3_payload_dict(payload, "truth_boundary"),
+        "cache_live_status": _screen3_payload_text(payload.get("cache_live_status"), ""),
+        "target_ab_prepared_only": bool(payload.get("target_ab_prepared_only")),
+    }
+    return (
+        "Generate one concise plain-text paragraph for the product Screen 3 Review Context & Evidence Availability panel. "
+        "Explain already-computed evidence context only. Do not use Markdown, heading markers, bullet lists, or leading # characters.\n"
+        "Use only this deterministic/runtime contract JSON:\n"
+        f"{json.dumps(context, sort_keys=True)}\n\n"
+        "Boundary: explain why the selected context is single AWR, historical context, generated artifact, fleet context, "
+        "or comparison-prepared only when those values are already present in the contract. "
+        "Do not say or imply that you classified evidence, decided availability, decided graphics eligibility, chose graphics, "
+        "rendered graphics, computed trends, computed anomalies, compared Target A/B, created deterministic comparison output, "
+        "changed diagnosis, scores, severity, confidence, recommendations, learning, materialization, runtime eligibility, "
+        "runtime behavior, or future-run behavior. "
+        "State that Screen 4 must still verify deterministic evidence and alignment before rendering graphics."
+    )
+
+
+def _screen3_payload_dict(payload: dict[str, Any], key: str) -> dict[str, Any]:
+    value = payload.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def _screen3_payload_text(value: Any, fallback: str) -> str:
+    return str(value or fallback).strip()[:500] or fallback
+
+
+def _screen3_payload_label(value: Any, fallback: str) -> str:
+    raw = _screen3_payload_text(value, fallback)
+    labels = {
+        "single_awr": "Single AWR",
+        "selected_runtime_scope": "Selected Runtime Scope",
+        "existing_platform_evidence": "Existing platform evidence",
+        "generated_artifact": "Generated artifact",
+        "generated_artifact_path": "Generated artifact",
+        "browser_cache_continuity": "Cached continuity only",
+        "cached_continuity_only": "Cached continuity only",
+        "live_backend_metadata": "Live backend metadata",
+        "governed_backend_runtime_options": "Live backend metadata",
+        "no_deterministic_comparison_output": "No deterministic comparison output",
+    }
+    return labels.get(raw.strip().lower(), raw)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     queue_dir = Path(args.queue_dir).expanduser().resolve() if args.queue_dir else None
@@ -858,6 +1185,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Existing run lookup endpoint: http://{args.host}:{args.port}{EXISTING_RUNS_ENDPOINT_PATH}")
     print(f"Object Storage validation endpoint: http://{args.host}:{args.port}{OBJECT_STORAGE_VALIDATE_ENDPOINT_PATH}")
     print(f"Screen 2 explanation endpoint: http://{args.host}:{args.port}{SCREEN2_EXPLANATION_ENDPOINT_PATH}")
+    print(
+        "Screen 3 evidence-context explanation endpoint: "
+        f"http://{args.host}:{args.port}{SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT_PATH}"
+    )
     print(f"Health endpoint: http://{args.host}:{args.port}{HEALTH_ENDPOINT_PATH}")
     print(
         "This service queues governed requests and can run Screen 1 backend "

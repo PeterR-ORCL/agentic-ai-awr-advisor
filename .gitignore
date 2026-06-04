@@ -15,6 +15,7 @@ adb_wallet
 
 # Validation outputs
 validation_*.json
+.runtime/
 
 .vscode/*
 !.vscode/settings.json

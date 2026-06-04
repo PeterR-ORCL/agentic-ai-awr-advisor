@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from html import escape
 from pathlib import Path
-from typing import Any, Iterable, TypedDict, cast
+from typing import Any, Iterable, Sequence, TypedDict, cast
 
 from src.reporting.ai_display_metadata import (
     build_learning_visibility_metadata,
@@ -88,6 +88,7 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "selectedComparisonMode",
     "selectedComparisonTargetA",
     "selectedComparisonTargetB",
+    "selectedComparisonMissingGates",
     "selectedComparisonTargetASourceType",
     "selectedComparisonTargetBSourceType",
     "selectedComparisonTargetAScopeType",
@@ -171,6 +172,13 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "generatedArtifactAvailable",
     "currentOperatorEvidenceSession",
     "dashboardEvidenceSessionId",
+    "dashboardGeneratedSessionId",
+    "dashboardRuntimeCacheGenerationId",
+    "dashboardWorkflowLiveStatusGenerationId",
+    "dashboardWorkflowLiveStatus",
+    "dashboardWorkflowLiveStatusCheckedAt",
+    "dashboardWorkflowLiveStatusSource",
+    "dashboardWorkflowLiveStatusReason",
     "dashboardEvidenceReady",
     "screen2ExistingEvidenceReady",
     "screen2RuntimeOptionsLoadRequestId",
@@ -189,6 +197,7 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "screen3RuntimeOptionsCount",
     "screen3RuntimeOptionsLoadedRows",
     "screen3RuntimeOptionsIncludedTables",
+    "screen3RuntimeOptionsFirstLoadedAt",
     "screen3RuntimeOptionsLoadedAt",
     "screen3RuntimeOptionsDbPersistenceStatus",
     "screen3RuntimeOptionsCacheStatus",
@@ -197,6 +206,17 @@ DASHBOARD_INTERACTIVITY_STATE_KEYS = (
     "screen3LiveServiceStatus",
     "screen3LiveServiceStatusSource",
     "screen3LiveServiceStatusCheckedAt",
+    "screen3EvidenceContextPrimary",
+    "screen3EvidenceContextFlags",
+    "screen3EvidenceContextTruthSource",
+    "screen3EvidenceContextCacheStatus",
+    "screen3ArtifactAlignmentStatus",
+    "screen3ArtifactAlignmentBasis",
+    "screen3ArtifactAlignmentReason",
+    "screen3SingleAwrGraphicsHint",
+    "screen3HistoricalTrendHint",
+    "screen3DistributionViolinsHint",
+    "screen3ComparisonGraphicsHint",
     "screen3LastRequestedAction",
     "screen3LastActionStatus",
     "screen3LastRequestId",
@@ -825,12 +845,13 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
             page_title="Screen 4 - Evidence Review",
             report_data=report_data,
             content_html=_render_screen_4_page(
-                screen_4_model,
-                chart_payload=chart_payload,
-                violin_metric_groups=violin_metric_groups,
-                time_series_groups=time_series_groups,
-                derived_scalar_metrics=report_data.get("derived_scalar_metrics") or {},
-            ),
+        screen_4_model,
+        chart_payload=chart_payload,
+        violin_metric_groups=violin_metric_groups,
+        time_series_groups=time_series_groups,
+        derived_scalar_metrics=report_data.get("derived_scalar_metrics") or {},
+        report_data=report_data,
+    ),
             generated_at=generated_at,
             include_chart_scripts=True,
             chart_payload=chart_payload,
@@ -991,6 +1012,10 @@ def _build_page_html(
     interactivity_script = _build_dashboard_interactivity_javascript()
     interactivity_boundary = _render_dashboard_interactivity_boundary_comment()
     gated_content_html = _wrap_downstream_evidence_gate(page_key, content_html)
+    generated_session_id = _dashboard_generated_session_id(
+        generated_at,
+        report_data.get("dashboard_generated_session_id"),
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1002,7 +1027,8 @@ def _build_page_html(
 {_shared_page_styles()}
   </style>
 </head>
-<body data-dashboard-generated-at="{escape(generated_at, quote=True)}">
+<body data-dashboard-generated-at="{escape(generated_at, quote=True)}"
+      data-dashboard-generated-session-id="{escape(generated_session_id, quote=True)}">
 {interactivity_boundary}
   <div class="container">
     <div class="{shell_class}">
@@ -1117,6 +1143,118 @@ def _build_dashboard_interactivity_javascript() -> str:
       const DASHBOARD_OPERATOR_SESSION_KEY = DASHBOARD_STORAGE_KEY + '.currentOperatorSession';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
+      const DASHBOARD_RUNTIME_CACHE_RESET_KEYS = Object.freeze([
+        'dashboardWorkflowLiveStatusGenerationId',
+        'dashboardWorkflowLiveStatus',
+        'dashboardWorkflowLiveStatusCheckedAt',
+        'dashboardWorkflowLiveStatusSource',
+        'dashboardWorkflowLiveStatusReason',
+        'selectedAwr',
+        'selectedRun',
+        'selectedRunReference',
+        'selectedDb',
+        'selectedDbid',
+        'selectedInstance',
+        'selectedHost',
+        'selectedSystem',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'selectedApplication',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'screen3ActiveSelectionTarget',
+        'screen3RuntimeScopeSelectionSource',
+        'screen3TargetASelectionSource',
+        'screen3TargetBSelectionSource',
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedTargetARowId',
+        'screen3SelectedTargetBRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'screen3SelectedTargetAIntervalId',
+        'screen3SelectedTargetBIntervalId',
+        'selectedComparisonMode',
+        'selectedReviewMode',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetB',
+        'selectedComparisonMissingGates',
+        'selectedComparisonTargetASourceType',
+        'selectedComparisonTargetBSourceType',
+        'selectedComparisonTargetAScopeType',
+        'selectedComparisonTargetBScopeType',
+        'selectedComparisonTargetAScopeValue',
+        'selectedComparisonTargetBScopeValue',
+        'selectedComparisonTargetATimeWindow',
+        'selectedComparisonTargetBTimeWindow',
+        'selectedComparisonTargetAResolutionState',
+        'selectedComparisonTargetBResolutionState',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonTargetAResolutionSummary',
+        'selectedComparisonTargetBResolutionSummary',
+        'selectedComparisonTargetAAwrCount',
+        'selectedComparisonTargetBAwrCount',
+        'selectedComparisonTargetASnapshotCount',
+        'selectedComparisonTargetBSnapshotCount',
+        'selectedComparisonTargetAMissingGates',
+        'selectedComparisonTargetBMissingGates',
+        'selectedComparisonBothComparable',
+        'selectedComparisonAwrA',
+        'selectedComparisonAwrB',
+        'selectedComparisonSnapshotA',
+        'selectedComparisonSnapshotB',
+        'selectedComparisonWindowA',
+        'selectedComparisonWindowB',
+        'comparison_status',
+        'comparison_result_mode',
+        'comparison_mode',
+        'comparison_target_a',
+        'comparison_target_b',
+        'comparison_target_a_readiness',
+        'comparison_target_b_readiness',
+        'comparison_both_comparable',
+        'comparison_missing_gates',
+        'comparison_artifact_reference',
+        'comparison_screen4_handoff',
+        'comparison_result_target_a',
+        'comparison_result_target_b',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeOptionsLoadRequestId',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt',
+        'screen3RuntimeOptionsStatus',
+        'screen3RuntimeOptionsMessage',
+        'screen3RuntimeOptionsCount',
+        'screen3RuntimeOptionsLoadedRows',
+        'screen3RuntimeOptionsIncludedTables',
+        'screen3RuntimeOptionsFirstLoadedAt',
+        'screen3RuntimeOptionsLoadedAt',
+        'screen3RuntimeOptionsDbPersistenceStatus',
+        'screen3RuntimeOptionsCacheStatus',
+        'screen3RuntimeOptionsSourceTables',
+        'screen3RuntimeOptionsCoverageMessage',
+        'screen3LiveServiceStatus',
+        'screen3LiveServiceStatusSource',
+        'screen3LiveServiceStatusCheckedAt',
+        'screen3EvidenceContextCacheStatus',
+        'screen3LastRequestedAction',
+        'screen3LastActionStatus',
+        'screen3LastRequestId',
+        'screen3LastTransactionId',
+        'screen3LastValidationStatus',
+        'screen3LastAuditReference',
+        'screen3LastPersistenceStatus',
+        'screen3LastExecutionStatus',
+        'screen3LastOutputArtifact',
+        'screen3LastNewRunOutputReference',
+        'screen3LastNextStep'
+      ]);
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
       const SELECTED_SUMMARY_SELECTOR = '[data-dashboard-selected-summary]';
       const FILTER_PLACEHOLDER_SELECTOR = '[data-dashboard-filter-key][data-dashboard-filter-value]';
@@ -1132,11 +1270,16 @@ def _build_dashboard_interactivity_javascript() -> str:
 	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
 	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
 	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
+	      const SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR = '[data-screen3-generate-evidence-context-explanation="true"]';
 	      const HTTP_SCHEME_PREFIX = 'http:' + '//';
       const HTTPS_SCHEME_PREFIX = 'https:' + '//';
 	      const SCREEN2_EXPLANATION_ENDPOINT = (
 	        window.PHASE7_DASHBOARD_SCREEN2_EXPLANATION_ENDPOINT ||
 	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen2/explanation')
+	      );
+	      const SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen3/evidence-context/explanation')
 	      );
 	      const PHASE7_DASHBOARD_HEALTH_ENDPOINT = (
 	        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
@@ -1412,6 +1555,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         'screen3RuntimeOptionsCount',
         'screen3RuntimeOptionsLoadedRows',
         'screen3RuntimeOptionsIncludedTables',
+        'screen3RuntimeOptionsFirstLoadedAt',
         'screen3RuntimeOptionsLoadedAt',
         'screen3RuntimeOptionsDbPersistenceStatus',
         'screen3RuntimeOptionsCacheStatus',
@@ -1702,7 +1846,71 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function screen2ShouldHydrateFromPersistentState() {
-        return isScreen2ControlPage() && Boolean(readScreen3RuntimeOptionsCache());
+        const cache = readScreen3RuntimeOptionsCache();
+        return isScreen2ControlPage() && Boolean(cache && dashboardStateGenerationMatchesCurrent(cache));
+      }
+
+      function dashboardGeneratedSessionId() {
+        const body = document.body;
+        return safeStateValue(
+          body && (
+            body.getAttribute('data-dashboard-generated-session-id') ||
+            body.getAttribute('data-dashboard-generated-at')
+          ) || ''
+        );
+      }
+
+      function dashboardStateGenerationId(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        return safeStateValue(
+          safeState.dashboardRuntimeCacheGenerationId ||
+          safeState.dashboardGeneratedSessionId ||
+          ''
+        );
+      }
+
+      function dashboardStateHasRuntimeCacheData(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        return DASHBOARD_RUNTIME_CACHE_RESET_KEYS.some(function (key) {
+          return Boolean(safeState[key]);
+        });
+      }
+
+      function dashboardStateGenerationMatchesCurrent(state) {
+        const currentGeneration = dashboardGeneratedSessionId();
+        const stateGeneration = dashboardStateGenerationId(state);
+        return Boolean(currentGeneration && stateGeneration && stateGeneration === currentGeneration);
+      }
+
+      function stripRuntimeStateForNewDashboardGeneration(state) {
+        const next = Object.assign({}, state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        const stateGeneration = dashboardStateGenerationId(next);
+        if (!currentGeneration) {
+          return sanitizeDashboardState(next);
+        }
+        if (stateGeneration === currentGeneration) {
+          return sanitizeDashboardState(next);
+        }
+        if (!stateGeneration && !dashboardStateHasRuntimeCacheData(next)) {
+          return sanitizeDashboardState(next);
+        }
+        DASHBOARD_RUNTIME_CACHE_RESET_KEYS.forEach(function (key) {
+          delete next[key];
+        });
+        next.dashboardGeneratedSessionId = currentGeneration;
+        next.dashboardRuntimeCacheGenerationId = currentGeneration;
+        return sanitizeDashboardState(next);
+      }
+
+      function stateWithCurrentDashboardGeneratedSession(state) {
+        const next = Object.assign({}, state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        if (currentGeneration) {
+          next.dashboardGeneratedSessionId = currentGeneration;
+          next.dashboardRuntimeCacheGenerationId = currentGeneration;
+        }
+        return next;
       }
 
       function readLocalStorageState() {
@@ -1721,11 +1929,82 @@ def _build_dashboard_interactivity_javascript() -> str:
         try {
           window.localStorage.setItem(
             DASHBOARD_STORAGE_KEY,
-            JSON.stringify(sanitizeDashboardState(state))
+            JSON.stringify(sanitizeDashboardState(stateWithCurrentDashboardGeneratedSession(state)))
           );
         } catch (error) {
           return;
         }
+      }
+
+      function resetRuntimeCacheForNewDashboardGeneration(state) {
+        const next = stripRuntimeStateForNewDashboardGeneration(state || {});
+        DASHBOARD_RUNTIME_CACHE_RESET_KEYS.forEach(function (key) {
+          delete next[key];
+        });
+        next.dashboardGeneratedSessionId = dashboardGeneratedSessionId();
+        next.dashboardRuntimeCacheGenerationId = dashboardGeneratedSessionId();
+        next.screen3LiveServiceStatus = 'Not checked';
+        next.screen3LiveServiceStatusSource = 'new-dashboard-generation';
+        next.screen3LiveServiceStatusCheckedAt = '';
+        next.screen3RuntimeOptionsStatus = 'not loaded';
+        next.screen3RuntimeOptionsMessage = 'Fresh dashboard generation. Load available runtime options to query the live workflow service.';
+        next.screen3RuntimeOptionsCount = '0';
+        next.screen3RuntimeOptionsLoadedRows = '0';
+        next.screen3RuntimeOptionsIncludedTables = 'No selectable source tables reported';
+        next.screen3RuntimeOptionsFirstLoadedAt = 'not loaded';
+        next.screen3RuntimeOptionsLoadedAt = 'not loaded';
+        next.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        next.screen3RuntimeOptionsCacheStatus = 'Runtime option cache reset for this dashboard generation.';
+        next.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
+        next.screen3RuntimeOptionsCoverageMessage = 'Runtime source-table coverage has not been checked for this dashboard generation.';
+        next.screen2ExistingEvidenceReady = '';
+        return sanitizeDashboardState(next);
+      }
+
+      function invalidateStaleDashboardRuntimeCache() {
+        const currentGeneration = dashboardGeneratedSessionId();
+        if (!currentGeneration) {
+          return;
+        }
+        const storedState = readLocalStorageState();
+        const storedGeneration = safeStateValue(
+          storedState.dashboardRuntimeCacheGenerationId ||
+          storedState.dashboardGeneratedSessionId ||
+          ''
+        );
+        const hasRuntimeCache = Boolean(readScreen3RuntimeOptionsCache({ skipGenerationCheck: true }));
+        const hasRuntimeState = dashboardStateHasRuntimeCacheData(storedState);
+        const hashState = parseHashState(window.location.hash);
+        const hashGeneration = dashboardStateGenerationId(hashState);
+        const hashHasRuntimeState = dashboardStateHasRuntimeCacheData(hashState);
+        if (
+          hashHasRuntimeState &&
+          (!hashGeneration || hashGeneration !== currentGeneration)
+        ) {
+          const nextHashState = stripRuntimeStateForNewDashboardGeneration(hashState);
+          const serializedHash = serializeDashboardState(nextHashState);
+          const nextUrl = (
+            window.location.pathname +
+            window.location.search +
+            (serializedHash ? '#' + serializedHash : '')
+          );
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', nextUrl);
+          }
+        }
+        if (storedGeneration === currentGeneration) {
+          return;
+        }
+        if (!storedGeneration && !hasRuntimeCache && !hasRuntimeState) {
+          writeLocalStorageState(stateWithCurrentDashboardGeneratedSession(storedState));
+          return;
+        }
+        try {
+          window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+        } catch (error) {
+          // Best-effort cache reset; localStorage failures must not block static dashboard rendering.
+        }
+        writeLocalStorageState(resetRuntimeCacheForNewDashboardGeneration(storedState));
       }
 
       function screen3RuntimeOptionsCacheStatusText(prefix, cachedAt) {
@@ -1741,7 +2020,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           .replace(new RegExp('History ' + 'Selector', 'gi'), 'Runtime Scope & Analysis Control');
       }
 
-      function readScreen3RuntimeOptionsCache() {
+      function readScreen3RuntimeOptionsCache(options) {
+        const skipGenerationCheck = Boolean(options && options.skipGenerationCheck);
         try {
           const rawValue = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
           if (!rawValue) {
@@ -1757,6 +2037,18 @@ def _build_dashboard_interactivity_javascript() -> str:
           ) {
             window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
             return null;
+          }
+          if (!skipGenerationCheck) {
+            const currentGeneration = dashboardGeneratedSessionId();
+            const cacheGeneration = safeStateValue(
+              cache.dashboardRuntimeCacheGenerationId ||
+              cache.dashboardGeneratedSessionId ||
+              ''
+            );
+            if (currentGeneration && cacheGeneration !== currentGeneration) {
+              window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+              return null;
+            }
           }
           return cache;
         } catch (error) {
@@ -1821,6 +2113,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsCount = safeStateValue(cache.option_count || '');
         state.screen3RuntimeOptionsLoadedRows = safeStateValue(cache.loaded_rows || cache.run_count || '');
         state.screen3RuntimeOptionsDbPersistenceStatus = safeStateValue(cache.db_persistence_status || '');
+        state.screen3RuntimeOptionsFirstLoadedAt = safeStateValue(cache.first_loaded_at || cache.cached_at || '');
         state.screen3RuntimeOptionsLoadedAt = safeStateValue(cache.cached_at || '');
         state.screen3RuntimeOptionsIncludedTables = safeStateValue(cache.included_tables || '');
         state.screen3RuntimeOptionsSourceTables = safeStateValue(cache.source_tables_summary || '');
@@ -1851,7 +2144,10 @@ def _build_dashboard_interactivity_javascript() -> str:
         const cachedAt = safeState.screen3RuntimeOptionsLoadedAt || new Date().toISOString();
         const cache = {
           cache_version: SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION,
+          dashboardGeneratedSessionId: dashboardGeneratedSessionId(),
+          dashboardRuntimeCacheGenerationId: dashboardGeneratedSessionId(),
           cached_at: cachedAt,
+          first_loaded_at: safeState.screen3RuntimeOptionsFirstLoadedAt || cachedAt,
           service_status: safeState.screen3LiveServiceStatus || 'Available',
           db_persistence_status: safeState.screen3RuntimeOptionsDbPersistenceStatus || body.db_persistence_status || '',
           runtime_options_status: safeState.screen3RuntimeOptionsStatus || 'route available',
@@ -1944,8 +2240,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         const persistedState = sanitizeDashboardState(Object.assign(
           {},
           readDefaultDashboardState(document),
-          readLocalStorageState(),
-          parseHashState(window.location.hash)
+          stripRuntimeStateForNewDashboardGeneration(readLocalStorageState()),
+          stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash))
         ));
         const state = Object.assign(
           {},
@@ -1970,11 +2266,27 @@ def _build_dashboard_interactivity_javascript() -> str:
         if (!cache) {
           return null;
         }
+        const sourceState = sanitizeDashboardState(state || {});
         const cachedState = Object.assign(
           {},
-          sanitizeDashboardState(state || {}),
+          sourceState,
           screen3RuntimeOptionsStateFromCache(cache)
         );
+        const liveStatus = safeStateValue(sourceState.screen3LiveServiceStatus || '');
+        const liveSource = safeStateValue(sourceState.screen3LiveServiceStatusSource || '').toLowerCase();
+        const liveStatusNormalized = liveStatus.toLowerCase();
+        const liveRefreshFailed = liveSource === 'runtime-options-response' && (
+          liveStatusNormalized.indexOf('unavailable') >= 0 ||
+          liveStatusNormalized.indexOf('error') >= 0 ||
+          liveStatusNormalized.indexOf('failed') >= 0
+        );
+        if (liveRefreshFailed) {
+          cachedState.screen3LiveServiceStatus = 'Unavailable';
+          cachedState.screen3LiveServiceStatusSource = 'runtime-options-response';
+          cachedState.screen3LiveServiceStatusCheckedAt = (
+            sourceState.screen3LiveServiceStatusCheckedAt || new Date().toISOString()
+          );
+        }
         cachedState.selectedSourceMode = cachedState.selectedSourceMode || 'existing_run';
         cachedState.sourceSelectionMethod = cachedState.sourceSelectionMethod || 'existing_run_reference';
         cachedState.sourceSelectionActivated = 'true';
@@ -1996,6 +2308,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           'screen3RuntimeOptionsCount',
           'screen3RuntimeOptionsLoadedRows',
           'screen3RuntimeOptionsIncludedTables',
+          'screen3RuntimeOptionsFirstLoadedAt',
           'screen3RuntimeOptionsLoadedAt',
           'screen3RuntimeOptionsDbPersistenceStatus',
           'screen3RuntimeOptionsCacheStatus',
@@ -2056,8 +2369,8 @@ def _build_dashboard_interactivity_javascript() -> str:
 
       function readDashboardStateBeforeScreen2EvidenceEnforcement() {
         const defaultState = readDefaultDashboardState(document);
-        const storedState = readLocalStorageState();
-        const hashState = parseHashState(window.location.hash);
+        const storedState = stripRuntimeStateForNewDashboardGeneration(readLocalStorageState());
+        const hashState = stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash));
         const explicitState = Object.assign(
           {},
           storedState,
@@ -2071,13 +2384,16 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           delete state.selectedSourcePath;
         }
+        state = restoreCurrentSessionWorkflowLiveStatus(state);
         return withoutInactiveSourceSelection(state);
       }
 
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
-        const storedState = isDownstreamEvidencePage() ? readLocalStorageState() : {};
-        const hashState = parseHashState(window.location.hash);
+        const storedState = isDownstreamEvidencePage()
+          ? stripRuntimeStateForNewDashboardGeneration(readLocalStorageState())
+          : {};
+        const hashState = stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash));
         const explicitState = Object.assign(
           {},
           storedState,
@@ -2091,6 +2407,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           delete state.selectedSourcePath;
         }
+        state = restoreCurrentSessionWorkflowLiveStatus(state);
         state = withoutInactiveSourceSelection(state);
         return enforceCurrentScreen2EvidenceState(state);
       }
@@ -2335,17 +2652,32 @@ def _build_dashboard_interactivity_javascript() -> str:
       }
 
       function dashboardWorkflowStatusDisplayValue(value, state, element) {
+        const currentSessionStatus = currentSessionWorkflowLiveStatusState(state);
         const safeValue = safeStateValue(
           value ||
           (element && element.getAttribute && element.getAttribute('data-empty-label')) ||
           ''
         );
         if (!safeValue) {
+          if (currentSessionStatus) {
+            return currentSessionStatus.label;
+          }
           return 'Not checked';
         }
         const normalized = safeValue.toLowerCase();
+        if (normalized === 'not checked') {
+          if (currentSessionStatus) {
+            return currentSessionStatus.label;
+          }
+          return 'Not checked';
+        }
+        if (!dashboardWorkflowStatusCheckedThisPage() && !currentSessionStatus) {
+          return 'Not checked';
+        }
+        if (!dashboardWorkflowStatusCheckedThisPage() && currentSessionStatus) {
+          return currentSessionStatus.label;
+        }
         if (
-          normalized === 'not checked' ||
           normalized === 'checking' ||
           normalized.indexOf('(cached)') >= 0 ||
           normalized.indexOf('last checked') >= 0 ||
@@ -2367,6 +2699,124 @@ def _build_dashboard_interactivity_javascript() -> str:
       function dashboardRuntimeModeSuppressesCachedWorkflow() {
         const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
         return safeStateValue(modePill && modePill.textContent).toLowerCase() === 'full db mode';
+      }
+
+      function markDashboardWorkflowStatusCheckedThisPage() {
+        window.__dashboardWorkflowStatusCheckedThisPage = true;
+      }
+
+      function dashboardWorkflowStatusCheckedThisPage() {
+        return window.__dashboardWorkflowStatusCheckedThisPage === true;
+      }
+
+      function dashboardWorkflowLiveStatusLabel(status) {
+        const normalized = safeStateValue(status).toLowerCase().replace(/[_\\s-]+/g, '-');
+        if (normalized === 'available' || normalized === 'success' || normalized === 'ok') {
+          return 'Available';
+        }
+        if (
+          normalized === 'unavailable' ||
+          normalized === 'failed' ||
+          normalized === 'failure' ||
+          normalized === 'error'
+        ) {
+          return 'Unavailable';
+        }
+        if (normalized === 'checking' || normalized === 'loading') {
+          return 'Checking';
+        }
+        return 'Not checked';
+      }
+
+      function dashboardWorkflowLiveStatusStorageValue(status) {
+        const label = dashboardWorkflowLiveStatusLabel(status);
+        if (label === 'Available') {
+          return 'available';
+        }
+        if (label === 'Unavailable') {
+          return 'unavailable';
+        }
+        return '';
+      }
+
+      function currentSessionWorkflowLiveStatusState(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        const statusGeneration = safeStateValue(safeState.dashboardWorkflowLiveStatusGenerationId || '');
+        const status = dashboardWorkflowLiveStatusStorageValue(safeState.dashboardWorkflowLiveStatus || '');
+        if (!currentGeneration || !statusGeneration || statusGeneration !== currentGeneration || !status) {
+          return null;
+        }
+        return {
+          status: status,
+          label: dashboardWorkflowLiveStatusLabel(status),
+          checkedAt: safeStateValue(safeState.dashboardWorkflowLiveStatusCheckedAt || ''),
+          source: safeStateValue(safeState.dashboardWorkflowLiveStatusSource || 'current-session-live-check') || 'current-session-live-check',
+          reason: safeStateValue(safeState.dashboardWorkflowLiveStatusReason || '')
+        };
+      }
+
+      function restoreCurrentSessionWorkflowLiveStatus(state) {
+        const next = sanitizeDashboardState(state || {});
+        const liveStatus = currentSessionWorkflowLiveStatusState(next) ||
+          currentSessionWorkflowLiveStatusState(readLocalStorageState());
+        if (!liveStatus) {
+          return next;
+        }
+        next.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+        next.dashboardWorkflowLiveStatus = liveStatus.status;
+        next.dashboardWorkflowLiveStatusCheckedAt = liveStatus.checkedAt;
+        next.dashboardWorkflowLiveStatusSource = liveStatus.source;
+        next.dashboardWorkflowLiveStatusReason = liveStatus.reason;
+        next.screen3LiveServiceStatus = liveStatus.label;
+        next.screen3LiveServiceStatusSource = liveStatus.source;
+        next.screen3LiveServiceStatusCheckedAt = liveStatus.checkedAt;
+        return sanitizeDashboardState(next);
+      }
+
+      function setCurrentPageWorkflowStatus(status, reason, state) {
+        const displayValue = dashboardWorkflowLiveStatusLabel(status);
+        const storageValue = dashboardWorkflowLiveStatusStorageValue(displayValue);
+        const source = safeStateValue(reason || 'current-page-live-check') || 'current-page-live-check';
+        const checkedAt = new Date().toISOString();
+        if (displayValue !== 'Not checked') {
+          markDashboardWorkflowStatusCheckedThisPage();
+        }
+        if (state && typeof state === 'object') {
+          state.screen3LiveServiceStatus = displayValue;
+          state.screen3LiveServiceStatusSource = source;
+          state.screen3LiveServiceStatusCheckedAt = displayValue === 'Not checked' ? '' : checkedAt;
+          if (storageValue) {
+            state.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+            state.dashboardWorkflowLiveStatus = storageValue;
+            state.dashboardWorkflowLiveStatusCheckedAt = checkedAt;
+            state.dashboardWorkflowLiveStatusSource = source;
+            state.dashboardWorkflowLiveStatusReason = source;
+          }
+        }
+        if (storageValue) {
+          const storedState = readLocalStorageState();
+          storedState.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+          storedState.dashboardWorkflowLiveStatus = storageValue;
+          storedState.dashboardWorkflowLiveStatusCheckedAt = checkedAt;
+          storedState.dashboardWorkflowLiveStatusSource = source;
+          storedState.dashboardWorkflowLiveStatusReason = source;
+          storedState.screen3LiveServiceStatus = displayValue;
+          storedState.screen3LiveServiceStatusSource = source;
+          storedState.screen3LiveServiceStatusCheckedAt = checkedAt;
+          writeLocalStorageState(storedState);
+        }
+        document.querySelectorAll('[data-dashboard-runtime-workflow-status="true"]').forEach(function (element) {
+          const nextValue = displayValue || safeStateValue(element.getAttribute('data-empty-label')) || 'Not checked';
+          if (element.textContent !== nextValue) {
+            element.textContent = nextValue;
+          }
+          updateDashboardRuntimeStateClass(element, nextValue);
+          if (element.getAttribute('data-dashboard-state-value') !== nextValue) {
+            element.setAttribute('data-dashboard-state-value', nextValue);
+          }
+        });
+        return displayValue;
       }
 
       function updateDashboardRuntimeStateClass(element, value) {
@@ -2481,8 +2931,981 @@ def _build_dashboard_interactivity_javascript() -> str:
         });
       }
 
-      function updateSelectedSummary(state, root) {
+      function appendDashboardSummaryPart(parts, label, value) {
+        const safeValue = safeStateValue(value);
+        if (safeValue) {
+          parts.push(label + ': ' + safeValue);
+        }
+      }
+
+      function firstDashboardSummaryValue() {
+        for (let index = 0; index < arguments.length; index += 1) {
+          const safeValue = safeStateValue(arguments[index]);
+          if (safeValue) {
+            return safeValue;
+          }
+        }
+        return '';
+      }
+
+      function screen4ArtifactName(path) {
+        const safePath = safeStateValue(path);
+        if (!safePath) {
+          return '';
+        }
+        const segments = safePath.split(/[\\\\/]/);
+        return segments[segments.length - 1] || safePath;
+      }
+
+      function buildScreen4HistoricalSelectedSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const parts = [];
+        const notes = [];
+        const contextMode = dashboardEvidenceContextMode(safeState);
+
+        if (contextMode === 'screen1_generated_artifact') {
+          appendDashboardSummaryPart(parts, 'Evidence path', 'Generated artifact');
+          appendDashboardSummaryPart(parts, 'Artifact status', 'Completed / artifact ready');
+          appendDashboardSummaryPart(parts, 'Artifact', screen4ArtifactName(safeState.screen1GeneratedArtifactPath));
+          appendDashboardSummaryPart(parts, 'Context Status', 'Generated artifact context');
+        } else if (
+          contextMode === 'screen2_existing_evidence_live' ||
+          contextMode === 'screen2_existing_evidence_cached'
+        ) {
+          appendDashboardSummaryPart(parts, 'Evidence path', 'Existing platform evidence');
+          appendDashboardSummaryPart(
+            parts,
+            'Runtime Scope',
+            firstDashboardSummaryValue(
+              safeState.selectedRuntimeScope,
+              safeState.selectedRunReference,
+              safeState.selectedRun,
+              safeState.selectedAwr
+            )
+          );
+          const databaseName = firstDashboardSummaryValue(safeState.selectedDb);
+          appendDashboardSummaryPart(
+            parts,
+            'Database',
+            databaseName && safeState.selectedDbid
+              ? databaseName + ' / ' + safeState.selectedDbid
+              : firstDashboardSummaryValue(databaseName, safeState.selectedDbid)
+          );
+          appendDashboardSummaryPart(parts, 'Instance', safeState.selectedInstance);
+          appendDashboardSummaryPart(parts, 'Host', safeState.selectedHost || safeState.selectedSystem);
+          appendDashboardSummaryPart(
+            parts,
+            'Window',
+            firstDashboardSummaryValue(
+              safeState.selectedTimeWindow,
+              [safeState.selectedSnapshotBegin, safeState.selectedSnapshotEnd].filter(Boolean).join(' - '),
+              safeState.selectedSnapshot
+            )
+          );
+          appendDashboardSummaryPart(
+            parts,
+            'Context Status',
+            contextMode === 'screen2_existing_evidence_live'
+              ? 'Live backend runtime-options context'
+              : 'Cached continuity'
+          );
+          if (contextMode === 'screen2_existing_evidence_cached') {
+            notes.push('Cached selection restored for UI continuity. Refresh Screen 2 runtime options for live backend context.');
+          }
+        }
+
+        appendDashboardSummaryPart(parts, 'Historical focus', safeState.selectedDomain);
+        appendDashboardSummaryPart(parts, 'Historical window', safeState.selectedHistoricalWindow);
+        appendDashboardSummaryPart(parts, 'Trend metric', safeState.selectedTrendMetric);
+        appendDashboardSummaryPart(parts, 'Anomaly context', safeState.selectedAnomalyGroup);
+        appendDashboardSummaryPart(parts, 'Distribution context', safeState.selectedDistribution);
+        appendDashboardSummaryPart(parts, 'Similar case context', safeState.selectedSimilarCase);
+        appendDashboardSummaryPart(parts, 'Historical baseline context', safeState.selectedComparisonBaseline);
+
+        const targetA = firstDashboardSummaryValue(
+          safeState.selectedComparisonTargetA,
+          safeState.selectedComparisonTargetAScopeValue,
+          safeState.selectedComparisonTargetATimeWindow
+        );
+        const targetB = firstDashboardSummaryValue(
+          safeState.selectedComparisonTargetB,
+          safeState.selectedComparisonTargetBScopeValue,
+          safeState.selectedComparisonTargetBTimeWindow
+        );
+        appendDashboardSummaryPart(parts, 'Prepared Target A', targetA);
+        appendDashboardSummaryPart(parts, 'Prepared Target B', targetB);
+        if (targetA || targetB) {
+          notes.push('Target A/B are prepared comparison context only. Screen 4 Comparative Review remains unavailable until deterministic comparison output exists.');
+        }
+
+        if (!parts.length) {
+          return {
+            text: 'Read-only historical exploration: no local selection. Historical output remains unchanged.',
+            empty: true
+          };
+        }
+
+        notes.push(
+          'Truth boundary: selection state does not create diagnosis, recommendation, comparison output, action, outcome, learning state, materialization, or runtime eligibility.'
+        );
+        return {
+          text: parts.concat(notes).join(' · '),
+          empty: false
+        };
+      }
+
+      function screen3EvidenceDisplayLabel(value) {
+        const normalized = safeStateValue(value);
+        const labels = {
+          single_awr: 'Single AWR',
+          selected_runtime_scope: 'Selected runtime scope',
+          unknown: 'Unknown',
+          generated_artifact: 'Generated deterministic artifact',
+          governed_backend_runtime_options: 'Live backend metadata',
+          browser_cache_continuity: 'Cached continuity only',
+          live_backend_metadata: 'Live backend metadata',
+          cached_continuity_only: 'Cached continuity only',
+          existing_platform_evidence: 'Existing platform evidence',
+          generated_artifact_path: 'Generated artifact',
+          current_generated_artifact_context: 'Current generated artifact context',
+          unknown_alignment: 'Unknown alignment',
+          exact_selected_scope: 'Exact selected scope',
+          same_db_different_window: 'Same DB, different window',
+          historical_artifact_contains_selected_scope: 'Historical artifact includes selected scope',
+          same_db_historical_available: 'Same DB historical context',
+          different_artifact: 'Different artifact',
+          selected_scope_artifact_mismatch: 'Selected-scope artifact mismatch',
+          selected_runtime_scope_flag: 'Selected runtime scope',
+          comparison_prepared_only: 'Prepared only',
+          comparison_unavailable: 'Comparison unavailable',
+          no_deterministic_comparison_output: 'No deterministic comparison output',
+          insufficient_identity_data: 'Insufficient identity data',
+          eligible_if_screen4_has_selected_scope_evidence: 'Eligible if selected-scope evidence is available',
+          eligible_if_wait_or_db_time_evidence_exists: 'Eligible if wait or DB time evidence exists',
+          eligible_if_wait_event_evidence_exists: 'Eligible if wait-event evidence exists',
+          eligible_if_top_sql_evidence_exists: 'Eligible if Top SQL evidence exists',
+          eligible_if_aligned_historical_evidence_exists: 'Requires aligned historical evidence',
+          requires_aligned_multi_sample_evidence: 'Requires aligned multi-sample evidence',
+          unavailable_without_deterministic_comparison_output: 'Unavailable until deterministic comparison output exists',
+          requires_attached_oem_ash_time_series: 'Requires attached OEM/ASH time-series'
+        };
+        return labels[normalized] || normalized || 'Unknown';
+      }
+
+      function screen3EvidenceStatusTone(value) {
+        const normalized = safeStateValue(screen3EvidenceDisplayLabel(value)).toLowerCase();
+        if (
+          normalized === 'available' ||
+          normalized === 'live backend metadata' ||
+          normalized === 'single awr' ||
+          normalized === 'exact selected scope'
+        ) {
+          return 'available';
+        }
+        if (
+          normalized === 'context only' ||
+          normalized === 'same db historical context' ||
+          normalized === 'same db, different window'
+        ) {
+          return 'context';
+        }
+        if (normalized === 'prepared only') {
+          return 'prepared';
+        }
+        if (normalized.indexOf('cached') !== -1) {
+          return 'cached';
+        }
+        if (normalized.indexOf('unavailable') !== -1 || normalized.indexOf('not inventoried') !== -1) {
+          return 'unavailable';
+        }
+        return 'unknown';
+      }
+
+      function screen3EvidenceContextSet(panel, attrName, field, value) {
+        if (!panel) {
+          return;
+        }
+        const selector = '[data-screen3-evidence-' + attrName + '="' + field + '"]';
+        panel.querySelectorAll(selector).forEach(function (element) {
+          const displayValue = screen3EvidenceDisplayLabel(value);
+          if (element.textContent !== displayValue) {
+            element.textContent = displayValue;
+          }
+          const tone = screen3EvidenceStatusTone(displayValue);
+          if (element.hasAttribute('data-screen3-evidence-status-tone')) {
+            element.setAttribute('data-screen3-evidence-status-tone', tone);
+          }
+        });
+      }
+
+      function screen3PanelAttr(panel, name) {
+        return safeStateValue(panel && panel.getAttribute ? panel.getAttribute(name) : '');
+      }
+
+      function screen3EvidenceWindow(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const explicitWindow = firstDashboardSummaryValue(
+          safeState.selectedTimeWindow,
+          safeState.selectedSnapshot
+        );
+        if (explicitWindow) {
+          return explicitWindow;
+        }
+        const begin = safeStateValue(safeState.selectedSnapshotBegin);
+        const end = safeStateValue(safeState.selectedSnapshotEnd);
+        return [begin, end].filter(Boolean).join(' - ');
+      }
+
+      function screen3EvidenceSelectedScopeLabel(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return firstDashboardSummaryValue(
+          safeState.selectedRuntimeScope,
+          safeState.selectedRunReference,
+          safeState.selectedRun,
+          safeState.selectedAwr
+        ) || 'No Runtime Scope selected';
+      }
+
+      function screen3EvidenceDbLabel(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (safeState.selectedDb && safeState.selectedDbid) {
+          return safeState.selectedDb + ' / ' + safeState.selectedDbid;
+        }
+        return firstDashboardSummaryValue(safeState.selectedDb, safeState.selectedDbid) || 'Unknown';
+      }
+
+      function screen3EvidenceHasPreparedTargets(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          safeState.selectedComparisonTargetA ||
+          safeState.selectedComparisonTargetB ||
+          safeState.selectedComparisonTargetAScopeValue ||
+          safeState.selectedComparisonTargetBScopeValue ||
+          safeState.screen3SelectedTargetARowId ||
+          safeState.screen3SelectedTargetBRowId
+        );
+      }
+
+      function screen3EvidencePrimaryContext(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (!screen2ExistingEvidenceContextSelected(safeState)) {
+          return 'unknown';
+        }
+        const awrCount = Number(safeState.selectedRuntimeScopeAwrCount || 0);
+        const snapshotCount = Number(safeState.selectedRuntimeScopeSnapshotCount || 0);
+        if ((awrCount && awrCount > 1) || (snapshotCount && snapshotCount > 1)) {
+          return 'selected_runtime_scope';
+        }
+        return 'single_awr';
+      }
+
+      function screen3EvidenceTruthSource(state) {
+        const mode = dashboardEvidenceContextMode(state || {});
+        if (mode === 'screen2_existing_evidence_live') {
+          return 'governed_backend_runtime_options';
+        }
+        if (mode === 'screen2_existing_evidence_cached') {
+          return 'browser_cache_continuity';
+        }
+        if (mode === 'screen1_generated_artifact') {
+          return 'generated_artifact';
+        }
+        return 'unknown';
+      }
+
+      function screen3EvidenceCacheStatus(state) {
+        const truthSource = screen3EvidenceTruthSource(state || {});
+        if (truthSource === 'governed_backend_runtime_options') {
+          return 'live_backend_metadata';
+        }
+        if (truthSource === 'browser_cache_continuity') {
+          return 'cached_continuity_only';
+        }
+        return truthSource || 'unknown';
+      }
+
+      function screen3EvidenceGeneratedWindow(panel) {
+        const begin = screen3PanelAttr(panel, 'data-screen3-generated-window-begin');
+        const end = screen3PanelAttr(panel, 'data-screen3-generated-window-end');
+        return [begin, end].filter(Boolean).join(' - ') || begin || end;
+      }
+
+      function screen3EvidenceArtifactAlignment(state, panel) {
+        const safeState = sanitizeDashboardState(state || {});
+        const contextMode = dashboardEvidenceContextMode(safeState);
+        if (contextMode !== 'screen2_existing_evidence_live' && contextMode !== 'screen2_existing_evidence_cached') {
+          return {
+            status: 'unknown_alignment',
+            basis: 'No selected runtime scope to align',
+            reason: 'Artifact alignment cannot be determined from available identity keys.'
+          };
+        }
+        const generatedDbid = screen3PanelAttr(panel, 'data-screen3-generated-dbid');
+        const generatedDb = screen3PanelAttr(panel, 'data-screen3-generated-db-name').toLowerCase();
+        const generatedInstance = screen3PanelAttr(panel, 'data-screen3-generated-instance').toLowerCase();
+        const generatedHost = screen3PanelAttr(panel, 'data-screen3-generated-host').toLowerCase();
+        const selectedDbid = safeStateValue(safeState.selectedDbid);
+        const selectedDb = safeStateValue(safeState.selectedDb).toLowerCase();
+        const selectedInstance = safeStateValue(safeState.selectedInstance).toLowerCase();
+        const selectedHost = safeStateValue(safeState.selectedHost || safeState.selectedSystem).toLowerCase();
+        if (selectedDbid && generatedDbid && selectedDbid !== generatedDbid) {
+          return {
+            status: 'different_artifact',
+            basis: 'DBID differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedDb && generatedDb && selectedDb !== generatedDb) {
+          return {
+            status: 'different_artifact',
+            basis: 'Database name differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedInstance && generatedInstance && selectedInstance !== generatedInstance) {
+          return {
+            status: 'different_artifact',
+            basis: 'Instance differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedHost && generatedHost && selectedHost !== generatedHost) {
+          return {
+            status: 'different_artifact',
+            basis: 'Host differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        const selectedBegin = safeStateValue(safeState.selectedSnapshotBegin);
+        const selectedEnd = safeStateValue(safeState.selectedSnapshotEnd);
+        const generatedBegin = screen3PanelAttr(panel, 'data-screen3-generated-window-begin');
+        const generatedEnd = screen3PanelAttr(panel, 'data-screen3-generated-window-end');
+        if (selectedBegin && selectedEnd && generatedBegin && generatedEnd) {
+          if (selectedBegin === generatedBegin && selectedEnd === generatedEnd) {
+            return {
+              status: 'exact_selected_scope',
+              basis: 'DB identity and window match',
+              reason: 'Generated artifact matches selected Runtime Scope.'
+            };
+          }
+          return {
+            status: 'same_db_different_window',
+            basis: 'DB identity matches; window differs',
+            reason: 'Same database historical evidence is available as context only.'
+          };
+        }
+        const snapshotCount = Number(screen3PanelAttr(panel, 'data-screen3-generated-snapshot-count') || 0);
+        if ((selectedDbid && generatedDbid && selectedDbid === generatedDbid) || (selectedDb && generatedDb && selectedDb === generatedDb)) {
+          if (snapshotCount > 1) {
+            return {
+              status: 'same_db_historical_available',
+              basis: 'DB identity matches; generated artifact has multiple snapshots',
+              reason: 'Same database historical evidence is available as context only.'
+            };
+          }
+          return {
+            status: 'unknown_alignment',
+            basis: 'DB identity matches; window identity incomplete',
+            reason: 'Artifact alignment cannot be determined from available identity keys.'
+          };
+        }
+        return {
+          status: 'unknown_alignment',
+          basis: 'Insufficient identity data',
+          reason: 'Artifact alignment cannot be determined from available identity keys.'
+        };
+      }
+
+      function updateScreen3EvidenceContextPanel(state, root) {
         const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        scope.querySelectorAll('[data-screen3-evidence-context-panel="true"]').forEach(function (panel) {
+          const contextMode = dashboardEvidenceContextMode(safeState);
+          const selectedScopeAvailable = screen2ExistingEvidenceContextSelected(safeState);
+          const primary = screen3EvidencePrimaryContext(safeState);
+          const truthSource = screen3EvidenceTruthSource(safeState);
+          const cacheStatus = screen3EvidenceCacheStatus(safeState);
+          const preparedTargets = screen3EvidenceHasPreparedTargets(safeState);
+          const alignment = screen3EvidenceArtifactAlignment(safeState, panel);
+          const evidencePath = selectedScopeAvailable ? 'existing_platform_evidence' : (
+            contextMode === 'screen1_generated_artifact' ? 'generated_artifact_path' : 'unknown'
+          );
+          const freshness = cacheStatus || 'unknown';
+          const comparisonStatus = preparedTargets ? 'Prepared only' : 'No deterministic comparison output';
+          const flags = [];
+          if (selectedScopeAvailable) {
+            flags.push('selected_runtime_scope_flag');
+          }
+          if (preparedTargets) {
+            flags.push('comparison_prepared_only');
+          }
+          flags.push('comparison_unavailable');
+          if (cacheStatus === 'cached_continuity_only') {
+            flags.push('cached_continuity_only');
+          }
+          if (alignment.status === 'different_artifact') {
+            flags.push('selected_scope_artifact_mismatch');
+          }
+          if (!safeState.selectedDbid && !safeState.selectedDb) {
+            flags.push('insufficient_identity_data');
+          }
+          const generatedDbLabel = (
+            screen3PanelAttr(panel, 'data-screen3-generated-db-name') &&
+            screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+          )
+            ? screen3PanelAttr(panel, 'data-screen3-generated-db-name') + ' / ' + screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+            : firstDashboardSummaryValue(
+              screen3PanelAttr(panel, 'data-screen3-generated-db-name'),
+              screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+            );
+          screen3EvidenceContextSet(panel, 'context-field', 'runtime_scope', selectedScopeAvailable ? screen3EvidenceSelectedScopeLabel(safeState) : 'Current generated artifact context');
+          screen3EvidenceContextSet(panel, 'context-field', 'database', selectedScopeAvailable ? screen3EvidenceDbLabel(safeState) : (generatedDbLabel || 'Unknown'));
+          screen3EvidenceContextSet(panel, 'context-field', 'dbid', safeState.selectedDbid || screen3PanelAttr(panel, 'data-screen3-generated-dbid') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'instance', safeState.selectedInstance || screen3PanelAttr(panel, 'data-screen3-generated-instance') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'host', safeState.selectedHost || safeState.selectedSystem || screen3PanelAttr(panel, 'data-screen3-generated-host') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'window', screen3EvidenceWindow(safeState) || screen3EvidenceGeneratedWindow(panel) || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'source', selectedScopeAvailable ? (safeState.selectedRunReference || safeState.selectedRun || safeState.selectedAwr || 'Unknown') : (screen3PanelAttr(panel, 'data-screen3-generated-source') || 'Unknown'));
+          screen3EvidenceContextSet(panel, 'context-field', 'context_type', primary);
+          screen3EvidenceContextSet(panel, 'context-field', 'evidence_path', evidencePath);
+          screen3EvidenceContextSet(panel, 'context-field', 'freshness', freshness);
+          screen3EvidenceContextSet(panel, 'inventory-field', 'exact_selected_scope_evidence', selectedScopeAvailable ? (contextMode === 'screen2_existing_evidence_cached' ? 'Cached continuity only' : 'Available') : (contextMode === 'screen1_generated_artifact' ? 'Available' : 'Unknown'));
+          screen3EvidenceContextSet(panel, 'inventory-field', 'same_db_historical_evidence', alignment.status === 'same_db_historical_available' || alignment.status === 'same_db_different_window' ? 'Context only' : 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'fleet_population_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'oem_ash_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'rac_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'dataguard_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'exadata_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'comparison_prepared_only', preparedTargets ? 'Prepared only' : 'Unavailable');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'deterministic_comparison_output', 'Deterministic output unavailable');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'comparison_status', comparisonStatus);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'status', alignment.status);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'match_basis', alignment.basis);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'mismatch_reason', alignment.reason);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'cache_status', cacheStatus);
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'single_awr_graphics', 'eligible_if_screen4_has_selected_scope_evidence');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'db_time_composition', 'eligible_if_wait_or_db_time_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'wait_profile', 'eligible_if_wait_event_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'top_sql', 'eligible_if_top_sql_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'historical_trend_panels', 'eligible_if_aligned_historical_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'distribution_violins', 'requires_aligned_multi_sample_evidence');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'oem_ash_timelines', 'requires_attached_oem_ash_time_series');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'comparison_graphics', 'unavailable_without_deterministic_comparison_output');
+          panel.setAttribute('data-screen3-evidence-context-primary', primary);
+          panel.setAttribute('data-screen3-evidence-context-flags', flags.join(','));
+          panel.setAttribute('data-screen3-evidence-context-truth-source', truthSource);
+          panel.setAttribute('data-screen3-artifact-alignment-status', alignment.status);
+          panel.__screen3EvidenceContextContract = Object.freeze({
+            selected_scope_identity: {
+              context_type: primary,
+              runtime_scope: selectedScopeAvailable ? screen3EvidenceSelectedScopeLabel(safeState) : 'Current generated artifact context',
+              source_type: selectedScopeAvailable ? 'existing_platform_evidence' : 'generated_artifact',
+              source_table: safeState.selectedRuntimeScopeSourceTable || 'generated_dashboard_payload',
+              awr_id: safeState.selectedAwr || '',
+              report_id: safeState.selectedReportId || safeState.selectedAwr || '',
+              run_id: safeState.selectedRun || '',
+              run_reference: safeState.selectedRunReference || safeState.selectedRun || safeState.selectedAwr || '',
+              source_file: selectedScopeAvailable ? (safeState.selectedRuntimeScope || '') : (screen3PanelAttr(panel, 'data-screen3-generated-source') || ''),
+              dbid: safeState.selectedDbid || screen3PanelAttr(panel, 'data-screen3-generated-dbid') || '',
+              db_name: safeState.selectedDb || screen3PanelAttr(panel, 'data-screen3-generated-db-name') || '',
+              instance_name: safeState.selectedInstance || screen3PanelAttr(panel, 'data-screen3-generated-instance') || '',
+              host: safeState.selectedHost || safeState.selectedSystem || screen3PanelAttr(panel, 'data-screen3-generated-host') || '',
+              window_begin: safeState.selectedSnapshotBegin || screen3PanelAttr(panel, 'data-screen3-generated-window-begin') || '',
+              window_end: safeState.selectedSnapshotEnd || screen3PanelAttr(panel, 'data-screen3-generated-window-end') || '',
+              truth_source: truthSource,
+              evidence_path: screen3EvidenceDisplayLabel(evidencePath),
+              freshness: screen3EvidenceDisplayLabel(freshness)
+            },
+            evidence_inventory: {
+              exact_selected_scope_evidence: screen3EvidenceDisplayLabel(selectedScopeAvailable ? (contextMode === 'screen2_existing_evidence_cached' ? 'Cached continuity only' : 'Available') : (contextMode === 'screen1_generated_artifact' ? 'Available' : 'Unknown')),
+              same_db_historical_evidence: screen3EvidenceDisplayLabel(alignment.status === 'same_db_historical_available' || alignment.status === 'same_db_different_window' ? 'Context only' : 'Not inventoried'),
+              fleet_population_evidence: 'Not inventoried',
+              oem_ash_evidence: 'Not inventoried',
+              rac_evidence: 'Not inventoried',
+              dataguard_evidence: 'Not inventoried',
+              exadata_evidence: 'Not inventoried',
+              comparison_prepared_only: preparedTargets ? 'Prepared only' : 'Unavailable',
+              deterministic_comparison_output: 'No deterministic comparison output',
+              comparison_status: comparisonStatus
+            },
+            context_classification: {
+              primary: primary,
+              flags: flags.slice(),
+              cache_status: cacheStatus
+            },
+            artifact_alignment: {
+              status: alignment.status,
+              match_basis: alignment.basis ? [alignment.basis] : [],
+              mismatch_reason: alignment.reason,
+              product_summary: alignment.reason
+            },
+            screen4_graphics_eligibility_hints: {
+              single_awr_graphics: 'eligible_if_screen4_has_selected_scope_evidence',
+              historical_trend_panels: 'eligible_if_aligned_historical_evidence_exists',
+              distribution_violins: 'requires_aligned_multi_sample_evidence',
+              comparison_graphics: 'unavailable_without_deterministic_comparison_output',
+              graphics_boundary: 'Screen 4 may render graphics only when deterministic evidence and context alignment allow it'
+            },
+            truth_boundary: {
+              browser_cache_is_truth: false,
+              selection_changes_diagnosis: false,
+              selection_creates_historical_truth: false,
+              target_ab_creates_comparison_truth: false,
+              llm_changes_truth: false
+            },
+            llm_explanation_context: {
+              eligible_for_explanation: true,
+              provider_call_required: false,
+              allowed_to_explain: [
+                'context classification',
+                'evidence availability',
+                'artifact alignment',
+                'graphics eligibility fallback'
+              ],
+              forbidden: [
+                'classification decision',
+                'eligibility decision',
+                'diagnosis mutation',
+                'recommendation mutation',
+                'scoring mutation',
+                'comparison computation',
+                'graphics rendering decision'
+              ]
+            }
+          });
+        });
+      }
+
+      function screen3EvidenceContextExplanationText(value) {
+        return safeExplanationText(value).slice(0, 2400);
+      }
+
+      function setScreen3EvidenceContextExplanationStatus(panel, status, message) {
+        if (!panel) {
+          return;
+        }
+        const safeStatus = safeStateValue(status) || 'idle';
+        const safeMessage = screen3EvidenceContextExplanationText(
+          message || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+        );
+        panel.querySelectorAll('[data-screen3-evidence-context-explanation-status]').forEach(function (element) {
+          element.setAttribute('data-screen3-evidence-context-explanation-status', safeStatus);
+          element.textContent = safeMessage;
+        });
+      }
+
+      function applyScreen3EvidenceContextExplanation(panel, explanation) {
+        if (!panel) {
+          return;
+        }
+        const safeExplanation = screen3EvidenceContextExplanationText(explanation);
+        if (!safeExplanation) {
+          return;
+        }
+        panel.querySelectorAll('[data-screen3-evidence-context-explanation-result]').forEach(function (element) {
+          element.textContent = safeExplanation;
+        });
+      }
+
+      function screen3EvidenceContextExplanationViolatesBoundary(explanation) {
+        const lowered = screen3EvidenceContextExplanationText(explanation).toLowerCase();
+        const unsafeMarkers = [
+          'changed the diagnosis',
+          'updated the diagnosis',
+          'changed the score',
+          'updated the score',
+          'changed confidence',
+          'updated the recommendation',
+          'computed comparison result',
+          'created comparison output',
+          'rendered comparison violin',
+          'decided graphics eligibility',
+          'chose graphics',
+          'rendered graphics',
+          'computed trend',
+          'computed anomaly',
+          'created learning candidate',
+          'materialized',
+          'activated runtime eligibility',
+          'future runs will'
+        ];
+        return unsafeMarkers.some(function (marker) {
+          return lowered.indexOf(marker) !== -1;
+        });
+      }
+
+      function screen3EvidenceContextContractForPanel(panel) {
+        if (panel && panel.__screen3EvidenceContextContract) {
+          return panel.__screen3EvidenceContextContract;
+        }
+        const script = panel ? panel.querySelector('[data-screen3-evidence-context-contract-json="true"]') : null;
+        if (script && script.textContent) {
+          try {
+            return JSON.parse(script.textContent);
+          } catch (error) {
+            return {};
+          }
+        }
+        return {};
+      }
+
+      function screen3EvidenceContextExplanationProviderLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'off') {
+          return 'Off';
+        }
+        if (normalized === 'oci') {
+          return 'OCI';
+        }
+        if (normalized === 'mock') {
+          return 'Mock';
+        }
+        if (normalized === 'local') {
+          return 'Local';
+        }
+        return normalized ? normalized.toUpperCase() : 'Unknown';
+      }
+
+      function screen3EvidenceContextExplanationRoutePath() {
+        try {
+          return new URL(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT).pathname;
+        } catch (error) {
+          return '/phase7/dashboard/screen3/evidence-context/explanation';
+        }
+      }
+
+      function screen3EvidenceContextExplanationStatusLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available' || normalized === 'ready') {
+          return 'Ready';
+        }
+        if (normalized === 'provider-off' || normalized === 'disabled') {
+          return 'Disabled';
+        }
+        if (normalized === 'unavailable' || normalized === 'service-unavailable') {
+          return 'Service unavailable';
+        }
+        if (normalized === 'failed' || normalized === 'provider-failed') {
+          return 'Failed';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextRouteLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available') {
+          return 'Available';
+        }
+        if (normalized === 'unavailable') {
+          return 'Unavailable';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextWorkflowLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available') {
+          return 'Available';
+        }
+        if (normalized === 'unavailable') {
+          return 'Unavailable';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextRouteUnavailableMessage(workflowStatus) {
+        const workflowAvailable = safeStateValue(workflowStatus).toLowerCase() === 'available';
+        if (workflowAvailable) {
+          return 'Workflow service is available, but the Screen 3 explanation route is unavailable. Restart dashboard_workflow_service.py or verify the route is registered. Deterministic evidence context remains unchanged.';
+        }
+        return 'Workflow service unavailable. Start or restart dashboard_workflow_service.py to use runtime explanation. Deterministic evidence context remains unchanged.';
+      }
+
+      function setScreen3EvidenceContextExplanationAvailability(panel, options) {
+        if (!panel) {
+          return;
+        }
+        const availability = options || {};
+        const providerMode = safeStateValue(availability.providerMode || panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off').toLowerCase() || 'off';
+        const routeStatus = safeStateValue(availability.routeStatus || 'not-checked').toLowerCase();
+        const workflowStatus = safeStateValue(availability.workflowStatus || 'not-checked').toLowerCase();
+        const providerOff = providerMode === 'off';
+        const routeAvailable = routeStatus === 'available';
+        const status = providerOff
+          ? 'provider-off'
+          : (routeAvailable ? 'ready' : (routeStatus === 'unavailable' ? 'service-unavailable' : 'not-checked'));
+        const message = availability.message || (
+          providerOff
+            ? 'LLM explanation disabled. Deterministic evidence context remains unchanged.'
+            : (
+              routeAvailable
+                ? 'Runtime explanation route is available. Explanation only; deterministic context remains unchanged.'
+                : (
+                  routeStatus === 'unavailable'
+                    ? screen3EvidenceContextRouteUnavailableMessage(workflowStatus)
+                    : 'Runtime explanation route not checked yet. Deterministic evidence context remains unchanged.'
+                )
+            )
+        );
+        panel.setAttribute('data-screen3-evidence-context-explanation-route', routeStatus || 'not-checked');
+        panel.setAttribute('data-screen3-evidence-context-workflow-status', workflowStatus || 'not-checked');
+        panel.setAttribute('data-screen3-evidence-context-provider-mode', providerMode);
+        panel.querySelectorAll('[data-screen3-evidence-context-workflow-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextWorkflowLabel(workflowStatus);
+          element.setAttribute('data-screen3-evidence-workflow-status', workflowStatus || 'not-checked');
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-route-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextRouteLabel(routeStatus);
+          element.setAttribute('data-screen3-evidence-route-status', routeStatus || 'not-checked');
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-provider-configured]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextExplanationProviderLabel(providerMode);
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-availability-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextExplanationStatusLabel(status);
+          element.setAttribute('data-screen3-evidence-explanation-status', status);
+        });
+        panel.querySelectorAll(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR).forEach(function (button) {
+          const enabled = routeAvailable && !providerOff;
+          button.disabled = !enabled;
+          button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+          button.setAttribute('data-screen3-evidence-context-route-status', routeStatus || 'not-checked');
+          button.setAttribute('data-screen3-evidence-context-provider-mode', providerMode);
+          button.setAttribute(
+            'title',
+            enabled
+              ? 'Generate optional review-context wording from the already-computed evidence-context contract.'
+              : message
+          );
+        });
+        setScreen3EvidenceContextExplanationStatus(panel, status, message);
+      }
+
+      function screen3EvidenceContextHealthRouteAvailable(payload) {
+        const supported = Array.isArray(payload && payload.supported_endpoints)
+          ? payload.supported_endpoints
+          : [];
+        const routePath = screen3EvidenceContextExplanationRoutePath();
+        return supported.indexOf(routePath) >= 0;
+      }
+
+      function refreshScreen3EvidenceContextExplanationAvailability(root) {
+        const scope = root || document;
+        const panels = Array.prototype.slice.call(
+          scope.querySelectorAll('[data-screen3-evidence-context-panel="true"]')
+        );
+        if (!panels.length) {
+          return Promise.resolve(false);
+        }
+        panels.forEach(function (panel) {
+          const button = panel.querySelector(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR);
+          const providerMode = safeStateValue(
+            button && button.getAttribute('data-screen3-evidence-context-provider-mode')
+          ).toLowerCase() || 'off';
+          setScreen3EvidenceContextExplanationAvailability(panel, {
+            providerMode: providerMode,
+            routeStatus: 'not-checked',
+            workflowStatus: 'not-checked'
+          });
+        });
+        if (!window.fetch) {
+          setCurrentPageWorkflowStatus('unavailable', 'screen3-evidence-context-health');
+          panels.forEach(function (panel) {
+            setScreen3EvidenceContextExplanationAvailability(panel, {
+              providerMode: panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+              routeStatus: 'unavailable',
+              workflowStatus: 'unavailable',
+              message: screen3EvidenceContextRouteUnavailableMessage('unavailable')
+            });
+          });
+          return Promise.resolve(false);
+        }
+        return window.fetch(PHASE7_DASHBOARD_HEALTH_ENDPOINT, { method: 'GET' })
+          .then(function (response) {
+            return response.json().catch(function () {
+              return {};
+            }).then(function (payload) {
+              const routeAvailable = response.ok && screen3EvidenceContextHealthRouteAvailable(payload);
+              const routeStatus = routeAvailable ? 'available' : 'unavailable';
+              const workflowStatus = response.ok ? 'available' : 'unavailable';
+              setCurrentPageWorkflowStatus(workflowStatus, 'screen3-evidence-context-health');
+              const providerMode = safeStateValue(
+                payload.screen3_evidence_context_explanation_provider_mode
+              ).toLowerCase();
+              panels.forEach(function (panel) {
+                setScreen3EvidenceContextExplanationAvailability(panel, {
+                  providerMode: providerMode || panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+                  routeStatus: routeStatus,
+                  workflowStatus: workflowStatus
+                });
+              });
+              return routeAvailable;
+            });
+          })
+          .catch(function () {
+            setCurrentPageWorkflowStatus('unavailable', 'screen3-evidence-context-health');
+            panels.forEach(function (panel) {
+              setScreen3EvidenceContextExplanationAvailability(panel, {
+                providerMode: panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+                routeStatus: 'unavailable',
+                workflowStatus: 'unavailable',
+                message: screen3EvidenceContextRouteUnavailableMessage('unavailable')
+              });
+            });
+            return false;
+          });
+      }
+
+      function dashboardScreen3EvidenceContextExplanationProvider(context) {
+        if (!window.fetch) {
+          return Promise.reject(new Error('fetch unavailable'));
+        }
+        const payload = Object.assign({}, context || {}, {
+          screen_id: 'screen_3',
+          request_type: 'screen3_evidence_context_explanation',
+          context_type: 'evidence_context',
+          non_mutating_explanation_only: true
+        });
+        return window.fetch(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(function (response) {
+          return response.json().catch(function () {
+            return {};
+          }).then(function (payload) {
+            if (!response.ok) {
+              const error = new Error(payload && payload.message ? payload.message : 'provider request failed');
+              error.payload = payload;
+              error.httpStatus = response.status;
+              throw error;
+            }
+            return payload;
+          });
+        });
+      }
+      window.dashboardScreen3EvidenceContextExplanationProvider = dashboardScreen3EvidenceContextExplanationProvider;
+
+      function handleScreen3EvidenceContextExplanationClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const button = event.target.closest(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR);
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        const panel = button.closest('[data-screen3-evidence-context-panel="true"]');
+        if (!panel) {
+          return;
+        }
+        if (button.disabled || button.getAttribute('aria-disabled') === 'true') {
+          setScreen3EvidenceContextExplanationStatus(
+            panel,
+            'service-unavailable',
+            button.getAttribute('title') || screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+          );
+          return;
+        }
+        updateScreen3EvidenceContextPanel(readDashboardState(), document);
+        const contract = screen3EvidenceContextContractForPanel(panel);
+        const providerMode = safeStateValue(button.getAttribute('data-screen3-evidence-context-provider-mode')).toLowerCase() || 'off';
+        if (providerMode === 'off') {
+          setScreen3EvidenceContextExplanationStatus(
+            panel,
+            'provider-off',
+            'Explanation unavailable. Deterministic evidence context remains unchanged.'
+          );
+          return;
+        }
+        const providerHook = window.dashboardScreen3EvidenceContextExplanationProvider;
+        if (typeof providerHook !== 'function') {
+          setScreen3EvidenceContextExplanationAvailability(panel, {
+            providerMode: providerMode,
+            routeStatus: 'unavailable',
+            workflowStatus: panel.getAttribute('data-screen3-evidence-context-workflow-status') || 'unavailable',
+            message: screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+          });
+          return;
+        }
+        const classification = contract.context_classification || {};
+        const inventory = contract.evidence_inventory || {};
+        const context = Object.freeze({
+          provider_mode: providerMode,
+          selected_scope_identity: contract.selected_scope_identity || {},
+          evidence_inventory: inventory,
+          context_classification: classification,
+          artifact_alignment: contract.artifact_alignment || {},
+          screen4_graphics_eligibility_hints: contract.screen4_graphics_eligibility_hints || {},
+          truth_boundary: contract.truth_boundary || {},
+          cache_live_status: classification.cache_status || '',
+          target_ab_prepared_only: inventory.comparison_prepared_only === 'Prepared only',
+          deterministic_values_remain_authoritative: true,
+          non_mutating_explanation_only: true
+        });
+        setScreen3EvidenceContextExplanationStatus(
+          panel,
+          'pending-provider',
+          'Requesting review-context wording only. Deterministic evidence context remains unchanged.'
+        );
+        Promise.resolve(providerHook(context))
+          .then(function (providerResult) {
+            const explanation = screen3EvidenceContextExplanationText(providerResult && providerResult.explanation);
+            const providerStatus = safeStateValue(providerResult && providerResult.status);
+            const providerMessage = screen3EvidenceContextExplanationText(providerResult && providerResult.message);
+            if (providerStatus === 'provider_off') {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-off',
+                providerMessage || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            if (!explanation) {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-empty',
+                providerMessage || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            if (screen3EvidenceContextExplanationViolatesBoundary(explanation)) {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-boundary-rejected',
+                'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            applyScreen3EvidenceContextExplanation(panel, explanation);
+            setScreen3EvidenceContextExplanationStatus(
+              panel,
+              'generated-provider',
+              providerMessage || 'Review context explanation refreshed. Only explanatory wording changed.'
+            );
+          })
+          .catch(function (error) {
+            const payload = error && error.payload ? error.payload : {};
+            const message = screen3EvidenceContextExplanationText(payload.message);
+            if (!error || !error.httpStatus || error.httpStatus === 404) {
+              setScreen3EvidenceContextExplanationAvailability(panel, {
+                providerMode: providerMode,
+                routeStatus: 'unavailable',
+                workflowStatus: panel.getAttribute('data-screen3-evidence-context-workflow-status') || 'unavailable',
+                message: message || screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+              });
+              return;
+            }
+            setScreen3EvidenceContextExplanationStatus(
+              panel,
+              'provider-failed',
+              message || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+            );
+          });
+      }
+
+      function buildGenericSelectedSummary(state) {
         const safeState = sanitizeDashboardState(state);
         const parts = DASHBOARD_STATE_KEYS
           .filter(function (key) { return Boolean(safeState[key]); })
@@ -2499,12 +3922,31 @@ def _build_dashboard_interactivity_javascript() -> str:
           'Semantic context remains reviewer-assist only. ' +
           'Learning candidates remain proposal/review context only. '
         );
-        const summaryText = parts.length
-          ? safetyText + 'Active selections: ' + parts.join(' | ')
-          : safetyText + 'No exploratory selection.';
+        return {
+          text: parts.length
+            ? safetyText + 'Active selections: ' + parts.join(' | ')
+            : safetyText + 'No exploratory selection.',
+          empty: !parts.length
+        };
+      }
+
+      function selectedSummaryForElement(element, state) {
+        const summaryKind = safeStateValue(
+          element && element.getAttribute && element.getAttribute('data-dashboard-selected-summary-kind')
+        );
+        if (summaryKind === 'screen4-historical') {
+          return buildScreen4HistoricalSelectedSummary(state);
+        }
+        return buildGenericSelectedSummary(state);
+      }
+
+      function updateSelectedSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
         scope.querySelectorAll(SELECTED_SUMMARY_SELECTOR).forEach(function (element) {
-          element.textContent = summaryText;
-          element.setAttribute('data-dashboard-state-empty', parts.length ? 'false' : 'true');
+          const summary = selectedSummaryForElement(element, safeState);
+          element.textContent = summary.text;
+          element.setAttribute('data-dashboard-state-empty', summary.empty ? 'true' : 'false');
         });
       }
 
@@ -2921,7 +4363,11 @@ def _build_dashboard_interactivity_javascript() -> str:
         const source = safeStateValue(safeState.screen3LiveServiceStatusSource || '').toLowerCase();
         return Boolean(
           safeState.screen3LiveServiceStatusCheckedAt &&
-          source === 'runtime-options-response'
+          [
+            'runtime-options-response',
+            'screen3-evidence-context-health',
+            'current-page-live-check'
+          ].indexOf(source) >= 0
         );
       }
 
@@ -3204,6 +4650,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen2RuntimeOptionsLoadRequestId = '';
           state.screen3RuntimeOptionsLoadedRows = '';
           state.screen3RuntimeOptionsCount = '';
+          state.screen3RuntimeOptionsFirstLoadedAt = '';
+          state.screen3RuntimeOptionsLoadedAt = '';
           state.screen3RuntimeOptionsCacheStatus = '';
           state.screen3LiveServiceStatusSource = '';
           state.screen3LiveServiceStatusCheckedAt = '';
@@ -3263,6 +4711,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3RuntimeOptionsCount = '0';
         state.screen3RuntimeOptionsLoadedRows = '0';
         state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        state.screen3RuntimeOptionsFirstLoadedAt = 'not loaded';
         state.screen3RuntimeOptionsLoadedAt = 'not loaded';
         state.screen3RuntimeOptionsIncludedTables = 'not checked';
         state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
@@ -3273,6 +4722,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen3LastRequestedAction = '';
         state.screen3LastActionStatus = '';
         state.screen3LastValidationStatus = '';
+        state.screen3LastAuditReference = '';
         state.screen3LastPersistenceStatus = '';
         state.screen3LastExecutionStatus = '';
         state.screen3LastOutputArtifact = '';
@@ -3299,6 +4749,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           'selectedRunReference',
           'selectedReportId',
           'selectedSnapshot',
+          'selectedSnapshotBegin',
+          'selectedSnapshotEnd',
           'selectedTimeWindow',
           'selectedRuntimeScope',
           'selectedRuntimeScopeSummary',
@@ -3320,6 +4772,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           'screen3SelectedTargetBIntervalId',
           'selectedComparisonMode',
           'selectedReviewMode',
+          'selectedComparisonMissingGates',
           'selectedComparisonTargetA',
           'selectedComparisonTargetB',
           'selectedComparisonTargetASourceType',
@@ -3344,6 +4797,8 @@ def _build_dashboard_interactivity_javascript() -> str:
           'selectedComparisonTargetBMissingGates',
           'selectedComparisonAwrA',
           'selectedComparisonAwrB',
+          'selectedComparisonSnapshotA',
+          'selectedComparisonSnapshotB',
           'selectedComparisonWindowA',
           'selectedComparisonWindowB',
           'selectedComparisonBothComparable'
@@ -3573,7 +5028,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           const readiness = screen3RuntimeEvidencePathReadiness(safeState);
           const rows = screen3SourceContextEntries(safeState);
           const cards = rows.map(function (row) {
-            return '<article class="info-box screen2-control-info-box screen3-source-context-card' + (row.emphasis ? ' primary' : '') + '">' +
+            return '<article class="info-box screen2-control-info-box screen3-source-context-card screen2-evidence-path-status-card primary">' +
               '<strong>' + escapeHtml(row.label) + '</strong>' +
               '<div>' + escapeHtml(row.value) + '</div>' +
               '</article>';
@@ -3592,11 +5047,35 @@ def _build_dashboard_interactivity_javascript() -> str:
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
         const ready = isScreen2ControlPage() && screen3RuntimeScopeIsSelected(safeState);
+        const targetASelected = Boolean(
+          safeState.screen3SelectedTargetARowId ||
+          safeState.screen3SelectedTargetAIntervalId ||
+          safeState.selectedComparisonTargetA ||
+          safeState.selectedComparisonTargetAScopeValue
+        );
+        const targetBSelected = Boolean(
+          safeState.screen3SelectedTargetBRowId ||
+          safeState.screen3SelectedTargetBIntervalId ||
+          safeState.selectedComparisonTargetB ||
+          safeState.selectedComparisonTargetBScopeValue
+        );
         scope.querySelectorAll('[data-screen2-runtime-scope-required-content="true"]').forEach(function (element) {
           element.hidden = !ready;
         });
         scope.querySelectorAll('[data-screen2-runtime-scope-empty-state="true"]').forEach(function (element) {
           element.hidden = ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-assignment-empty-state="true"]').forEach(function (element) {
+          element.hidden = ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-assignment-summary-grid="true"]').forEach(function (element) {
+          element.hidden = !ready;
+        });
+        scope.querySelectorAll('[data-screen2-comparison-target-detail="A"]').forEach(function (element) {
+          element.hidden = !targetASelected;
+        });
+        scope.querySelectorAll('[data-screen2-comparison-target-detail="B"]').forEach(function (element) {
+          element.hidden = !targetBSelected;
         });
       }
 
@@ -5302,6 +6781,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         ) {
           delete safeState.selectedSourcePath;
         }
+        safeState = restoreCurrentSessionWorkflowLiveStatus(safeState);
         safeState = withoutInactiveSourceSelection(safeState);
         safeState = enforceCurrentScreen2EvidenceState(safeState);
         markSelectedElement(safeState, root);
@@ -5313,6 +6793,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateScreen1GeneratedArtifactGate(safeState, root);
         updateDashboardEvidenceGate(safeState, root);
         updateScreen3SourceHandoffEmptyState(safeState, root);
+        updateScreen3EvidenceContextPanel(safeState, root);
         updateScreen2RuntimeDependentGates(safeState, root);
         updateScreen3RuntimeFilters(safeState, root);
         applyScreen3TableStates(root);
@@ -7970,6 +9451,17 @@ def _build_dashboard_interactivity_javascript() -> str:
           selectedTimeWindow: screen3RuntimeWindow(item),
           selectedRuntimeScopeResolutionState: 'resolved_persisted_data',
           selectedRuntimeScopeReadinessState: readinessState,
+          screen3EvidenceContextPrimary: snapshotCount && String(snapshotCount) !== '1' ? 'selected_runtime_scope' : 'single_awr',
+          screen3EvidenceContextFlags: 'selected_runtime_scope,comparison_unavailable',
+          screen3EvidenceContextTruthSource: 'governed_backend_runtime_options',
+          screen3EvidenceContextCacheStatus: 'live_backend_metadata',
+          screen3ArtifactAlignmentStatus: 'unknown_alignment',
+          screen3ArtifactAlignmentBasis: 'Pending generated artifact alignment check',
+          screen3ArtifactAlignmentReason: 'Artifact alignment requires selected scope identity and generated artifact identity.',
+          screen3SingleAwrGraphicsHint: 'eligible_if_screen4_has_selected_scope_evidence',
+          screen3HistoricalTrendHint: 'eligible_if_aligned_historical_evidence_exists',
+          screen3DistributionViolinsHint: 'requires_aligned_multi_sample_evidence',
+          screen3ComparisonGraphicsHint: 'unavailable_without_deterministic_comparison_output',
           existingRunLookupStatus: 'valid'
         };
         screen3ApplyStateAttributes(row, runtimeScopeStateAttributes);
@@ -8292,6 +9784,31 @@ def _build_dashboard_interactivity_javascript() -> str:
         updateScreen3ResultPanelFromSelection(refreshedState, document);
       }
 
+      function setScreen3RuntimeOptionsButtonsBusy(activeControl, busy, refreshRequested) {
+        document.querySelectorAll(SCREEN3_OPTIONS_LOAD_SELECTOR).forEach(function (button) {
+          if (!button.hasAttribute('data-screen3-runtime-options-original-label')) {
+            button.setAttribute(
+              'data-screen3-runtime-options-original-label',
+              safeStateValue(button.textContent || '')
+            );
+          }
+          const originalLabel = safeStateValue(
+            button.getAttribute('data-screen3-runtime-options-original-label')
+          ) || (button.hasAttribute('data-screen3-runtime-options-refresh') ? 'Refresh options' : 'Load available runtime options');
+          if (busy) {
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+            if (button === activeControl) {
+              button.textContent = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';
+            }
+            return;
+          }
+          button.disabled = false;
+          button.setAttribute('aria-disabled', 'false');
+          button.textContent = originalLabel;
+        });
+      }
+
       function handleScreen3RuntimeOptionsLoadClick(event) {
         if (!event || !(event.target instanceof Element)) {
           return;
@@ -8303,14 +9820,18 @@ def _build_dashboard_interactivity_javascript() -> str:
         event.preventDefault();
         const refreshRequested = control.hasAttribute('data-screen3-runtime-options-refresh');
         const nextState = readDashboardState();
+        const priorFirstLoadedAt = safeStateValue(nextState.screen3RuntimeOptionsFirstLoadedAt || '');
         clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
+        nextState.screen3RuntimeOptionsFirstLoadedAt = priorFirstLoadedAt || nextState.screen3RuntimeOptionsFirstLoadedAt || 'not loaded';
         nextState.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
         nextState.screen3LastActionStatus = 'Loading runtime options';
         nextState.screen3LastValidationStatus = 'pending';
         nextState.screen3LastExecutionStatus = 'Not executed';
         nextState.screen3LastNextStep = 'Waiting for workflow service response.';
-        nextState.screen3RuntimeOptionsStatus = 'pending';
-        nextState.screen3RuntimeOptionsMessage = 'Loading existing runtime evidence inventory through the governed workflow service.';
+        nextState.screen3RuntimeOptionsStatus = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';
+        nextState.screen3RuntimeOptionsMessage = refreshRequested
+          ? 'Refreshing existing runtime evidence inventory through the governed workflow service.'
+          : 'Loading existing runtime evidence inventory through the governed workflow service.';
         nextState.screen3RuntimeOptionsCount = nextState.screen3RuntimeOptionsCount || '0';
         nextState.screen3RuntimeOptionsLoadedRows = nextState.screen3RuntimeOptionsLoadedRows || '0';
         nextState.screen3RuntimeOptionsDbPersistenceStatus = 'checking';
@@ -8318,7 +9839,8 @@ def _build_dashboard_interactivity_javascript() -> str:
         nextState.screen3RuntimeOptionsCacheStatus = refreshRequested
           ? 'Refreshing runtime options through workflow service.'
           : 'Loading runtime options through workflow service.';
-        nextState.screen3LiveServiceStatus = 'Checking';
+        setCurrentPageWorkflowStatus('checking', 'runtime-options-response', nextState);
+        setScreen3RuntimeOptionsButtonsBusy(control, true, refreshRequested);
         writeDashboardState(nextState);
         invokePhase7Service(PHASE7_SCREEN3_OPTIONS_ENDPOINT, {
           screen_id: 'screen_3',
@@ -8357,6 +9879,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           phase8_started: false,
           run_analysis_coupling: false
         }).then(function (result) {
+          setScreen3RuntimeOptionsButtonsBusy(control, false, refreshRequested);
           const body = result.body || {};
           const state = readDashboardState();
           const routeUnavailable = result.status === 404 ||
@@ -8366,7 +9889,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           const noOptions = !routeUnavailable && !dbUnavailable &&
             (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
           const serviceMessage = routeUnavailable
-            ? 'Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.'
+            ? 'Dashboard workflow service is available, but it does not expose the runtime-control options route. Restart dashboard_workflow_service.py.'
             : screen2RuntimeOptionsProductMessage(body.message || 'Runtime-control options request completed.');
           const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
           const sourceTables = Array.isArray(body.runtime_options_source_tables)
@@ -8374,22 +9897,29 @@ def _build_dashboard_interactivity_javascript() -> str:
             : (Array.isArray(metadata.runtime_options_source_tables) ? metadata.runtime_options_source_tables : []);
           const selectableRowCount = Number(body.run_count || 0) || 0;
           const optionsLoaded = result.ok && body.status === 'accepted' && Number(body.run_count || 0) > 0;
+          const sourceSummary = screen3RuntimeSourceTableSummary(sourceTables);
+          const liveSuccessMessage = 'Loaded ' + selectableRowCount + ' runtime option row(s) from the governed workflow service. Evidence sources: ' + sourceSummary + '.';
           state.screen3RuntimeOptionsStatus = routeUnavailable
             ? 'route unavailable'
             : 'route available';
-          state.screen3LiveServiceStatus = routeUnavailable
-            ? 'Unavailable'
-            : (result.ok ? 'Available' : 'Error');
-          state.screen3LiveServiceStatusSource = 'runtime-options-response';
-          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
-          state.screen3RuntimeOptionsMessage = serviceMessage;
+          setCurrentPageWorkflowStatus(
+            routeUnavailable ? 'unavailable' : (result.ok ? 'available' : 'unavailable'),
+            'runtime-options-response',
+            state
+          );
+          state.screen3RuntimeOptionsMessage = optionsLoaded ? liveSuccessMessage : serviceMessage;
           state.screen3RuntimeOptionsCount = String(body.option_count || body.run_count || 0);
           state.screen3RuntimeOptionsLoadedRows = String(selectableRowCount);
           state.screen3RuntimeOptionsDbPersistenceStatus = routeUnavailable
             ? 'not checked'
             : (body.db_persistence_status || (dbUnavailable ? 'unavailable' : 'available'));
-          state.screen3RuntimeOptionsLoadedAt = new Date().toISOString();
-          state.screen3RuntimeOptionsSourceTables = screen3RuntimeSourceTableSummary(sourceTables);
+          const successfulLoadAt = new Date().toISOString();
+          state.screen3RuntimeOptionsLoadedAt = successfulLoadAt;
+          state.screen3RuntimeOptionsFirstLoadedAt = safeStateValue(state.screen3RuntimeOptionsFirstLoadedAt || '');
+          if (optionsLoaded && (!state.screen3RuntimeOptionsFirstLoadedAt || state.screen3RuntimeOptionsFirstLoadedAt === 'not loaded')) {
+            state.screen3RuntimeOptionsFirstLoadedAt = successfulLoadAt;
+          }
+          state.screen3RuntimeOptionsSourceTables = sourceSummary;
           state.screen3RuntimeOptionsIncludedTables = screen3RuntimeIncludedTableSummary(sourceTables, selectableRowCount);
           state.screen3RuntimeOptionsCoverageMessage = metadata.runtime_options_source_note || body.runtime_options_source_note || 'Source table coverage not reported';
           state.screen3RuntimeOptionsCacheStatus = optionsLoaded
@@ -8430,7 +9960,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3LastOutputArtifact = '';
           state.screen3LastNewRunOutputReference = '';
           state.screen3LastNextStep = routeUnavailable
-            ? 'Restart current dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
+            ? 'Restart dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
             : (
               optionsLoaded
                 ? 'Select a current DB-backed AWR/run, interval, comparison target, and review mode before downstream readiness.'
@@ -8472,12 +10002,13 @@ def _build_dashboard_interactivity_javascript() -> str:
           writeDashboardState(state);
           updateScreen3RuntimeOptionPanels(body, state);
         }).catch(function () {
+          setScreen3RuntimeOptionsButtonsBusy(control, false, refreshRequested);
           const state = readDashboardState();
           const fallbackCache = readScreen3RuntimeOptionsCache();
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
-            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service before using runtime options for active evidence readiness.'
-            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load existing runtime evidence inventory.';
+            ? 'Dashboard workflow service unavailable. Cached runtime options can remain visible for continuity only; re-query the workflow service before using runtime options for active evidence readiness.'
+            : 'Dashboard workflow service unavailable. run_analysis.py should have started it; check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and http://127.0.0.1:8765/phase7/dashboard/health. Build-time AI DB connection remains separate from browser runtime workflow service.';
           state.screen3RuntimeOptionsCount = '0';
           state.screen3RuntimeOptionsLoadedRows = '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
@@ -8486,25 +10017,24 @@ def _build_dashboard_interactivity_javascript() -> str:
           state.screen3RuntimeOptionsCoverageMessage = fallbackCache
             ? 'Runtime options source tables were not refreshed because the service was unavailable.'
             : 'Runtime options source tables were not checked because the service was unavailable.';
-          state.screen3LiveServiceStatus = 'Error';
-          state.screen3LiveServiceStatusSource = 'runtime-options-response';
-          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
+          state.screen3LiveServiceStatus = 'Unavailable';
+          setCurrentPageWorkflowStatus('unavailable', 'runtime-options-response', state);
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
             ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are continuity context only and not active evidence.'
             : 'No runtime options cache is available.';
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
-          state.screen3LastActionStatus = 'Runtime options service unavailable';
+          state.screen3LastActionStatus = 'Dashboard workflow service unavailable';
           state.screen3LastValidationStatus = 'service_unavailable';
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain visible as continuity context; retry Refresh options when service is available.'
-            : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
+            ? 'Dashboard workflow service unavailable. Cached runtime options remain visible as continuity context; retry Refresh options when service is available.'
+            : 'Check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and the dashboard health URL, then load runtime options again.';
           if (fallbackCache) {
             showScreen3CachedRuntimeOptionsAfterRefreshFailure(
               fallbackCache,
               state,
-              'Refresh failed; cached runtime options were restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.'
+              'Dashboard workflow service unavailable. Cached runtime options were restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.'
             );
             return;
           }
@@ -9204,6 +10734,7 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
 	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
           document.addEventListener('click', handleScreen2GenerateExplanationClick);
+          document.addEventListener('click', handleScreen3EvidenceContextExplanationClick);
           document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleScreen3RuntimeSelectionClearClick);
           document.addEventListener('click', handleScreen3RuntimeOptionsLoadClick);
@@ -9228,14 +10759,17 @@ def _build_dashboard_interactivity_javascript() -> str:
 	          });
 	          dashboardInteractivityInitialized = true;
 	        }
+        invalidateStaleDashboardRuntimeCache();
         if (screen2ShouldHydrateFromPersistentState()) {
           const restoredState = restoreScreen3RuntimeOptionsFromCache(scope);
           if (restoredState) {
+            refreshScreen3EvidenceContextExplanationAvailability(scope);
             return restoredState;
           }
         }
 	        const appliedState = applyDashboardState(readDashboardState(), scope);
           reconcileScreen1SourceIntakeStatus(scope, appliedState);
+          refreshScreen3EvidenceContextExplanationAvailability(scope);
           return appliedState;
 	      }
 
@@ -9336,6 +10870,15 @@ def _render_runtime_status_badge(report_data: dict[str, Any]) -> str:
     """
 
 
+def _dashboard_generated_session_id(
+    generated_at: str,
+    explicit_session_id: Any = "",
+) -> str:
+    raw_token = explicit_session_id or generated_at
+    token = re.sub(r"[^A-Za-z0-9_.:-]+", "-", str(raw_token or "").strip()).strip("-")
+    return token[:96] or "generated-dashboard"
+
+
 def _render_runtime_badge_early_hydration_script() -> str:
     """Return a tiny inline badge hydrator that runs before the main JS bundle."""
 
@@ -9403,40 +10946,58 @@ def _render_runtime_badge_early_hydration_script() -> str:
               return safeValue + ' (cached)';
             }
 
-            function readStoredWorkflowStatus() {
-              const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
-              if (safeRuntimeBadgeValue(modePill && modePill.textContent).toLowerCase() === 'full db mode') {
-                return '';
+            function dashboardGeneratedSessionId() {
+              const body = document.body;
+              return safeRuntimeBadgeValue(
+                body && (
+                  body.getAttribute('data-dashboard-generated-session-id') ||
+                  body.getAttribute('data-dashboard-generated-at')
+                ) || ''
+              );
+            }
+
+            function workflowLiveStatusLabel(value) {
+              const normalized = safeRuntimeBadgeValue(value).toLowerCase().replace(/[_\\s-]+/g, '-');
+              if (normalized === 'available' || normalized === 'success' || normalized === 'ok') {
+                return 'Available';
               }
-              try {
-                const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
-                if (rawState) {
-                  const dashboardState = JSON.parse(rawState);
-                  const storedStatus = safeRuntimeBadgeValue(dashboardState && dashboardState.screen3LiveServiceStatus);
-                  if (storedStatus) {
-                    return cachedWorkflowStatusLabel(storedStatus);
-                  }
-                }
-              } catch (error) {
-                // Badge hydration is continuity-only; invalid browser state is ignored.
-              }
-              try {
-                const rawCache = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
-                if (rawCache) {
-                  const cache = JSON.parse(rawCache);
-                  if (
-                    cache &&
-                    cache.cache_version === SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION &&
-                    cache.options &&
-                    typeof cache.options === 'object'
-                  ) {
-                    return cachedWorkflowStatusLabel(cache.service_status || 'Available');
-                  }
-                }
-              } catch (error) {
-                // Cache is not authoritative truth; failed cache reads leave the neutral default.
+              if (
+                normalized === 'unavailable' ||
+                normalized === 'failed' ||
+                normalized === 'failure' ||
+                normalized === 'error'
+              ) {
+                return 'Unavailable';
               }
               return '';
+            }
+
+            function readStoredDashboardState() {
+              try {
+                const rawValue = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
+                if (!rawValue) {
+                  return {};
+                }
+                const parsed = JSON.parse(rawValue);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+              } catch (error) {
+                return {};
+              }
+            }
+
+            function readStoredWorkflowStatus() {
+              // The global badge may restore only generation-scoped live
+              // workflow checks. Runtime-option cache remains continuity only
+              // and must not replay as live availability.
+              const stored = readStoredDashboardState();
+              const currentGeneration = dashboardGeneratedSessionId();
+              const storedGeneration = safeRuntimeBadgeValue(
+                stored.dashboardWorkflowLiveStatusGenerationId || ''
+              );
+              if (!currentGeneration || storedGeneration !== currentGeneration) {
+                return '';
+              }
+              return workflowLiveStatusLabel(stored.dashboardWorkflowLiveStatus || '');
             }
 
             function applyWorkflowStatus(value) {
@@ -14479,15 +16040,19 @@ def _render_screen_2_page(
           <span class="meta confidence-note">{escape(confidence_note)}</span>
         </div>
       </section>
-      <section class="card secondary">
-        <div class="section-kicker">POSTURE</div>
-        <h2>Why This Posture</h2>
-        {_render_screen2_executive_summary(screen_model, visual_summary, report_data)}
-      </section>
+      {_render_screen3_downstream_evidence_availability_panel(screen_model, report_data)}
       <section class="card secondary diagnostic-drivers-card">
         <div class="section-kicker">EVIDENCE</div>
         <h2>Current Diagnostic Drivers</h2>
-        {_render_current_diagnostic_drivers(visual_summary, report_data, diagnostic_note_context)}
+        {_render_current_diagnostic_drivers(
+            visual_summary,
+            report_data,
+            diagnostic_note_context,
+            posture_narrative=_screen2_executive_opening(
+                decision_posture,
+                _screen2_driver_bullets(visual_summary, report_data, limit=5),
+            ),
+        )}
       </section>
       <section class="card secondary">
         <div class="section-kicker">SIGNAL VIEW</div>
@@ -15496,10 +17061,12 @@ def _render_screen2_executive_summary(
         bullets = ["Diagnostic evidence is limited for this selected scope."]
     opening = _screen2_executive_opening(posture, bullets)
     return (
+        '<div class="diagnostic-posture-box">'
         f'<div class="narrative"><p>{escape(opening)}</p></div>'
         + "<ul>"
         + "".join(f"<li>{escape(_screen2_clean_text(bullet))}</li>" for bullet in bullets[:5])
         + "</ul>"
+        + "</div>"
     )
 
 
@@ -15507,32 +17074,60 @@ def _render_current_diagnostic_drivers(
     visual_summary: dict[str, Any],
     report_data: dict[str, Any],
     vocalization_context: dict[str, Any] | None = None,
+    posture_narrative: str | None = None,
 ) -> str:
     drivers = _screen2_diagnostic_drivers(visual_summary, report_data)
-    if not drivers:
-        return _render_empty_item("No current diagnostic drivers passed data-gating for this selected scope.")
+    driver_by_domain = {driver["domain"]: driver for driver in drivers}
+    narrative = _screen2_clean_text(
+        posture_narrative
+        or "Available deterministic evidence is summarized below. Signal cards show which domains passed data-gating for this selected scope."
+    )
+    ordered_domains = (
+        "CPU Signal",
+        "I/O Signal",
+        "Commit Signal",
+        "Memory Signal",
+        "RAC Signal",
+        "ADG Signal",
+    )
     cards = []
-    for driver in drivers:
-        value_line = (
-            driver["label"]
-            if driver["value"] == "Evidence present"
-            else f"{driver['label']} = {driver['value']}"
-        )
+    for domain in ordered_domains:
+        driver = driver_by_domain.get(domain)
         reason_context = dict(vocalization_context or {})
-        reason_context["required_terms"] = _screen2_driver_required_terms(driver)
-        reason = _vocalize_text(driver["reason"], reason_context)
+        if driver:
+            value_line = (
+                driver["label"]
+                if driver["value"] == "Evidence present"
+                else f"{driver['label']} = {driver['value']}"
+            )
+            reason_context["required_terms"] = _screen2_driver_required_terms(driver)
+            reason = _vocalize_text(driver["reason"], reason_context)
+        else:
+            value_line = "Unavailable"
+            reason_context["required_terms"] = [domain.split()[0].lower()]
+            reason = _vocalize_text(
+                f"No {domain.lower()} evidence passed data-gating for this selected scope.",
+                reason_context,
+            )
         cards.append(
             f"""
             <article class="diagnostic-driver-row">
               <div class="diagnostic-driver-main">
-                <h3>{escape(driver["domain"])}</h3>
+                <h3>{escape(domain)}</h3>
                 <p>{escape(value_line)}</p>
               </div>
               <div class="meta diagnostic-driver-evidence">{escape(reason)}</div>
             </article>
             """
         )
-    return '<div class="diagnostic-driver-stack">' + "".join(cards) + "</div>"
+    return (
+        '<div class="diagnostic-posture-box diagnostic-driver-narrative">'
+        f'<div class="narrative"><p>{escape(narrative)}</p></div>'
+        "</div>"
+        '<div class="diagnostic-driver-stack">'
+        + "".join(cards)
+        + "</div>"
+    )
 
 
 def _screen2_driver_required_terms(driver: dict[str, Any]) -> list[str]:
@@ -16481,7 +18076,7 @@ def _render_screen3_selected_source_scope_panel(
 
     hidden_state_row_html = state_row_html(source_rows)
     return f"""
-          <section class="evidence-pane selector-pane screen3-source-received-panel">
+          <section class="evidence-pane selector-pane screen3-source-received-panel screen3-work-area screen3-work-area-evidence-path">
             <h3>Runtime Evidence Path</h3>
             <p class="static-selection-note">
               Screen 2 receives the operator path from Platform Entry or the
@@ -16506,7 +18101,7 @@ def _render_screen3_selected_source_scope_panel(
               </div>
             </div>
             <p>
-              <a class="inline-action-link" href="index.html" data-dashboard-propagate-state="true">Return to Platform Entry</a>
+              <a class="inline-action-link phase7cm-service-button" href="index.html" data-dashboard-propagate-state="true">Return to Platform Entry</a>
             </p>
             <div class="screen3-source-scope-stack"
                  data-screen3-source-handoff-content="true"
@@ -16613,6 +18208,437 @@ def _screen3_generated_runtime_values(
     }
 
 
+def _screen3_contract_text(value: Any, fallback: str = "Unknown") -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
+
+
+def _screen3_contract_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _screen3_generated_snapshot_count(report_data: dict[str, Any]) -> int:
+    comparison_context = _to_dict(report_data.get("comparison_context"))
+    snapshot_count = comparison_context.get("snapshot_count")
+    if snapshot_count is not None:
+        return _screen3_contract_int(snapshot_count)
+    labels = report_data.get("snapshot_labels")
+    if isinstance(labels, list):
+        return len(labels)
+    return 0
+
+
+def _build_screen3_evidence_context_contract(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the minimal Screen 3 evidence-context contract for FU4."""
+
+    values = _screen3_generated_runtime_values(screen_model, report_data)
+    metadata = _to_dict(report_data.get("metadata"))
+    snapshot_count = _screen3_generated_snapshot_count(report_data)
+    same_db_historical = "Context only" if snapshot_count > 1 else "Not inventoried"
+    historical_flags = (
+        ["historical_population_generated_artifact"]
+        if snapshot_count > 1
+        else ["insufficient_identity_data"]
+    )
+    return {
+        "selected_scope_identity": {
+            "context_type": "unknown",
+            "runtime_scope": "Current generated artifact context",
+            "source_type": "generated_artifact",
+            "source_table": "generated_dashboard_payload",
+            "awr_id": _screen3_contract_text(metadata.get("awr_id"), ""),
+            "report_id": _screen3_contract_text(values.get("report_id"), ""),
+            "run_id": _screen3_contract_text(values.get("run_reference"), ""),
+            "run_reference": _screen3_contract_text(values.get("run_reference"), ""),
+            "source_file": _screen3_contract_text(values.get("source"), ""),
+            "dbid": _screen3_contract_text(values.get("dbid"), ""),
+            "db_name": _screen3_contract_text(values.get("db_name"), ""),
+            "instance_number": "",
+            "instance_name": _screen3_contract_text(values.get("instance"), ""),
+            "host": _screen3_contract_text(values.get("host"), ""),
+            "window_begin": _screen3_contract_text(values.get("begin"), ""),
+            "window_end": _screen3_contract_text(values.get("end"), ""),
+            "truth_source": "generated_artifact",
+            "evidence_path": "Generated artifact",
+            "freshness": "Generated deterministic artifact",
+        },
+        "evidence_inventory": {
+            "exact_selected_scope_evidence": "Unknown",
+            "same_db_historical_evidence": same_db_historical,
+            "fleet_population_evidence": "Not inventoried",
+            "oem_ash_evidence": "Not inventoried",
+            "rac_evidence": "Not inventoried",
+            "dataguard_evidence": "Not inventoried",
+            "exadata_evidence": "Not inventoried",
+            "comparison_prepared_only": "Unavailable",
+            "deterministic_comparison_output": "Deterministic output unavailable",
+            "comparison_status": "No deterministic comparison output",
+        },
+        "context_classification": {
+            "primary": "unknown",
+            "flags": historical_flags,
+            "cache_status": "generated_artifact",
+        },
+        "artifact_alignment": {
+            "status": "unknown_alignment",
+            "match_basis": [],
+            "mismatch_reason": "Artifact alignment cannot be determined from available identity keys.",
+        },
+        "screen4_graphics_eligibility_hints": {
+            "single_awr_graphics": "eligible_if_screen4_has_selected_scope_evidence",
+            "db_time_composition": "eligible_if_wait_or_db_time_evidence_exists",
+            "wait_profile": "eligible_if_wait_event_evidence_exists",
+            "top_sql": "eligible_if_top_sql_evidence_exists",
+            "historical_trend_panels": "eligible_if_aligned_historical_evidence_exists",
+            "distribution_violins": "requires_aligned_multi_sample_evidence",
+            "comparison_graphics": "unavailable_without_deterministic_comparison_output",
+            "oem_ash_timelines": "requires_attached_oem_ash_time_series",
+        },
+        "truth_boundary": {
+            "browser_cache_is_truth": False,
+            "selection_changes_diagnosis": False,
+            "selection_creates_historical_truth": False,
+            "target_ab_creates_comparison_truth": False,
+            "llm_changes_truth": False,
+        },
+        "llm_explanation_context": {
+            "eligible_for_explanation": True,
+            "provider_call_required": False,
+            "allowed_to_explain": [
+                "context classification",
+                "evidence availability",
+                "artifact alignment",
+                "graphics eligibility fallback",
+            ],
+            "forbidden": [
+                "classification decision",
+                "eligibility decision",
+                "diagnosis mutation",
+                "recommendation mutation",
+                "scoring mutation",
+                "comparison computation",
+                "graphics rendering decision",
+            ],
+        },
+    }
+
+
+def _screen3_contract_json(contract: dict[str, Any]) -> str:
+    return json.dumps(contract, sort_keys=True).replace("</", "<\\/")
+
+
+def _screen3_evidence_context_explanation_provider_mode(report_data: dict[str, Any]) -> str:
+    for key in (
+        "PHASE7_SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODE",
+        "SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_PROVIDER_MODE",
+    ):
+        normalized = str(os.getenv(key) or "").strip().lower()
+        if normalized in {"off", "mock", "local", "oci"}:
+            return normalized
+    return _screen2_explanation_provider_mode(report_data)
+
+
+def _screen3_context_display_label(value: Any) -> str:
+    labels = {
+        "single_awr": "Single AWR",
+        "selected_runtime_scope": "Selected runtime scope",
+        "unknown": "Unknown",
+        "generated_artifact": "Generated artifact",
+        "governed_backend_runtime_options": "Live backend metadata",
+        "browser_cache_continuity": "Cached continuity only",
+        "live_backend_metadata": "Live backend metadata",
+        "cached_continuity_only": "Cached continuity only",
+        "unknown_alignment": "Unknown alignment",
+        "exact_selected_scope": "Exact selected scope",
+        "same_db_different_window": "Same DB, different window",
+        "historical_artifact_contains_selected_scope": "Historical artifact includes selected scope",
+        "same_db_historical_available": "Same DB historical context",
+        "different_artifact": "Different artifact",
+        "selected_scope_artifact_mismatch": "Selected-scope artifact mismatch",
+        "eligible_if_screen4_has_selected_scope_evidence": "Eligible if selected AWR evidence is available",
+        "eligible_if_aligned_historical_evidence_exists": "Context only unless aligned historical evidence exists",
+        "requires_aligned_multi_sample_evidence": "Requires aligned multi-sample evidence",
+        "unavailable_without_deterministic_comparison_output": "Unavailable until deterministic comparison output exists",
+    }
+    text = _screen3_contract_text(value)
+    return labels.get(text, text)
+
+
+def _screen3_status_tone(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"available", "live backend metadata", "single awr", "exact selected scope"}:
+        return "available"
+    if normalized in {"context only", "same db historical context", "same db, different window"}:
+        return "context"
+    if normalized in {"prepared only"}:
+        return "prepared"
+    if "cached" in normalized:
+        return "cached"
+    if "unavailable" in normalized or "not inventoried" in normalized:
+        return "unavailable"
+    return "unknown"
+
+
+def _screen3_context_value(
+    value: Any,
+    *,
+    attr_name: str,
+    field: str,
+    pill: bool = False,
+) -> _TrustedHtml:
+    display_value = _screen3_context_display_label(value)
+    attr_html = (
+        f'data-screen3-evidence-{escape(attr_name, quote=True)}="{escape(field, quote=True)}"'
+    )
+    if pill:
+        tone = _screen3_status_tone(display_value)
+        return _TrustedHtml(
+            f'<span class="runtime-mini-pill screen3-review-context-pill" {attr_html} '
+            f'data-screen3-evidence-status-tone="{escape(tone, quote=True)}">{escape(display_value)}</span>'
+        )
+    return _TrustedHtml(f'<span class="screen3-review-context-value" {attr_html}>{escape(display_value)}</span>')
+
+
+def _screen3_context_box(
+    label: str,
+    value: Any,
+    *,
+    attr_name: str,
+    field: str,
+    box_class: str = "",
+    pill: bool = False,
+) -> tuple[str, _TrustedHtml] | tuple[str, _TrustedHtml, str]:
+    item: tuple[str, _TrustedHtml] | tuple[str, _TrustedHtml, str] = (
+        label,
+        _screen3_context_value(value, attr_name=attr_name, field=field, pill=pill),
+    )
+    if box_class:
+        item = (item[0], item[1], box_class)
+    return item
+
+
+def _screen3_evidence_card_class(value: Any) -> str:
+    return f"screen3-evidence-status-card screen3-evidence-status-card-{_screen3_status_tone(_screen3_context_display_label(value))}"
+
+
+def _screen3_context_pill(label: str, value: Any, field: str) -> str:
+    display_value = _screen3_context_display_label(value)
+    return (
+        '<span class="runtime-mini-pill screen3-review-context-pill">'
+        f"<span>{escape(label)}:</span> "
+        f'<strong data-screen3-evidence-context-field="{escape(field, quote=True)}">{escape(display_value)}</strong>'
+        "</span>"
+    )
+
+
+def _render_screen3_review_readiness_matrix(
+    rows: Sequence[tuple[str, Any, str]],
+) -> str:
+    cards: list[str] = []
+    boundary = ""
+    for label, value, field in rows:
+        display_value = _screen3_context_display_label(value)
+        if field == "graphics_boundary":
+            boundary = f"""
+            <div class="screen3-review-readiness-boundary"
+                 data-screen3-evidence-eligibility-field="{escape(field, quote=True)}">
+              <strong>{escape(label)}</strong>
+              <span>{escape(display_value)}</span>
+            </div>
+            """
+            continue
+        cards.append(
+            f"""
+            <div class="screen3-review-readiness-row">
+              <strong>{escape(label)}</strong>
+              <span data-screen3-evidence-eligibility-field="{escape(field, quote=True)}">{escape(display_value)}</span>
+            </div>
+            """
+        )
+    return (
+        '<div class="screen3-review-readiness-matrix">'
+        + "".join(cards)
+        + boundary
+        + "</div>"
+    )
+
+
+def _render_screen3_downstream_evidence_availability_panel(
+    screen_model: dict[str, Any],
+    report_data: dict[str, Any],
+) -> str:
+    contract = _build_screen3_evidence_context_contract(screen_model, report_data)
+    identity = _to_dict(contract.get("selected_scope_identity"))
+    inventory = _to_dict(contract.get("evidence_inventory"))
+    classification = _to_dict(contract.get("context_classification"))
+    alignment = _to_dict(contract.get("artifact_alignment"))
+    hints = _to_dict(contract.get("screen4_graphics_eligibility_hints"))
+    snapshot_count = _screen3_generated_snapshot_count(report_data)
+    contract_json = _screen3_contract_json(contract)
+    generated_dbid = _screen3_contract_text(identity.get("dbid"), "")
+    generated_db = _screen3_contract_text(identity.get("db_name"), "")
+    generated_instance = _screen3_contract_text(identity.get("instance_name"), "")
+    generated_host = _screen3_contract_text(identity.get("host"), "")
+    generated_begin = _screen3_contract_text(identity.get("window_begin"), "")
+    generated_end = _screen3_contract_text(identity.get("window_end"), "")
+    generated_source = _screen3_contract_text(identity.get("source_file"), "")
+    provider_mode = _screen3_evidence_context_explanation_provider_mode(report_data)
+    provider_label = provider_mode.upper() if provider_mode != "off" else "Off"
+    alignment_summary = _screen3_contract_text(
+        alignment.get("mismatch_reason"),
+        "Artifact alignment cannot be determined from available identity keys.",
+    )
+    subject_rows = [
+        _screen3_context_box(label, value, attr_name="context-field", field=field, box_class=box_class)
+        for label, value, field, box_class in (
+            ("Runtime Scope", identity.get("runtime_scope") or "Current generated artifact context", "runtime_scope", "wide"),
+            ("Database", (generated_db + " / " + generated_dbid).strip(" /") or "Unknown", "database", ""),
+            ("Instance", generated_instance or "Unknown", "instance", ""),
+            ("Host", generated_host or "Unknown", "host", ""),
+            ("Window", generated_begin or generated_end or "Unknown", "window", ""),
+            ("Source / run reference", identity.get("run_reference") or identity.get("source_file") or "Unknown", "source", ""),
+        )
+    ]
+    evidence_rows = [
+        _screen3_context_box(
+            label,
+            inventory.get(field),
+            attr_name="inventory-field",
+            field=field,
+            box_class=_screen3_evidence_card_class(inventory.get(field)),
+            pill=True,
+        )
+        for label, field in (
+            ("Selected AWR Evidence", "exact_selected_scope_evidence"),
+            ("Same-DB Historical Context", "same_db_historical_evidence"),
+            ("Fleet Context", "fleet_population_evidence"),
+            ("OEM / ASH", "oem_ash_evidence"),
+            ("RAC / Cluster", "rac_evidence"),
+            ("Data Guard", "dataguard_evidence"),
+            ("Exadata", "exadata_evidence"),
+            ("Comparison Output", "comparison_status"),
+        )
+    ]
+    readiness_rows = [
+        ("Single-AWR Review", hints.get("single_awr_graphics"), "single_awr_graphics"),
+        ("Historical Review", hints.get("historical_trend_panels"), "historical_trend_panels"),
+        ("Fleet Review", "Unavailable unless fleet evidence exists", "fleet_review"),
+        ("Comparison Review", hints.get("comparison_graphics"), "comparison_graphics"),
+        (
+            "Graphics Boundary",
+            "Screen 4 may render graphics only when deterministic evidence and context alignment allow it.",
+            "graphics_boundary",
+        ),
+    ]
+    return f"""
+      <section class="card secondary screen3-downstream-evidence-panel"
+               data-screen3-evidence-context-panel="true"
+               data-screen3-generated-dbid="{escape(generated_dbid, quote=True)}"
+               data-screen3-generated-db-name="{escape(generated_db, quote=True)}"
+               data-screen3-generated-instance="{escape(generated_instance, quote=True)}"
+               data-screen3-generated-host="{escape(generated_host, quote=True)}"
+               data-screen3-generated-window-begin="{escape(generated_begin, quote=True)}"
+               data-screen3-generated-window-end="{escape(generated_end, quote=True)}"
+               data-screen3-generated-source="{escape(generated_source, quote=True)}"
+               data-screen3-generated-snapshot-count="{escape(str(snapshot_count), quote=True)}">
+        <div class="section-kicker">REVIEW CONTEXT</div>
+        <h2>Review Context &amp; Evidence Availability</h2>
+        <p class="static-selection-note">
+          Screen 3 summarizes the selected diagnostic context for downstream Screen 4 review. This does not render Screen 4 graphics or change diagnostic truth.
+        </p>
+        <div class="screen3-review-context-stack">
+          <article class="supportive-panel screen3-review-context-subject">
+            <div class="screen3-review-context-heading">
+              <h3>Selected Runtime Scope / Diagnostic Subject</h3>
+              <div class="runtime-state-pills screen3-review-context-pill-row">
+                {_screen3_context_pill("Context Type", classification.get("primary") or "unknown", "context_type")}
+                {_screen3_context_pill("Evidence Source", identity.get("evidence_path") or "Generated artifact", "evidence_path")}
+                {_screen3_context_pill("Freshness", identity.get("freshness") or "Generated deterministic artifact", "freshness")}
+              </div>
+            </div>
+            {_render_screen2_control_info_grid(subject_rows, extra_class="screen2-control-card-grid-balanced screen3-subject-summary-grid")}
+          </article>
+          <article class="supportive-panel screen3-review-context-evidence">
+            <h3>Evidence Availability</h3>
+            {_render_screen2_control_info_grid(evidence_rows, extra_class="screen2-control-card-grid-balanced screen3-evidence-availability-grid")}
+          </article>
+          <article class="supportive-panel screen3-review-context-alignment">
+            <h3>Artifact Alignment</h3>
+            <div class="screen3-review-context-inline">
+              {_screen3_context_value(alignment.get("status"), attr_name="alignment-field", field="status", pill=True)}
+              <p data-screen3-evidence-alignment-field="mismatch_reason">{escape(alignment_summary)}</p>
+            </div>
+            <small>
+              Matching basis:
+              <span data-screen3-evidence-alignment-field="match_basis">{escape(" / ".join(alignment.get("match_basis") or []) or "No matching basis confirmed")}</span>
+              · Freshness:
+              <span data-screen3-evidence-alignment-field="cache_status">{escape(_screen3_context_display_label(classification.get("cache_status")))}</span>
+            </small>
+          </article>
+          <article class="supportive-panel screen3-review-context-readiness">
+            <h3>Screen 4 Review Readiness</h3>
+            {_render_screen3_review_readiness_matrix(readiness_rows)}
+          </article>
+        </div>
+        <section class="supportive-panel screen3-review-context-explanation"
+                 data-screen3-evidence-context-explanation-panel="true"
+                 data-screen3-evidence-context-provider-mode="{escape(provider_mode, quote=True)}"
+                 data-screen3-evidence-context-explanation-route="not-checked">
+          <div>
+            <h3>Review Context Explanation</h3>
+            <p data-screen3-evidence-context-explanation-result="true">
+              Default deterministic review-context explanation is visible. Runtime explanation is optional and uses only the already-computed evidence-context contract.
+            </p>
+            <p data-screen3-evidence-context-explanation-status="idle">
+              Runtime explanation route not checked yet. Deterministic evidence context remains unchanged.
+            </p>
+            <div class="screen3-review-context-explanation-status-grid">
+              <span class="screen3-review-context-status-fact">Workflow service:
+                <strong data-screen3-evidence-context-workflow-status="true">Not checked</strong>
+              </span>
+              <span class="screen3-review-context-status-fact">Screen 3 explanation route:
+                <strong data-screen3-evidence-context-route-status="true">Not checked</strong>
+              </span>
+              <span class="screen3-review-context-status-fact screen3-review-context-status-secondary">Provider configured:
+                <strong data-screen3-evidence-context-provider-configured="true">{escape(provider_label)}</strong>
+              </span>
+              <span class="screen3-review-context-status-fact">Runtime explanation:
+                <strong data-screen3-evidence-context-availability-status="true">Not checked</strong>
+              </span>
+              <span class="screen3-review-context-status-fact screen3-review-context-status-secondary">Truth boundary: <strong>Explanation only</strong></span>
+            </div>
+          </div>
+          <button type="button"
+                  class="phase7cm-service-button"
+                  data-screen3-generate-evidence-context-explanation="true"
+                  data-screen3-evidence-context-provider-mode="{escape(provider_mode, quote=True)}"
+                  data-screen3-evidence-context-route-status="not-checked"
+                  aria-disabled="true"
+                  disabled>
+            Explain Review Context
+          </button>
+        </section>
+        <p class="screen3-evidence-context-boundary" data-screen3-evidence-truth-boundary="true">
+          Selection and cache restore do not create evidence truth. This panel does not change diagnosis, scores, recommendations, comparison output, learning, materialization, or runtime eligibility.
+        </p>
+        <details class="screen3-technical-details screen3-evidence-context-technical">
+          <summary>Technical evidence-context contract</summary>
+          <p>
+            For downstream Screen 4 guard/runtime explanation. Not diagnostic truth by itself.
+          </p>
+          <script type="application/json" data-screen3-evidence-context-contract-json="true">{contract_json}</script>
+          <pre>{escape(json.dumps(contract, indent=2, sort_keys=True))}</pre>
+        </details>
+      </section>
+    """
+
+
 def _render_screen3_runtime_scope_fallback_row(
     screen_model: dict[str, Any],
     report_data: dict[str, Any],
@@ -16639,6 +18665,17 @@ def _render_screen3_runtime_scope_fallback_row(
         "selectedTimeWindow": values["window"],
         "selectedRuntimeScopeResolutionState": "current_generated_context",
         "selectedRuntimeScopeReadinessState": "analysis_required",
+        "screen3EvidenceContextPrimary": "unknown",
+        "screen3EvidenceContextFlags": "insufficient_identity_data",
+        "screen3EvidenceContextTruthSource": "generated_artifact",
+        "screen3EvidenceContextCacheStatus": "generated_artifact",
+        "screen3ArtifactAlignmentStatus": "unknown_alignment",
+        "screen3ArtifactAlignmentBasis": "No matching basis confirmed",
+        "screen3ArtifactAlignmentReason": "Artifact alignment cannot be determined from available identity keys.",
+        "screen3SingleAwrGraphicsHint": "eligible_if_screen4_has_selected_scope_evidence",
+        "screen3HistoricalTrendHint": "eligible_if_aligned_historical_evidence_exists",
+        "screen3DistributionViolinsHint": "requires_aligned_multi_sample_evidence",
+        "screen3ComparisonGraphicsHint": "unavailable_without_deterministic_comparison_output",
     }
     row_id = "current_generated_context|fallback|current-generated-fallback|dbid_unknown|instance_unknown|begin_unknown|end_unknown"
     attrs = _screen3_selectable_attrs(
@@ -16866,6 +18903,13 @@ def _render_screen3_selected_awr_report_row_summary() -> str:
             ),
         ),
         (
+            "Base Snapshot Window",
+            _screen2_state_value("selectedTimeWindow", "Not selected"),
+        ),
+        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
+        ("Review Mode", _screen2_state_value("selectedReviewMode", "Pending review mode selection")),
+        ("Resolution State", _screen2_state_value("selectedRuntimeScopeResolutionState", "Pending row selection")),
+        (
             "Run / Report",
             _screen2_joined_state_values(
                 [
@@ -16874,12 +18918,11 @@ def _render_screen3_selected_awr_report_row_summary() -> str:
                 ]
             ),
         ),
-        ("Base Snapshot Window", _screen2_state_value("selectedTimeWindow", "Not selected"), "wide"),
-        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
-        ("Review Mode", _screen2_state_value("selectedReviewMode", "Pending review mode selection")),
-        ("Resolution State", _screen2_state_value("selectedRuntimeScopeResolutionState", "Pending row selection")),
     ]
-    return _render_screen2_control_info_grid(rows, extra_class="screen2-control-card-grid-balanced")
+    return _render_screen2_control_info_grid(
+        rows,
+        extra_class="screen2-control-card-grid-balanced screen3-selected-report-row-grid",
+    )
 
 
 def _render_screen3_selected_runtime_assignment_summary() -> str:
@@ -16912,8 +18955,8 @@ def _render_screen3_selected_runtime_assignment_summary() -> str:
             ),
         ),
         ("Effective Snapshot / Window", _screen2_state_value("selectedTimeWindow", "Pending interval selection"), "wide"),
-        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
         ("Runtime Scope Summary", _screen2_state_value("selectedRuntimeScope", "Pending runtime scope selection"), "wide"),
+        ("Assignment Target", _screen2_state_value("screen3ActiveSelectionTarget", "Runtime Scope")),
         ("Review Mode", _screen2_state_value("selectedReviewMode", "Pending review mode selection")),
         (
             "Target A State",
@@ -16949,13 +18992,12 @@ def _render_screen3_runtime_option_loader_content() -> str:
         ("Options", _screen2_state_value("screen3RuntimeOptionsCount", "0")),
         ("Last Loaded", _screen2_state_value("screen3RuntimeOptionsLoadedAt", "not loaded")),
         (
-            "Included Selectable Tables",
-            _screen2_state_value("screen3RuntimeOptionsIncludedTables", "not checked"),
-            "wide",
-        ),
-        (
             "Cache Status",
             _screen2_state_value("screen3RuntimeOptionsCacheStatus", "No runtime options cache restored."),
+        ),
+        (
+            "Evidence Sources",
+            _screen2_state_value("screen3RuntimeOptionsIncludedTables", "not checked"),
             "wide",
         ),
         (
@@ -16980,12 +19022,29 @@ def _render_screen3_runtime_option_loader_content() -> str:
             <p class="meta">
               Load Runtime Options asks the governed backend service for existing platform evidence inventory. The browser does not query the database directly.
             </p>
-            <p class="meta">
-              Loading options prepares selectable runtime-scope candidates only; active downstream readiness still requires a current row, window, and Runtime Scope or Target assignment.
-            </p>
-            <p class="meta">
-              Cached Screen 2 state restores operator context only. Cached runtime options are available for continuity only; they are not active evidence. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth. Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
-            </p>
+            <div class="info-grid selector-compact-grid screen2-runtime-explanation-grid"
+                 data-screen2-runtime-explanation="true">
+              <article class="info-box screen2-control-info-box">
+                <strong>Runtime service</strong>
+                <div>Dashboard workflow service unavailable. run_analysis.py should have started it; check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and the dashboard health URL. Cached runtime options may remain visible for continuity only.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Existing evidence inventory</strong>
+                <div>Loading options prepares selectable runtime-scope candidates only; it does not create diagnostic truth, recommendation truth, comparison output, or active downstream evidence.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Runtime Scope handoff</strong>
+                <div>Selecting Runtime Scope prepares Screen 3 diagnostic context and Screen 4 review context. Deterministic diagnosis, scores, and recommendations remain unchanged.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Target A/B boundary</strong>
+                <div>Target A/B assignments are prepared-only until deterministic comparison output exists; they do not decide comparison posture labels, comparison results, or graphics eligibility.</div>
+              </article>
+              <article class="info-box screen2-control-info-box wide">
+                <strong>Cache boundary</strong>
+                <div>Cached Screen 2 state restores operator context only. Cached runtime options are restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth.</div>
+              </article>
+            </div>
             {_render_screen2_control_info_grid(rows, extra_class="screen3-runtime-options-status-grid")}
             <details class="screen3-technical-details screen3-runtime-coverage-details">
               <summary>Runtime option source-table coverage</summary>
@@ -17334,7 +19393,7 @@ def _render_screen3_runtime_scope_work_area(
 ) -> str:
     return f"""
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-runtime-scope">
-            <div class="section-kicker">Work Area 1</div>
+            <div class="section-kicker">Runtime Scope Selection</div>
             <h3>Select Runtime Scope</h3>
             <p class="static-selection-note">
               Load existing platform AWR/report inventory from the governed backend service, choose whether the next click updates Runtime Scope, Target A, or Target B, then select the row and optional window. Loading options alone does not create active downstream evidence.
@@ -17432,7 +19491,13 @@ def _render_screen3_runtime_scope_work_area(
                 <p class="meta">
                   This is the effective operator selection after the selected AWR/report row, optional interval/window, and assignment target are applied.
                 </p>
-                {_render_screen3_selected_runtime_assignment_summary()}
+                <p class="empty-state screen2-current-session-empty"
+                   data-screen2-runtime-assignment-empty-state="true">
+                  No runtime scope selected for this generated dashboard session.
+                </p>
+                <div data-screen2-runtime-assignment-summary-grid="true" hidden>
+                  {_render_screen3_selected_runtime_assignment_summary()}
+                </div>
               </article>
             </div>
             {_render_screen3_operator_help_panel()}
@@ -17570,7 +19635,9 @@ def _render_screen3_target_resolution_card(target_suffix: str) -> str:
         ("Missing Gates", _screen2_state_value(f"{prefix}MissingGates", "Resolve target before comparison"), "wide"),
     ]
     return f"""
-              <article class="screen3-context-subpanel screen3-comparison-target-card">
+              <article class="screen3-context-subpanel screen3-comparison-target-card"
+                       data-screen2-comparison-target-detail="{escape(target_suffix, quote=True)}"
+                       hidden>
                 <h4>{escape(label)} Resolution</h4>
                 {_render_screen2_control_info_grid(rows, extra_class="screen3-target-resolution-grid")}
               </article>
@@ -17598,18 +19665,18 @@ def _render_screen3_comparison_review_work_area(
             "note": "Use similar cases when similarity context is available.",
         },
         {
-            "label": "Cluster baseline",
-            "value": "Cluster baseline",
-            "select_type": "comparisonMode",
-            "state_key": "selectedComparisonMode",
-            "note": "Use cluster/RAC baseline data when available.",
-        },
-        {
             "label": "Fleet baseline",
             "value": "Fleet baseline",
             "select_type": "comparisonMode",
             "state_key": "selectedComparisonMode",
             "note": "Use fleet/global context when available.",
+        },
+        {
+            "label": "Cluster baseline",
+            "value": "Cluster baseline",
+            "select_type": "comparisonMode",
+            "state_key": "selectedComparisonMode",
+            "note": "Use cluster/RAC baseline data when available.",
         },
     ]
     review_modes = [
@@ -17650,35 +19717,39 @@ def _render_screen3_comparison_review_work_area(
         },
     ]
     preview_rows = [
-        ("Status", _screen2_result_value("comparison_status", "Not ready")),
-        ("Mode", _screen2_result_value("comparison_result_mode", "Pending comparison setup")),
-        ("Review Mode", _screen2_result_value("review_mode", "Pending review mode selection")),
-        ("Target A", _screen2_result_value("comparison_result_target_a", "Resolve source/scope/window first"), "wide"),
-        ("Target B", _screen2_result_value("comparison_result_target_b", "Resolve source/scope/window first"), "wide"),
-        ("Both Comparable", _screen2_result_value("comparison_both_comparable", "No")),
+        ("Status", _screen2_result_value("comparison_status", "Not submitted")),
+        ("Mode", _screen2_result_value("comparison_result_mode", "Pending comparison mode")),
+        (
+            "Targets",
+            _screen2_joined_result_values(
+                [
+                    ("comparison_result_target_a", "Target A unresolved", ""),
+                    ("comparison_result_target_b", "Target B unresolved", ""),
+                ],
+                separator=" · ",
+            ),
+        ),
+        ("Comparable", _screen2_result_value("comparison_both_comparable", "No")),
         (
             "Missing Gates",
             _screen2_result_value("comparison_missing_gates", "Resolve both targets to comparable persisted data"),
-            "wide",
         ),
         (
             "Artifact / Reference",
-            _screen2_result_value("comparison_artifact_reference", "No comparison artifact/reference created"),
-            "wide",
+            _screen2_result_value("comparison_artifact_reference", "Not created"),
         ),
         (
             "Screen 4 Handoff",
             _screen2_result_value(
                 "comparison_screen4_handoff",
-                "Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.",
+                "Opens after a governed comparison request returns artifact/reference.",
             ),
-            "wide",
         ),
     ]
     return f"""
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-comparison"
                    data-screen3-execution-result-panel="true">
-            <div class="section-kicker">Work Area 2</div>
+            <div class="section-kicker">Comparison Target Preparation</div>
             <h3>Resolve Comparison Targets</h3>
             <p class="static-selection-note">
               Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Cached Target A/B labels restore operator context only; readiness must be confirmed by current governed backend metadata before downstream comparison review. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
@@ -17696,7 +19767,7 @@ def _render_screen3_comparison_review_work_area(
               <article class="screen3-context-subpanel screen3-comparison-controls-card">
                 <h4>Comparison &amp; Review Controls</h4>
                 <div class="screen3-comparison-control-grid">
-                  <section>
+                  <section class="screen3-comparison-mode-section">
                     <h5>Comparison Mode</h5>
                     {_render_screen3_pill_controls(comparison_modes, "No comparison modes are available.")}
                   </section>
@@ -17720,13 +19791,6 @@ def _render_screen3_comparison_review_work_area(
                 {_render_screen3_target_resolution_card("A")}
                 {_render_screen3_target_resolution_card("B")}
               </div>
-              <article class="screen3-context-subpanel screen3-comparison-preview-panel">
-                <h4>Comparison Readiness / Request Handoff</h4>
-                <p class="meta">
-                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not produce comparison execution, improvement decisions, or degradation decisions.
-                </p>
-                {_render_screen2_control_info_grid(preview_rows, extra_class="screen3-result-grid")}
-              </article>
               <details class="screen3-secondary-selector-details screen3-target-picker-details">
                 <summary>Advanced target picker: external / baseline options</summary>
                 <p class="meta">
@@ -17791,6 +19855,13 @@ def _render_screen3_comparison_review_work_area(
                 </div>
               </details>
             </div>
+            <article class="screen3-context-subpanel screen3-comparison-preview-panel">
+              <h4>Comparison Readiness / Request Handoff</h4>
+              <p class="meta">
+                Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not produce comparison execution, improvement decisions, or degradation decisions.
+              </p>
+              {_render_screen2_control_info_grid(preview_rows, extra_class="screen3-result-grid screen3-comparison-handoff-grid")}
+            </article>
           </section>
     """
 
@@ -17802,7 +19873,7 @@ def _render_screen3_submit_result_work_area(
 ) -> str:
     return f"""
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-submit-result">
-            <div class="section-kicker">Work Area 3</div>
+            <div class="section-kicker">Governed Request Handoff</div>
             <h3>Submit Governed Action and Review Result</h3>
             <p class="static-selection-note">
               Submit a governed request on the left, then review validation, persistence, execution outcome, and next step on the right. Blocked results are expected when required gates are missing; existing deterministic truth is not overwritten.
@@ -19183,12 +21254,263 @@ def _render_static_option_control(label: str, options: list[Any], active_value: 
     """
 
 
+def _build_screen4_evidence_context(
+    screen_model: dict[str, Any],
+    chart_payload: dict[str, Any],
+    violin_metric_groups: list[dict[str, Any]],
+    time_series_groups: list[dict[str, Any]],
+    report_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Classify Screen 4 graphics as deterministic context, not page-owned truth."""
+
+    _ = report_data
+    header = _to_dict(screen_model.get("header"))
+    time_series_payload = _to_dict(chart_payload.get("time_series_charts"))
+    snapshot_labels = [
+        _display_value(label)
+        for label in (time_series_payload.get("snapshot_labels") or [])
+        if _has_display_value(label)
+    ]
+    snapshot_count = _screen3_contract_int(header.get("snapshot_count"))
+    if not snapshot_count and snapshot_labels:
+        snapshot_count = len(snapshot_labels)
+
+    explicit_alignment = _to_dict(
+        screen_model.get("artifact_alignment")
+        or _to_dict(screen_model.get("evidence_context")).get("artifact_alignment")
+        or _to_dict(screen_model.get("screen3_evidence_context")).get("artifact_alignment")
+    )
+    explicit_status = str(explicit_alignment.get("status") or "").strip()
+    has_historical_window = snapshot_count > 1 or len(snapshot_labels) > 1
+    has_trend_evidence = bool(time_series_groups and snapshot_labels)
+    has_distribution_evidence = bool(violin_metric_groups)
+
+    if explicit_status:
+        artifact_alignment_status = explicit_status
+    elif has_historical_window:
+        artifact_alignment_status = "same_db_historical_available"
+    elif snapshot_count == 1:
+        artifact_alignment_status = "exact_selected_scope"
+    else:
+        artifact_alignment_status = "unknown_alignment"
+
+    exact_statuses = {
+        "exact_selected_scope",
+        "historical_artifact_contains_selected_scope",
+        "aligned_historical_context",
+    }
+    context_statuses = {
+        "same_db_historical_available",
+        "same_db_different_window",
+        "context_only_historical_artifact",
+        "different_artifact",
+        "unknown_alignment",
+    }
+    exact_selected_scope = artifact_alignment_status in exact_statuses
+    context_only_historical = (
+        has_historical_window
+        and not exact_selected_scope
+        and artifact_alignment_status in context_statuses
+    )
+
+    if exact_selected_scope and not has_historical_window:
+        context_classification = "selected_single_awr"
+    elif exact_selected_scope:
+        context_classification = "aligned_historical_context"
+    elif artifact_alignment_status in {"different_artifact", "unknown_alignment"}:
+        context_classification = artifact_alignment_status
+    elif context_only_historical:
+        context_classification = "same_db_historical_context"
+    else:
+        context_classification = "unknown_alignment"
+
+    historical_allowed = has_trend_evidence and (
+        exact_selected_scope or context_only_historical
+    )
+    distribution_allowed = has_distribution_evidence and (
+        exact_selected_scope or context_only_historical
+    )
+    single_awr_allowed = exact_selected_scope and not has_historical_window
+    comparison_output_available = _screen4_has_deterministic_comparison_output(screen_model)
+
+    return {
+        "selected_context_label": (
+            "Selected single-AWR evidence"
+            if single_awr_allowed
+            else "Generated historical artifact context"
+            if has_historical_window
+            else "Selected context not ready"
+        ),
+        "context_classification": context_classification,
+        "artifact_alignment_status": artifact_alignment_status,
+        "artifact_alignment_label": _screen4_artifact_alignment_label(
+            artifact_alignment_status,
+            context_only_historical=context_only_historical,
+        ),
+        "historical_review_eligibility": (
+            "Context-only historical evidence"
+            if context_only_historical and has_trend_evidence
+            else "Aligned historical evidence"
+            if exact_selected_scope and has_trend_evidence
+            else "Not ready until deterministic historical evidence exists"
+        ),
+        "single_awr_review_eligibility": (
+            "Selected-scope graphics available"
+            if single_awr_allowed
+            else "Selected-scope graphics not ready for this evidence context"
+        ),
+        "distribution_eligibility": (
+            "Context-only distribution evidence"
+            if context_only_historical and has_distribution_evidence
+            else "Aligned distribution evidence"
+            if exact_selected_scope and has_distribution_evidence
+            else "Not ready until aligned multi-sample evidence exists"
+        ),
+        "comparison_review_eligibility": (
+            "Deterministic comparison output available"
+            if comparison_output_available
+            else "Prepared only; no deterministic comparison output"
+        ),
+        "historical_trend_panels_allowed": historical_allowed,
+        "historical_trend_panels_context_only": context_only_historical,
+        "distribution_violins_allowed": distribution_allowed,
+        "distribution_violins_context_only": context_only_historical,
+        "single_awr_graphics_allowed": single_awr_allowed,
+        "comparison_output_available": comparison_output_available,
+        "has_historical_window": has_historical_window,
+        "has_trend_evidence": has_trend_evidence,
+        "has_distribution_evidence": has_distribution_evidence,
+    }
+
+
+def _screen4_has_deterministic_comparison_output(
+    screen_model: dict[str, Any],
+) -> bool:
+    comparison_review = _to_dict(screen_model.get("comparison_review"))
+    candidates = (
+        screen_model.get("deterministic_comparison_output"),
+        screen_model.get("comparison_output"),
+        screen_model.get("comparison_result"),
+        comparison_review.get("deterministic_comparison_output"),
+        comparison_review.get("comparison_output"),
+        comparison_review.get("comparison_artifact_reference"),
+    )
+    unavailable_markers = {
+        "",
+        "none",
+        "n/a",
+        "na",
+        "not created",
+        "not available",
+        "unavailable",
+        "prepared only",
+        "no deterministic comparison output",
+    }
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            status = str(candidate.get("status") or candidate.get("state") or "").strip().lower()
+            if status and status not in unavailable_markers:
+                return True
+            if any(_has_display_value(value) for value in candidate.values()):
+                if status not in unavailable_markers:
+                    return True
+            continue
+        if _has_display_value(candidate):
+            text = _display_value(candidate).strip().lower()
+            if text not in unavailable_markers:
+                return True
+    return False
+
+
+def _screen4_artifact_alignment_label(
+    status: str,
+    *,
+    context_only_historical: bool,
+) -> str:
+    labels = {
+        "exact_selected_scope": "Exact selected-scope alignment",
+        "historical_artifact_contains_selected_scope": "Historical artifact contains selected scope",
+        "aligned_historical_context": "Aligned historical evidence",
+        "same_db_historical_available": "Same-DB historical context only",
+        "same_db_different_window": "Same DB, different historical window",
+        "context_only_historical_artifact": "Context-only historical artifact",
+        "different_artifact": "Different artifact; context only",
+        "unknown_alignment": "Unknown alignment; context only",
+    }
+    label = labels.get(
+        status,
+        status.replace("_", " ").title() if status else "Unknown alignment",
+    )
+    if context_only_historical and "context" not in label.lower():
+        return f"{label}; context only"
+    return label
+
+
+def _screen4_graphic_allowed(
+    evidence_context: dict[str, Any],
+    graphic_key: str,
+) -> bool:
+    if graphic_key == "historical_trends":
+        return bool(evidence_context.get("historical_trend_panels_allowed"))
+    if graphic_key == "distribution_violins":
+        return bool(evidence_context.get("distribution_violins_allowed"))
+    if graphic_key == "single_awr":
+        return bool(evidence_context.get("single_awr_graphics_allowed"))
+    if graphic_key == "comparison":
+        return bool(evidence_context.get("comparison_output_available"))
+    return False
+
+
+def _render_screen4_graphic_guard_empty_state(message: str) -> str:
+    return f"""
+        <div class="chart-empty screen4-graphic-guard-empty">
+          {escape(message)}
+        </div>
+    """
+
+
+def _render_screen4_evidence_context_guard(
+    evidence_context: dict[str, Any],
+) -> str:
+    return f"""
+      <section class="card secondary screen4-evidence-context-guard"
+               data-screen4-evidence-context-guard="true"
+               data-screen4-graphics-selected-by="evidence-context"
+               data-screen4-page-identity-alone="blocked"
+               data-screen4-context-classification="{escape(str(evidence_context.get("context_classification") or ""), quote=True)}"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}"
+               data-screen4-comparison-output="{"available" if evidence_context.get("comparison_output_available") else "unavailable"}">
+        <div class="section-kicker">Screen 4 Graphics Boundary</div>
+        <h2>Evidence Context &amp; Graphics Guard</h2>
+        <p class="meta">
+          Screen 4 renders graphics only when deterministic evidence and context alignment allow it.
+          Selected runtime state does not create historical truth. Prepared Target A/B state does not create comparison output.
+          Browser cache does not create evidence.
+        </p>
+        {_render_info_grid(
+            [
+                ("Selected Context", evidence_context.get("selected_context_label")),
+                ("Artifact Alignment", evidence_context.get("artifact_alignment_label")),
+                ("Historical Review Eligibility", evidence_context.get("historical_review_eligibility")),
+                ("Single-AWR Review Eligibility", evidence_context.get("single_awr_review_eligibility")),
+                ("Distribution / Violin Eligibility", evidence_context.get("distribution_eligibility")),
+                ("Fleet / Population", "No fleet/population graphics until a fleet evidence contract exists."),
+                ("Comparison Review Eligibility", evidence_context.get("comparison_review_eligibility")),
+                ("Graphics Boundary", "Page identity alone cannot select graphics."),
+            ],
+            extra_class="screen4-graphics-guard-grid",
+        )}
+      </section>
+    """
+
+
 def _render_screen_4_page(
     screen_model: dict[str, Any],
     chart_payload: dict[str, Any],
     violin_metric_groups: list[dict[str, Any]],
     time_series_groups: list[dict[str, Any]],
     derived_scalar_metrics: dict[str, Any],
+    report_data: dict[str, Any] | None = None,
 ) -> str:
     normalized_decision = _to_dict(screen_model.get("normalized_decision"))
     header = _to_dict(screen_model.get("header"))
@@ -19196,15 +21518,38 @@ def _render_screen_4_page(
     historical_verdict = _to_dict(screen_model.get("historical_verdict"))
     visual_story = _to_dict(_to_dict(screen_model.get("visual_analysis")).get("story"))
     similarity_evidence = _to_dict(screen_model.get("similarity_evidence"))
+    screen4_evidence_context = _build_screen4_evidence_context(
+        screen_model,
+        chart_payload,
+        violin_metric_groups,
+        time_series_groups,
+        report_data=report_data,
+    )
     scalar_metrics_html = _render_scalar_metrics(derived_scalar_metrics)
     topology_scalar_html = _render_topology_scalar_fallback(
         _to_dict(chart_payload.get("violin_panel"))
     )
-    time_series_section_html = _render_time_series_section(time_series_groups)
+    time_series_section_html = _render_time_series_section(
+        time_series_groups,
+        evidence_context=screen4_evidence_context,
+    )
+    historical_trend_panels_html = _render_screen4_historical_trend_panels(
+        screen_model,
+        chart_payload,
+        time_series_groups,
+        evidence_context=screen4_evidence_context,
+    )
     visual_sections = {
-        "performance": _render_performance_charts_section(chart_payload, visual_story),
+        "performance": _render_performance_charts_section(
+            chart_payload,
+            visual_story,
+            evidence_context=screen4_evidence_context,
+        ),
         "time_series": time_series_section_html,
-        "violin": _render_violin_panel(violin_metric_groups),
+        "violin": _render_violin_panel(
+            violin_metric_groups,
+            evidence_context=screen4_evidence_context,
+        ),
         "scalar": (
             f"""
       <section id="derived-scalar-metrics" class="card secondary">
@@ -19269,7 +21614,7 @@ def _render_screen_4_page(
             )}
           </section>
           <section class="half evidence-pane screen4-compact-pane">
-            <h3>Current Selection Summary</h3>
+            <h3>Historical Artifact Context</h3>
             {_render_info_grid(
                 [
                     ("Current Window", current_selection_summary.get("current_window")),
@@ -19285,16 +21630,16 @@ def _render_screen_4_page(
             )}
           </section>
           <section class="evidence-pane screen4-verdict-pane">
-            <h3>Historical Verdict</h3>
+            <h3>Historical Context Summary</h3>
             <div class="meta">
-              Historical / Supporting Context only; this does not override Screen 3 selected-scope diagnosis.
+              Historical supporting context only; this does not override Screen 3 selected-scope diagnosis.
             </div>
             {_render_info_grid(
                 [
                     ("Risk", historical_verdict.get("display_severity_label")),
                     ("Historical Stability", historical_verdict.get("historical_stability")),
                     ("Anomaly Burden", historical_verdict.get("anomaly_burden")),
-                    ("Historical Posture", historical_verdict.get("historical_posture")),
+                    ("Historical Context Posture", historical_verdict.get("historical_posture")),
                     (
                         "Similarity Context",
                         _screen4_similarity_context_label(similarity_evidence),
@@ -19305,9 +21650,11 @@ def _render_screen_4_page(
           </section>
         </div>
       </section>
+      {_render_screen4_evidence_context_guard(screen4_evidence_context)}
       {_render_screen4_mode_selector_shell()}
       {screen4_exploration_html}
       {screen4_review_preview_html}
+      {historical_trend_panels_html}
       {ordered_visual_sections}
       {topology_scalar_html}
       {_render_similarity_evidence_section(similarity_evidence)}
@@ -19326,6 +21673,400 @@ def _render_screen_4_page(
       }
     </div>
     """
+
+
+def _render_screen4_historical_trend_panels(
+    screen_model: dict[str, Any],
+    chart_payload: dict[str, Any],
+    time_series_groups: list[dict[str, Any]],
+    evidence_context: dict[str, Any] | None = None,
+) -> str:
+    """Render productized Screen 4 trend panels from existing deterministic evidence."""
+
+    evidence_context = evidence_context or _build_screen4_evidence_context(
+        screen_model,
+        chart_payload,
+        [],
+        time_series_groups,
+    )
+    model = _build_screen4_historical_trend_panel_model(
+        screen_model,
+        chart_payload,
+        time_series_groups,
+    )
+    rows = list(model.get("rows") or [])
+    guard_allows_trends = _screen4_graphic_allowed(evidence_context, "historical_trends")
+    if rows and not guard_allows_trends:
+        detail_html = _render_screen4_graphic_guard_empty_state(
+            "Historical trend graphics are not rendered because this evidence context "
+            "is not aligned to deterministic historical trend evidence."
+        )
+        findings_html = ""
+    else:
+        detail_html = (
+            _render_screen4_historical_trend_detail_table(rows)
+            if rows
+            else _render_empty_item(
+                "No deterministic historical trend evidence is available for this run or "
+                "selected evidence context. This does not change the diagnostic snapshot "
+                "or recommendation output."
+            )
+        )
+        findings_html = _render_screen4_historical_trend_findings(
+            list(model.get("findings") or [])
+        )
+    guard_state = (
+        "context-only"
+        if evidence_context.get("historical_trend_panels_context_only")
+        else "aligned"
+        if guard_allows_trends
+        else "blocked"
+    )
+    trend_note = (
+        "Deterministic historical trend evidence for the generated historical artifact. "
+        "This is context-only historical evidence, not selected runtime-scope truth unless "
+        "artifact alignment is exact or contains the selected scope."
+        if evidence_context.get("historical_trend_panels_context_only")
+        else "Deterministic historical trend evidence for the selected scope or aligned historical artifact."
+    )
+    overview_items = [
+        ("Trend Evidence Available", model.get("trend_evidence_available")),
+        ("Artifact Alignment", evidence_context.get("artifact_alignment_label")),
+        ("Guard State", guard_state.replace("-", " ").title()),
+        ("Historical Samples", model.get("historical_samples")),
+        ("Metric Groups", model.get("metric_groups")),
+        ("Coverage", model.get("coverage")),
+        ("Current / Latest Interval", model.get("current_latest_interval")),
+        ("Worst Historical Interval", model.get("worst_historical_interval")),
+        ("Trend Direction", model.get("trend_direction")),
+        ("Insufficient History", model.get("insufficient_history")),
+    ]
+    return f"""
+      <section id="screen4-historical-trend-panels"
+               class="card secondary screen4-historical-trend-panels"
+               data-screen4-mode-section="historical-review"
+               data-screen4-historical-trend-panels="true"
+               data-screen4-trend-truth-boundary="deterministic-generated-context-only"
+               data-screen4-graphic-guard-state="{escape(guard_state, quote=True)}"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}">
+        <div class="section-kicker">Historical Review</div>
+        <h2>Historical Trend Panels</h2>
+        <p class="chart-support-note">
+          {escape(trend_note)}
+          Trend evidence is context only and does not change diagnosis, recommendation, or
+          runtime behavior.
+        </p>
+        <ul class="screen4-trend-boundary-list">
+          <li>Source is deterministic/generated trend evidence already present in the dashboard payload.</li>
+          <li>Graphics are not selected by page identity alone; they require deterministic evidence and context alignment.</li>
+          <li>Browser cache may restore UI context only; it does not create trend evidence truth.</li>
+          <li>These panels do not create Target A/B outcomes, recommendation changes, LLM truth, learning state, materialization, or runtime eligibility.</li>
+        </ul>
+        {_render_info_grid(overview_items, extra_class="screen4-trend-overview-grid")}
+        {detail_html}
+        {findings_html}
+      </section>
+    """
+
+
+def _build_screen4_historical_trend_panel_model(
+    screen_model: dict[str, Any],
+    chart_payload: dict[str, Any],
+    time_series_groups: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build a display-only trend panel model from already-computed trend payloads."""
+
+    payload = _to_dict(chart_payload.get("time_series_charts"))
+    labels = [
+        str(label)
+        for label in (payload.get("snapshot_labels") or [])
+        if _has_display_value(label)
+    ]
+    trend_review = _to_dict(screen_model.get("trend_review"))
+    trends = _to_dict(trend_review.get("trends"))
+    trend_time_series = _to_dict(trends.get("time_series"))
+    trend_directions = _to_dict(trend_time_series.get("trend_directions"))
+    trend_summary = _to_dict(trend_review.get("trend_summary"))
+    current_selection_summary = _to_dict(screen_model.get("current_selection_summary"))
+    comparison_review = _to_dict(screen_model.get("comparison_review"))
+
+    rows: list[dict[str, Any]] = []
+    for group in time_series_groups:
+        group_key = str(group.get("group_key") or "workload")
+        group_title = str(group.get("group_title") or "")
+        domain = _screen4_trend_domain_label(group_key, group_title)
+        for chart in group.get("charts") or []:
+            chart_dict = _to_dict(chart)
+            key = str(chart_dict.get("key") or "")
+            if not key:
+                continue
+            values = payload.get(key)
+            if values is None:
+                values = trend_time_series.get(key)
+            points = _screen4_trend_populated_points(values, labels)
+            if not points:
+                continue
+            direction_key = _screen4_trend_direction_key(key)
+            latest = points[-1]
+            prior = points[-2] if len(points) > 1 else None
+            baseline = points[0]
+            rows.append(
+                {
+                    "metric": chart_dict.get("title") or chart_dict.get("label") or key,
+                    "domain": domain,
+                    "latest": _screen4_trend_point_label(latest),
+                    "baseline_prior": _screen4_trend_baseline_prior_label(
+                        baseline,
+                        prior,
+                    ),
+                    "direction": _screen4_trend_direction_label(
+                        trend_directions.get(direction_key)
+                    ),
+                    "worst_interval": (
+                        comparison_review.get("worst_interval")
+                        or "Not provided by deterministic trend evidence."
+                    ),
+                    "coverage": _screen4_trend_coverage_label(
+                        len(points),
+                        len(labels) or len(values or []),
+                    ),
+                    "evidence_note": _screen4_trend_evidence_note(
+                        len(points),
+                        len(labels) or len(values or []),
+                    ),
+                }
+            )
+
+    domains = sorted({str(row.get("domain") or "") for row in rows if row.get("domain")})
+    sufficient_count = sum(
+        1
+        for row in rows
+        if not str(row.get("coverage") or "").startswith("Insufficient")
+    )
+    insufficient_count = max(0, len(rows) - sufficient_count)
+    direction_labels = sorted(
+        {
+            str(row.get("direction") or "")
+            for row in rows
+            if _has_display_value(row.get("direction"))
+            and "not provided" not in str(row.get("direction") or "").lower()
+        }
+    )
+    return {
+        "rows": rows,
+        "findings": list(trend_summary.get("findings") or trends.get("findings") or []),
+        "trend_evidence_available": f"{len(rows)} metric trend(s)" if rows else "None available",
+        "historical_samples": (
+            f"{len(labels)} historical interval(s)"
+            if labels
+            else "No historical sample labels available"
+        ),
+        "metric_groups": ", ".join(domains) if domains else "No metric groups available",
+        "coverage": (
+            f"{sufficient_count} sufficient / {insufficient_count} insufficient"
+            if rows
+            else "No deterministic trend coverage available"
+        ),
+        "current_latest_interval": (
+            current_selection_summary.get("current_window")
+            or (labels[-1] if labels else None)
+            or "No latest interval label available"
+        ),
+        "worst_historical_interval": (
+            comparison_review.get("worst_interval")
+            or "Not provided by deterministic trend evidence."
+        ),
+        "trend_direction": (
+            ", ".join(direction_labels[:4])
+            if direction_labels
+            else "Direction not provided by deterministic trend evidence."
+        ),
+        "insufficient_history": (
+            f"{insufficient_count} metric trend(s)"
+            if insufficient_count
+            else "None flagged in displayed trend rows"
+        ),
+    }
+
+
+def _render_screen4_historical_trend_detail_table(rows: list[dict[str, Any]]) -> str:
+    table_rows = []
+    for row in rows:
+        table_rows.append(
+            f"""
+              <tr>
+                <td>{escape(_display_value(row.get("metric")))}</td>
+                <td>{escape(_display_value(row.get("domain")))}</td>
+                <td>{escape(_display_value(row.get("latest")))}</td>
+                <td>{escape(_display_value(row.get("baseline_prior")))}</td>
+                <td>{escape(_display_value(row.get("direction")))}</td>
+                <td>{escape(_display_value(row.get("worst_interval")))}</td>
+                <td>{escape(_display_value(row.get("coverage")))}</td>
+                <td>{escape(_display_value(row.get("evidence_note")))}</td>
+              </tr>
+            """
+        )
+    return f"""
+        <div class="data-table-wrap screen4-trend-table-wrap">
+          <table class="data-table screen4-trend-detail-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Domain</th>
+                <th>Latest</th>
+                <th>Baseline / Prior</th>
+                <th>Direction</th>
+                <th>Worst Interval</th>
+                <th>Coverage</th>
+                <th>Evidence Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {"".join(table_rows)}
+            </tbody>
+          </table>
+        </div>
+    """
+
+
+def _render_screen4_historical_trend_findings(findings: list[Any]) -> str:
+    visible_findings = [
+        _display_value(finding)
+        for finding in findings
+        if _has_display_value(finding)
+    ][:8]
+    if not visible_findings:
+        return ""
+    items = "".join(f"<li>{escape(finding)}</li>" for finding in visible_findings)
+    return f"""
+        <div class="supportive-panel screen4-trend-findings-panel">
+          <h3>Deterministic Trend Findings</h3>
+          <ul class="screen4-trend-findings-list">{items}</ul>
+        </div>
+    """
+
+
+def _screen4_trend_populated_points(
+    values: Any,
+    labels: list[str],
+) -> list[tuple[int, float, str | None]]:
+    if not isinstance(values, list):
+        return []
+    points: list[tuple[int, float, str | None]] = []
+    for index, value in enumerate(values):
+        if value == CHART_NULL_SENTINEL or value is None:
+            continue
+        if isinstance(value, (int, float)):
+            numeric = float(value)
+        elif isinstance(value, str):
+            try:
+                numeric = float(value.replace(",", ""))
+            except ValueError:
+                continue
+        else:
+            continue
+        if not math.isfinite(numeric):
+            continue
+        label = labels[index] if index < len(labels) else None
+        points.append((index, numeric, label))
+    return points
+
+
+def _screen4_trend_point_label(point: tuple[int, float, str | None]) -> str:
+    _, value, label = point
+    formatted = _screen4_format_trend_metric(value)
+    return f"{formatted} ({label})" if label else formatted
+
+
+def _screen4_trend_baseline_prior_label(
+    baseline: tuple[int, float, str | None],
+    prior: tuple[int, float, str | None] | None,
+) -> str:
+    baseline_text = _screen4_trend_point_label(baseline)
+    if prior is None:
+        return f"First populated: {baseline_text}"
+    return f"First populated: {baseline_text}; Prior: {_screen4_trend_point_label(prior)}"
+
+
+def _screen4_format_trend_metric(value: float) -> str:
+    if abs(value) >= 100:
+        return f"{value:.0f}"
+    if abs(value) >= 10:
+        return f"{value:.1f}"
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def _screen4_trend_domain_label(group_key: str, group_title: str) -> str:
+    normalized = str(group_key or "").strip().lower()
+    label_map = {
+        "cpu": "CPU",
+        "io": "IO",
+        "memory": "MEMORY",
+        "network": "NETWORK",
+        "commit": "COMMIT",
+        "rac": "RAC",
+        "adg": "ADG",
+        "exadata": "EXADATA",
+        "platform": "PLATFORM",
+        "workload": "WORKLOAD",
+    }
+    if normalized in label_map:
+        return label_map[normalized]
+    if group_title:
+        return re.sub(r"\s+Time-Series Charts$", "", group_title).upper()
+    return "WORKLOAD"
+
+
+def _screen4_trend_direction_key(chart_key: str) -> str:
+    return {
+        "cpu_trend": "cpu",
+        "io_trend": "io",
+        "commit_trend": "commit",
+        "log_file_sync_trend": "commit",
+        "concurrency_trend": "concurrency",
+        "sql_concentration_trend": "sql_concentration",
+        "hard_parses_trend": "hard_parses",
+        "cluster_wait_trend": "cluster_wait",
+        "gc_wait_trend": "gc_wait",
+        "dg_transport_lag_trend": "dg_transport_lag",
+        "dg_apply_lag_trend": "dg_apply_lag",
+        "exa_cell_io_trend": "exa_cell_io",
+        "exa_offload_efficiency_trend": "exa_offload_efficiency",
+    }.get(chart_key, chart_key.replace("_trend", ""))
+
+
+def _screen4_trend_direction_label(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    return {
+        "degrading": "Upward pressure",
+        "improving": "Lower pressure",
+        "recovering": "Spike then moderation",
+        "stable": "Broadly steady",
+        "insufficient history": "Insufficient history",
+    }.get(normalized, "Direction not provided by deterministic trend evidence.")
+
+
+def _screen4_trend_coverage_label(populated_count: int, total_count: int) -> str:
+    total = max(total_count, populated_count)
+    if populated_count < 3:
+        return (
+            f"Insufficient historical samples: {populated_count} / {total} populated. "
+            "Value is shown as context only."
+        )
+    if total and populated_count < total:
+        return f"Partial coverage: {populated_count} / {total} populated samples"
+    return f"{populated_count} / {total} populated samples"
+
+
+def _screen4_trend_evidence_note(populated_count: int, total_count: int) -> str:
+    if populated_count < 3:
+        return (
+            "Insufficient historical samples are available to establish a reliable trend for this metric. "
+            "The value is shown as context only."
+        )
+    if total_count and populated_count < total_count:
+        return "Partial deterministic trend evidence; displayed as historical context only."
+    return "Existing deterministic trend evidence; displayed as historical context only."
 
 
 def _render_screen4_mode_selector_shell() -> str:
@@ -19350,9 +22091,10 @@ def _render_screen4_mode_selector_shell() -> str:
             "body": (
                 "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
                 "Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; "
-                "selected targets and cache-restored state do not create comparison evidence. Screen 4 will review "
-                "already-computed Target A-vs-B evidence, future deltas, and future comparison violin panels only "
-                "after that output exists. Screen 4 does not compute comparison in the browser."
+                "Target A/B prepared-only state is not comparison output. Selected targets and cache-restored "
+                "state do not create comparison evidence. Deterministic comparison output is required before "
+                "A/B diagrams or future comparison violin panels can render. Screen 4 does not compute comparison "
+                "in the browser."
             ),
             "chips": ("Unavailable", "No browser comparison"),
         },
@@ -19412,10 +22154,21 @@ def _render_screen4_mode_selector_shell() -> str:
     """
 
 
-def _screen4_compact_selection_text(value: Any) -> Any:
+def _screen4_historical_context_wording(value: Any) -> Any:
     if not _has_display_value(value):
         return value
     text = _display_value(value)
+    text = text.replace(
+        "Period comparison should be read through the current deterministic posture.",
+        "Historical period context should be read through the current deterministic posture.",
+    )
+    return text
+
+
+def _screen4_compact_selection_text(value: Any) -> Any:
+    if not _has_display_value(value):
+        return value
+    text = _screen4_historical_context_wording(value)
     text = text.replace(
         "The latest interval differs from the worst interval and should be interpreted in broader historical context.",
         "Latest differs from worst interval; interpret in broader historical context.",
@@ -19470,8 +22223,11 @@ def _render_screen4_historical_exploration(
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen4-selected-historical-panel">
             <h3>Selected Historical Summary</h3>
-            <p class="screen4-selected-historical-summary" data-dashboard-selected-summary data-dashboard-state-empty="true">
-              Read-only historical exploration: no local selection. Selection is local and read-only. Historical output remains unchanged.
+            <p class="screen4-selected-historical-summary"
+               data-dashboard-selected-summary
+               data-dashboard-selected-summary-kind="screen4-historical"
+               data-dashboard-state-empty="true">
+              Read-only historical exploration: no local selection. Historical output remains unchanged.
             </p>
             <div class="meta">
               Selection does not recalculate trends, reclassify anomalies, change baseline, change similarity results, change diagnostic truth, or change recommendation truth.
@@ -19543,7 +22299,8 @@ def _render_screen4_historical_review_preview_panel(
         <h2>Screen 4 Historical Review Workflow Preview</h2>
         <p class="meta">
           Disabled / preview-only historical review controls for future governed
-          workflow. These controls do not submit, route, write, or execute.
+          workflow. Historical review actions are preview-only; these controls do
+          not submit, route, write, or execute.
         </p>
         <div class="screen4-historical-review-preview-grid">
           {controls}
@@ -19574,7 +22331,7 @@ def _build_screen4_historical_review_preview_model(
     )
     safety_labels = (
         "Preview only",
-        "Historical review disabled in this phase",
+        "Historical review actions are preview-only",
         "No trend truth mutation",
         "No anomaly truth mutation",
         "No scoring change",
@@ -19806,8 +22563,14 @@ def _screen4_baseline_similarity_selector_items(
     baseline_pairs = (
         ("Historical Period Context", current_selection_summary.get("comparison_mode")),
         ("Latest vs Prior", current_selection_summary.get("latest_vs_prior")),
-        ("Latest vs Trend", comparison_review.get("latest_vs_trend")),
-        ("Drift Summary", comparison_review.get("drift_summary")),
+        (
+            "Latest vs Historical Context",
+            _screen4_historical_context_wording(comparison_review.get("latest_vs_trend")),
+        ),
+        (
+            "Drift Summary",
+            _screen4_historical_context_wording(comparison_review.get("drift_summary")),
+        ),
     )
     for label, value in baseline_pairs:
         if not _has_display_value(value):
@@ -24207,11 +26970,22 @@ def _series_has_display_data(values: Any) -> bool:
     return numeric_count >= 2
 
 
-def _render_time_series_section(time_series_groups: list[dict[str, Any]]) -> str:
+def _render_time_series_section(
+    time_series_groups: list[dict[str, Any]],
+    evidence_context: dict[str, Any] | None = None,
+) -> str:
     """Render Screen 3 time-series charts only when real historical data exists."""
 
     if not time_series_groups:
         return ""
+    evidence_context = evidence_context or {}
+    guard_state = (
+        "context-only"
+        if evidence_context.get("historical_trend_panels_context_only")
+        else "aligned"
+        if _screen4_graphic_allowed(evidence_context, "historical_trends")
+        else "deterministic-context"
+    )
     group_sections = []
     for group in time_series_groups:
         panels = []
@@ -24235,13 +27009,18 @@ def _render_time_series_section(time_series_groups: list[dict[str, Any]]) -> str
             """
         )
     return f"""
-      <section id="time-series-charts" class="card secondary">
+      <section id="time-series-charts"
+               class="card secondary"
+               data-screen4-graphic-guard-state="{escape(guard_state, quote=True)}"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}">
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Supporting Trends</h2>
         <p class="chart-support-note">
           Historical / Supporting Context (Not Selected-Scope Truth). These
           chart views support deterministic findings and remain subordinate to
-          the canonical comparison conclusions.
+          Screen 3 selected-scope diagnosis. Graphics are shown from deterministic
+          trend evidence only, do not mutate diagnosis or recommendations, and are
+          context-only unless artifact alignment allows selected-scope review.
         </p>
         {"".join(group_sections)}
       </section>
@@ -26980,7 +29759,7 @@ def _render_review_comparison_screen(
         "visual_analysis": "",
         "historical_scope_memory": f"""
         <section class="half evidence-pane screen4-memory-pane">
-          <h3>Memory Review</h3>
+          <h3>Supporting Memory Context</h3>
           {_render_historical_scope_memory(historical_scope_memory)}
         </section>
         """,
@@ -27014,22 +29793,24 @@ def _render_review_comparison_screen(
         """,
         "period_comparison": f"""
         <section class="half evidence-pane">
-          <h3>Period Comparison</h3>
+          <h3>Historical Period Context</h3>
           <div class="stack">
             {_render_info_grid(
                 [
                     ("Latest Interval", comparison_review.get("latest_interval")),
                     ("Worst Interval", comparison_review.get("worst_interval")),
-                    ("Latest vs Trend", comparison_review.get("latest_vs_trend")),
+                    ("Latest vs Historical Context", comparison_review.get("latest_vs_trend")),
                 ]
             )}
             {_render_context_summary(
                 {
-                    "summary": comparison_review.get("drift_summary"),
+                    "summary": _screen4_historical_context_wording(
+                        comparison_review.get("drift_summary")
+                    ),
                     "items": [],
                 },
                 "items",
-                "No drift or period comparison summary is available.",
+                "No drift or historical period context summary is available.",
                 normalized_decision=normalized_decision,
             )}
           </div>
@@ -29105,7 +31886,10 @@ def _render_historical_scope_memory(scope_memory: dict[str, Any]) -> str:
     )
     return f"""
       <article class="item screen4-memory-block">
-        <div class="meta">Memory context is supporting historical evidence only.</div>
+        <div class="meta">
+          Memory context is supporting historical evidence only and does not change diagnosis, recommendation,
+          learning state, materialization, or runtime eligibility.
+        </div>
         <p>{escape(summary_text)}</p>
         {"<ul>" + "".join(f"<li>{escape(item)}</li>" for item in cleaned_items) + "</ul>" if cleaned_items else ""}
       </article>
@@ -31490,10 +34274,12 @@ def _render_chart_container_with_message(
 def _render_performance_charts_section(
     chart_payload: dict[str, Any],
     visual_story: dict[str, Any] | None = None,
+    evidence_context: dict[str, Any] | None = None,
 ) -> str:
     """Render supporting performance charts with clean fallbacks."""
 
     visual_story = visual_story or {}
+    evidence_context = evidence_context or {}
     performance_panels = _to_dict(visual_story.get("performance_panels"))
     db_time_state = _to_dict(performance_panels.get("db_time_breakdown"))
     db_time_data = chart_payload.get("db_time_breakdown") or {}
@@ -31524,12 +34310,15 @@ def _render_performance_charts_section(
         return ""
 
     return f"""
-      <section id="performance-charts" class="card secondary">
+      <section id="performance-charts"
+               class="card secondary"
+               data-screen4-graphic-guard-state="{"context-only" if evidence_context.get("has_historical_window") else "selected-scope"}"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}">
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Primary Evidence</h2>
         <p class="chart-support-note">
           Historical / Supporting Context (Not Selected-Scope Truth). Shown
-          only when real chart data exists.
+          only when real chart data exists and never selected by page identity alone.
         </p>
         <div class="chart-grid">
           {"".join(panels)}
@@ -31538,11 +34327,44 @@ def _render_performance_charts_section(
     """
 
 
-def _render_violin_panel(violin_metric_groups: list[dict[str, Any]]) -> str:
+def _render_violin_panel(
+    violin_metric_groups: list[dict[str, Any]],
+    evidence_context: dict[str, Any] | None = None,
+) -> str:
     """Render the violin panel only when real series-backed metrics exist."""
 
     if not violin_metric_groups:
         return ""
+    evidence_context = evidence_context or {}
+    guard_allows_violins = _screen4_graphic_allowed(
+        evidence_context,
+        "distribution_violins",
+    )
+    guard_state = (
+        "context-only"
+        if evidence_context.get("distribution_violins_context_only")
+        else "aligned"
+        if guard_allows_violins
+        else "blocked"
+    )
+    if not guard_allows_violins:
+        return f"""
+      <section id="workload-violin-panel"
+               class="card secondary violin-panel"
+               data-screen4-graphic-guard-state="blocked"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}">
+        <div class="section-kicker">Supporting Visual Layer</div>
+        <h2>Workload Distribution Evidence</h2>
+        <p class="chart-support-note">
+          Distribution graphics require deterministic multi-sample evidence plus context alignment.
+          Prepared Target A/B state does not create comparison violin output. Fleet/population
+          diagrams require a fleet evidence contract and are not rendered here.
+        </p>
+        {_render_screen4_graphic_guard_empty_state(
+            "Distribution graphics are unavailable for this evidence context."
+        )}
+      </section>
+    """
 
     group_sections: list[str] = []
     for group in violin_metric_groups:
@@ -31568,14 +34390,20 @@ def _render_violin_panel(violin_metric_groups: list[dict[str, Any]]) -> str:
         )
 
     return (
-        """
-      <section id="workload-violin-panel" class="card secondary violin-panel">
+        f"""
+      <section id="workload-violin-panel"
+               class="card secondary violin-panel"
+               data-screen4-graphic-guard-state="{escape(guard_state, quote=True)}"
+               data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}">
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Workload Distribution Evidence</h2>
         <p class="chart-support-note">
           Historical / Supporting Context (Not Selected-Scope Truth). Violin
           charts render only when enough real multi-snapshot samples exist,
-          while scalar-only facts stay in scalar metric cards below.
+          while scalar-only facts stay in scalar metric cards below. Distribution
+          graphics are context-only unless deterministic sample evidence and alignment
+          allow selected-scope review. No comparison violins or fleet/population
+          diagrams render in this phase.
         </p>
 """
         + "".join(group_sections)

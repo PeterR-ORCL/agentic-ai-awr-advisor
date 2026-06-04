@@ -125,7 +125,7 @@
       display: grid;
       justify-items: end;
       gap: 5px;
-      width: max-content;
+      width: min(620px, calc(100vw - 32px));
       max-width: calc(100% - 32px);
       text-align: right;
       contain: layout style;
@@ -143,11 +143,11 @@
     }
     .runtime-state-pills {
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
       align-items: center;
       gap: 4px;
-      flex-wrap: nowrap;
-      width: max-content;
+      flex-wrap: wrap;
+      width: auto;
       max-width: 100%;
       min-height: 23px;
     }
@@ -156,10 +156,9 @@
       align-items: baseline;
       justify-content: center;
       gap: 4px;
-      flex: 0 0 auto;
-      width: auto;
-      max-width: none;
-      min-width: 0;
+      flex: 0 1 auto;
+      min-width: var(--runtime-pill-min-width, 82px);
+      max-width: min(var(--runtime-pill-max-width, 150px), 100%);
       min-height: 21px;
       border: 1px solid rgba(183, 192, 204, 0.42);
       border-radius: 999px;
@@ -176,9 +175,31 @@
       white-space: nowrap;
       transition: none;
     }
+    .runtime-mini-pill[data-runtime-badge-kind="build-db"] {
+      --runtime-pill-min-width: 92px;
+      --runtime-pill-max-width: 132px;
+    }
+    .runtime-mini-pill[data-runtime-badge-kind="workflow"] {
+      --runtime-pill-min-width: 118px;
+      --runtime-pill-max-width: 160px;
+    }
+    .runtime-mini-pill[data-runtime-badge-kind="llm"] {
+      --runtime-pill-min-width: 78px;
+      --runtime-pill-max-width: 118px;
+    }
+    .runtime-mini-pill[data-runtime-badge-kind="similarity"] {
+      --runtime-pill-min-width: 104px;
+      --runtime-pill-max-width: 138px;
+    }
+    .runtime-mini-pill[data-runtime-badge-kind="memory"] {
+      --runtime-pill-min-width: 88px;
+      --runtime-pill-max-width: 126px;
+    }
     .runtime-mini-pill strong {
       display: inline-block;
       min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-weight: 800;
       line-height: 1;
       position: relative;
@@ -470,6 +491,10 @@
       border-color: rgba(90, 209, 255, 0.32);
       background: rgba(90, 209, 255, 0.1);
     }
+    .screen3-source-context-card.screen2-evidence-path-status-card {
+      border-color: rgba(90, 209, 255, 0.32);
+      background: rgba(90, 209, 255, 0.1);
+    }
     .screen3-source-context-card span {
       display: block;
       margin-bottom: 4px;
@@ -494,6 +519,9 @@
     }
     .screen2-control-card-grid-balanced {
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+    .screen3-selected-report-row-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .screen2-control-info-box {
       min-height: 0;
@@ -664,6 +692,15 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+    .screen3-comparison-mode-section .screen3-pill-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 220px));
+      justify-content: start;
+    }
+    .screen3-comparison-mode-section .screen3-pill-button {
+      width: 100%;
+      max-width: 220px;
+    }
     .screen3-comparison-target-card {
       display: grid;
       gap: 8px;
@@ -673,6 +710,29 @@
     .screen3-comparison-target-card h4 {
       margin: 0;
       font-size: 12px;
+    }
+    .screen2-current-session-empty {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(90, 209, 255, 0.22);
+      border-radius: 10px;
+      background: rgba(90, 209, 255, 0.08);
+    }
+    .screen3-comparison-handoff-grid {
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 6px;
+    }
+    .screen3-comparison-preview-panel .screen2-control-info-box {
+      min-height: 0;
+      padding: 7px 9px;
+      border-radius: 10px;
+    }
+    .screen3-comparison-preview-panel .screen2-control-info-box strong {
+      font-size: 10px;
+    }
+    .screen3-comparison-preview-panel .screen2-control-info-box div {
+      font-size: 11px;
+      line-height: 1.3;
     }
     .screen3-target-resolution-grid {
       grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
@@ -1441,6 +1501,238 @@
       color: #fff4f4;
       border-color: rgba(255, 107, 107, 0.42);
     }
+    .screen3-downstream-evidence-panel {
+      display: grid;
+      gap: 14px;
+    }
+    .screen3-review-context-stack,
+    .screen3-review-context-subject,
+    .screen3-review-context-evidence,
+    .screen3-review-context-alignment,
+    .screen3-review-context-readiness {
+      display: grid;
+      gap: 12px;
+    }
+    .screen3-review-context-heading {
+      display: grid;
+      gap: 10px;
+    }
+    .screen3-review-context-heading h3,
+    .screen3-review-context-explanation h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .screen3-review-context-pill-row {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      width: auto;
+    }
+    .screen3-review-context-pill {
+      align-items: center;
+      max-width: 100%;
+      line-height: 1.2;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+    .screen3-review-context-pill[data-screen3-evidence-status-tone="available"] {
+      border-color: rgba(102, 187, 106, 0.34);
+      color: #effbef;
+    }
+    .screen3-review-context-pill[data-screen3-evidence-status-tone="context"] {
+      border-color: rgba(90, 209, 255, 0.32);
+      color: #eaf8ff;
+    }
+    .screen3-review-context-pill[data-screen3-evidence-status-tone="prepared"],
+    .screen3-review-context-pill[data-screen3-evidence-status-tone="cached"] {
+      border-color: rgba(246, 184, 76, 0.36);
+      color: #fff8ed;
+    }
+    .screen3-review-context-pill[data-screen3-evidence-status-tone="unavailable"] {
+      border-color: rgba(159, 176, 199, 0.18);
+      color: var(--muted);
+    }
+    .screen3-review-context-inline,
+    .screen3-review-context-explanation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .screen3-review-context-alignment .screen3-review-context-inline {
+      align-items: center;
+    }
+    .screen3-evidence-availability-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box {
+      display: grid;
+      align-content: space-between;
+      justify-items: center;
+      text-align: center;
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box.screen3-evidence-status-card {
+      border-color: rgba(90, 209, 255, 0.22);
+      background: linear-gradient(180deg, rgba(90, 209, 255, 0.12), rgba(90, 209, 255, 0.05));
+      box-shadow: inset 0 1px 0 rgba(232, 238, 247, 0.04);
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box.screen3-evidence-status-card-available,
+    .screen3-evidence-availability-grid .screen2-control-info-box.screen3-evidence-status-card-context {
+      border-color: rgba(90, 209, 255, 0.30);
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box.screen3-evidence-status-card-unavailable,
+    .screen3-evidence-availability-grid .screen2-control-info-box.screen3-evidence-status-card-unknown {
+      border-color: rgba(159, 176, 199, 0.18);
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box strong,
+    .screen3-evidence-availability-grid .screen2-control-info-box div {
+      width: 100%;
+      text-align: center;
+    }
+    .screen3-evidence-availability-grid .screen3-review-context-pill {
+      margin: 0 auto;
+    }
+    .screen3-subject-summary-grid {
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    }
+    .screen3-evidence-availability-grid .screen2-control-info-box div,
+    .screen3-subject-summary-grid .screen2-control-info-box div {
+      overflow-wrap: anywhere;
+    }
+    .screen3-review-readiness-matrix {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .screen3-review-readiness-row {
+      display: grid;
+      gap: 5px;
+      align-content: start;
+      min-height: 74px;
+      padding: 9px 10px;
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 8px;
+      background: rgba(16, 28, 45, 0.44);
+    }
+    .screen3-review-readiness-row strong {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+    .screen3-review-readiness-row span {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+    .screen3-review-readiness-boundary {
+      display: grid;
+      gap: 5px;
+      align-content: start;
+      min-height: 74px;
+      padding: 9px 10px;
+      border: 1px solid rgba(90, 209, 255, 0.24);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(90, 209, 255, 0.12), rgba(90, 209, 255, 0.05));
+    }
+    .screen3-review-readiness-boundary strong {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+    .screen3-review-readiness-boundary span {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+    .screen3-review-context-explanation > div {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
+    .screen3-review-context-explanation-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .screen3-review-context-status-fact {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      padding: 6px 8px;
+      border: 1px solid rgba(159, 176, 199, 0.18);
+      border-radius: 8px;
+      background: rgba(6, 12, 20, 0.24);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+    .screen3-review-context-status-fact strong {
+      color: var(--text);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .screen3-review-context-status-secondary strong {
+      color: var(--muted);
+    }
+    .screen2-runtime-explanation-grid {
+      margin: 10px 0 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .screen2-runtime-explanation-grid .wide {
+      grid-column: 1 / -1;
+    }
+    .screen3-review-context-explanation .phase7cm-service-button[disabled] {
+      border-color: rgba(159, 176, 199, 0.22);
+      background: rgba(159, 176, 199, 0.08);
+      color: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+    .screen3-review-context-inline p,
+    .screen3-review-context-alignment small,
+    .screen3-evidence-context-boundary,
+    .screen3-review-context-explanation p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .screen3-evidence-context-technical pre {
+      max-height: 280px;
+      overflow: auto;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(6, 12, 20, 0.7);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .diagnostic-posture-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(16, 28, 45, 0.72);
+    }
+    .diagnostic-posture-box .narrative p {
+      margin-top: 0;
+    }
+    .diagnostic-posture-box ul {
+      margin-bottom: 0;
+      padding-left: 18px;
+    }
     .scope-chip.active {
       color: #08111d;
       background: var(--accent);
@@ -1490,6 +1782,9 @@
     }
     .diagnostic-drivers-card {
       padding: 16px;
+    }
+    .diagnostic-driver-narrative {
+      margin-bottom: 12px;
     }
     .diagnostic-driver-stack {
       display: grid;
@@ -2466,6 +2761,61 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 12px;
+    }
+    .screen4-historical-trend-panels {
+      border-color: rgba(90, 209, 255, 0.28);
+    }
+    .screen4-evidence-context-guard {
+      border-color: rgba(90, 209, 255, 0.34);
+      background: linear-gradient(180deg, rgba(90, 209, 255, 0.08), rgba(16, 28, 45, 0.60));
+    }
+    .screen4-graphics-guard-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .screen4-graphics-guard-grid .info-box {
+      padding: 11px 12px;
+      border-color: rgba(90, 209, 255, 0.22);
+      background: rgba(16, 28, 45, 0.62);
+    }
+    .screen4-graphic-guard-empty {
+      min-height: 160px;
+      border-color: rgba(90, 209, 255, 0.24);
+      background: rgba(16, 28, 45, 0.54);
+    }
+    .screen4-trend-boundary-list,
+    .screen4-trend-findings-list {
+      margin: 10px 0 14px;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .screen4-trend-overview-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .screen4-trend-overview-grid .info-box {
+      padding: 11px 12px;
+      border-radius: 12px;
+    }
+    .screen4-trend-table-wrap {
+      margin-top: 14px;
+    }
+    .screen4-trend-detail-table {
+      min-width: 1180px;
+    }
+    .screen4-trend-detail-table td:nth-child(8) {
+      min-width: 260px;
+    }
+    .screen4-trend-findings-panel {
+      margin-top: 14px;
+      padding: 14px;
+    }
+    .screen4-trend-findings-panel h3 {
+      margin-top: 0;
     }
     .screen5-recommendation-action-exploration {
       border-color: rgba(90, 209, 255, 0.32);
@@ -4980,6 +5330,7 @@
 	      .screen3-workflow-subgrid,
 	      .screen3-submit-result-grid,
 	      .screen3-comparison-control-grid,
+	      .screen3-comparison-mode-section .screen3-pill-row,
 	      .screen3-target-card-grid,
 	      .screen3-selected-context-strip,
 	      .screen3-target-picker-grid,
@@ -5070,16 +5421,23 @@
       .index-source-status-grid,
       .index-object-storage-config-grid,
       .index-screen3-handoff-grid,
+      .screen2-runtime-explanation-grid,
+      .screen3-review-readiness-matrix,
 	      .screen4-verdict-grid,
+	      .screen4-graphics-guard-grid,
 	      .screen4-topology-grid {
 	        grid-template-columns: 1fr;
 	      }
+      .screen3-review-readiness-boundary {
+        grid-template-columns: 1fr;
+      }
       h1 { font-size: 28px; }
     }
 
   </style>
 </head>
-<body data-dashboard-generated-at="Jun 1, 2026, 12:41 PM">
+<body data-dashboard-generated-at="Jun 4, 2026, 4:10 PM"
+      data-dashboard-generated-session-id="dashboard-run-1780603804718749000">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5094,7 +5452,7 @@
     Does not activate learning candidates. No approval controls. No runtime activation.
     Semantic context remains reviewer-assist only.
     Learning candidates remain proposal/review context only.
-    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedDbid, selectedInstance, selectedHost, selectedSystem, selectedReportId, selectedSnapshot, selectedSnapshotBegin, selectedSnapshotEnd, selectedTimeWindow, selectedApplication, selectedRuntimeScope, selectedRuntimeScopeSourceTable, selectedRuntimeScopeAwrCount, selectedRuntimeScopeSnapshotCount, selectedRuntimeScopeResolutionState, selectedRuntimeScopeReadinessState, screen3ActiveSelectionTarget, screen3RuntimeFilterApplication, screen3RuntimeFilterDb, screen3RuntimeFilterDbid, screen3RuntimeFilterInstance, screen3RuntimeFilterHost, screen3RuntimeFilterSourceType, screen3RuntimeFilterTimeRange, screen3RuntimeFilterSearch, screen3RuntimeFilteredResultCount, screen3RuntimeResultLimit, screen3RuntimeSortKey, screen3RuntimeSortDirection, screen3SelectedRuntimeScopeRowId, screen3SelectedTargetARowId, screen3SelectedTargetBRowId, screen3SelectedRuntimeIntervalId, screen3SelectedTargetAIntervalId, screen3SelectedTargetBIntervalId, screen3RuntimeScopeSelectionSource, screen3TargetASelectionSource, screen3TargetBSelectionSource, selectedDomain, selectedSeverity, selectedComparisonMode, selectedComparisonTargetA, selectedComparisonTargetB, selectedComparisonTargetASourceType, selectedComparisonTargetBSourceType, selectedComparisonTargetAScopeType, selectedComparisonTargetBScopeType, selectedComparisonTargetAScopeValue, selectedComparisonTargetBScopeValue, selectedComparisonTargetATimeWindow, selectedComparisonTargetBTimeWindow, selectedComparisonTargetAResolutionState, selectedComparisonTargetBResolutionState, selectedComparisonTargetAReadinessState, selectedComparisonTargetBReadinessState, selectedComparisonTargetAResolutionSummary, selectedComparisonTargetBResolutionSummary, selectedComparisonTargetAAwrCount, selectedComparisonTargetBAwrCount, selectedComparisonTargetASnapshotCount, selectedComparisonTargetBSnapshotCount, selectedComparisonTargetAMissingGates, selectedComparisonTargetBMissingGates, selectedComparisonBothComparable, selectedComparisonAwrA, selectedComparisonAwrB, selectedComparisonSnapshotA, selectedComparisonSnapshotB, selectedComparisonWindowA, selectedComparisonWindowB, selectedReviewMode, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, screen2ActiveFocusKey, screen2ActiveFocusType, screen2ActiveFocusValue, screen2ActiveFocusLabel, screen2ActiveFocusDomain, screen2InferredDomain, screen2ActiveDomainLens, screen2ActiveEvidenceGroup, screen2ActiveMetric, screen2ActiveWaitEvent, screen2ActiveSqlSignal, screen2ActiveDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, screen1GeneratedArtifactReady, screen1GeneratedRunExecuted, screen1SelectedGeneratedArtifactReady, screen1SourceIntakeExecutionStatus, screen1GeneratedArtifactPath, screen1ArtifactEvidenceReady, screen1ArtifactReadyRequestId, generatedArtifactAvailable, currentOperatorEvidenceSession, dashboardEvidenceSessionId, dashboardEvidenceReady, screen2ExistingEvidenceReady, screen2RuntimeOptionsLoadRequestId, screen2RuntimeScopeSelectionEpoch, screen2RuntimeScopeReadyAt, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, screen3RuntimeOptionsStatus, screen3RuntimeOptionsMessage, screen3RuntimeOptionsCount, screen3RuntimeOptionsLoadedRows, screen3RuntimeOptionsIncludedTables, screen3RuntimeOptionsLoadedAt, screen3RuntimeOptionsDbPersistenceStatus, screen3RuntimeOptionsCacheStatus, screen3RuntimeOptionsSourceTables, screen3RuntimeOptionsCoverageMessage, screen3LiveServiceStatus, screen3LiveServiceStatusSource, screen3LiveServiceStatusCheckedAt, screen3LastRequestedAction, screen3LastActionStatus, screen3LastRequestId, screen3LastTransactionId, screen3LastValidationStatus, screen3LastAuditReference, screen3LastPersistenceStatus, screen3LastExecutionStatus, screen3LastOutputArtifact, screen3LastNewRunOutputReference, screen3LastNextStep, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, sourceSelectionActivated, sourceSelectionSessionId, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage, sourceHandoffRequestId, sourceHandoffAuditStatus.
+    Supported state keys: selectedAwr, selectedRun, selectedDb, selectedDbid, selectedInstance, selectedHost, selectedSystem, selectedReportId, selectedSnapshot, selectedSnapshotBegin, selectedSnapshotEnd, selectedTimeWindow, selectedApplication, selectedRuntimeScope, selectedRuntimeScopeSourceTable, selectedRuntimeScopeAwrCount, selectedRuntimeScopeSnapshotCount, selectedRuntimeScopeResolutionState, selectedRuntimeScopeReadinessState, screen3ActiveSelectionTarget, screen3RuntimeFilterApplication, screen3RuntimeFilterDb, screen3RuntimeFilterDbid, screen3RuntimeFilterInstance, screen3RuntimeFilterHost, screen3RuntimeFilterSourceType, screen3RuntimeFilterTimeRange, screen3RuntimeFilterSearch, screen3RuntimeFilteredResultCount, screen3RuntimeResultLimit, screen3RuntimeSortKey, screen3RuntimeSortDirection, screen3SelectedRuntimeScopeRowId, screen3SelectedTargetARowId, screen3SelectedTargetBRowId, screen3SelectedRuntimeIntervalId, screen3SelectedTargetAIntervalId, screen3SelectedTargetBIntervalId, screen3RuntimeScopeSelectionSource, screen3TargetASelectionSource, screen3TargetBSelectionSource, selectedDomain, selectedSeverity, selectedComparisonMode, selectedComparisonTargetA, selectedComparisonTargetB, selectedComparisonMissingGates, selectedComparisonTargetASourceType, selectedComparisonTargetBSourceType, selectedComparisonTargetAScopeType, selectedComparisonTargetBScopeType, selectedComparisonTargetAScopeValue, selectedComparisonTargetBScopeValue, selectedComparisonTargetATimeWindow, selectedComparisonTargetBTimeWindow, selectedComparisonTargetAResolutionState, selectedComparisonTargetBResolutionState, selectedComparisonTargetAReadinessState, selectedComparisonTargetBReadinessState, selectedComparisonTargetAResolutionSummary, selectedComparisonTargetBResolutionSummary, selectedComparisonTargetAAwrCount, selectedComparisonTargetBAwrCount, selectedComparisonTargetASnapshotCount, selectedComparisonTargetBSnapshotCount, selectedComparisonTargetAMissingGates, selectedComparisonTargetBMissingGates, selectedComparisonBothComparable, selectedComparisonAwrA, selectedComparisonAwrB, selectedComparisonSnapshotA, selectedComparisonSnapshotB, selectedComparisonWindowA, selectedComparisonWindowB, selectedReviewMode, selectedRecommendation, selectedRecommendationCategory, selectedRecommendationEvidence, selectedEvidenceGroup, selectedMetricGroup, selectedWaitEventGroup, selectedSqlSignal, selectedDiagnosticSection, screen2ActiveFocusKey, screen2ActiveFocusType, screen2ActiveFocusValue, screen2ActiveFocusLabel, screen2ActiveFocusDomain, screen2InferredDomain, screen2ActiveDomainLens, screen2ActiveEvidenceGroup, screen2ActiveMetric, screen2ActiveWaitEvent, screen2ActiveSqlSignal, screen2ActiveDiagnosticSection, selectedHistoricalWindow, selectedTrendMetric, selectedAnomalyGroup, selectedDistribution, selectedSimilarCase, selectedActionContext, selectedOutcomeContext, selectedFeedbackContext, selectedParserSection, selectedParserDiagnostic, selectedUnknownSignal, selectedGovernanceItem, selectedKnowledgeRequest, selectedArtifact, selectedAwrFieldCandidate, selectedParserBacklogItem, screen1GovernanceDecision, screen1GovernanceReviewer, screen1GovernanceRationale, screen1FieldMappingDecision, screen1FieldMappingReviewer, screen1FieldMappingRationale, screen1BacklogDecision, screen1BacklogReviewer, screen1BacklogRationale, screen1GeneratedArtifactReady, screen1GeneratedRunExecuted, screen1SelectedGeneratedArtifactReady, screen1SourceIntakeExecutionStatus, screen1GeneratedArtifactPath, screen1ArtifactEvidenceReady, screen1ArtifactReadyRequestId, generatedArtifactAvailable, currentOperatorEvidenceSession, dashboardEvidenceSessionId, dashboardGeneratedSessionId, dashboardRuntimeCacheGenerationId, dashboardWorkflowLiveStatusGenerationId, dashboardWorkflowLiveStatus, dashboardWorkflowLiveStatusCheckedAt, dashboardWorkflowLiveStatusSource, dashboardWorkflowLiveStatusReason, dashboardEvidenceReady, screen2ExistingEvidenceReady, screen2RuntimeOptionsLoadRequestId, screen2RuntimeScopeSelectionEpoch, screen2RuntimeScopeReadyAt, selectedSemanticItem, selectedLearningCandidate, selectedLearningCandidateStatus, selectedLearningCandidateType, selectedOutcomePattern, selectedActionEffectivenessPattern, selectedFleetGroup, selectedComparisonBaseline, screen3RuntimeOptionsStatus, screen3RuntimeOptionsMessage, screen3RuntimeOptionsCount, screen3RuntimeOptionsLoadedRows, screen3RuntimeOptionsIncludedTables, screen3RuntimeOptionsFirstLoadedAt, screen3RuntimeOptionsLoadedAt, screen3RuntimeOptionsDbPersistenceStatus, screen3RuntimeOptionsCacheStatus, screen3RuntimeOptionsSourceTables, screen3RuntimeOptionsCoverageMessage, screen3LiveServiceStatus, screen3LiveServiceStatusSource, screen3LiveServiceStatusCheckedAt, screen3EvidenceContextPrimary, screen3EvidenceContextFlags, screen3EvidenceContextTruthSource, screen3EvidenceContextCacheStatus, screen3ArtifactAlignmentStatus, screen3ArtifactAlignmentBasis, screen3ArtifactAlignmentReason, screen3SingleAwrGraphicsHint, screen3HistoricalTrendHint, screen3DistributionViolinsHint, screen3ComparisonGraphicsHint, screen3LastRequestedAction, screen3LastActionStatus, screen3LastRequestId, screen3LastTransactionId, screen3LastValidationStatus, screen3LastAuditReference, screen3LastPersistenceStatus, screen3LastExecutionStatus, screen3LastOutputArtifact, screen3LastNewRunOutputReference, screen3LastNextStep, selectedSourceMode, selectedSourceContext, selectedSourcePath, sourceSelectionMethod, sourceSelectionActivated, sourceSelectionSessionId, selectedLocalFolderFileCount, selectedLocalFolderOutFileCount, selectedLocalFolderSampleFiles, selectedLocalRelativePaths, selectedLocalTotalBytes, selectedLocalFileName, selectedLocalFileSize, selectedLocalFileType, selectedLocalFileExtension, selectedLocalFileValidationStatus, selectedRunReference, existingRunLookupStatus, existingRunLookupMessage, existingRunLookupCount, selectedLocalFolderCandidateCount, selectedLocalFolderAwrCandidateCount, selectedLocalFolderRejectedCount, selectedLocalFolderValidationStatus, selectedLocalFolderValidationMessages, awrSignatureValidation, objectStorageNamespace, objectStorageBucket, objectStorageObjectName, objectStorageRegion, objectStorageValidationStatus, objectStorageValidationMessage, sourceHandoffRequestId, sourceHandoffAuditStatus.
     Future selectable metadata hooks: data-dashboard-selectable, data-dashboard-select-type, data-dashboard-select-key, data-dashboard-select-id, data-dashboard-select-domain, data-dashboard-target, data-dashboard-filter-key, data-dashboard-filter-value, data-dashboard-state-input, data-dashboard-state-key.
   -->
   <div class="container">
@@ -5173,40 +5531,58 @@
               return safeValue + ' (cached)';
             }
 
-            function readStoredWorkflowStatus() {
-              const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
-              if (safeRuntimeBadgeValue(modePill && modePill.textContent).toLowerCase() === 'full db mode') {
-                return '';
+            function dashboardGeneratedSessionId() {
+              const body = document.body;
+              return safeRuntimeBadgeValue(
+                body && (
+                  body.getAttribute('data-dashboard-generated-session-id') ||
+                  body.getAttribute('data-dashboard-generated-at')
+                ) || ''
+              );
+            }
+
+            function workflowLiveStatusLabel(value) {
+              const normalized = safeRuntimeBadgeValue(value).toLowerCase().replace(/[_\s-]+/g, '-');
+              if (normalized === 'available' || normalized === 'success' || normalized === 'ok') {
+                return 'Available';
               }
-              try {
-                const rawState = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
-                if (rawState) {
-                  const dashboardState = JSON.parse(rawState);
-                  const storedStatus = safeRuntimeBadgeValue(dashboardState && dashboardState.screen3LiveServiceStatus);
-                  if (storedStatus) {
-                    return cachedWorkflowStatusLabel(storedStatus);
-                  }
-                }
-              } catch (error) {
-                // Badge hydration is continuity-only; invalid browser state is ignored.
-              }
-              try {
-                const rawCache = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
-                if (rawCache) {
-                  const cache = JSON.parse(rawCache);
-                  if (
-                    cache &&
-                    cache.cache_version === SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION &&
-                    cache.options &&
-                    typeof cache.options === 'object'
-                  ) {
-                    return cachedWorkflowStatusLabel(cache.service_status || 'Available');
-                  }
-                }
-              } catch (error) {
-                // Cache is not authoritative truth; failed cache reads leave the neutral default.
+              if (
+                normalized === 'unavailable' ||
+                normalized === 'failed' ||
+                normalized === 'failure' ||
+                normalized === 'error'
+              ) {
+                return 'Unavailable';
               }
               return '';
+            }
+
+            function readStoredDashboardState() {
+              try {
+                const rawValue = window.localStorage.getItem(DASHBOARD_STORAGE_KEY);
+                if (!rawValue) {
+                  return {};
+                }
+                const parsed = JSON.parse(rawValue);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+              } catch (error) {
+                return {};
+              }
+            }
+
+            function readStoredWorkflowStatus() {
+              // The global badge may restore only generation-scoped live
+              // workflow checks. Runtime-option cache remains continuity only
+              // and must not replay as live availability.
+              const stored = readStoredDashboardState();
+              const currentGeneration = dashboardGeneratedSessionId();
+              const storedGeneration = safeRuntimeBadgeValue(
+                stored.dashboardWorkflowLiveStatusGenerationId || ''
+              );
+              if (!currentGeneration || storedGeneration !== currentGeneration) {
+                return '';
+              }
+              return workflowLiveStatusLabel(stored.dashboardWorkflowLiveStatus || '');
             }
 
             function applyWorkflowStatus(value) {
@@ -5266,7 +5642,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: Jun 1, 2026, 12:41 PM</div>
+        <div class="hero-meta">Generated: Jun 4, 2026, 4:10 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link active" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5289,7 +5665,7 @@
         </p>
         <div class="subgrid selector-subgrid">
 
-          <section class="evidence-pane selector-pane screen3-source-received-panel">
+          <section class="evidence-pane selector-pane screen3-source-received-panel screen3-work-area screen3-work-area-evidence-path">
             <h3>Runtime Evidence Path</h3>
             <p class="static-selection-note">
               Screen 2 receives the operator path from Platform Entry or the
@@ -5314,7 +5690,7 @@
               </div>
             </div>
             <p>
-              <a class="inline-action-link" href="index.html" data-dashboard-propagate-state="true">Return to Platform Entry</a>
+              <a class="inline-action-link phase7cm-service-button" href="index.html" data-dashboard-propagate-state="true">Return to Platform Entry</a>
             </p>
             <div class="screen3-source-scope-stack"
                  data-screen3-source-handoff-content="true"
@@ -5462,7 +5838,7 @@
 
 
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-runtime-scope">
-            <div class="section-kicker">Work Area 1</div>
+            <div class="section-kicker">Runtime Scope Selection</div>
             <h3>Select Runtime Scope</h3>
             <p class="static-selection-note">
               Load existing platform AWR/report inventory from the governed backend service, choose whether the next click updates Runtime Scope, Target A, or Target B, then select the row and optional window. Loading options alone does not create active downstream evidence.
@@ -5482,12 +5858,29 @@
             <p class="meta">
               Load Runtime Options asks the governed backend service for existing platform evidence inventory. The browser does not query the database directly.
             </p>
-            <p class="meta">
-              Loading options prepares selectable runtime-scope candidates only; active downstream readiness still requires a current row, window, and Runtime Scope or Target assignment.
-            </p>
-            <p class="meta">
-              Cached Screen 2 state restores operator context only. Cached runtime options are available for continuity only; they are not active evidence. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth. Cached runtime options, Target A/B labels, and prior receipt fields are continuity context only until the governed backend service confirms current metadata or returns a new response.
-            </p>
+            <div class="info-grid selector-compact-grid screen2-runtime-explanation-grid"
+                 data-screen2-runtime-explanation="true">
+              <article class="info-box screen2-control-info-box">
+                <strong>Runtime service</strong>
+                <div>Dashboard workflow service unavailable. run_analysis.py should have started it; check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and the dashboard health URL. Cached runtime options may remain visible for continuity only.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Existing evidence inventory</strong>
+                <div>Loading options prepares selectable runtime-scope candidates only; it does not create diagnostic truth, recommendation truth, comparison output, or active downstream evidence.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Runtime Scope handoff</strong>
+                <div>Selecting Runtime Scope prepares Screen 3 diagnostic context and Screen 4 review context. Deterministic diagnosis, scores, and recommendations remain unchanged.</div>
+              </article>
+              <article class="info-box screen2-control-info-box">
+                <strong>Target A/B boundary</strong>
+                <div>Target A/B assignments are prepared-only until deterministic comparison output exists; they do not decide comparison posture labels, comparison results, or graphics eligibility.</div>
+              </article>
+              <article class="info-box screen2-control-info-box wide">
+                <strong>Cache boundary</strong>
+                <div>Cached Screen 2 state restores operator context only. Cached runtime options are restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness. Successful backend refresh supersedes cached display state; failed refresh must remain visible and must not promote cache to current truth.</div>
+              </article>
+            </div>
             <div class="info-grid screen2-control-card-grid screen3-runtime-options-status-grid">
                 <div class="info-box screen2-control-info-box">
                   <strong>Service</strong>
@@ -5514,14 +5907,14 @@
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3RuntimeOptionsLoadedAt" data-empty-label="not loaded">not loaded</span></div>
                 </div>
 
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Included Selectable Tables</strong>
-                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3RuntimeOptionsIncludedTables" data-empty-label="not checked">not checked</span></div>
+                <div class="info-box screen2-control-info-box">
+                  <strong>Cache Status</strong>
+                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3RuntimeOptionsCacheStatus" data-empty-label="No runtime options cache restored.">No runtime options cache restored.</span></div>
                 </div>
 
                 <div class="info-box screen2-control-info-box wide">
-                  <strong>Cache Status</strong>
-                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3RuntimeOptionsCacheStatus" data-empty-label="No runtime options cache restored.">No runtime options cache restored.</span></div>
+                  <strong>Evidence Sources</strong>
+                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3RuntimeOptionsIncludedTables" data-empty-label="not checked">not checked</span></div>
                 </div>
 
                 <div class="info-box screen2-control-info-box wide">
@@ -5778,7 +6171,7 @@
                 <p class="meta">
                   This summarizes the base inventory row selected from the current runtime options response before optional interval/window refinement.
                 </p>
-                <div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced">
+                <div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced screen3-selected-report-row-grid">
                 <div class="info-box screen2-control-info-box">
                   <strong>Source Table</strong>
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="selectedRuntimeScopeSourceTable" data-empty-label="Not selected">Not selected</span></div>
@@ -5795,11 +6188,6 @@
                 </div>
 
                 <div class="info-box screen2-control-info-box">
-                  <strong>Run / Report</strong>
-                  <div><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Run</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedRunReference" data-empty-label="Not selected">Not selected</span></span><span class="screen2-control-separator"> / </span><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Report</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedReportId" data-empty-label="Not selected">Not selected</span></span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
                   <strong>Base Snapshot Window</strong>
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="selectedTimeWindow" data-empty-label="Not selected">Not selected</span></div>
                 </div>
@@ -5817,6 +6205,11 @@
                 <div class="info-box screen2-control-info-box">
                   <strong>Resolution State</strong>
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="selectedRuntimeScopeResolutionState" data-empty-label="Pending row selection">Pending row selection</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Run / Report</strong>
+                  <div><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Run</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedRunReference" data-empty-label="Not selected">Not selected</span></span><span class="screen2-control-separator"> / </span><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Report</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedReportId" data-empty-label="Not selected">Not selected</span></span></div>
                 </div>
             </div>
               </article>
@@ -5884,7 +6277,12 @@
                 <p class="meta">
                   This is the effective operator selection after the selected AWR/report row, optional interval/window, and assignment target are applied.
                 </p>
-                <div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced">
+                <p class="empty-state screen2-current-session-empty"
+                   data-screen2-runtime-assignment-empty-state="true">
+                  No runtime scope selected for this generated dashboard session.
+                </p>
+                <div data-screen2-runtime-assignment-summary-grid="true" hidden>
+                  <div class="info-grid screen2-control-card-grid screen2-control-card-grid-balanced">
                 <div class="info-box screen2-control-info-box">
                   <strong>Effective DB / DBID</strong>
                   <div><span class="screen2-control-subvalue"><span data-dashboard-state-input="true" data-dashboard-state-key="selectedDb" data-empty-label="Not selected">Not selected</span></span><span class="screen2-control-separator"> / </span><span class="screen2-control-subvalue"><span class="screen2-control-prefix">DBID</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedDbid" data-empty-label="Not selected">Not selected</span></span></div>
@@ -5905,14 +6303,14 @@
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="selectedTimeWindow" data-empty-label="Pending interval selection">Pending interval selection</span></div>
                 </div>
 
-                <div class="info-box screen2-control-info-box">
-                  <strong>Assignment Target</strong>
-                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3ActiveSelectionTarget" data-empty-label="Runtime Scope">Runtime Scope</span></div>
-                </div>
-
                 <div class="info-box screen2-control-info-box wide">
                   <strong>Runtime Scope Summary</strong>
                   <div><span data-dashboard-state-input="true" data-dashboard-state-key="selectedRuntimeScope" data-empty-label="Pending runtime scope selection">Pending runtime scope selection</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Assignment Target</strong>
+                  <div><span data-dashboard-state-input="true" data-dashboard-state-key="screen3ActiveSelectionTarget" data-empty-label="Runtime Scope">Runtime Scope</span></div>
                 </div>
 
                 <div class="info-box screen2-control-info-box">
@@ -5930,6 +6328,7 @@
                   <div><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Ready</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedComparisonTargetBReadinessState" data-empty-label="Target B not resolved">Target B not resolved</span></span><span class="screen2-control-separator"> · </span><span class="screen2-control-subvalue"><span class="screen2-control-prefix">Scope</span> <span data-dashboard-state-input="true" data-dashboard-state-key="selectedComparisonTargetBScopeValue" data-empty-label="Not selected">Not selected</span></span></div>
                 </div>
             </div>
+                </div>
               </article>
             </div>
 
@@ -6050,7 +6449,7 @@
 
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-comparison"
                    data-screen3-execution-result-panel="true">
-            <div class="section-kicker">Work Area 2</div>
+            <div class="section-kicker">Comparison Target Preparation</div>
             <h3>Resolve Comparison Targets</h3>
             <p class="static-selection-note">
               Target A and Target B identify selected candidate sides for later comparison review. Assignment records selection context only; it does not compare evidence, decide improvement/degradation, or change either target's deterministic diagnosis. Cached Target A/B labels restore operator context only; readiness must be confirmed by current governed backend metadata before downstream comparison review. Build Comparison stays blocked until both targets resolve to comparable persisted data; readiness is not a comparison result.
@@ -6068,7 +6467,7 @@
               <article class="screen3-context-subpanel screen3-comparison-controls-card">
                 <h4>Comparison &amp; Review Controls</h4>
                 <div class="screen3-comparison-control-grid">
-                  <section>
+                  <section class="screen3-comparison-mode-section">
                     <h5>Comparison Mode</h5>
                     <div class="screen3-pill-row">
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="comparisonMode" data-dashboard-select-key="selectedComparisonMode" data-dashboard-select-id="Current DB history" data-dashboard-target="Current DB history">
@@ -6081,14 +6480,14 @@
                 <small>Use similar cases when similarity context is available.</small>
               </button>
 
-              <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="comparisonMode" data-dashboard-select-key="selectedComparisonMode" data-dashboard-select-id="Cluster baseline" data-dashboard-target="Cluster baseline">
-                <span>Cluster baseline</span>
-                <small>Use cluster/RAC baseline data when available.</small>
-              </button>
-
               <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="comparisonMode" data-dashboard-select-key="selectedComparisonMode" data-dashboard-select-id="Fleet baseline" data-dashboard-target="Fleet baseline">
                 <span>Fleet baseline</span>
                 <small>Use fleet/global context when available.</small>
+              </button>
+
+              <button type="button" class="screen3-pill-button" tabindex="0" role="button" data-dashboard-selectable="true" data-dashboard-select-type="comparisonMode" data-dashboard-select-key="selectedComparisonMode" data-dashboard-select-id="Cluster baseline" data-dashboard-target="Cluster baseline">
+                <span>Cluster baseline</span>
+                <small>Use cluster/RAC baseline data when available.</small>
               </button>
             </div>
                   </section>
@@ -6135,7 +6534,9 @@
               </article>
               <div class="screen3-target-card-grid">
 
-              <article class="screen3-context-subpanel screen3-comparison-target-card">
+              <article class="screen3-context-subpanel screen3-comparison-target-card"
+                       data-screen2-comparison-target-detail="A"
+                       hidden>
                 <h4>Target A Resolution</h4>
                 <div class="info-grid screen2-control-card-grid screen3-target-resolution-grid">
                 <div class="info-box screen2-control-info-box">
@@ -6186,7 +6587,9 @@
               </article>
 
 
-              <article class="screen3-context-subpanel screen3-comparison-target-card">
+              <article class="screen3-context-subpanel screen3-comparison-target-card"
+                       data-screen2-comparison-target-detail="B"
+                       hidden>
                 <h4>Target B Resolution</h4>
                 <div class="info-grid screen2-control-card-grid screen3-target-resolution-grid">
                 <div class="info-box screen2-control-info-box">
@@ -6237,58 +6640,6 @@
               </article>
 
               </div>
-              <article class="screen3-context-subpanel screen3-comparison-preview-panel">
-                <h4>Comparison Readiness / Request Handoff</h4>
-                <p class="meta">
-                  Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not produce comparison execution, improvement decisions, or degradation decisions.
-                </p>
-                <div class="info-grid screen2-control-card-grid screen3-result-grid">
-                <div class="info-box screen2-control-info-box">
-                  <strong>Status</strong>
-                  <div><span data-screen3-result-field="comparison_status" data-default-value="Not ready">Not ready</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box">
-                  <strong>Mode</strong>
-                  <div><span data-screen3-result-field="comparison_result_mode" data-default-value="Pending comparison setup">Pending comparison setup</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box">
-                  <strong>Review Mode</strong>
-                  <div><span data-screen3-result-field="review_mode" data-default-value="Pending review mode selection">Pending review mode selection</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Target A</strong>
-                  <div><span data-screen3-result-field="comparison_result_target_a" data-default-value="Resolve source/scope/window first">Resolve source/scope/window first</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Target B</strong>
-                  <div><span data-screen3-result-field="comparison_result_target_b" data-default-value="Resolve source/scope/window first">Resolve source/scope/window first</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box">
-                  <strong>Both Comparable</strong>
-                  <div><span data-screen3-result-field="comparison_both_comparable" data-default-value="No">No</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Missing Gates</strong>
-                  <div><span data-screen3-result-field="comparison_missing_gates" data-default-value="Resolve both targets to comparable persisted data">Resolve both targets to comparable persisted data</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Artifact / Reference</strong>
-                  <div><span data-screen3-result-field="comparison_artifact_reference" data-default-value="No comparison artifact/reference created">No comparison artifact/reference created</span></div>
-                </div>
-
-                <div class="info-box screen2-control-info-box wide">
-                  <strong>Screen 4 Handoff</strong>
-                  <div><span data-screen3-result-field="comparison_screen4_handoff" data-default-value="Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.">Resolve both targets, then submit Build Comparison. Open Screen 4 after a governed comparison reference exists.</span></div>
-                </div>
-            </div>
-              </article>
               <details class="screen3-secondary-selector-details screen3-target-picker-details">
                 <summary>Advanced target picker: external / baseline options</summary>
                 <p class="meta">
@@ -6389,11 +6740,53 @@
                 </div>
               </details>
             </div>
+            <article class="screen3-context-subpanel screen3-comparison-preview-panel">
+              <h4>Comparison Readiness / Request Handoff</h4>
+              <p class="meta">
+                Readiness means required Target A/B inputs and comparable persisted references are present enough to prepare downstream Screen 4 review. It does not produce comparison execution, improvement decisions, or degradation decisions.
+              </p>
+              <div class="info-grid screen2-control-card-grid screen3-result-grid screen3-comparison-handoff-grid">
+                <div class="info-box screen2-control-info-box">
+                  <strong>Status</strong>
+                  <div><span data-screen3-result-field="comparison_status" data-default-value="Not submitted">Not submitted</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Mode</strong>
+                  <div><span data-screen3-result-field="comparison_result_mode" data-default-value="Pending comparison mode">Pending comparison mode</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Targets</strong>
+                  <div><span class="screen2-control-subvalue"><span data-screen3-result-field="comparison_result_target_a" data-default-value="Target A unresolved">Target A unresolved</span></span><span class="screen2-control-separator"> · </span><span class="screen2-control-subvalue"><span data-screen3-result-field="comparison_result_target_b" data-default-value="Target B unresolved">Target B unresolved</span></span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Comparable</strong>
+                  <div><span data-screen3-result-field="comparison_both_comparable" data-default-value="No">No</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Missing Gates</strong>
+                  <div><span data-screen3-result-field="comparison_missing_gates" data-default-value="Resolve both targets to comparable persisted data">Resolve both targets to comparable persisted data</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Artifact / Reference</strong>
+                  <div><span data-screen3-result-field="comparison_artifact_reference" data-default-value="Not created">Not created</span></div>
+                </div>
+
+                <div class="info-box screen2-control-info-box">
+                  <strong>Screen 4 Handoff</strong>
+                  <div><span data-screen3-result-field="comparison_screen4_handoff" data-default-value="Opens after a governed comparison request returns artifact/reference.">Opens after a governed comparison request returns artifact/reference.</span></div>
+                </div>
+            </div>
+            </article>
           </section>
 
 
           <section class="evidence-pane selector-pane screen3-work-area screen3-work-area-submit-result">
-            <div class="section-kicker">Work Area 3</div>
+            <div class="section-kicker">Governed Request Handoff</div>
             <h3>Submit Governed Action and Review Result</h3>
             <p class="static-selection-note">
               Submit a governed request on the left, then review validation, persistence, execution outcome, and next step on the right. Blocked results are expected when required gates are missing; existing deterministic truth is not overwritten.
@@ -6854,7 +7247,7 @@
     </div>
 
 
-    <div class="footer">Generated at Jun 1, 2026, 12:41 PM</div>
+    <div class="footer">Generated at Jun 4, 2026, 4:10 PM</div>
   </div>
 
   <script>
@@ -6877,12 +7270,124 @@
       // No approval controls. No runtime activation.
       const DASHBOARD_FOUNDATION_LABEL = 'Dashboard Interactivity Foundation';
       const DASHBOARD_PROPAGATION_LABEL = 'Cross-Screen Selection Propagation';
-      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedDbid", "selectedInstance", "selectedHost", "selectedSystem", "selectedReportId", "selectedSnapshot", "selectedSnapshotBegin", "selectedSnapshotEnd", "selectedTimeWindow", "selectedApplication", "selectedRuntimeScope", "selectedRuntimeScopeSourceTable", "selectedRuntimeScopeAwrCount", "selectedRuntimeScopeSnapshotCount", "selectedRuntimeScopeResolutionState", "selectedRuntimeScopeReadinessState", "screen3ActiveSelectionTarget", "screen3RuntimeFilterApplication", "screen3RuntimeFilterDb", "screen3RuntimeFilterDbid", "screen3RuntimeFilterInstance", "screen3RuntimeFilterHost", "screen3RuntimeFilterSourceType", "screen3RuntimeFilterTimeRange", "screen3RuntimeFilterSearch", "screen3RuntimeFilteredResultCount", "screen3RuntimeResultLimit", "screen3RuntimeSortKey", "screen3RuntimeSortDirection", "screen3SelectedRuntimeScopeRowId", "screen3SelectedTargetARowId", "screen3SelectedTargetBRowId", "screen3SelectedRuntimeIntervalId", "screen3SelectedTargetAIntervalId", "screen3SelectedTargetBIntervalId", "screen3RuntimeScopeSelectionSource", "screen3TargetASelectionSource", "screen3TargetBSelectionSource", "selectedDomain", "selectedSeverity", "selectedComparisonMode", "selectedComparisonTargetA", "selectedComparisonTargetB", "selectedComparisonTargetASourceType", "selectedComparisonTargetBSourceType", "selectedComparisonTargetAScopeType", "selectedComparisonTargetBScopeType", "selectedComparisonTargetAScopeValue", "selectedComparisonTargetBScopeValue", "selectedComparisonTargetATimeWindow", "selectedComparisonTargetBTimeWindow", "selectedComparisonTargetAResolutionState", "selectedComparisonTargetBResolutionState", "selectedComparisonTargetAReadinessState", "selectedComparisonTargetBReadinessState", "selectedComparisonTargetAResolutionSummary", "selectedComparisonTargetBResolutionSummary", "selectedComparisonTargetAAwrCount", "selectedComparisonTargetBAwrCount", "selectedComparisonTargetASnapshotCount", "selectedComparisonTargetBSnapshotCount", "selectedComparisonTargetAMissingGates", "selectedComparisonTargetBMissingGates", "selectedComparisonBothComparable", "selectedComparisonAwrA", "selectedComparisonAwrB", "selectedComparisonSnapshotA", "selectedComparisonSnapshotB", "selectedComparisonWindowA", "selectedComparisonWindowB", "selectedReviewMode", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "screen2ActiveFocusKey", "screen2ActiveFocusType", "screen2ActiveFocusValue", "screen2ActiveFocusLabel", "screen2ActiveFocusDomain", "screen2InferredDomain", "screen2ActiveDomainLens", "screen2ActiveEvidenceGroup", "screen2ActiveMetric", "screen2ActiveWaitEvent", "screen2ActiveSqlSignal", "screen2ActiveDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "screen1GeneratedArtifactReady", "screen1GeneratedRunExecuted", "screen1SelectedGeneratedArtifactReady", "screen1SourceIntakeExecutionStatus", "screen1GeneratedArtifactPath", "screen1ArtifactEvidenceReady", "screen1ArtifactReadyRequestId", "generatedArtifactAvailable", "currentOperatorEvidenceSession", "dashboardEvidenceSessionId", "dashboardEvidenceReady", "screen2ExistingEvidenceReady", "screen2RuntimeOptionsLoadRequestId", "screen2RuntimeScopeSelectionEpoch", "screen2RuntimeScopeReadyAt", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "screen3RuntimeOptionsStatus", "screen3RuntimeOptionsMessage", "screen3RuntimeOptionsCount", "screen3RuntimeOptionsLoadedRows", "screen3RuntimeOptionsIncludedTables", "screen3RuntimeOptionsLoadedAt", "screen3RuntimeOptionsDbPersistenceStatus", "screen3RuntimeOptionsCacheStatus", "screen3RuntimeOptionsSourceTables", "screen3RuntimeOptionsCoverageMessage", "screen3LiveServiceStatus", "screen3LiveServiceStatusSource", "screen3LiveServiceStatusCheckedAt", "screen3LastRequestedAction", "screen3LastActionStatus", "screen3LastRequestId", "screen3LastTransactionId", "screen3LastValidationStatus", "screen3LastAuditReference", "screen3LastPersistenceStatus", "screen3LastExecutionStatus", "screen3LastOutputArtifact", "screen3LastNewRunOutputReference", "screen3LastNextStep", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "sourceSelectionActivated", "sourceSelectionSessionId", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage", "sourceHandoffRequestId", "sourceHandoffAuditStatus"]);
+      const DASHBOARD_STATE_KEYS = Object.freeze(["selectedAwr", "selectedRun", "selectedDb", "selectedDbid", "selectedInstance", "selectedHost", "selectedSystem", "selectedReportId", "selectedSnapshot", "selectedSnapshotBegin", "selectedSnapshotEnd", "selectedTimeWindow", "selectedApplication", "selectedRuntimeScope", "selectedRuntimeScopeSourceTable", "selectedRuntimeScopeAwrCount", "selectedRuntimeScopeSnapshotCount", "selectedRuntimeScopeResolutionState", "selectedRuntimeScopeReadinessState", "screen3ActiveSelectionTarget", "screen3RuntimeFilterApplication", "screen3RuntimeFilterDb", "screen3RuntimeFilterDbid", "screen3RuntimeFilterInstance", "screen3RuntimeFilterHost", "screen3RuntimeFilterSourceType", "screen3RuntimeFilterTimeRange", "screen3RuntimeFilterSearch", "screen3RuntimeFilteredResultCount", "screen3RuntimeResultLimit", "screen3RuntimeSortKey", "screen3RuntimeSortDirection", "screen3SelectedRuntimeScopeRowId", "screen3SelectedTargetARowId", "screen3SelectedTargetBRowId", "screen3SelectedRuntimeIntervalId", "screen3SelectedTargetAIntervalId", "screen3SelectedTargetBIntervalId", "screen3RuntimeScopeSelectionSource", "screen3TargetASelectionSource", "screen3TargetBSelectionSource", "selectedDomain", "selectedSeverity", "selectedComparisonMode", "selectedComparisonTargetA", "selectedComparisonTargetB", "selectedComparisonMissingGates", "selectedComparisonTargetASourceType", "selectedComparisonTargetBSourceType", "selectedComparisonTargetAScopeType", "selectedComparisonTargetBScopeType", "selectedComparisonTargetAScopeValue", "selectedComparisonTargetBScopeValue", "selectedComparisonTargetATimeWindow", "selectedComparisonTargetBTimeWindow", "selectedComparisonTargetAResolutionState", "selectedComparisonTargetBResolutionState", "selectedComparisonTargetAReadinessState", "selectedComparisonTargetBReadinessState", "selectedComparisonTargetAResolutionSummary", "selectedComparisonTargetBResolutionSummary", "selectedComparisonTargetAAwrCount", "selectedComparisonTargetBAwrCount", "selectedComparisonTargetASnapshotCount", "selectedComparisonTargetBSnapshotCount", "selectedComparisonTargetAMissingGates", "selectedComparisonTargetBMissingGates", "selectedComparisonBothComparable", "selectedComparisonAwrA", "selectedComparisonAwrB", "selectedComparisonSnapshotA", "selectedComparisonSnapshotB", "selectedComparisonWindowA", "selectedComparisonWindowB", "selectedReviewMode", "selectedRecommendation", "selectedRecommendationCategory", "selectedRecommendationEvidence", "selectedEvidenceGroup", "selectedMetricGroup", "selectedWaitEventGroup", "selectedSqlSignal", "selectedDiagnosticSection", "screen2ActiveFocusKey", "screen2ActiveFocusType", "screen2ActiveFocusValue", "screen2ActiveFocusLabel", "screen2ActiveFocusDomain", "screen2InferredDomain", "screen2ActiveDomainLens", "screen2ActiveEvidenceGroup", "screen2ActiveMetric", "screen2ActiveWaitEvent", "screen2ActiveSqlSignal", "screen2ActiveDiagnosticSection", "selectedHistoricalWindow", "selectedTrendMetric", "selectedAnomalyGroup", "selectedDistribution", "selectedSimilarCase", "selectedActionContext", "selectedOutcomeContext", "selectedFeedbackContext", "selectedParserSection", "selectedParserDiagnostic", "selectedUnknownSignal", "selectedGovernanceItem", "selectedKnowledgeRequest", "selectedArtifact", "selectedAwrFieldCandidate", "selectedParserBacklogItem", "screen1GovernanceDecision", "screen1GovernanceReviewer", "screen1GovernanceRationale", "screen1FieldMappingDecision", "screen1FieldMappingReviewer", "screen1FieldMappingRationale", "screen1BacklogDecision", "screen1BacklogReviewer", "screen1BacklogRationale", "screen1GeneratedArtifactReady", "screen1GeneratedRunExecuted", "screen1SelectedGeneratedArtifactReady", "screen1SourceIntakeExecutionStatus", "screen1GeneratedArtifactPath", "screen1ArtifactEvidenceReady", "screen1ArtifactReadyRequestId", "generatedArtifactAvailable", "currentOperatorEvidenceSession", "dashboardEvidenceSessionId", "dashboardGeneratedSessionId", "dashboardRuntimeCacheGenerationId", "dashboardWorkflowLiveStatusGenerationId", "dashboardWorkflowLiveStatus", "dashboardWorkflowLiveStatusCheckedAt", "dashboardWorkflowLiveStatusSource", "dashboardWorkflowLiveStatusReason", "dashboardEvidenceReady", "screen2ExistingEvidenceReady", "screen2RuntimeOptionsLoadRequestId", "screen2RuntimeScopeSelectionEpoch", "screen2RuntimeScopeReadyAt", "selectedSemanticItem", "selectedLearningCandidate", "selectedLearningCandidateStatus", "selectedLearningCandidateType", "selectedOutcomePattern", "selectedActionEffectivenessPattern", "selectedFleetGroup", "selectedComparisonBaseline", "screen3RuntimeOptionsStatus", "screen3RuntimeOptionsMessage", "screen3RuntimeOptionsCount", "screen3RuntimeOptionsLoadedRows", "screen3RuntimeOptionsIncludedTables", "screen3RuntimeOptionsFirstLoadedAt", "screen3RuntimeOptionsLoadedAt", "screen3RuntimeOptionsDbPersistenceStatus", "screen3RuntimeOptionsCacheStatus", "screen3RuntimeOptionsSourceTables", "screen3RuntimeOptionsCoverageMessage", "screen3LiveServiceStatus", "screen3LiveServiceStatusSource", "screen3LiveServiceStatusCheckedAt", "screen3EvidenceContextPrimary", "screen3EvidenceContextFlags", "screen3EvidenceContextTruthSource", "screen3EvidenceContextCacheStatus", "screen3ArtifactAlignmentStatus", "screen3ArtifactAlignmentBasis", "screen3ArtifactAlignmentReason", "screen3SingleAwrGraphicsHint", "screen3HistoricalTrendHint", "screen3DistributionViolinsHint", "screen3ComparisonGraphicsHint", "screen3LastRequestedAction", "screen3LastActionStatus", "screen3LastRequestId", "screen3LastTransactionId", "screen3LastValidationStatus", "screen3LastAuditReference", "screen3LastPersistenceStatus", "screen3LastExecutionStatus", "screen3LastOutputArtifact", "screen3LastNewRunOutputReference", "screen3LastNextStep", "selectedSourceMode", "selectedSourceContext", "selectedSourcePath", "sourceSelectionMethod", "sourceSelectionActivated", "sourceSelectionSessionId", "selectedLocalFolderFileCount", "selectedLocalFolderOutFileCount", "selectedLocalFolderSampleFiles", "selectedLocalRelativePaths", "selectedLocalTotalBytes", "selectedLocalFileName", "selectedLocalFileSize", "selectedLocalFileType", "selectedLocalFileExtension", "selectedLocalFileValidationStatus", "selectedRunReference", "existingRunLookupStatus", "existingRunLookupMessage", "existingRunLookupCount", "selectedLocalFolderCandidateCount", "selectedLocalFolderAwrCandidateCount", "selectedLocalFolderRejectedCount", "selectedLocalFolderValidationStatus", "selectedLocalFolderValidationMessages", "awrSignatureValidation", "objectStorageNamespace", "objectStorageBucket", "objectStorageObjectName", "objectStorageRegion", "objectStorageValidationStatus", "objectStorageValidationMessage", "sourceHandoffRequestId", "sourceHandoffAuditStatus"]);
       const DASHBOARD_STATE_KEY_SET = new Set(DASHBOARD_STATE_KEYS);
       const DASHBOARD_STORAGE_KEY = "agenticAiAwrAdvisor.dashboardInteractivityState.v1";
       const DASHBOARD_OPERATOR_SESSION_KEY = DASHBOARD_STORAGE_KEY + '.currentOperatorSession';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_KEY = 'screen3RuntimeOptionsCache';
       const SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION = 'screen3-runtime-options-v1';
+      const DASHBOARD_RUNTIME_CACHE_RESET_KEYS = Object.freeze([
+        'dashboardWorkflowLiveStatusGenerationId',
+        'dashboardWorkflowLiveStatus',
+        'dashboardWorkflowLiveStatusCheckedAt',
+        'dashboardWorkflowLiveStatusSource',
+        'dashboardWorkflowLiveStatusReason',
+        'selectedAwr',
+        'selectedRun',
+        'selectedRunReference',
+        'selectedDb',
+        'selectedDbid',
+        'selectedInstance',
+        'selectedHost',
+        'selectedSystem',
+        'selectedReportId',
+        'selectedSnapshot',
+        'selectedSnapshotBegin',
+        'selectedSnapshotEnd',
+        'selectedTimeWindow',
+        'selectedApplication',
+        'selectedRuntimeScope',
+        'selectedRuntimeScopeSourceTable',
+        'selectedRuntimeScopeAwrCount',
+        'selectedRuntimeScopeSnapshotCount',
+        'selectedRuntimeScopeResolutionState',
+        'selectedRuntimeScopeReadinessState',
+        'screen3ActiveSelectionTarget',
+        'screen3RuntimeScopeSelectionSource',
+        'screen3TargetASelectionSource',
+        'screen3TargetBSelectionSource',
+        'screen3SelectedRuntimeScopeRowId',
+        'screen3SelectedTargetARowId',
+        'screen3SelectedTargetBRowId',
+        'screen3SelectedRuntimeIntervalId',
+        'screen3SelectedTargetAIntervalId',
+        'screen3SelectedTargetBIntervalId',
+        'selectedComparisonMode',
+        'selectedReviewMode',
+        'selectedComparisonTargetA',
+        'selectedComparisonTargetB',
+        'selectedComparisonMissingGates',
+        'selectedComparisonTargetASourceType',
+        'selectedComparisonTargetBSourceType',
+        'selectedComparisonTargetAScopeType',
+        'selectedComparisonTargetBScopeType',
+        'selectedComparisonTargetAScopeValue',
+        'selectedComparisonTargetBScopeValue',
+        'selectedComparisonTargetATimeWindow',
+        'selectedComparisonTargetBTimeWindow',
+        'selectedComparisonTargetAResolutionState',
+        'selectedComparisonTargetBResolutionState',
+        'selectedComparisonTargetAReadinessState',
+        'selectedComparisonTargetBReadinessState',
+        'selectedComparisonTargetAResolutionSummary',
+        'selectedComparisonTargetBResolutionSummary',
+        'selectedComparisonTargetAAwrCount',
+        'selectedComparisonTargetBAwrCount',
+        'selectedComparisonTargetASnapshotCount',
+        'selectedComparisonTargetBSnapshotCount',
+        'selectedComparisonTargetAMissingGates',
+        'selectedComparisonTargetBMissingGates',
+        'selectedComparisonBothComparable',
+        'selectedComparisonAwrA',
+        'selectedComparisonAwrB',
+        'selectedComparisonSnapshotA',
+        'selectedComparisonSnapshotB',
+        'selectedComparisonWindowA',
+        'selectedComparisonWindowB',
+        'comparison_status',
+        'comparison_result_mode',
+        'comparison_mode',
+        'comparison_target_a',
+        'comparison_target_b',
+        'comparison_target_a_readiness',
+        'comparison_target_b_readiness',
+        'comparison_both_comparable',
+        'comparison_missing_gates',
+        'comparison_artifact_reference',
+        'comparison_screen4_handoff',
+        'comparison_result_target_a',
+        'comparison_result_target_b',
+        'screen2ExistingEvidenceReady',
+        'screen2RuntimeOptionsLoadRequestId',
+        'screen2RuntimeScopeSelectionEpoch',
+        'screen2RuntimeScopeReadyAt',
+        'screen3RuntimeOptionsStatus',
+        'screen3RuntimeOptionsMessage',
+        'screen3RuntimeOptionsCount',
+        'screen3RuntimeOptionsLoadedRows',
+        'screen3RuntimeOptionsIncludedTables',
+        'screen3RuntimeOptionsFirstLoadedAt',
+        'screen3RuntimeOptionsLoadedAt',
+        'screen3RuntimeOptionsDbPersistenceStatus',
+        'screen3RuntimeOptionsCacheStatus',
+        'screen3RuntimeOptionsSourceTables',
+        'screen3RuntimeOptionsCoverageMessage',
+        'screen3LiveServiceStatus',
+        'screen3LiveServiceStatusSource',
+        'screen3LiveServiceStatusCheckedAt',
+        'screen3EvidenceContextCacheStatus',
+        'screen3LastRequestedAction',
+        'screen3LastActionStatus',
+        'screen3LastRequestId',
+        'screen3LastTransactionId',
+        'screen3LastValidationStatus',
+        'screen3LastAuditReference',
+        'screen3LastPersistenceStatus',
+        'screen3LastExecutionStatus',
+        'screen3LastOutputArtifact',
+        'screen3LastNewRunOutputReference',
+        'screen3LastNextStep'
+      ]);
       const SELECTABLE_SELECTOR = '[data-dashboard-selectable]';
       const SELECTED_SUMMARY_SELECTOR = '[data-dashboard-selected-summary]';
       const FILTER_PLACEHOLDER_SELECTOR = '[data-dashboard-filter-key][data-dashboard-filter-value]';
@@ -6898,11 +7403,16 @@
 	      const OBJECT_STORAGE_VALIDATE_SELECTOR = '[data-phase7-object-storage-validation-control="true"]';
 	      const NAVIGATION_LINK_SELECTOR = 'a[data-dashboard-propagate-state="true"]';
 	      const SCREEN2_EXPLANATION_GENERATE_SELECTOR = '[data-screen2-generate-explanation="true"]';
+	      const SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR = '[data-screen3-generate-evidence-context-explanation="true"]';
 	      const HTTP_SCHEME_PREFIX = 'http:' + '//';
       const HTTPS_SCHEME_PREFIX = 'https:' + '//';
 	      const SCREEN2_EXPLANATION_ENDPOINT = (
 	        window.PHASE7_DASHBOARD_SCREEN2_EXPLANATION_ENDPOINT ||
 	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen2/explanation')
+	      );
+	      const SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT = (
+	        window.PHASE7_DASHBOARD_SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT ||
+	        ('http:' + '//' + '127.0.0.1:8765/phase7/dashboard/screen3/evidence-context/explanation')
 	      );
 	      const PHASE7_DASHBOARD_HEALTH_ENDPOINT = (
 	        window.PHASE7_DASHBOARD_HEALTH_ENDPOINT ||
@@ -7178,6 +7688,7 @@
         'screen3RuntimeOptionsCount',
         'screen3RuntimeOptionsLoadedRows',
         'screen3RuntimeOptionsIncludedTables',
+        'screen3RuntimeOptionsFirstLoadedAt',
         'screen3RuntimeOptionsLoadedAt',
         'screen3RuntimeOptionsDbPersistenceStatus',
         'screen3RuntimeOptionsCacheStatus',
@@ -7468,7 +7979,71 @@
       }
 
       function screen2ShouldHydrateFromPersistentState() {
-        return isScreen2ControlPage() && Boolean(readScreen3RuntimeOptionsCache());
+        const cache = readScreen3RuntimeOptionsCache();
+        return isScreen2ControlPage() && Boolean(cache && dashboardStateGenerationMatchesCurrent(cache));
+      }
+
+      function dashboardGeneratedSessionId() {
+        const body = document.body;
+        return safeStateValue(
+          body && (
+            body.getAttribute('data-dashboard-generated-session-id') ||
+            body.getAttribute('data-dashboard-generated-at')
+          ) || ''
+        );
+      }
+
+      function dashboardStateGenerationId(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        return safeStateValue(
+          safeState.dashboardRuntimeCacheGenerationId ||
+          safeState.dashboardGeneratedSessionId ||
+          ''
+        );
+      }
+
+      function dashboardStateHasRuntimeCacheData(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        return DASHBOARD_RUNTIME_CACHE_RESET_KEYS.some(function (key) {
+          return Boolean(safeState[key]);
+        });
+      }
+
+      function dashboardStateGenerationMatchesCurrent(state) {
+        const currentGeneration = dashboardGeneratedSessionId();
+        const stateGeneration = dashboardStateGenerationId(state);
+        return Boolean(currentGeneration && stateGeneration && stateGeneration === currentGeneration);
+      }
+
+      function stripRuntimeStateForNewDashboardGeneration(state) {
+        const next = Object.assign({}, state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        const stateGeneration = dashboardStateGenerationId(next);
+        if (!currentGeneration) {
+          return sanitizeDashboardState(next);
+        }
+        if (stateGeneration === currentGeneration) {
+          return sanitizeDashboardState(next);
+        }
+        if (!stateGeneration && !dashboardStateHasRuntimeCacheData(next)) {
+          return sanitizeDashboardState(next);
+        }
+        DASHBOARD_RUNTIME_CACHE_RESET_KEYS.forEach(function (key) {
+          delete next[key];
+        });
+        next.dashboardGeneratedSessionId = currentGeneration;
+        next.dashboardRuntimeCacheGenerationId = currentGeneration;
+        return sanitizeDashboardState(next);
+      }
+
+      function stateWithCurrentDashboardGeneratedSession(state) {
+        const next = Object.assign({}, state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        if (currentGeneration) {
+          next.dashboardGeneratedSessionId = currentGeneration;
+          next.dashboardRuntimeCacheGenerationId = currentGeneration;
+        }
+        return next;
       }
 
       function readLocalStorageState() {
@@ -7487,11 +8062,82 @@
         try {
           window.localStorage.setItem(
             DASHBOARD_STORAGE_KEY,
-            JSON.stringify(sanitizeDashboardState(state))
+            JSON.stringify(sanitizeDashboardState(stateWithCurrentDashboardGeneratedSession(state)))
           );
         } catch (error) {
           return;
         }
+      }
+
+      function resetRuntimeCacheForNewDashboardGeneration(state) {
+        const next = stripRuntimeStateForNewDashboardGeneration(state || {});
+        DASHBOARD_RUNTIME_CACHE_RESET_KEYS.forEach(function (key) {
+          delete next[key];
+        });
+        next.dashboardGeneratedSessionId = dashboardGeneratedSessionId();
+        next.dashboardRuntimeCacheGenerationId = dashboardGeneratedSessionId();
+        next.screen3LiveServiceStatus = 'Not checked';
+        next.screen3LiveServiceStatusSource = 'new-dashboard-generation';
+        next.screen3LiveServiceStatusCheckedAt = '';
+        next.screen3RuntimeOptionsStatus = 'not loaded';
+        next.screen3RuntimeOptionsMessage = 'Fresh dashboard generation. Load available runtime options to query the live workflow service.';
+        next.screen3RuntimeOptionsCount = '0';
+        next.screen3RuntimeOptionsLoadedRows = '0';
+        next.screen3RuntimeOptionsIncludedTables = 'No selectable source tables reported';
+        next.screen3RuntimeOptionsFirstLoadedAt = 'not loaded';
+        next.screen3RuntimeOptionsLoadedAt = 'not loaded';
+        next.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        next.screen3RuntimeOptionsCacheStatus = 'Runtime option cache reset for this dashboard generation.';
+        next.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
+        next.screen3RuntimeOptionsCoverageMessage = 'Runtime source-table coverage has not been checked for this dashboard generation.';
+        next.screen2ExistingEvidenceReady = '';
+        return sanitizeDashboardState(next);
+      }
+
+      function invalidateStaleDashboardRuntimeCache() {
+        const currentGeneration = dashboardGeneratedSessionId();
+        if (!currentGeneration) {
+          return;
+        }
+        const storedState = readLocalStorageState();
+        const storedGeneration = safeStateValue(
+          storedState.dashboardRuntimeCacheGenerationId ||
+          storedState.dashboardGeneratedSessionId ||
+          ''
+        );
+        const hasRuntimeCache = Boolean(readScreen3RuntimeOptionsCache({ skipGenerationCheck: true }));
+        const hasRuntimeState = dashboardStateHasRuntimeCacheData(storedState);
+        const hashState = parseHashState(window.location.hash);
+        const hashGeneration = dashboardStateGenerationId(hashState);
+        const hashHasRuntimeState = dashboardStateHasRuntimeCacheData(hashState);
+        if (
+          hashHasRuntimeState &&
+          (!hashGeneration || hashGeneration !== currentGeneration)
+        ) {
+          const nextHashState = stripRuntimeStateForNewDashboardGeneration(hashState);
+          const serializedHash = serializeDashboardState(nextHashState);
+          const nextUrl = (
+            window.location.pathname +
+            window.location.search +
+            (serializedHash ? '#' + serializedHash : '')
+          );
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', nextUrl);
+          }
+        }
+        if (storedGeneration === currentGeneration) {
+          return;
+        }
+        if (!storedGeneration && !hasRuntimeCache && !hasRuntimeState) {
+          writeLocalStorageState(stateWithCurrentDashboardGeneratedSession(storedState));
+          return;
+        }
+        try {
+          window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+        } catch (error) {
+          // Best-effort cache reset; localStorage failures must not block static dashboard rendering.
+        }
+        writeLocalStorageState(resetRuntimeCacheForNewDashboardGeneration(storedState));
       }
 
       function screen3RuntimeOptionsCacheStatusText(prefix, cachedAt) {
@@ -7507,7 +8153,8 @@
           .replace(new RegExp('History ' + 'Selector', 'gi'), 'Runtime Scope & Analysis Control');
       }
 
-      function readScreen3RuntimeOptionsCache() {
+      function readScreen3RuntimeOptionsCache(options) {
+        const skipGenerationCheck = Boolean(options && options.skipGenerationCheck);
         try {
           const rawValue = window.localStorage.getItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
           if (!rawValue) {
@@ -7523,6 +8170,18 @@
           ) {
             window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
             return null;
+          }
+          if (!skipGenerationCheck) {
+            const currentGeneration = dashboardGeneratedSessionId();
+            const cacheGeneration = safeStateValue(
+              cache.dashboardRuntimeCacheGenerationId ||
+              cache.dashboardGeneratedSessionId ||
+              ''
+            );
+            if (currentGeneration && cacheGeneration !== currentGeneration) {
+              window.localStorage.removeItem(SCREEN3_RUNTIME_OPTIONS_CACHE_KEY);
+              return null;
+            }
           }
           return cache;
         } catch (error) {
@@ -7587,6 +8246,7 @@
         state.screen3RuntimeOptionsCount = safeStateValue(cache.option_count || '');
         state.screen3RuntimeOptionsLoadedRows = safeStateValue(cache.loaded_rows || cache.run_count || '');
         state.screen3RuntimeOptionsDbPersistenceStatus = safeStateValue(cache.db_persistence_status || '');
+        state.screen3RuntimeOptionsFirstLoadedAt = safeStateValue(cache.first_loaded_at || cache.cached_at || '');
         state.screen3RuntimeOptionsLoadedAt = safeStateValue(cache.cached_at || '');
         state.screen3RuntimeOptionsIncludedTables = safeStateValue(cache.included_tables || '');
         state.screen3RuntimeOptionsSourceTables = safeStateValue(cache.source_tables_summary || '');
@@ -7617,7 +8277,10 @@
         const cachedAt = safeState.screen3RuntimeOptionsLoadedAt || new Date().toISOString();
         const cache = {
           cache_version: SCREEN3_RUNTIME_OPTIONS_CACHE_VERSION,
+          dashboardGeneratedSessionId: dashboardGeneratedSessionId(),
+          dashboardRuntimeCacheGenerationId: dashboardGeneratedSessionId(),
           cached_at: cachedAt,
+          first_loaded_at: safeState.screen3RuntimeOptionsFirstLoadedAt || cachedAt,
           service_status: safeState.screen3LiveServiceStatus || 'Available',
           db_persistence_status: safeState.screen3RuntimeOptionsDbPersistenceStatus || body.db_persistence_status || '',
           runtime_options_status: safeState.screen3RuntimeOptionsStatus || 'route available',
@@ -7710,8 +8373,8 @@
         const persistedState = sanitizeDashboardState(Object.assign(
           {},
           readDefaultDashboardState(document),
-          readLocalStorageState(),
-          parseHashState(window.location.hash)
+          stripRuntimeStateForNewDashboardGeneration(readLocalStorageState()),
+          stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash))
         ));
         const state = Object.assign(
           {},
@@ -7736,11 +8399,27 @@
         if (!cache) {
           return null;
         }
+        const sourceState = sanitizeDashboardState(state || {});
         const cachedState = Object.assign(
           {},
-          sanitizeDashboardState(state || {}),
+          sourceState,
           screen3RuntimeOptionsStateFromCache(cache)
         );
+        const liveStatus = safeStateValue(sourceState.screen3LiveServiceStatus || '');
+        const liveSource = safeStateValue(sourceState.screen3LiveServiceStatusSource || '').toLowerCase();
+        const liveStatusNormalized = liveStatus.toLowerCase();
+        const liveRefreshFailed = liveSource === 'runtime-options-response' && (
+          liveStatusNormalized.indexOf('unavailable') >= 0 ||
+          liveStatusNormalized.indexOf('error') >= 0 ||
+          liveStatusNormalized.indexOf('failed') >= 0
+        );
+        if (liveRefreshFailed) {
+          cachedState.screen3LiveServiceStatus = 'Unavailable';
+          cachedState.screen3LiveServiceStatusSource = 'runtime-options-response';
+          cachedState.screen3LiveServiceStatusCheckedAt = (
+            sourceState.screen3LiveServiceStatusCheckedAt || new Date().toISOString()
+          );
+        }
         cachedState.selectedSourceMode = cachedState.selectedSourceMode || 'existing_run';
         cachedState.sourceSelectionMethod = cachedState.sourceSelectionMethod || 'existing_run_reference';
         cachedState.sourceSelectionActivated = 'true';
@@ -7762,6 +8441,7 @@
           'screen3RuntimeOptionsCount',
           'screen3RuntimeOptionsLoadedRows',
           'screen3RuntimeOptionsIncludedTables',
+          'screen3RuntimeOptionsFirstLoadedAt',
           'screen3RuntimeOptionsLoadedAt',
           'screen3RuntimeOptionsDbPersistenceStatus',
           'screen3RuntimeOptionsCacheStatus',
@@ -7822,8 +8502,8 @@
 
       function readDashboardStateBeforeScreen2EvidenceEnforcement() {
         const defaultState = readDefaultDashboardState(document);
-        const storedState = readLocalStorageState();
-        const hashState = parseHashState(window.location.hash);
+        const storedState = stripRuntimeStateForNewDashboardGeneration(readLocalStorageState());
+        const hashState = stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash));
         const explicitState = Object.assign(
           {},
           storedState,
@@ -7837,13 +8517,16 @@
         ) {
           delete state.selectedSourcePath;
         }
+        state = restoreCurrentSessionWorkflowLiveStatus(state);
         return withoutInactiveSourceSelection(state);
       }
 
       function readDashboardState() {
         const defaultState = readDefaultDashboardState(document);
-        const storedState = isDownstreamEvidencePage() ? readLocalStorageState() : {};
-        const hashState = parseHashState(window.location.hash);
+        const storedState = isDownstreamEvidencePage()
+          ? stripRuntimeStateForNewDashboardGeneration(readLocalStorageState())
+          : {};
+        const hashState = stripRuntimeStateForNewDashboardGeneration(parseHashState(window.location.hash));
         const explicitState = Object.assign(
           {},
           storedState,
@@ -7857,6 +8540,7 @@
         ) {
           delete state.selectedSourcePath;
         }
+        state = restoreCurrentSessionWorkflowLiveStatus(state);
         state = withoutInactiveSourceSelection(state);
         return enforceCurrentScreen2EvidenceState(state);
       }
@@ -8101,17 +8785,32 @@
       }
 
       function dashboardWorkflowStatusDisplayValue(value, state, element) {
+        const currentSessionStatus = currentSessionWorkflowLiveStatusState(state);
         const safeValue = safeStateValue(
           value ||
           (element && element.getAttribute && element.getAttribute('data-empty-label')) ||
           ''
         );
         if (!safeValue) {
+          if (currentSessionStatus) {
+            return currentSessionStatus.label;
+          }
           return 'Not checked';
         }
         const normalized = safeValue.toLowerCase();
+        if (normalized === 'not checked') {
+          if (currentSessionStatus) {
+            return currentSessionStatus.label;
+          }
+          return 'Not checked';
+        }
+        if (!dashboardWorkflowStatusCheckedThisPage() && !currentSessionStatus) {
+          return 'Not checked';
+        }
+        if (!dashboardWorkflowStatusCheckedThisPage() && currentSessionStatus) {
+          return currentSessionStatus.label;
+        }
         if (
-          normalized === 'not checked' ||
           normalized === 'checking' ||
           normalized.indexOf('(cached)') >= 0 ||
           normalized.indexOf('last checked') >= 0 ||
@@ -8133,6 +8832,124 @@
       function dashboardRuntimeModeSuppressesCachedWorkflow() {
         const modePill = document.querySelector('[data-dashboard-runtime-badge="true"] .status-pill');
         return safeStateValue(modePill && modePill.textContent).toLowerCase() === 'full db mode';
+      }
+
+      function markDashboardWorkflowStatusCheckedThisPage() {
+        window.__dashboardWorkflowStatusCheckedThisPage = true;
+      }
+
+      function dashboardWorkflowStatusCheckedThisPage() {
+        return window.__dashboardWorkflowStatusCheckedThisPage === true;
+      }
+
+      function dashboardWorkflowLiveStatusLabel(status) {
+        const normalized = safeStateValue(status).toLowerCase().replace(/[_\s-]+/g, '-');
+        if (normalized === 'available' || normalized === 'success' || normalized === 'ok') {
+          return 'Available';
+        }
+        if (
+          normalized === 'unavailable' ||
+          normalized === 'failed' ||
+          normalized === 'failure' ||
+          normalized === 'error'
+        ) {
+          return 'Unavailable';
+        }
+        if (normalized === 'checking' || normalized === 'loading') {
+          return 'Checking';
+        }
+        return 'Not checked';
+      }
+
+      function dashboardWorkflowLiveStatusStorageValue(status) {
+        const label = dashboardWorkflowLiveStatusLabel(status);
+        if (label === 'Available') {
+          return 'available';
+        }
+        if (label === 'Unavailable') {
+          return 'unavailable';
+        }
+        return '';
+      }
+
+      function currentSessionWorkflowLiveStatusState(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const currentGeneration = dashboardGeneratedSessionId();
+        const statusGeneration = safeStateValue(safeState.dashboardWorkflowLiveStatusGenerationId || '');
+        const status = dashboardWorkflowLiveStatusStorageValue(safeState.dashboardWorkflowLiveStatus || '');
+        if (!currentGeneration || !statusGeneration || statusGeneration !== currentGeneration || !status) {
+          return null;
+        }
+        return {
+          status: status,
+          label: dashboardWorkflowLiveStatusLabel(status),
+          checkedAt: safeStateValue(safeState.dashboardWorkflowLiveStatusCheckedAt || ''),
+          source: safeStateValue(safeState.dashboardWorkflowLiveStatusSource || 'current-session-live-check') || 'current-session-live-check',
+          reason: safeStateValue(safeState.dashboardWorkflowLiveStatusReason || '')
+        };
+      }
+
+      function restoreCurrentSessionWorkflowLiveStatus(state) {
+        const next = sanitizeDashboardState(state || {});
+        const liveStatus = currentSessionWorkflowLiveStatusState(next) ||
+          currentSessionWorkflowLiveStatusState(readLocalStorageState());
+        if (!liveStatus) {
+          return next;
+        }
+        next.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+        next.dashboardWorkflowLiveStatus = liveStatus.status;
+        next.dashboardWorkflowLiveStatusCheckedAt = liveStatus.checkedAt;
+        next.dashboardWorkflowLiveStatusSource = liveStatus.source;
+        next.dashboardWorkflowLiveStatusReason = liveStatus.reason;
+        next.screen3LiveServiceStatus = liveStatus.label;
+        next.screen3LiveServiceStatusSource = liveStatus.source;
+        next.screen3LiveServiceStatusCheckedAt = liveStatus.checkedAt;
+        return sanitizeDashboardState(next);
+      }
+
+      function setCurrentPageWorkflowStatus(status, reason, state) {
+        const displayValue = dashboardWorkflowLiveStatusLabel(status);
+        const storageValue = dashboardWorkflowLiveStatusStorageValue(displayValue);
+        const source = safeStateValue(reason || 'current-page-live-check') || 'current-page-live-check';
+        const checkedAt = new Date().toISOString();
+        if (displayValue !== 'Not checked') {
+          markDashboardWorkflowStatusCheckedThisPage();
+        }
+        if (state && typeof state === 'object') {
+          state.screen3LiveServiceStatus = displayValue;
+          state.screen3LiveServiceStatusSource = source;
+          state.screen3LiveServiceStatusCheckedAt = displayValue === 'Not checked' ? '' : checkedAt;
+          if (storageValue) {
+            state.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+            state.dashboardWorkflowLiveStatus = storageValue;
+            state.dashboardWorkflowLiveStatusCheckedAt = checkedAt;
+            state.dashboardWorkflowLiveStatusSource = source;
+            state.dashboardWorkflowLiveStatusReason = source;
+          }
+        }
+        if (storageValue) {
+          const storedState = readLocalStorageState();
+          storedState.dashboardWorkflowLiveStatusGenerationId = dashboardGeneratedSessionId();
+          storedState.dashboardWorkflowLiveStatus = storageValue;
+          storedState.dashboardWorkflowLiveStatusCheckedAt = checkedAt;
+          storedState.dashboardWorkflowLiveStatusSource = source;
+          storedState.dashboardWorkflowLiveStatusReason = source;
+          storedState.screen3LiveServiceStatus = displayValue;
+          storedState.screen3LiveServiceStatusSource = source;
+          storedState.screen3LiveServiceStatusCheckedAt = checkedAt;
+          writeLocalStorageState(storedState);
+        }
+        document.querySelectorAll('[data-dashboard-runtime-workflow-status="true"]').forEach(function (element) {
+          const nextValue = displayValue || safeStateValue(element.getAttribute('data-empty-label')) || 'Not checked';
+          if (element.textContent !== nextValue) {
+            element.textContent = nextValue;
+          }
+          updateDashboardRuntimeStateClass(element, nextValue);
+          if (element.getAttribute('data-dashboard-state-value') !== nextValue) {
+            element.setAttribute('data-dashboard-state-value', nextValue);
+          }
+        });
+        return displayValue;
       }
 
       function updateDashboardRuntimeStateClass(element, value) {
@@ -8247,8 +9064,981 @@
         });
       }
 
-      function updateSelectedSummary(state, root) {
+      function appendDashboardSummaryPart(parts, label, value) {
+        const safeValue = safeStateValue(value);
+        if (safeValue) {
+          parts.push(label + ': ' + safeValue);
+        }
+      }
+
+      function firstDashboardSummaryValue() {
+        for (let index = 0; index < arguments.length; index += 1) {
+          const safeValue = safeStateValue(arguments[index]);
+          if (safeValue) {
+            return safeValue;
+          }
+        }
+        return '';
+      }
+
+      function screen4ArtifactName(path) {
+        const safePath = safeStateValue(path);
+        if (!safePath) {
+          return '';
+        }
+        const segments = safePath.split(/[\\/]/);
+        return segments[segments.length - 1] || safePath;
+      }
+
+      function buildScreen4HistoricalSelectedSummary(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const parts = [];
+        const notes = [];
+        const contextMode = dashboardEvidenceContextMode(safeState);
+
+        if (contextMode === 'screen1_generated_artifact') {
+          appendDashboardSummaryPart(parts, 'Evidence path', 'Generated artifact');
+          appendDashboardSummaryPart(parts, 'Artifact status', 'Completed / artifact ready');
+          appendDashboardSummaryPart(parts, 'Artifact', screen4ArtifactName(safeState.screen1GeneratedArtifactPath));
+          appendDashboardSummaryPart(parts, 'Context Status', 'Generated artifact context');
+        } else if (
+          contextMode === 'screen2_existing_evidence_live' ||
+          contextMode === 'screen2_existing_evidence_cached'
+        ) {
+          appendDashboardSummaryPart(parts, 'Evidence path', 'Existing platform evidence');
+          appendDashboardSummaryPart(
+            parts,
+            'Runtime Scope',
+            firstDashboardSummaryValue(
+              safeState.selectedRuntimeScope,
+              safeState.selectedRunReference,
+              safeState.selectedRun,
+              safeState.selectedAwr
+            )
+          );
+          const databaseName = firstDashboardSummaryValue(safeState.selectedDb);
+          appendDashboardSummaryPart(
+            parts,
+            'Database',
+            databaseName && safeState.selectedDbid
+              ? databaseName + ' / ' + safeState.selectedDbid
+              : firstDashboardSummaryValue(databaseName, safeState.selectedDbid)
+          );
+          appendDashboardSummaryPart(parts, 'Instance', safeState.selectedInstance);
+          appendDashboardSummaryPart(parts, 'Host', safeState.selectedHost || safeState.selectedSystem);
+          appendDashboardSummaryPart(
+            parts,
+            'Window',
+            firstDashboardSummaryValue(
+              safeState.selectedTimeWindow,
+              [safeState.selectedSnapshotBegin, safeState.selectedSnapshotEnd].filter(Boolean).join(' - '),
+              safeState.selectedSnapshot
+            )
+          );
+          appendDashboardSummaryPart(
+            parts,
+            'Context Status',
+            contextMode === 'screen2_existing_evidence_live'
+              ? 'Live backend runtime-options context'
+              : 'Cached continuity'
+          );
+          if (contextMode === 'screen2_existing_evidence_cached') {
+            notes.push('Cached selection restored for UI continuity. Refresh Screen 2 runtime options for live backend context.');
+          }
+        }
+
+        appendDashboardSummaryPart(parts, 'Historical focus', safeState.selectedDomain);
+        appendDashboardSummaryPart(parts, 'Historical window', safeState.selectedHistoricalWindow);
+        appendDashboardSummaryPart(parts, 'Trend metric', safeState.selectedTrendMetric);
+        appendDashboardSummaryPart(parts, 'Anomaly context', safeState.selectedAnomalyGroup);
+        appendDashboardSummaryPart(parts, 'Distribution context', safeState.selectedDistribution);
+        appendDashboardSummaryPart(parts, 'Similar case context', safeState.selectedSimilarCase);
+        appendDashboardSummaryPart(parts, 'Historical baseline context', safeState.selectedComparisonBaseline);
+
+        const targetA = firstDashboardSummaryValue(
+          safeState.selectedComparisonTargetA,
+          safeState.selectedComparisonTargetAScopeValue,
+          safeState.selectedComparisonTargetATimeWindow
+        );
+        const targetB = firstDashboardSummaryValue(
+          safeState.selectedComparisonTargetB,
+          safeState.selectedComparisonTargetBScopeValue,
+          safeState.selectedComparisonTargetBTimeWindow
+        );
+        appendDashboardSummaryPart(parts, 'Prepared Target A', targetA);
+        appendDashboardSummaryPart(parts, 'Prepared Target B', targetB);
+        if (targetA || targetB) {
+          notes.push('Target A/B are prepared comparison context only. Screen 4 Comparative Review remains unavailable until deterministic comparison output exists.');
+        }
+
+        if (!parts.length) {
+          return {
+            text: 'Read-only historical exploration: no local selection. Historical output remains unchanged.',
+            empty: true
+          };
+        }
+
+        notes.push(
+          'Truth boundary: selection state does not create diagnosis, recommendation, comparison output, action, outcome, learning state, materialization, or runtime eligibility.'
+        );
+        return {
+          text: parts.concat(notes).join(' · '),
+          empty: false
+        };
+      }
+
+      function screen3EvidenceDisplayLabel(value) {
+        const normalized = safeStateValue(value);
+        const labels = {
+          single_awr: 'Single AWR',
+          selected_runtime_scope: 'Selected runtime scope',
+          unknown: 'Unknown',
+          generated_artifact: 'Generated deterministic artifact',
+          governed_backend_runtime_options: 'Live backend metadata',
+          browser_cache_continuity: 'Cached continuity only',
+          live_backend_metadata: 'Live backend metadata',
+          cached_continuity_only: 'Cached continuity only',
+          existing_platform_evidence: 'Existing platform evidence',
+          generated_artifact_path: 'Generated artifact',
+          current_generated_artifact_context: 'Current generated artifact context',
+          unknown_alignment: 'Unknown alignment',
+          exact_selected_scope: 'Exact selected scope',
+          same_db_different_window: 'Same DB, different window',
+          historical_artifact_contains_selected_scope: 'Historical artifact includes selected scope',
+          same_db_historical_available: 'Same DB historical context',
+          different_artifact: 'Different artifact',
+          selected_scope_artifact_mismatch: 'Selected-scope artifact mismatch',
+          selected_runtime_scope_flag: 'Selected runtime scope',
+          comparison_prepared_only: 'Prepared only',
+          comparison_unavailable: 'Comparison unavailable',
+          no_deterministic_comparison_output: 'No deterministic comparison output',
+          insufficient_identity_data: 'Insufficient identity data',
+          eligible_if_screen4_has_selected_scope_evidence: 'Eligible if selected-scope evidence is available',
+          eligible_if_wait_or_db_time_evidence_exists: 'Eligible if wait or DB time evidence exists',
+          eligible_if_wait_event_evidence_exists: 'Eligible if wait-event evidence exists',
+          eligible_if_top_sql_evidence_exists: 'Eligible if Top SQL evidence exists',
+          eligible_if_aligned_historical_evidence_exists: 'Requires aligned historical evidence',
+          requires_aligned_multi_sample_evidence: 'Requires aligned multi-sample evidence',
+          unavailable_without_deterministic_comparison_output: 'Unavailable until deterministic comparison output exists',
+          requires_attached_oem_ash_time_series: 'Requires attached OEM/ASH time-series'
+        };
+        return labels[normalized] || normalized || 'Unknown';
+      }
+
+      function screen3EvidenceStatusTone(value) {
+        const normalized = safeStateValue(screen3EvidenceDisplayLabel(value)).toLowerCase();
+        if (
+          normalized === 'available' ||
+          normalized === 'live backend metadata' ||
+          normalized === 'single awr' ||
+          normalized === 'exact selected scope'
+        ) {
+          return 'available';
+        }
+        if (
+          normalized === 'context only' ||
+          normalized === 'same db historical context' ||
+          normalized === 'same db, different window'
+        ) {
+          return 'context';
+        }
+        if (normalized === 'prepared only') {
+          return 'prepared';
+        }
+        if (normalized.indexOf('cached') !== -1) {
+          return 'cached';
+        }
+        if (normalized.indexOf('unavailable') !== -1 || normalized.indexOf('not inventoried') !== -1) {
+          return 'unavailable';
+        }
+        return 'unknown';
+      }
+
+      function screen3EvidenceContextSet(panel, attrName, field, value) {
+        if (!panel) {
+          return;
+        }
+        const selector = '[data-screen3-evidence-' + attrName + '="' + field + '"]';
+        panel.querySelectorAll(selector).forEach(function (element) {
+          const displayValue = screen3EvidenceDisplayLabel(value);
+          if (element.textContent !== displayValue) {
+            element.textContent = displayValue;
+          }
+          const tone = screen3EvidenceStatusTone(displayValue);
+          if (element.hasAttribute('data-screen3-evidence-status-tone')) {
+            element.setAttribute('data-screen3-evidence-status-tone', tone);
+          }
+        });
+      }
+
+      function screen3PanelAttr(panel, name) {
+        return safeStateValue(panel && panel.getAttribute ? panel.getAttribute(name) : '');
+      }
+
+      function screen3EvidenceWindow(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        const explicitWindow = firstDashboardSummaryValue(
+          safeState.selectedTimeWindow,
+          safeState.selectedSnapshot
+        );
+        if (explicitWindow) {
+          return explicitWindow;
+        }
+        const begin = safeStateValue(safeState.selectedSnapshotBegin);
+        const end = safeStateValue(safeState.selectedSnapshotEnd);
+        return [begin, end].filter(Boolean).join(' - ');
+      }
+
+      function screen3EvidenceSelectedScopeLabel(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return firstDashboardSummaryValue(
+          safeState.selectedRuntimeScope,
+          safeState.selectedRunReference,
+          safeState.selectedRun,
+          safeState.selectedAwr
+        ) || 'No Runtime Scope selected';
+      }
+
+      function screen3EvidenceDbLabel(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (safeState.selectedDb && safeState.selectedDbid) {
+          return safeState.selectedDb + ' / ' + safeState.selectedDbid;
+        }
+        return firstDashboardSummaryValue(safeState.selectedDb, safeState.selectedDbid) || 'Unknown';
+      }
+
+      function screen3EvidenceHasPreparedTargets(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        return Boolean(
+          safeState.selectedComparisonTargetA ||
+          safeState.selectedComparisonTargetB ||
+          safeState.selectedComparisonTargetAScopeValue ||
+          safeState.selectedComparisonTargetBScopeValue ||
+          safeState.screen3SelectedTargetARowId ||
+          safeState.screen3SelectedTargetBRowId
+        );
+      }
+
+      function screen3EvidencePrimaryContext(state) {
+        const safeState = sanitizeDashboardState(state || {});
+        if (!screen2ExistingEvidenceContextSelected(safeState)) {
+          return 'unknown';
+        }
+        const awrCount = Number(safeState.selectedRuntimeScopeAwrCount || 0);
+        const snapshotCount = Number(safeState.selectedRuntimeScopeSnapshotCount || 0);
+        if ((awrCount && awrCount > 1) || (snapshotCount && snapshotCount > 1)) {
+          return 'selected_runtime_scope';
+        }
+        return 'single_awr';
+      }
+
+      function screen3EvidenceTruthSource(state) {
+        const mode = dashboardEvidenceContextMode(state || {});
+        if (mode === 'screen2_existing_evidence_live') {
+          return 'governed_backend_runtime_options';
+        }
+        if (mode === 'screen2_existing_evidence_cached') {
+          return 'browser_cache_continuity';
+        }
+        if (mode === 'screen1_generated_artifact') {
+          return 'generated_artifact';
+        }
+        return 'unknown';
+      }
+
+      function screen3EvidenceCacheStatus(state) {
+        const truthSource = screen3EvidenceTruthSource(state || {});
+        if (truthSource === 'governed_backend_runtime_options') {
+          return 'live_backend_metadata';
+        }
+        if (truthSource === 'browser_cache_continuity') {
+          return 'cached_continuity_only';
+        }
+        return truthSource || 'unknown';
+      }
+
+      function screen3EvidenceGeneratedWindow(panel) {
+        const begin = screen3PanelAttr(panel, 'data-screen3-generated-window-begin');
+        const end = screen3PanelAttr(panel, 'data-screen3-generated-window-end');
+        return [begin, end].filter(Boolean).join(' - ') || begin || end;
+      }
+
+      function screen3EvidenceArtifactAlignment(state, panel) {
+        const safeState = sanitizeDashboardState(state || {});
+        const contextMode = dashboardEvidenceContextMode(safeState);
+        if (contextMode !== 'screen2_existing_evidence_live' && contextMode !== 'screen2_existing_evidence_cached') {
+          return {
+            status: 'unknown_alignment',
+            basis: 'No selected runtime scope to align',
+            reason: 'Artifact alignment cannot be determined from available identity keys.'
+          };
+        }
+        const generatedDbid = screen3PanelAttr(panel, 'data-screen3-generated-dbid');
+        const generatedDb = screen3PanelAttr(panel, 'data-screen3-generated-db-name').toLowerCase();
+        const generatedInstance = screen3PanelAttr(panel, 'data-screen3-generated-instance').toLowerCase();
+        const generatedHost = screen3PanelAttr(panel, 'data-screen3-generated-host').toLowerCase();
+        const selectedDbid = safeStateValue(safeState.selectedDbid);
+        const selectedDb = safeStateValue(safeState.selectedDb).toLowerCase();
+        const selectedInstance = safeStateValue(safeState.selectedInstance).toLowerCase();
+        const selectedHost = safeStateValue(safeState.selectedHost || safeState.selectedSystem).toLowerCase();
+        if (selectedDbid && generatedDbid && selectedDbid !== generatedDbid) {
+          return {
+            status: 'different_artifact',
+            basis: 'DBID differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedDb && generatedDb && selectedDb !== generatedDb) {
+          return {
+            status: 'different_artifact',
+            basis: 'Database name differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedInstance && generatedInstance && selectedInstance !== generatedInstance) {
+          return {
+            status: 'different_artifact',
+            basis: 'Instance differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        if (selectedHost && generatedHost && selectedHost !== generatedHost) {
+          return {
+            status: 'different_artifact',
+            basis: 'Host differs',
+            reason: 'Generated historical artifact differs from the selected Runtime Scope. Screen 4 must not present historical graphics as selected-AWR truth until alignment is confirmed.'
+          };
+        }
+        const selectedBegin = safeStateValue(safeState.selectedSnapshotBegin);
+        const selectedEnd = safeStateValue(safeState.selectedSnapshotEnd);
+        const generatedBegin = screen3PanelAttr(panel, 'data-screen3-generated-window-begin');
+        const generatedEnd = screen3PanelAttr(panel, 'data-screen3-generated-window-end');
+        if (selectedBegin && selectedEnd && generatedBegin && generatedEnd) {
+          if (selectedBegin === generatedBegin && selectedEnd === generatedEnd) {
+            return {
+              status: 'exact_selected_scope',
+              basis: 'DB identity and window match',
+              reason: 'Generated artifact matches selected Runtime Scope.'
+            };
+          }
+          return {
+            status: 'same_db_different_window',
+            basis: 'DB identity matches; window differs',
+            reason: 'Same database historical evidence is available as context only.'
+          };
+        }
+        const snapshotCount = Number(screen3PanelAttr(panel, 'data-screen3-generated-snapshot-count') || 0);
+        if ((selectedDbid && generatedDbid && selectedDbid === generatedDbid) || (selectedDb && generatedDb && selectedDb === generatedDb)) {
+          if (snapshotCount > 1) {
+            return {
+              status: 'same_db_historical_available',
+              basis: 'DB identity matches; generated artifact has multiple snapshots',
+              reason: 'Same database historical evidence is available as context only.'
+            };
+          }
+          return {
+            status: 'unknown_alignment',
+            basis: 'DB identity matches; window identity incomplete',
+            reason: 'Artifact alignment cannot be determined from available identity keys.'
+          };
+        }
+        return {
+          status: 'unknown_alignment',
+          basis: 'Insufficient identity data',
+          reason: 'Artifact alignment cannot be determined from available identity keys.'
+        };
+      }
+
+      function updateScreen3EvidenceContextPanel(state, root) {
         const scope = root || document;
+        const safeState = sanitizeDashboardState(state || {});
+        scope.querySelectorAll('[data-screen3-evidence-context-panel="true"]').forEach(function (panel) {
+          const contextMode = dashboardEvidenceContextMode(safeState);
+          const selectedScopeAvailable = screen2ExistingEvidenceContextSelected(safeState);
+          const primary = screen3EvidencePrimaryContext(safeState);
+          const truthSource = screen3EvidenceTruthSource(safeState);
+          const cacheStatus = screen3EvidenceCacheStatus(safeState);
+          const preparedTargets = screen3EvidenceHasPreparedTargets(safeState);
+          const alignment = screen3EvidenceArtifactAlignment(safeState, panel);
+          const evidencePath = selectedScopeAvailable ? 'existing_platform_evidence' : (
+            contextMode === 'screen1_generated_artifact' ? 'generated_artifact_path' : 'unknown'
+          );
+          const freshness = cacheStatus || 'unknown';
+          const comparisonStatus = preparedTargets ? 'Prepared only' : 'No deterministic comparison output';
+          const flags = [];
+          if (selectedScopeAvailable) {
+            flags.push('selected_runtime_scope_flag');
+          }
+          if (preparedTargets) {
+            flags.push('comparison_prepared_only');
+          }
+          flags.push('comparison_unavailable');
+          if (cacheStatus === 'cached_continuity_only') {
+            flags.push('cached_continuity_only');
+          }
+          if (alignment.status === 'different_artifact') {
+            flags.push('selected_scope_artifact_mismatch');
+          }
+          if (!safeState.selectedDbid && !safeState.selectedDb) {
+            flags.push('insufficient_identity_data');
+          }
+          const generatedDbLabel = (
+            screen3PanelAttr(panel, 'data-screen3-generated-db-name') &&
+            screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+          )
+            ? screen3PanelAttr(panel, 'data-screen3-generated-db-name') + ' / ' + screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+            : firstDashboardSummaryValue(
+              screen3PanelAttr(panel, 'data-screen3-generated-db-name'),
+              screen3PanelAttr(panel, 'data-screen3-generated-dbid')
+            );
+          screen3EvidenceContextSet(panel, 'context-field', 'runtime_scope', selectedScopeAvailable ? screen3EvidenceSelectedScopeLabel(safeState) : 'Current generated artifact context');
+          screen3EvidenceContextSet(panel, 'context-field', 'database', selectedScopeAvailable ? screen3EvidenceDbLabel(safeState) : (generatedDbLabel || 'Unknown'));
+          screen3EvidenceContextSet(panel, 'context-field', 'dbid', safeState.selectedDbid || screen3PanelAttr(panel, 'data-screen3-generated-dbid') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'instance', safeState.selectedInstance || screen3PanelAttr(panel, 'data-screen3-generated-instance') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'host', safeState.selectedHost || safeState.selectedSystem || screen3PanelAttr(panel, 'data-screen3-generated-host') || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'window', screen3EvidenceWindow(safeState) || screen3EvidenceGeneratedWindow(panel) || 'Unknown');
+          screen3EvidenceContextSet(panel, 'context-field', 'source', selectedScopeAvailable ? (safeState.selectedRunReference || safeState.selectedRun || safeState.selectedAwr || 'Unknown') : (screen3PanelAttr(panel, 'data-screen3-generated-source') || 'Unknown'));
+          screen3EvidenceContextSet(panel, 'context-field', 'context_type', primary);
+          screen3EvidenceContextSet(panel, 'context-field', 'evidence_path', evidencePath);
+          screen3EvidenceContextSet(panel, 'context-field', 'freshness', freshness);
+          screen3EvidenceContextSet(panel, 'inventory-field', 'exact_selected_scope_evidence', selectedScopeAvailable ? (contextMode === 'screen2_existing_evidence_cached' ? 'Cached continuity only' : 'Available') : (contextMode === 'screen1_generated_artifact' ? 'Available' : 'Unknown'));
+          screen3EvidenceContextSet(panel, 'inventory-field', 'same_db_historical_evidence', alignment.status === 'same_db_historical_available' || alignment.status === 'same_db_different_window' ? 'Context only' : 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'fleet_population_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'oem_ash_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'rac_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'dataguard_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'exadata_evidence', 'Not inventoried');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'comparison_prepared_only', preparedTargets ? 'Prepared only' : 'Unavailable');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'deterministic_comparison_output', 'Deterministic output unavailable');
+          screen3EvidenceContextSet(panel, 'inventory-field', 'comparison_status', comparisonStatus);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'status', alignment.status);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'match_basis', alignment.basis);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'mismatch_reason', alignment.reason);
+          screen3EvidenceContextSet(panel, 'alignment-field', 'cache_status', cacheStatus);
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'single_awr_graphics', 'eligible_if_screen4_has_selected_scope_evidence');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'db_time_composition', 'eligible_if_wait_or_db_time_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'wait_profile', 'eligible_if_wait_event_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'top_sql', 'eligible_if_top_sql_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'historical_trend_panels', 'eligible_if_aligned_historical_evidence_exists');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'distribution_violins', 'requires_aligned_multi_sample_evidence');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'oem_ash_timelines', 'requires_attached_oem_ash_time_series');
+          screen3EvidenceContextSet(panel, 'eligibility-field', 'comparison_graphics', 'unavailable_without_deterministic_comparison_output');
+          panel.setAttribute('data-screen3-evidence-context-primary', primary);
+          panel.setAttribute('data-screen3-evidence-context-flags', flags.join(','));
+          panel.setAttribute('data-screen3-evidence-context-truth-source', truthSource);
+          panel.setAttribute('data-screen3-artifact-alignment-status', alignment.status);
+          panel.__screen3EvidenceContextContract = Object.freeze({
+            selected_scope_identity: {
+              context_type: primary,
+              runtime_scope: selectedScopeAvailable ? screen3EvidenceSelectedScopeLabel(safeState) : 'Current generated artifact context',
+              source_type: selectedScopeAvailable ? 'existing_platform_evidence' : 'generated_artifact',
+              source_table: safeState.selectedRuntimeScopeSourceTable || 'generated_dashboard_payload',
+              awr_id: safeState.selectedAwr || '',
+              report_id: safeState.selectedReportId || safeState.selectedAwr || '',
+              run_id: safeState.selectedRun || '',
+              run_reference: safeState.selectedRunReference || safeState.selectedRun || safeState.selectedAwr || '',
+              source_file: selectedScopeAvailable ? (safeState.selectedRuntimeScope || '') : (screen3PanelAttr(panel, 'data-screen3-generated-source') || ''),
+              dbid: safeState.selectedDbid || screen3PanelAttr(panel, 'data-screen3-generated-dbid') || '',
+              db_name: safeState.selectedDb || screen3PanelAttr(panel, 'data-screen3-generated-db-name') || '',
+              instance_name: safeState.selectedInstance || screen3PanelAttr(panel, 'data-screen3-generated-instance') || '',
+              host: safeState.selectedHost || safeState.selectedSystem || screen3PanelAttr(panel, 'data-screen3-generated-host') || '',
+              window_begin: safeState.selectedSnapshotBegin || screen3PanelAttr(panel, 'data-screen3-generated-window-begin') || '',
+              window_end: safeState.selectedSnapshotEnd || screen3PanelAttr(panel, 'data-screen3-generated-window-end') || '',
+              truth_source: truthSource,
+              evidence_path: screen3EvidenceDisplayLabel(evidencePath),
+              freshness: screen3EvidenceDisplayLabel(freshness)
+            },
+            evidence_inventory: {
+              exact_selected_scope_evidence: screen3EvidenceDisplayLabel(selectedScopeAvailable ? (contextMode === 'screen2_existing_evidence_cached' ? 'Cached continuity only' : 'Available') : (contextMode === 'screen1_generated_artifact' ? 'Available' : 'Unknown')),
+              same_db_historical_evidence: screen3EvidenceDisplayLabel(alignment.status === 'same_db_historical_available' || alignment.status === 'same_db_different_window' ? 'Context only' : 'Not inventoried'),
+              fleet_population_evidence: 'Not inventoried',
+              oem_ash_evidence: 'Not inventoried',
+              rac_evidence: 'Not inventoried',
+              dataguard_evidence: 'Not inventoried',
+              exadata_evidence: 'Not inventoried',
+              comparison_prepared_only: preparedTargets ? 'Prepared only' : 'Unavailable',
+              deterministic_comparison_output: 'No deterministic comparison output',
+              comparison_status: comparisonStatus
+            },
+            context_classification: {
+              primary: primary,
+              flags: flags.slice(),
+              cache_status: cacheStatus
+            },
+            artifact_alignment: {
+              status: alignment.status,
+              match_basis: alignment.basis ? [alignment.basis] : [],
+              mismatch_reason: alignment.reason,
+              product_summary: alignment.reason
+            },
+            screen4_graphics_eligibility_hints: {
+              single_awr_graphics: 'eligible_if_screen4_has_selected_scope_evidence',
+              historical_trend_panels: 'eligible_if_aligned_historical_evidence_exists',
+              distribution_violins: 'requires_aligned_multi_sample_evidence',
+              comparison_graphics: 'unavailable_without_deterministic_comparison_output',
+              graphics_boundary: 'Screen 4 may render graphics only when deterministic evidence and context alignment allow it'
+            },
+            truth_boundary: {
+              browser_cache_is_truth: false,
+              selection_changes_diagnosis: false,
+              selection_creates_historical_truth: false,
+              target_ab_creates_comparison_truth: false,
+              llm_changes_truth: false
+            },
+            llm_explanation_context: {
+              eligible_for_explanation: true,
+              provider_call_required: false,
+              allowed_to_explain: [
+                'context classification',
+                'evidence availability',
+                'artifact alignment',
+                'graphics eligibility fallback'
+              ],
+              forbidden: [
+                'classification decision',
+                'eligibility decision',
+                'diagnosis mutation',
+                'recommendation mutation',
+                'scoring mutation',
+                'comparison computation',
+                'graphics rendering decision'
+              ]
+            }
+          });
+        });
+      }
+
+      function screen3EvidenceContextExplanationText(value) {
+        return safeExplanationText(value).slice(0, 2400);
+      }
+
+      function setScreen3EvidenceContextExplanationStatus(panel, status, message) {
+        if (!panel) {
+          return;
+        }
+        const safeStatus = safeStateValue(status) || 'idle';
+        const safeMessage = screen3EvidenceContextExplanationText(
+          message || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+        );
+        panel.querySelectorAll('[data-screen3-evidence-context-explanation-status]').forEach(function (element) {
+          element.setAttribute('data-screen3-evidence-context-explanation-status', safeStatus);
+          element.textContent = safeMessage;
+        });
+      }
+
+      function applyScreen3EvidenceContextExplanation(panel, explanation) {
+        if (!panel) {
+          return;
+        }
+        const safeExplanation = screen3EvidenceContextExplanationText(explanation);
+        if (!safeExplanation) {
+          return;
+        }
+        panel.querySelectorAll('[data-screen3-evidence-context-explanation-result]').forEach(function (element) {
+          element.textContent = safeExplanation;
+        });
+      }
+
+      function screen3EvidenceContextExplanationViolatesBoundary(explanation) {
+        const lowered = screen3EvidenceContextExplanationText(explanation).toLowerCase();
+        const unsafeMarkers = [
+          'changed the diagnosis',
+          'updated the diagnosis',
+          'changed the score',
+          'updated the score',
+          'changed confidence',
+          'updated the recommendation',
+          'computed comparison result',
+          'created comparison output',
+          'rendered comparison violin',
+          'decided graphics eligibility',
+          'chose graphics',
+          'rendered graphics',
+          'computed trend',
+          'computed anomaly',
+          'created learning candidate',
+          'materialized',
+          'activated runtime eligibility',
+          'future runs will'
+        ];
+        return unsafeMarkers.some(function (marker) {
+          return lowered.indexOf(marker) !== -1;
+        });
+      }
+
+      function screen3EvidenceContextContractForPanel(panel) {
+        if (panel && panel.__screen3EvidenceContextContract) {
+          return panel.__screen3EvidenceContextContract;
+        }
+        const script = panel ? panel.querySelector('[data-screen3-evidence-context-contract-json="true"]') : null;
+        if (script && script.textContent) {
+          try {
+            return JSON.parse(script.textContent);
+          } catch (error) {
+            return {};
+          }
+        }
+        return {};
+      }
+
+      function screen3EvidenceContextExplanationProviderLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'off') {
+          return 'Off';
+        }
+        if (normalized === 'oci') {
+          return 'OCI';
+        }
+        if (normalized === 'mock') {
+          return 'Mock';
+        }
+        if (normalized === 'local') {
+          return 'Local';
+        }
+        return normalized ? normalized.toUpperCase() : 'Unknown';
+      }
+
+      function screen3EvidenceContextExplanationRoutePath() {
+        try {
+          return new URL(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT).pathname;
+        } catch (error) {
+          return '/phase7/dashboard/screen3/evidence-context/explanation';
+        }
+      }
+
+      function screen3EvidenceContextExplanationStatusLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available' || normalized === 'ready') {
+          return 'Ready';
+        }
+        if (normalized === 'provider-off' || normalized === 'disabled') {
+          return 'Disabled';
+        }
+        if (normalized === 'unavailable' || normalized === 'service-unavailable') {
+          return 'Service unavailable';
+        }
+        if (normalized === 'failed' || normalized === 'provider-failed') {
+          return 'Failed';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextRouteLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available') {
+          return 'Available';
+        }
+        if (normalized === 'unavailable') {
+          return 'Unavailable';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextWorkflowLabel(value) {
+        const normalized = safeStateValue(value).toLowerCase();
+        if (normalized === 'available') {
+          return 'Available';
+        }
+        if (normalized === 'unavailable') {
+          return 'Unavailable';
+        }
+        return 'Not checked';
+      }
+
+      function screen3EvidenceContextRouteUnavailableMessage(workflowStatus) {
+        const workflowAvailable = safeStateValue(workflowStatus).toLowerCase() === 'available';
+        if (workflowAvailable) {
+          return 'Workflow service is available, but the Screen 3 explanation route is unavailable. Restart dashboard_workflow_service.py or verify the route is registered. Deterministic evidence context remains unchanged.';
+        }
+        return 'Workflow service unavailable. Start or restart dashboard_workflow_service.py to use runtime explanation. Deterministic evidence context remains unchanged.';
+      }
+
+      function setScreen3EvidenceContextExplanationAvailability(panel, options) {
+        if (!panel) {
+          return;
+        }
+        const availability = options || {};
+        const providerMode = safeStateValue(availability.providerMode || panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off').toLowerCase() || 'off';
+        const routeStatus = safeStateValue(availability.routeStatus || 'not-checked').toLowerCase();
+        const workflowStatus = safeStateValue(availability.workflowStatus || 'not-checked').toLowerCase();
+        const providerOff = providerMode === 'off';
+        const routeAvailable = routeStatus === 'available';
+        const status = providerOff
+          ? 'provider-off'
+          : (routeAvailable ? 'ready' : (routeStatus === 'unavailable' ? 'service-unavailable' : 'not-checked'));
+        const message = availability.message || (
+          providerOff
+            ? 'LLM explanation disabled. Deterministic evidence context remains unchanged.'
+            : (
+              routeAvailable
+                ? 'Runtime explanation route is available. Explanation only; deterministic context remains unchanged.'
+                : (
+                  routeStatus === 'unavailable'
+                    ? screen3EvidenceContextRouteUnavailableMessage(workflowStatus)
+                    : 'Runtime explanation route not checked yet. Deterministic evidence context remains unchanged.'
+                )
+            )
+        );
+        panel.setAttribute('data-screen3-evidence-context-explanation-route', routeStatus || 'not-checked');
+        panel.setAttribute('data-screen3-evidence-context-workflow-status', workflowStatus || 'not-checked');
+        panel.setAttribute('data-screen3-evidence-context-provider-mode', providerMode);
+        panel.querySelectorAll('[data-screen3-evidence-context-workflow-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextWorkflowLabel(workflowStatus);
+          element.setAttribute('data-screen3-evidence-workflow-status', workflowStatus || 'not-checked');
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-route-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextRouteLabel(routeStatus);
+          element.setAttribute('data-screen3-evidence-route-status', routeStatus || 'not-checked');
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-provider-configured]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextExplanationProviderLabel(providerMode);
+        });
+        panel.querySelectorAll('[data-screen3-evidence-context-availability-status]').forEach(function (element) {
+          element.textContent = screen3EvidenceContextExplanationStatusLabel(status);
+          element.setAttribute('data-screen3-evidence-explanation-status', status);
+        });
+        panel.querySelectorAll(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR).forEach(function (button) {
+          const enabled = routeAvailable && !providerOff;
+          button.disabled = !enabled;
+          button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+          button.setAttribute('data-screen3-evidence-context-route-status', routeStatus || 'not-checked');
+          button.setAttribute('data-screen3-evidence-context-provider-mode', providerMode);
+          button.setAttribute(
+            'title',
+            enabled
+              ? 'Generate optional review-context wording from the already-computed evidence-context contract.'
+              : message
+          );
+        });
+        setScreen3EvidenceContextExplanationStatus(panel, status, message);
+      }
+
+      function screen3EvidenceContextHealthRouteAvailable(payload) {
+        const supported = Array.isArray(payload && payload.supported_endpoints)
+          ? payload.supported_endpoints
+          : [];
+        const routePath = screen3EvidenceContextExplanationRoutePath();
+        return supported.indexOf(routePath) >= 0;
+      }
+
+      function refreshScreen3EvidenceContextExplanationAvailability(root) {
+        const scope = root || document;
+        const panels = Array.prototype.slice.call(
+          scope.querySelectorAll('[data-screen3-evidence-context-panel="true"]')
+        );
+        if (!panels.length) {
+          return Promise.resolve(false);
+        }
+        panels.forEach(function (panel) {
+          const button = panel.querySelector(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR);
+          const providerMode = safeStateValue(
+            button && button.getAttribute('data-screen3-evidence-context-provider-mode')
+          ).toLowerCase() || 'off';
+          setScreen3EvidenceContextExplanationAvailability(panel, {
+            providerMode: providerMode,
+            routeStatus: 'not-checked',
+            workflowStatus: 'not-checked'
+          });
+        });
+        if (!window.fetch) {
+          setCurrentPageWorkflowStatus('unavailable', 'screen3-evidence-context-health');
+          panels.forEach(function (panel) {
+            setScreen3EvidenceContextExplanationAvailability(panel, {
+              providerMode: panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+              routeStatus: 'unavailable',
+              workflowStatus: 'unavailable',
+              message: screen3EvidenceContextRouteUnavailableMessage('unavailable')
+            });
+          });
+          return Promise.resolve(false);
+        }
+        return window.fetch(PHASE7_DASHBOARD_HEALTH_ENDPOINT, { method: 'GET' })
+          .then(function (response) {
+            return response.json().catch(function () {
+              return {};
+            }).then(function (payload) {
+              const routeAvailable = response.ok && screen3EvidenceContextHealthRouteAvailable(payload);
+              const routeStatus = routeAvailable ? 'available' : 'unavailable';
+              const workflowStatus = response.ok ? 'available' : 'unavailable';
+              setCurrentPageWorkflowStatus(workflowStatus, 'screen3-evidence-context-health');
+              const providerMode = safeStateValue(
+                payload.screen3_evidence_context_explanation_provider_mode
+              ).toLowerCase();
+              panels.forEach(function (panel) {
+                setScreen3EvidenceContextExplanationAvailability(panel, {
+                  providerMode: providerMode || panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+                  routeStatus: routeStatus,
+                  workflowStatus: workflowStatus
+                });
+              });
+              return routeAvailable;
+            });
+          })
+          .catch(function () {
+            setCurrentPageWorkflowStatus('unavailable', 'screen3-evidence-context-health');
+            panels.forEach(function (panel) {
+              setScreen3EvidenceContextExplanationAvailability(panel, {
+                providerMode: panel.getAttribute('data-screen3-evidence-context-provider-mode') || 'off',
+                routeStatus: 'unavailable',
+                workflowStatus: 'unavailable',
+                message: screen3EvidenceContextRouteUnavailableMessage('unavailable')
+              });
+            });
+            return false;
+          });
+      }
+
+      function dashboardScreen3EvidenceContextExplanationProvider(context) {
+        if (!window.fetch) {
+          return Promise.reject(new Error('fetch unavailable'));
+        }
+        const payload = Object.assign({}, context || {}, {
+          screen_id: 'screen_3',
+          request_type: 'screen3_evidence_context_explanation',
+          context_type: 'evidence_context',
+          non_mutating_explanation_only: true
+        });
+        return window.fetch(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(function (response) {
+          return response.json().catch(function () {
+            return {};
+          }).then(function (payload) {
+            if (!response.ok) {
+              const error = new Error(payload && payload.message ? payload.message : 'provider request failed');
+              error.payload = payload;
+              error.httpStatus = response.status;
+              throw error;
+            }
+            return payload;
+          });
+        });
+      }
+      window.dashboardScreen3EvidenceContextExplanationProvider = dashboardScreen3EvidenceContextExplanationProvider;
+
+      function handleScreen3EvidenceContextExplanationClick(event) {
+        if (!event || !(event.target instanceof Element)) {
+          return;
+        }
+        const button = event.target.closest(SCREEN3_EVIDENCE_CONTEXT_EXPLANATION_GENERATE_SELECTOR);
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        const panel = button.closest('[data-screen3-evidence-context-panel="true"]');
+        if (!panel) {
+          return;
+        }
+        if (button.disabled || button.getAttribute('aria-disabled') === 'true') {
+          setScreen3EvidenceContextExplanationStatus(
+            panel,
+            'service-unavailable',
+            button.getAttribute('title') || screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+          );
+          return;
+        }
+        updateScreen3EvidenceContextPanel(readDashboardState(), document);
+        const contract = screen3EvidenceContextContractForPanel(panel);
+        const providerMode = safeStateValue(button.getAttribute('data-screen3-evidence-context-provider-mode')).toLowerCase() || 'off';
+        if (providerMode === 'off') {
+          setScreen3EvidenceContextExplanationStatus(
+            panel,
+            'provider-off',
+            'Explanation unavailable. Deterministic evidence context remains unchanged.'
+          );
+          return;
+        }
+        const providerHook = window.dashboardScreen3EvidenceContextExplanationProvider;
+        if (typeof providerHook !== 'function') {
+          setScreen3EvidenceContextExplanationAvailability(panel, {
+            providerMode: providerMode,
+            routeStatus: 'unavailable',
+            workflowStatus: panel.getAttribute('data-screen3-evidence-context-workflow-status') || 'unavailable',
+            message: screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+          });
+          return;
+        }
+        const classification = contract.context_classification || {};
+        const inventory = contract.evidence_inventory || {};
+        const context = Object.freeze({
+          provider_mode: providerMode,
+          selected_scope_identity: contract.selected_scope_identity || {},
+          evidence_inventory: inventory,
+          context_classification: classification,
+          artifact_alignment: contract.artifact_alignment || {},
+          screen4_graphics_eligibility_hints: contract.screen4_graphics_eligibility_hints || {},
+          truth_boundary: contract.truth_boundary || {},
+          cache_live_status: classification.cache_status || '',
+          target_ab_prepared_only: inventory.comparison_prepared_only === 'Prepared only',
+          deterministic_values_remain_authoritative: true,
+          non_mutating_explanation_only: true
+        });
+        setScreen3EvidenceContextExplanationStatus(
+          panel,
+          'pending-provider',
+          'Requesting review-context wording only. Deterministic evidence context remains unchanged.'
+        );
+        Promise.resolve(providerHook(context))
+          .then(function (providerResult) {
+            const explanation = screen3EvidenceContextExplanationText(providerResult && providerResult.explanation);
+            const providerStatus = safeStateValue(providerResult && providerResult.status);
+            const providerMessage = screen3EvidenceContextExplanationText(providerResult && providerResult.message);
+            if (providerStatus === 'provider_off') {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-off',
+                providerMessage || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            if (!explanation) {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-empty',
+                providerMessage || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            if (screen3EvidenceContextExplanationViolatesBoundary(explanation)) {
+              setScreen3EvidenceContextExplanationStatus(
+                panel,
+                'provider-boundary-rejected',
+                'Explanation unavailable. Deterministic evidence context remains unchanged.'
+              );
+              return;
+            }
+            applyScreen3EvidenceContextExplanation(panel, explanation);
+            setScreen3EvidenceContextExplanationStatus(
+              panel,
+              'generated-provider',
+              providerMessage || 'Review context explanation refreshed. Only explanatory wording changed.'
+            );
+          })
+          .catch(function (error) {
+            const payload = error && error.payload ? error.payload : {};
+            const message = screen3EvidenceContextExplanationText(payload.message);
+            if (!error || !error.httpStatus || error.httpStatus === 404) {
+              setScreen3EvidenceContextExplanationAvailability(panel, {
+                providerMode: providerMode,
+                routeStatus: 'unavailable',
+                workflowStatus: panel.getAttribute('data-screen3-evidence-context-workflow-status') || 'unavailable',
+                message: message || screen3EvidenceContextRouteUnavailableMessage(panel.getAttribute('data-screen3-evidence-context-workflow-status'))
+              });
+              return;
+            }
+            setScreen3EvidenceContextExplanationStatus(
+              panel,
+              'provider-failed',
+              message || 'Explanation unavailable. Deterministic evidence context remains unchanged.'
+            );
+          });
+      }
+
+      function buildGenericSelectedSummary(state) {
         const safeState = sanitizeDashboardState(state);
         const parts = DASHBOARD_STATE_KEYS
           .filter(function (key) { return Boolean(safeState[key]); })
@@ -8265,12 +10055,31 @@
           'Semantic context remains reviewer-assist only. ' +
           'Learning candidates remain proposal/review context only. '
         );
-        const summaryText = parts.length
-          ? safetyText + 'Active selections: ' + parts.join(' | ')
-          : safetyText + 'No exploratory selection.';
+        return {
+          text: parts.length
+            ? safetyText + 'Active selections: ' + parts.join(' | ')
+            : safetyText + 'No exploratory selection.',
+          empty: !parts.length
+        };
+      }
+
+      function selectedSummaryForElement(element, state) {
+        const summaryKind = safeStateValue(
+          element && element.getAttribute && element.getAttribute('data-dashboard-selected-summary-kind')
+        );
+        if (summaryKind === 'screen4-historical') {
+          return buildScreen4HistoricalSelectedSummary(state);
+        }
+        return buildGenericSelectedSummary(state);
+      }
+
+      function updateSelectedSummary(state, root) {
+        const scope = root || document;
+        const safeState = sanitizeDashboardState(state);
         scope.querySelectorAll(SELECTED_SUMMARY_SELECTOR).forEach(function (element) {
-          element.textContent = summaryText;
-          element.setAttribute('data-dashboard-state-empty', parts.length ? 'false' : 'true');
+          const summary = selectedSummaryForElement(element, safeState);
+          element.textContent = summary.text;
+          element.setAttribute('data-dashboard-state-empty', summary.empty ? 'true' : 'false');
         });
       }
 
@@ -8687,7 +10496,11 @@
         const source = safeStateValue(safeState.screen3LiveServiceStatusSource || '').toLowerCase();
         return Boolean(
           safeState.screen3LiveServiceStatusCheckedAt &&
-          source === 'runtime-options-response'
+          [
+            'runtime-options-response',
+            'screen3-evidence-context-health',
+            'current-page-live-check'
+          ].indexOf(source) >= 0
         );
       }
 
@@ -8970,6 +10783,8 @@
           state.screen2RuntimeOptionsLoadRequestId = '';
           state.screen3RuntimeOptionsLoadedRows = '';
           state.screen3RuntimeOptionsCount = '';
+          state.screen3RuntimeOptionsFirstLoadedAt = '';
+          state.screen3RuntimeOptionsLoadedAt = '';
           state.screen3RuntimeOptionsCacheStatus = '';
           state.screen3LiveServiceStatusSource = '';
           state.screen3LiveServiceStatusCheckedAt = '';
@@ -9029,6 +10844,7 @@
         state.screen3RuntimeOptionsCount = '0';
         state.screen3RuntimeOptionsLoadedRows = '0';
         state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
+        state.screen3RuntimeOptionsFirstLoadedAt = 'not loaded';
         state.screen3RuntimeOptionsLoadedAt = 'not loaded';
         state.screen3RuntimeOptionsIncludedTables = 'not checked';
         state.screen3RuntimeOptionsSourceTables = 'Source table coverage not reported';
@@ -9039,6 +10855,7 @@
         state.screen3LastRequestedAction = '';
         state.screen3LastActionStatus = '';
         state.screen3LastValidationStatus = '';
+        state.screen3LastAuditReference = '';
         state.screen3LastPersistenceStatus = '';
         state.screen3LastExecutionStatus = '';
         state.screen3LastOutputArtifact = '';
@@ -9065,6 +10882,8 @@
           'selectedRunReference',
           'selectedReportId',
           'selectedSnapshot',
+          'selectedSnapshotBegin',
+          'selectedSnapshotEnd',
           'selectedTimeWindow',
           'selectedRuntimeScope',
           'selectedRuntimeScopeSummary',
@@ -9086,6 +10905,7 @@
           'screen3SelectedTargetBIntervalId',
           'selectedComparisonMode',
           'selectedReviewMode',
+          'selectedComparisonMissingGates',
           'selectedComparisonTargetA',
           'selectedComparisonTargetB',
           'selectedComparisonTargetASourceType',
@@ -9110,6 +10930,8 @@
           'selectedComparisonTargetBMissingGates',
           'selectedComparisonAwrA',
           'selectedComparisonAwrB',
+          'selectedComparisonSnapshotA',
+          'selectedComparisonSnapshotB',
           'selectedComparisonWindowA',
           'selectedComparisonWindowB',
           'selectedComparisonBothComparable'
@@ -9339,7 +11161,7 @@
           const readiness = screen3RuntimeEvidencePathReadiness(safeState);
           const rows = screen3SourceContextEntries(safeState);
           const cards = rows.map(function (row) {
-            return '<article class="info-box screen2-control-info-box screen3-source-context-card' + (row.emphasis ? ' primary' : '') + '">' +
+            return '<article class="info-box screen2-control-info-box screen3-source-context-card screen2-evidence-path-status-card primary">' +
               '<strong>' + escapeHtml(row.label) + '</strong>' +
               '<div>' + escapeHtml(row.value) + '</div>' +
               '</article>';
@@ -9358,11 +11180,35 @@
         const scope = root || document;
         const safeState = sanitizeDashboardState(state || {});
         const ready = isScreen2ControlPage() && screen3RuntimeScopeIsSelected(safeState);
+        const targetASelected = Boolean(
+          safeState.screen3SelectedTargetARowId ||
+          safeState.screen3SelectedTargetAIntervalId ||
+          safeState.selectedComparisonTargetA ||
+          safeState.selectedComparisonTargetAScopeValue
+        );
+        const targetBSelected = Boolean(
+          safeState.screen3SelectedTargetBRowId ||
+          safeState.screen3SelectedTargetBIntervalId ||
+          safeState.selectedComparisonTargetB ||
+          safeState.selectedComparisonTargetBScopeValue
+        );
         scope.querySelectorAll('[data-screen2-runtime-scope-required-content="true"]').forEach(function (element) {
           element.hidden = !ready;
         });
         scope.querySelectorAll('[data-screen2-runtime-scope-empty-state="true"]').forEach(function (element) {
           element.hidden = ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-assignment-empty-state="true"]').forEach(function (element) {
+          element.hidden = ready;
+        });
+        scope.querySelectorAll('[data-screen2-runtime-assignment-summary-grid="true"]').forEach(function (element) {
+          element.hidden = !ready;
+        });
+        scope.querySelectorAll('[data-screen2-comparison-target-detail="A"]').forEach(function (element) {
+          element.hidden = !targetASelected;
+        });
+        scope.querySelectorAll('[data-screen2-comparison-target-detail="B"]').forEach(function (element) {
+          element.hidden = !targetBSelected;
         });
       }
 
@@ -11068,6 +12914,7 @@
         ) {
           delete safeState.selectedSourcePath;
         }
+        safeState = restoreCurrentSessionWorkflowLiveStatus(safeState);
         safeState = withoutInactiveSourceSelection(safeState);
         safeState = enforceCurrentScreen2EvidenceState(safeState);
         markSelectedElement(safeState, root);
@@ -11079,6 +12926,7 @@
         updateScreen1GeneratedArtifactGate(safeState, root);
         updateDashboardEvidenceGate(safeState, root);
         updateScreen3SourceHandoffEmptyState(safeState, root);
+        updateScreen3EvidenceContextPanel(safeState, root);
         updateScreen2RuntimeDependentGates(safeState, root);
         updateScreen3RuntimeFilters(safeState, root);
         applyScreen3TableStates(root);
@@ -13736,6 +15584,17 @@
           selectedTimeWindow: screen3RuntimeWindow(item),
           selectedRuntimeScopeResolutionState: 'resolved_persisted_data',
           selectedRuntimeScopeReadinessState: readinessState,
+          screen3EvidenceContextPrimary: snapshotCount && String(snapshotCount) !== '1' ? 'selected_runtime_scope' : 'single_awr',
+          screen3EvidenceContextFlags: 'selected_runtime_scope,comparison_unavailable',
+          screen3EvidenceContextTruthSource: 'governed_backend_runtime_options',
+          screen3EvidenceContextCacheStatus: 'live_backend_metadata',
+          screen3ArtifactAlignmentStatus: 'unknown_alignment',
+          screen3ArtifactAlignmentBasis: 'Pending generated artifact alignment check',
+          screen3ArtifactAlignmentReason: 'Artifact alignment requires selected scope identity and generated artifact identity.',
+          screen3SingleAwrGraphicsHint: 'eligible_if_screen4_has_selected_scope_evidence',
+          screen3HistoricalTrendHint: 'eligible_if_aligned_historical_evidence_exists',
+          screen3DistributionViolinsHint: 'requires_aligned_multi_sample_evidence',
+          screen3ComparisonGraphicsHint: 'unavailable_without_deterministic_comparison_output',
           existingRunLookupStatus: 'valid'
         };
         screen3ApplyStateAttributes(row, runtimeScopeStateAttributes);
@@ -14058,6 +15917,31 @@
         updateScreen3ResultPanelFromSelection(refreshedState, document);
       }
 
+      function setScreen3RuntimeOptionsButtonsBusy(activeControl, busy, refreshRequested) {
+        document.querySelectorAll(SCREEN3_OPTIONS_LOAD_SELECTOR).forEach(function (button) {
+          if (!button.hasAttribute('data-screen3-runtime-options-original-label')) {
+            button.setAttribute(
+              'data-screen3-runtime-options-original-label',
+              safeStateValue(button.textContent || '')
+            );
+          }
+          const originalLabel = safeStateValue(
+            button.getAttribute('data-screen3-runtime-options-original-label')
+          ) || (button.hasAttribute('data-screen3-runtime-options-refresh') ? 'Refresh options' : 'Load available runtime options');
+          if (busy) {
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+            if (button === activeControl) {
+              button.textContent = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';
+            }
+            return;
+          }
+          button.disabled = false;
+          button.setAttribute('aria-disabled', 'false');
+          button.textContent = originalLabel;
+        });
+      }
+
       function handleScreen3RuntimeOptionsLoadClick(event) {
         if (!event || !(event.target instanceof Element)) {
           return;
@@ -14069,14 +15953,18 @@
         event.preventDefault();
         const refreshRequested = control.hasAttribute('data-screen3-runtime-options-refresh');
         const nextState = readDashboardState();
+        const priorFirstLoadedAt = safeStateValue(nextState.screen3RuntimeOptionsFirstLoadedAt || '');
         clearScreen2ExistingEvidenceState(nextState, { clearRuntimeOptions: true });
+        nextState.screen3RuntimeOptionsFirstLoadedAt = priorFirstLoadedAt || nextState.screen3RuntimeOptionsFirstLoadedAt || 'not loaded';
         nextState.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
         nextState.screen3LastActionStatus = 'Loading runtime options';
         nextState.screen3LastValidationStatus = 'pending';
         nextState.screen3LastExecutionStatus = 'Not executed';
         nextState.screen3LastNextStep = 'Waiting for workflow service response.';
-        nextState.screen3RuntimeOptionsStatus = 'pending';
-        nextState.screen3RuntimeOptionsMessage = 'Loading existing runtime evidence inventory through the governed workflow service.';
+        nextState.screen3RuntimeOptionsStatus = refreshRequested ? 'Refreshing options...' : 'Loading runtime options...';
+        nextState.screen3RuntimeOptionsMessage = refreshRequested
+          ? 'Refreshing existing runtime evidence inventory through the governed workflow service.'
+          : 'Loading existing runtime evidence inventory through the governed workflow service.';
         nextState.screen3RuntimeOptionsCount = nextState.screen3RuntimeOptionsCount || '0';
         nextState.screen3RuntimeOptionsLoadedRows = nextState.screen3RuntimeOptionsLoadedRows || '0';
         nextState.screen3RuntimeOptionsDbPersistenceStatus = 'checking';
@@ -14084,7 +15972,8 @@
         nextState.screen3RuntimeOptionsCacheStatus = refreshRequested
           ? 'Refreshing runtime options through workflow service.'
           : 'Loading runtime options through workflow service.';
-        nextState.screen3LiveServiceStatus = 'Checking';
+        setCurrentPageWorkflowStatus('checking', 'runtime-options-response', nextState);
+        setScreen3RuntimeOptionsButtonsBusy(control, true, refreshRequested);
         writeDashboardState(nextState);
         invokePhase7Service(PHASE7_SCREEN3_OPTIONS_ENDPOINT, {
           screen_id: 'screen_3',
@@ -14123,6 +16012,7 @@
           phase8_started: false,
           run_analysis_coupling: false
         }).then(function (result) {
+          setScreen3RuntimeOptionsButtonsBusy(control, false, refreshRequested);
           const body = result.body || {};
           const state = readDashboardState();
           const routeUnavailable = result.status === 404 ||
@@ -14132,7 +16022,7 @@
           const noOptions = !routeUnavailable && !dbUnavailable &&
             (body.validation_status === 'empty' || Number(body.run_count || 0) === 0);
           const serviceMessage = routeUnavailable
-            ? 'Workflow service does not expose the runtime-control options route. Restart current dashboard_workflow_service.py.'
+            ? 'Dashboard workflow service is available, but it does not expose the runtime-control options route. Restart dashboard_workflow_service.py.'
             : screen2RuntimeOptionsProductMessage(body.message || 'Runtime-control options request completed.');
           const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
           const sourceTables = Array.isArray(body.runtime_options_source_tables)
@@ -14140,22 +16030,29 @@
             : (Array.isArray(metadata.runtime_options_source_tables) ? metadata.runtime_options_source_tables : []);
           const selectableRowCount = Number(body.run_count || 0) || 0;
           const optionsLoaded = result.ok && body.status === 'accepted' && Number(body.run_count || 0) > 0;
+          const sourceSummary = screen3RuntimeSourceTableSummary(sourceTables);
+          const liveSuccessMessage = 'Loaded ' + selectableRowCount + ' runtime option row(s) from the governed workflow service. Evidence sources: ' + sourceSummary + '.';
           state.screen3RuntimeOptionsStatus = routeUnavailable
             ? 'route unavailable'
             : 'route available';
-          state.screen3LiveServiceStatus = routeUnavailable
-            ? 'Unavailable'
-            : (result.ok ? 'Available' : 'Error');
-          state.screen3LiveServiceStatusSource = 'runtime-options-response';
-          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
-          state.screen3RuntimeOptionsMessage = serviceMessage;
+          setCurrentPageWorkflowStatus(
+            routeUnavailable ? 'unavailable' : (result.ok ? 'available' : 'unavailable'),
+            'runtime-options-response',
+            state
+          );
+          state.screen3RuntimeOptionsMessage = optionsLoaded ? liveSuccessMessage : serviceMessage;
           state.screen3RuntimeOptionsCount = String(body.option_count || body.run_count || 0);
           state.screen3RuntimeOptionsLoadedRows = String(selectableRowCount);
           state.screen3RuntimeOptionsDbPersistenceStatus = routeUnavailable
             ? 'not checked'
             : (body.db_persistence_status || (dbUnavailable ? 'unavailable' : 'available'));
-          state.screen3RuntimeOptionsLoadedAt = new Date().toISOString();
-          state.screen3RuntimeOptionsSourceTables = screen3RuntimeSourceTableSummary(sourceTables);
+          const successfulLoadAt = new Date().toISOString();
+          state.screen3RuntimeOptionsLoadedAt = successfulLoadAt;
+          state.screen3RuntimeOptionsFirstLoadedAt = safeStateValue(state.screen3RuntimeOptionsFirstLoadedAt || '');
+          if (optionsLoaded && (!state.screen3RuntimeOptionsFirstLoadedAt || state.screen3RuntimeOptionsFirstLoadedAt === 'not loaded')) {
+            state.screen3RuntimeOptionsFirstLoadedAt = successfulLoadAt;
+          }
+          state.screen3RuntimeOptionsSourceTables = sourceSummary;
           state.screen3RuntimeOptionsIncludedTables = screen3RuntimeIncludedTableSummary(sourceTables, selectableRowCount);
           state.screen3RuntimeOptionsCoverageMessage = metadata.runtime_options_source_note || body.runtime_options_source_note || 'Source table coverage not reported';
           state.screen3RuntimeOptionsCacheStatus = optionsLoaded
@@ -14196,7 +16093,7 @@
           state.screen3LastOutputArtifact = '';
           state.screen3LastNewRunOutputReference = '';
           state.screen3LastNextStep = routeUnavailable
-            ? 'Restart current dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
+            ? 'Restart dashboard_workflow_service.py so Screen 2 Control can load DB-backed runtime options.'
             : (
               optionsLoaded
                 ? 'Select a current DB-backed AWR/run, interval, comparison target, and review mode before downstream readiness.'
@@ -14238,12 +16135,13 @@
           writeDashboardState(state);
           updateScreen3RuntimeOptionPanels(body, state);
         }).catch(function () {
+          setScreen3RuntimeOptionsButtonsBusy(control, false, refreshRequested);
           const state = readDashboardState();
           const fallbackCache = readScreen3RuntimeOptionsCache();
           state.screen3RuntimeOptionsStatus = 'unavailable';
           state.screen3RuntimeOptionsMessage = fallbackCache
-            ? 'Refresh failed; cached runtime options were not activated. Re-query the workflow service before using runtime options for active evidence readiness.'
-            : 'Runtime options service unavailable. Start or restart current dashboard_workflow_service.py to load existing runtime evidence inventory.';
+            ? 'Dashboard workflow service unavailable. Cached runtime options can remain visible for continuity only; re-query the workflow service before using runtime options for active evidence readiness.'
+            : 'Dashboard workflow service unavailable. run_analysis.py should have started it; check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and http://127.0.0.1:8765/phase7/dashboard/health. Build-time AI DB connection remains separate from browser runtime workflow service.';
           state.screen3RuntimeOptionsCount = '0';
           state.screen3RuntimeOptionsLoadedRows = '0';
           state.screen3RuntimeOptionsDbPersistenceStatus = 'not checked';
@@ -14252,25 +16150,24 @@
           state.screen3RuntimeOptionsCoverageMessage = fallbackCache
             ? 'Runtime options source tables were not refreshed because the service was unavailable.'
             : 'Runtime options source tables were not checked because the service was unavailable.';
-          state.screen3LiveServiceStatus = 'Error';
-          state.screen3LiveServiceStatusSource = 'runtime-options-response';
-          state.screen3LiveServiceStatusCheckedAt = new Date().toISOString();
+          state.screen3LiveServiceStatus = 'Unavailable';
+          setCurrentPageWorkflowStatus('unavailable', 'runtime-options-response', state);
           state.screen3RuntimeOptionsCacheStatus = fallbackCache
             ? 'Cached runtime options exist from ' + safeStateValue(fallbackCache.cached_at || 'unknown time') + ', but are continuity context only and not active evidence.'
             : 'No runtime options cache is available.';
           state.screen3LastRequestedAction = refreshRequested ? 'Refresh Runtime Options' : 'Load Runtime Options';
-          state.screen3LastActionStatus = 'Runtime options service unavailable';
+          state.screen3LastActionStatus = 'Dashboard workflow service unavailable';
           state.screen3LastValidationStatus = 'service_unavailable';
           state.screen3LastPersistenceStatus = 'unavailable';
           state.screen3LastExecutionStatus = 'Not executed';
           state.screen3LastNextStep = fallbackCache
-            ? 'Workflow service unavailable. Cached runtime options remain visible as continuity context; retry Refresh options when service is available.'
-            : 'Start or restart current dashboard_workflow_service.py, then load runtime options again.';
+            ? 'Dashboard workflow service unavailable. Cached runtime options remain visible as continuity context; retry Refresh options when service is available.'
+            : 'Check .runtime/dashboard_workflow_service.pid, .runtime/dashboard_workflow_service.log, and the dashboard health URL, then load runtime options again.';
           if (fallbackCache) {
             showScreen3CachedRuntimeOptionsAfterRefreshFailure(
               fallbackCache,
               state,
-              'Refresh failed; cached runtime options were restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.'
+              'Dashboard workflow service unavailable. Cached runtime options were restored for continuity only. Re-query the workflow service before using runtime options for active evidence readiness.'
             );
             return;
           }
@@ -14970,6 +16867,7 @@
 	          document.addEventListener('click', handleScreen1GovernanceReviewItemClick);
 	          document.addEventListener('click', handleScreen1GovernanceSubmitClick);
           document.addEventListener('click', handleScreen2GenerateExplanationClick);
+          document.addEventListener('click', handleScreen3EvidenceContextExplanationClick);
           document.addEventListener('click', handlePhase7ActionClick);
           document.addEventListener('click', handleScreen3RuntimeSelectionClearClick);
           document.addEventListener('click', handleScreen3RuntimeOptionsLoadClick);
@@ -14994,14 +16892,17 @@
 	          });
 	          dashboardInteractivityInitialized = true;
 	        }
+        invalidateStaleDashboardRuntimeCache();
         if (screen2ShouldHydrateFromPersistentState()) {
           const restoredState = restoreScreen3RuntimeOptionsFromCache(scope);
           if (restoredState) {
+            refreshScreen3EvidenceContextExplanationAvailability(scope);
             return restoredState;
           }
         }
 	        const appliedState = applyDashboardState(readDashboardState(), scope);
           reconcileScreen1SourceIntakeStatus(scope, appliedState);
+          refreshScreen3EvidenceContextExplanationAvailability(scope);
           return appliedState;
 	      }
 

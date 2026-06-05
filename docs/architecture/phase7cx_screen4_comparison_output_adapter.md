@@ -132,3 +132,5 @@ Those require future evidence shapes such as aligned time-series points, distrib
 ## Future Sequence
 
 After 7CX-D review, the next safe step is 7CX-E: Screen 4 Rich Comparative Evidence View Design. Rich tables, deltas, graphs, and violins should remain deferred until the validated contract contains the required evidence and `allowed_visualizations` explicitly permits the visualization.
+
+The 7CX-E design is documented in `docs/architecture/phase7cx_screen4_rich_comparative_evidence_view.md`.

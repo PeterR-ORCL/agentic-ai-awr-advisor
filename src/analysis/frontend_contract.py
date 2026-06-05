@@ -2900,12 +2900,12 @@ def _build_historical_executive_explanation(
     if primary_proof:
         explanation += (
             f" The page leads with {', '.join(primary_proof[:3])} as the strongest "
-            "historical proof."
+            "available historical evidence."
         )
     if supporting_proof:
         explanation += f" Supporting evidence stays with {', '.join(supporting_proof[:2])}."
     elif not visual_support.get("cpu_supported") and str(primary_issue).upper() == "CPU":
-        explanation += " CPU still anchors the historical interpretation, but direct trend coverage is limited in this window."
+        explanation += " Available CPU evidence supports the historical interpretation, but direct trend coverage is limited in this window."
     return explanation
 
 
@@ -3755,7 +3755,7 @@ def _build_historical_topology_platform_review(
         else:
             rac_summary = (
                 "Historical window contains repeated cluster-wait or GC evidence, "
-                "so RAC coordination remains part of the supporting comparison context."
+                "so RAC coordination remains part of the RAC supporting context."
             )
 
     data_guard_summary = None
@@ -3768,7 +3768,7 @@ def _build_historical_topology_platform_review(
         else:
             data_guard_summary = (
                 "Historical window contains explicit transport/apply lag evidence, "
-                "so Data Guard remains part of the supporting comparison context."
+                "so Data Guard remains part of the Data Guard supporting context."
             )
 
     exadata_summary = (

@@ -33,6 +33,10 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         self.assertTrue(hasattr(dashboard, "_render_screen4_mode_selector_shell"))
         self.assertTrue(hasattr(dashboard, "_render_screen4_historical_trend_panels"))
         self.assertTrue(hasattr(dashboard, "_build_screen4_evidence_context"))
+        self.assertTrue(hasattr(dashboard, "_screen4_validate_deterministic_comparison_output"))
+        self.assertTrue(hasattr(dashboard, "_screen4_build_comparative_review_state"))
+        self.assertTrue(hasattr(dashboard, "_screen4_comparison_visualization_allowed"))
+        self.assertTrue(hasattr(dashboard, "_render_screen4_comparative_review_panel"))
         self.assertTrue(hasattr(dashboard, "_screen4_graphic_allowed"))
         self.assertTrue(hasattr(dashboard, "_render_screen4_graphic_guard_empty_state"))
 
@@ -59,7 +63,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Fleet / Population",
             "No fleet/population graphics until a fleet evidence contract exists.",
             "Comparison Review Eligibility",
-            "Prepared only; no deterministic comparison output",
+            "No prepared comparison context",
             "Graphics Boundary",
             "Page identity alone cannot select graphics.",
             'data-screen4-evidence-context-guard="true"',
@@ -105,7 +109,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Prepared targets are selected context only",
             "Target A/B prepared-only state is not comparison output.",
             "Selected targets and cache-restored state do not create comparison evidence.",
-            "Deterministic comparison output is required before A/B diagrams or future comparison violin panels can render.",
+            "Deterministic comparison output is required before comparative graphics can render.",
             "Screen 4 does not compute comparison in the browser.",
             "Deep Analysis is reserved for future structured expert evidence review.",
             "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
@@ -132,7 +136,9 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         required = (
             "Historical Artifact Context",
             "Historical Context Summary",
-            "Historical Context Posture",
+            "Historical Risk Signal",
+            "Historical Action Posture",
+            "Risk reflects the historical signal level; posture reflects the deterministic diagnostic handling path.",
             "Historical review actions are preview-only",
             "Historical supporting context only; this does not override Screen 3 selected-scope diagnosis.",
         )
@@ -144,6 +150,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Current Selection Summary",
             "Historical Verdict",
             "Historical Posture",
+            "Historical Context Posture",
             "Historical review disabled in this phase",
         )
         for phrase in forbidden:
@@ -336,13 +343,81 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Selection only highlights deterministic historical context",
             "Cross-Screen Selection Propagation is browser-side only",
             "URL hash/localStorage state is not authoritative truth",
-            "Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output",
-            "LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists",
-            "it does not compute comparison meaning or decide improvement/degradation",
+            "Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output",
+            "LLM-assisted wording may explain validated deterministic comparison output only after that output exists",
+            "it does not compute comparison meaning or decide outcome direction",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+
+    def test_screen4_comparative_review_guarded_state_panel_exists(self) -> None:
+        rendered = self.render_screen4()
+
+        required_phrases = (
+            "Comparative Review Guarded State",
+            "Comparative Review is not ready yet.",
+            "No governed deterministic comparison output has been returned to Screen 4.",
+            "Prepared Target A/B context can identify what should be compared, but it does not create comparison evidence.",
+            "No prepared comparison context is available for Screen 4.",
+            "Target A/B selections are preparation only.",
+            "Deterministic comparison output is required before Screen 4 can show comparative evidence.",
+            "No comparison graphics are available because no validated deterministic comparison output contract is present.",
+            "No comparison visualizations are permitted for this state.",
+            "Prepare Target A/B context upstream before comparative review.",
+            'data-screen4-mode-section="comparative-review"',
+            'data-screen4-comparative-review-state="comparison_unavailable"',
+            'data-screen4-comparison-output-ready="false"',
+            'data-screen4-comparison-graphics-state="blocked"',
+        )
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        comparative_section = rendered[
+            rendered.index("screen4-comparative-review-guard"):
+            rendered.index("screen4-historical-exploration")
+        ].lower()
+        for forbidden in (
+            "improved",
+            "degraded",
+            "stable",
+            "better",
+            "worse",
+            "winner",
+            "loser",
+            "delta conclusion",
+            "comparison trend",
+            "comparison-violin-panel",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, comparative_section)
+
+    def test_screen4_wording_keeps_historical_context_distinct_from_comparison(self) -> None:
+        dashboard = dashboard_module()
+        rendered = self.render_screen4()
+        gated = dashboard._wrap_downstream_evidence_gate("screen_4", "<div>body</div>")
+
+        self.assertIn(
+            "Target A/B preparation alone does not create Screen 4 comparison evidence.",
+            gated,
+        )
+        self.assertIn("Complete source intake or select a runtime scope first.", gated)
+
+        forbidden_historical_phrases = (
+            "comparison context only",
+            "supporting comparison context",
+            "cluster comparison context",
+            "historical comparison only",
+            "period comparison",
+            "historical proof",
+            "strongest historical proof",
+            "CPU-led historical story",
+            "CPU remains dominant across the selected window",
+        )
+        for phrase in forbidden_historical_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase.lower(), rendered.lower())
 
     def test_screen4_historical_trend_panels_productize_existing_evidence(self) -> None:
         rendered = self.render_screen4()

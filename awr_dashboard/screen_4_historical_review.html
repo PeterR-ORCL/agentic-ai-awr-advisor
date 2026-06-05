@@ -5449,8 +5449,8 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="Jun 5, 2026, 9:47 AM"
-      data-dashboard-generated-session-id="dashboard-run-1780667257329945000">
+<body data-dashboard-generated-at="Jun 5, 2026, 11:46 AM"
+      data-dashboard-generated-session-id="dashboard-run-1780674370782026000">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5655,7 +5655,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: Jun 5, 2026, 9:47 AM</div>
+        <div class="hero-meta">Generated: Jun 5, 2026, 11:46 AM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link active" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5667,7 +5667,7 @@
              data-dashboard-evidence-page="screen_4">
       <div class="section-kicker">Evidence Readiness</div>
       <h2>Evidence Handoff Required</h2>
-      <p class="meta">No review evidence is selected yet. Complete source intake or select a runtime scope/comparison context first.</p>
+      <p class="meta">No review evidence is selected yet. Complete source intake or select a runtime scope first. Target A/B preparation alone does not create Screen 4 comparison evidence.</p>
     </section>
     <div data-dashboard-evidence-gated-content="true"
          data-dashboard-evidence-page="screen_4"
@@ -5729,10 +5729,11 @@
             <h3>Historical Context Summary</h3>
             <div class="meta">
               Historical supporting context only; this does not override Screen 3 selected-scope diagnosis.
+              Risk reflects the historical signal level; posture reflects the deterministic diagnostic handling path.
             </div>
             <div class="info-grid screen4-verdict-grid">
             <div class="info-box">
-              <strong>Risk</strong>
+              <strong>Historical Risk Signal</strong>
               <div>OK</div>
             </div>
 
@@ -5747,7 +5748,7 @@
             </div>
 
             <div class="info-box">
-              <strong>Historical Context Posture</strong>
+              <strong>Historical Action Posture</strong>
               <div>TUNE FIRST</div>
             </div>
 
@@ -5807,7 +5808,7 @@
 
             <div class="info-box">
               <strong>Comparison Review Eligibility</strong>
-              <div>Prepared only; no deterministic comparison output</div>
+              <div>No prepared comparison context</div>
             </div>
 
             <div class="info-box">
@@ -5847,7 +5848,7 @@
                 <strong>Prepared only</strong>
                 <span>Comparative Review</span>
                 <p>Unavailable until deterministic comparison output exists</p>
-                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; Target A/B prepared-only state is not comparison output. Selected targets and cache-restored state do not create comparison evidence. Deterministic comparison output is required before A/B diagrams or future comparison violin panels can render. Screen 4 does not compute comparison in the browser.</p>
+                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; Target A/B prepared-only state is not comparison output. Selected targets and cache-restored state do not create comparison evidence. Deterministic comparison output is required before comparative graphics can render. Screen 4 does not compute comparison in the browser.</p>
                 <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No browser comparison</span></div>
               </article>
 
@@ -5865,6 +5866,63 @@
       </section>
 
 
+      <section class="card secondary screen4-comparative-review-guard"
+               data-screen4-mode-section="comparative-review"
+               data-screen4-comparative-review-state="comparison_unavailable"
+               data-screen4-comparison-output-ready="false"
+               data-screen4-comparison-graphics-state="blocked">
+        <div class="section-kicker">Comparative Review</div>
+        <h2>Comparative Review Guarded State</h2>
+        <p class="meta">
+          Comparative Review is not ready yet. No governed deterministic comparison output has been returned to Screen 4. Prepared Target A/B context can identify what should be compared, but it does not create comparison evidence.
+          No prepared comparison context is available for Screen 4.
+          Target A/B selections are preparation only.
+          Deterministic comparison output is required before Screen 4 can show comparative evidence.
+        </p>
+        <div class="info-grid screen4-comparative-review-state-grid">
+            <div class="info-box">
+              <strong>State</strong>
+              <div>comparison_unavailable</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Preparation Boundary</strong>
+              <div>No prepared comparison context is available for Screen 4.</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Output Boundary</strong>
+              <div>No governed deterministic comparison output has been returned to Screen 4.</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Graphics Boundary</strong>
+              <div>No comparison graphics are available because no validated deterministic comparison output contract is present.</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Allowed Visualizations</strong>
+              <div>No comparison visualizations are permitted for this state.</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Validation Reason</strong>
+              <div>comparison_output_missing_or_not_mapping</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Required Next Step</strong>
+              <div>Prepare Target A/B context upstream before comparative review.</div>
+            </div>
+            </div>
+
+        <div class="chart-empty screen4-graphic-guard-empty">
+          No Target A/B prepared identity is available for this Screen 4 export.
+        </div>
+
+      </section>
+
+
       <section class="card secondary screen4-historical-exploration">
         <div class="section-kicker">Screen 4 Historical Review Exploration</div>
         <h2>Screen 4 Historical Review Exploration</h2>
@@ -5878,8 +5936,8 @@
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
-          Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output.
-          LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists; it does not compute comparison meaning or decide improvement/degradation.
+          Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output.
+          LLM-assisted wording may explain validated deterministic comparison output only after that output exists; it does not compute comparison meaning or decide outcome direction.
         </p>
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen4-selected-historical-panel">
@@ -6410,7 +6468,7 @@
                 <strong>Distribution</strong>
                 <span>Topology Distributions</span>
                 <p>1 rendered distribution metric(s)</p>
-                <p>Broader cluster and Data Guard measures remain available for historical comparison only; they do not govern the selected single-instance interpretation, and the combined GC trend is the summed GC current + GC CR pressure.</p>
+                <p>Broader cluster and Data Guard measures remain available as historical supporting context only; they do not govern the selected single-instance interpretation, and the combined GC trend is the summed GC current + GC CR pressure.</p>
               </article>
 
               <article
@@ -6446,7 +6504,7 @@
                 <strong>Distribution</strong>
                 <span>Per-Instance RAC Distributions</span>
                 <p>1 rendered distribution metric(s)</p>
-                <p>Per-instance RAC values remain available as broader cluster comparison context only. These are not mixed with cluster-level distributions.</p>
+                <p>Per-instance RAC values remain available as broader cluster supporting context only. These are not mixed with cluster-level distributions.</p>
               </article>
 
               <article
@@ -7019,7 +7077,7 @@
 
         <div class="violin-group violin-group-topology">
           <h3>Topology Distributions</h3>
-          <p class="violin-group-note">Broader cluster and Data Guard measures remain available for historical comparison only; they do not govern the selected single-instance interpretation, and the combined GC trend is the summed GC current + GC CR pressure</p>
+          <p class="violin-group-note">Broader cluster and Data Guard measures remain available as historical supporting context only; they do not govern the selected single-instance interpretation, and the combined GC trend is the summed GC current + GC CR pressure</p>
           <div class="violin-grid">
 
               <section class="violin-chart-card">
@@ -7032,7 +7090,7 @@
 
         <div class="violin-group violin-group-rac-instance">
           <h3>Per-Instance RAC Distributions</h3>
-          <p class="violin-group-note">Per-instance RAC values remain available as broader cluster comparison context only. These are not mixed with cluster-level distributions</p>
+          <p class="violin-group-note">Per-instance RAC values remain available as broader cluster supporting context only. These are not mixed with cluster-level distributions</p>
           <div class="violin-grid">
 
               <section class="violin-chart-card">
@@ -7399,12 +7457,12 @@
           <div class="info-grid screen4-topology-grid">
             <div class="info-box">
               <strong>RAC Summary</strong>
-              <div>Historical window contains repeated cluster-wait or GC evidence, so RAC coordination remains part of the supporting comparison context.</div>
+              <div>Historical window contains repeated cluster-wait or GC evidence, so RAC coordination remains part of the RAC supporting context.</div>
             </div>
 
             <div class="info-box">
               <strong>Data Guard Summary</strong>
-              <div>Historical window contains explicit transport/apply lag evidence, so Data Guard remains part of the supporting comparison context.</div>
+              <div>Historical window contains explicit transport/apply lag evidence, so Data Guard remains part of the Data Guard supporting context.</div>
             </div>
 
             <div class="info-box">
@@ -7438,7 +7496,7 @@
     </div>
 
 
-    <div class="footer">Generated at Jun 5, 2026, 9:47 AM</div>
+    <div class="footer">Generated at Jun 5, 2026, 11:46 AM</div>
   </div>
 
   <script>

@@ -576,7 +576,7 @@ VIOLIN_METRIC_GROUP_DEFINITIONS: list[_ViolinMetricGroupDefinition] = [
         "group_key": "topology",
         "group_title": "Topology Distributions",
         "group_note": (
-            "Broader cluster and Data Guard measures remain available for historical comparison only; "
+            "Broader cluster and Data Guard measures remain available as historical supporting context only; "
             "they do not govern the selected single-instance interpretation, and the combined GC trend is the summed GC current + GC CR pressure."
         ),
         "metrics": [
@@ -653,7 +653,7 @@ VIOLIN_METRIC_GROUP_DEFINITIONS: list[_ViolinMetricGroupDefinition] = [
         "group_key": "rac_instance",
         "group_title": "Per-Instance RAC Distributions",
         "group_note": (
-            "Per-instance RAC values remain available as broader cluster comparison context only. "
+            "Per-instance RAC values remain available as broader cluster supporting context only. "
             "These are not mixed with cluster-level distributions."
         ),
         "metrics": [
@@ -902,7 +902,7 @@ def _final_dashboard_html_polish(html: str) -> str:
         ),
         (
             "CPU-led evidence remains primary",
-            "CPU evidence remains one of the more visible signals in the historical window, but not consistently dominant",
+            "Available CPU evidence supports a tuning-first review path, but historical coverage is not sufficient to claim continuous CPU dominance across the full window",
         ),
         (
             "governing pattern-first",
@@ -935,11 +935,11 @@ def _final_dashboard_html_polish(html: str) -> str:
     regex_replacements = (
         (
             r"\bthe workload remained primarily CPU-led\b",
-            "CPU evidence was not sufficiently populated to confirm CPU dominance",
+            "historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance across the full window",
         ),
         (
             r"\bthe workload remained predominantly CPU-led\b",
-            "CPU evidence was not sufficiently populated to confirm CPU dominance",
+            "historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance across the full window",
         ),
         (
             r"\bCPU remained the primary workload driver\b",
@@ -1064,7 +1064,10 @@ def _wrap_downstream_evidence_gate(page_key: str, content_html: str) -> str:
 
     empty_messages = {
         "screen_3": "No diagnostic evidence is selected yet. Complete Screen 1 source intake or select a DB-backed runtime scope on Screen 2.",
-        "screen_4": "No review evidence is selected yet. Complete source intake or select a runtime scope/comparison context first.",
+        "screen_4": (
+            "No review evidence is selected yet. Complete source intake or select a runtime scope first. "
+            "Target A/B preparation alone does not create Screen 4 comparison evidence."
+        ),
         "screen_5": "No recommendation/action context is selected yet. Complete analysis handoff before action review.",
         "screen_6": "No learning governance context is selected yet. Complete evidence handoff before reviewing generated learning candidates.",
     }
@@ -16148,7 +16151,7 @@ def _render_screen_2_page(
     )
     return f"""
     <div class="grid">
-      <!-- Screen 3 = diagnostic snapshot only. Ingestion stays on Screen 1; historical proof stays on Screen 4; action stays on Screen 5. -->
+      <!-- Screen 3 = diagnostic snapshot only. Ingestion stays on Screen 1; historical evidence stays on Screen 4; action stays on Screen 5. -->
       <section class="card prominent diagnostic-compact-card">
         <div class="section-kicker">DECISION</div>
         <h2>Diagnostic Snapshot</h2>
@@ -18037,37 +18040,37 @@ def _screen2_clean_text(value: Any) -> str:
     )
     text = re.sub(
         r"\bAcross the full window,\s*the workload remained primarily CPU-led,\s*with average CPU data was not sufficient[^.]*\.",
-        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance. Populated summary values included average User I/O 17.1%, while Top SQL concentration could not be evaluated from available data.",
+        "Across the full window, historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance. Populated summary values included average User I/O 17.1%, while Top SQL concentration could not be evaluated from available data.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bAcross the full window,\s*the workload remained primarily CPU-led,\s*with CPU evidence was not sufficiently populated to confirm CPU dominance[^.]*\.",
-        "Across the full window, CPU evidence was not sufficiently populated to confirm CPU dominance.",
+        "Across the full window, historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance.",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bthe workload remained primarily CPU-led\b",
-        "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        "historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bCPU evidence was Insufficient data for a reliable conclusion\b",
-        "CPU evidence was not sufficiently populated to confirm CPU dominance",
+        "Historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bCPU evidence was unavailable across the populated window\b",
-        "CPU evidence was not sufficiently populated to confirm CPU dominance across the populated window",
+        "Historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance across the populated window",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bCPU evidence was not sufficiently populated\s+across the populated window\b",
-        "CPU evidence was not sufficiently populated to confirm CPU dominance across the populated window",
+        "Historical CPU evidence is incomplete, so Screen 4 should not claim continuous CPU dominance across the populated window",
         text,
         flags=re.IGNORECASE,
     )
@@ -18085,13 +18088,13 @@ def _screen2_clean_text(value: Any) -> str:
     )
     text = re.sub(
         r"\bprimarily CPU-led\b",
-        "not sufficiently populated to confirm CPU dominance",
+        "not proven continuously CPU-dominant",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r"\bpredominantly CPU-led\b",
-        "not sufficiently populated to confirm CPU dominance",
+        "not proven continuously CPU-dominant",
         text,
         flags=re.IGNORECASE,
     )
@@ -20718,7 +20721,7 @@ def _render_screen3_runtime_control_explanation_panel() -> str:
         ),
         (
             "Downstream review",
-            "Use Screen 4 for historical proof/comparison review, Screen 5 for recommendations/actions/outcomes, and Screen 6 for learning/materialization/runtime eligibility.",
+            "Use Screen 4 for historical evidence review and future Comparative Review, Screen 5 for recommendations/actions/outcomes, and Screen 6 for learning/materialization/runtime eligibility.",
         ),
     ]
     article_html = "".join(
@@ -20781,7 +20784,7 @@ def _render_screen3_reanalysis_action_ui(
         (
             "Build Comparison",
             "build_comparison",
-            "Request comparison context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical proof surface.",
+            "Request prepared Target A/B context only when structured comparison-ready payloads exist. Screen 4 remains the deeper historical evidence surface.",
             "Active readiness/request path; comparison execution blocked without comparison-ready inputs.",
             "Target A resolved, Target B resolved, both comparable, comparison mode, and review mode.",
             "Target A unresolved; Target B unresolved; target not comparable; target resolution/comparison payload missing; structured comparison payload missing; comparison artifact lifecycle missing",
@@ -21456,7 +21459,10 @@ def _build_screen4_evidence_context(
         exact_selected_scope or context_only_historical
     )
     single_awr_allowed = exact_selected_scope and not has_historical_window
-    comparison_output_available = _screen4_has_deterministic_comparison_output(screen_model)
+    comparative_review_state = _screen4_build_comparative_review_state(screen_model)
+    comparison_output_available = (
+        comparative_review_state.get("state") == "comparison_output_ready"
+    )
 
     return {
         "selected_context_label": (
@@ -21491,10 +21497,9 @@ def _build_screen4_evidence_context(
             if exact_selected_scope and has_distribution_evidence
             else "Not ready until aligned multi-sample evidence exists"
         ),
-        "comparison_review_eligibility": (
-            "Deterministic comparison output available"
-            if comparison_output_available
-            else "Prepared only; no deterministic comparison output"
+        "comparison_review_eligibility": comparative_review_state.get(
+            "eligibility_label",
+            "Prepared only; no deterministic comparison output",
         ),
         "historical_trend_panels_allowed": historical_allowed,
         "historical_trend_panels_context_only": context_only_historical,
@@ -21502,49 +21507,615 @@ def _build_screen4_evidence_context(
         "distribution_violins_context_only": context_only_historical,
         "single_awr_graphics_allowed": single_awr_allowed,
         "comparison_output_available": comparison_output_available,
+        "comparative_review_state": comparative_review_state,
         "has_historical_window": has_historical_window,
         "has_trend_evidence": has_trend_evidence,
         "has_distribution_evidence": has_distribution_evidence,
     }
 
 
-def _screen4_has_deterministic_comparison_output(
-    screen_model: dict[str, Any],
+_SCREEN4_DETERMINISTIC_COMPARISON_CONTRACT_TYPE = "deterministic_comparison_output"
+_SCREEN4_COMPARISON_REQUIRED_FIELDS = (
+    "comparison_id",
+    "baseline_run_id",
+    "candidate_run_id",
+    "source_scope",
+    "comparison_scope",
+    "generated_by",
+    "generated_at",
+    "deterministic_engine_version",
+    "metric_deltas",
+    "domain_deltas",
+    "evidence_rows",
+    "confidence_basis",
+    "missing_evidence",
+    "allowed_visualizations",
+)
+_SCREEN4_COMPARISON_ALLOWED_SOURCE_SCOPES = {
+    "single_awr",
+    "same_db_historical",
+    "fleet",
+    "population",
+    "prepared_context",
+}
+_SCREEN4_COMPARISON_ALLOWED_SCOPES = {
+    "target_a_vs_target_b",
+    "period",
+    "run",
+    "report",
+}
+_SCREEN4_COMPARISON_READY_MARKERS = {
+    "comparison_ready",
+    "comparison_evidence_ready",
+    "evidence_ready",
+    "ready_for_comparison",
+    "ready",
+    "comparable",
+}
+_SCREEN4_COMPARISON_MISSING_MARKERS = {
+    "missing",
+    "missing_evidence",
+    "load_required",
+    "ingest_required",
+    "analysis_required",
+    "parser_required",
+    "structured_evidence_required",
+    "evidence_required",
+    "not_ready",
+    "not ready",
+}
+_SCREEN4_COMPARISON_NON_OUTPUT_MARKERS = {
+    "",
+    "none",
+    "n/a",
+    "na",
+    "not created",
+    "not available",
+    "unavailable",
+    "prepared only",
+    "prepared_only",
+    "comparison_prepared_only",
+    "no deterministic comparison output",
+    "cached_continuity_only",
+}
+
+
+def _screen4_validate_deterministic_comparison_output(
+    comparison_output: Any,
+    selected_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate the future Screen 4 deterministic comparison output contract."""
+
+    if not isinstance(comparison_output, dict) or not comparison_output:
+        return _screen4_comparison_validation_result(
+            False,
+            "comparison_output_missing_or_not_mapping",
+            output={},
+        )
+
+    missing_fields = [
+        field
+        for field in _SCREEN4_COMPARISON_REQUIRED_FIELDS
+        if field not in comparison_output or not _screen4_contract_field_present(comparison_output.get(field))
+    ]
+    if missing_fields:
+        return _screen4_comparison_validation_result(
+            False,
+            "required_fields_missing",
+            output=comparison_output,
+            missing_fields=missing_fields,
+        )
+
+    contract_type = str(comparison_output.get("screen4_contract_type") or "").strip()
+    if contract_type != _SCREEN4_DETERMINISTIC_COMPARISON_CONTRACT_TYPE:
+        return _screen4_comparison_validation_result(
+            False,
+            "screen4_contract_type_missing",
+            output=comparison_output,
+            missing_fields=["screen4_contract_type"],
+        )
+
+    if str(comparison_output.get("generated_by") or "").strip() != "deterministic_engine":
+        return _screen4_comparison_validation_result(
+            False,
+            "generated_by_not_deterministic_engine",
+            output=comparison_output,
+        )
+
+    source_scope = str(comparison_output.get("source_scope") or "").strip()
+    if source_scope not in _SCREEN4_COMPARISON_ALLOWED_SOURCE_SCOPES:
+        return _screen4_comparison_validation_result(
+            False,
+            "source_scope_not_allowed",
+            output=comparison_output,
+        )
+
+    comparison_scope = str(comparison_output.get("comparison_scope") or "").strip()
+    if comparison_scope not in _SCREEN4_COMPARISON_ALLOWED_SCOPES:
+        return _screen4_comparison_validation_result(
+            False,
+            "comparison_scope_not_allowed",
+            output=comparison_output,
+        )
+
+    for list_field in (
+        "metric_deltas",
+        "domain_deltas",
+        "evidence_rows",
+        "missing_evidence",
+        "allowed_visualizations",
+    ):
+        if not isinstance(comparison_output.get(list_field), list):
+            return _screen4_comparison_validation_result(
+                False,
+                f"{list_field}_not_list",
+                output=comparison_output,
+            )
+
+    confidence_basis = comparison_output.get("confidence_basis")
+    if not isinstance(confidence_basis, dict):
+        return _screen4_comparison_validation_result(
+            False,
+            "confidence_basis_not_mapping",
+            output=comparison_output,
+        )
+    if str(confidence_basis.get("basis_type") or "").strip() != "deterministic_evidence":
+        return _screen4_comparison_validation_result(
+            False,
+            "confidence_basis_not_deterministic_evidence",
+            output=comparison_output,
+        )
+    if "sample_count" not in confidence_basis:
+        return _screen4_comparison_validation_result(
+            False,
+            "confidence_basis_sample_count_missing",
+            output=comparison_output,
+            missing_fields=["confidence_basis.sample_count"],
+        )
+    if not isinstance(confidence_basis.get("limitations"), list):
+        return _screen4_comparison_validation_result(
+            False,
+            "confidence_basis_limitations_not_list",
+            output=comparison_output,
+        )
+
+    if not comparison_output.get("evidence_rows") and not _screen4_has_explicit_empty_comparison_evidence(
+        comparison_output
+    ):
+        return _screen4_comparison_validation_result(
+            False,
+            "evidence_rows_or_empty_evidence_explanation_missing",
+            output=comparison_output,
+            missing_fields=["evidence_rows"],
+        )
+
+    mismatch_fields = _screen4_target_identity_mismatches(
+        comparison_output,
+        selected_context or {},
+    )
+    if mismatch_fields:
+        return _screen4_comparison_validation_result(
+            False,
+            "target_identity_mismatch",
+            output=comparison_output,
+            missing_fields=mismatch_fields,
+        )
+
+    return _screen4_comparison_validation_result(
+        True,
+        "valid",
+        output=comparison_output,
+        allowed_visualizations=list(comparison_output.get("allowed_visualizations") or []),
+    )
+
+
+def _screen4_comparison_validation_result(
+    valid: bool,
+    reason: str,
+    *,
+    output: dict[str, Any],
+    missing_fields: list[str] | None = None,
+    allowed_visualizations: list[Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "valid": valid,
+        "reason": reason,
+        "output": output if valid else {},
+        "missing_fields": list(missing_fields or []),
+        "allowed_visualizations": [
+            str(item)
+            for item in (allowed_visualizations or [])
+            if _has_display_value(item)
+        ],
+    }
+
+
+def _screen4_contract_field_present(value: Any) -> bool:
+    if isinstance(value, (list, tuple, set, dict)):
+        return value is not None
+    return _has_display_value(value)
+
+
+def _screen4_has_explicit_empty_comparison_evidence(
+    comparison_output: dict[str, Any],
 ) -> bool:
-    comparison_review = _to_dict(screen_model.get("comparison_review"))
-    candidates = (
+    no_change_evidence = comparison_output.get("no_change_evidence")
+    if isinstance(no_change_evidence, dict):
+        basis_type = str(
+            no_change_evidence.get("basis_type")
+            or no_change_evidence.get("basis")
+            or ""
+        ).strip()
+        if (
+            basis_type == "deterministic_evidence"
+            and _has_display_value(no_change_evidence.get("explanation"))
+        ):
+            return True
+    empty_evidence_explanation = comparison_output.get("empty_evidence_explanation")
+    return _has_display_value(empty_evidence_explanation)
+
+
+def _screen4_target_identity_mismatches(
+    comparison_output: dict[str, Any],
+    selected_context: dict[str, Any],
+) -> list[str]:
+    selected_a_values = _screen4_selected_target_identity_values(selected_context, "A")
+    selected_b_values = _screen4_selected_target_identity_values(selected_context, "B")
+    mismatches: list[str] = []
+    baseline_run_id = str(comparison_output.get("baseline_run_id") or "").strip()
+    candidate_run_id = str(comparison_output.get("candidate_run_id") or "").strip()
+    if selected_a_values and baseline_run_id not in selected_a_values:
+        mismatches.append("baseline_run_id")
+    if selected_b_values and candidate_run_id not in selected_b_values:
+        mismatches.append("candidate_run_id")
+    return mismatches
+
+
+def _screen4_selected_target_identity_values(
+    selected_context: dict[str, Any],
+    suffix: str,
+) -> set[str]:
+    target = selected_context.get(f"target_{suffix.lower()}")
+    if not isinstance(target, dict):
+        target = selected_context.get(f"target{suffix}")
+    if not isinstance(target, dict):
+        target = {}
+    values = {
+        selected_context.get(f"selectedComparisonTarget{suffix}"),
+        selected_context.get(f"selectedComparisonTarget{suffix}ScopeValue"),
+        selected_context.get(f"selectedComparisonTarget{suffix}RunId"),
+        selected_context.get(f"selectedComparisonTarget{suffix}AwrId"),
+        target.get("run_id"),
+        target.get("awr_id"),
+        target.get("scope_value"),
+        target.get("identity"),
+        target.get("label"),
+    }
+    return {
+        str(value).strip()
+        for value in values
+        if _has_display_value(value)
+    }
+
+
+def _screen4_comparison_output_candidates(
+    screen_model: dict[str, Any],
+) -> list[Any]:
+    comparison_review = screen_model.get("comparison_review")
+    comparison_review_dict = comparison_review if isinstance(comparison_review, dict) else {}
+    screen4_handoff = screen_model.get("comparison_screen4_handoff")
+    screen4_handoff_dict = screen4_handoff if isinstance(screen4_handoff, dict) else {}
+    return [
         screen_model.get("deterministic_comparison_output"),
         screen_model.get("comparison_output"),
         screen_model.get("comparison_result"),
-        comparison_review.get("deterministic_comparison_output"),
-        comparison_review.get("comparison_output"),
-        comparison_review.get("comparison_artifact_reference"),
-    )
-    unavailable_markers = {
-        "",
-        "none",
-        "n/a",
-        "na",
-        "not created",
-        "not available",
-        "unavailable",
-        "prepared only",
-        "no deterministic comparison output",
+        comparison_review_dict.get("deterministic_comparison_output"),
+        comparison_review_dict.get("comparison_output"),
+        screen4_handoff_dict.get("deterministic_comparison_output"),
+        screen4_handoff_dict.get("comparison_output"),
+    ]
+
+
+def _screen4_find_valid_comparison_output(
+    screen_model: dict[str, Any],
+    selected_context: dict[str, Any],
+) -> dict[str, Any]:
+    first_invalid: dict[str, Any] | None = None
+    for candidate in _screen4_comparison_output_candidates(screen_model):
+        validation = _screen4_validate_deterministic_comparison_output(
+            candidate,
+            selected_context=selected_context,
+        )
+        if validation.get("valid"):
+            return validation
+        if first_invalid is None and candidate is not None:
+            first_invalid = validation
+    return first_invalid or _screen4_validate_deterministic_comparison_output(None)
+
+
+def _screen4_has_deterministic_comparison_output(
+    screen_model: dict[str, Any],
+) -> bool:
+    comparative_state = _screen4_build_comparative_review_state(screen_model)
+    return comparative_state.get("state") == "comparison_output_ready"
+
+
+def _screen4_build_comparative_review_state(
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    selected_context = _screen4_extract_prepared_comparison_context(screen_model)
+    validation = _screen4_find_valid_comparison_output(screen_model, selected_context)
+    prepared_targets = _screen4_prepared_target_items(selected_context)
+    allowed_visualizations = list(validation.get("allowed_visualizations") or [])
+    if validation.get("valid"):
+        state = "comparison_output_ready"
+        message = "Validated deterministic comparison output contract is present."
+        eligibility_label = "Deterministic comparison output available"
+        graphics_state = "contract-gated"
+        next_action = "Review deterministic comparison evidence from the validated contract."
+    elif _screen4_has_comparison_output_required_hint(screen_model, selected_context):
+        state = "comparison_output_required"
+        message = "Comparison-ready evidence has not been returned to Screen 4."
+        eligibility_label = "Comparison output required"
+        graphics_state = "blocked"
+        next_action = "Return governed deterministic comparison output to Screen 4."
+    elif _screen4_has_comparison_evidence_required_hint(selected_context):
+        state = "comparison_evidence_required"
+        message = "Targets are selected, but persisted structured evidence is still required."
+        eligibility_label = "Comparison evidence required"
+        graphics_state = "blocked"
+        next_action = "Prepare persisted structured evidence before requesting comparison output."
+    elif _screen4_has_prepared_comparison_context(screen_model, selected_context):
+        state = "comparison_prepared_only"
+        message = "Prepared comparison context exists."
+        eligibility_label = "Prepared only; no deterministic comparison output"
+        graphics_state = "blocked"
+        next_action = "Request governed deterministic comparison output before Screen 4 review."
+    else:
+        state = "comparison_unavailable"
+        message = "No prepared comparison context is available for Screen 4."
+        eligibility_label = "No prepared comparison context"
+        graphics_state = "blocked"
+        next_action = "Prepare Target A/B context upstream before comparative review."
+
+    return {
+        "state": state,
+        "message": message,
+        "eligibility_label": eligibility_label,
+        "graphics_state": graphics_state,
+        "next_action": next_action,
+        "prepared_targets": prepared_targets,
+        "prepared_context": selected_context,
+        "validation": validation,
+        "comparison_output_ready": state == "comparison_output_ready",
+        "allowed_visualizations": allowed_visualizations,
+        "graphics_message": (
+            "No comparison graphics are available because no validated deterministic comparison output contract is present."
+            if state != "comparison_output_ready"
+            else "Comparison graphics remain gated by allowed_visualizations for this deterministic output contract."
+        ),
     }
-    for candidate in candidates:
+
+
+def _screen4_extract_prepared_comparison_context(
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    context: dict[str, Any] = {}
+    for key in (
+        "comparison_prepared_context",
+        "comparative_review_context",
+        "comparison_context",
+        "screen3_comparison_context",
+    ):
+        candidate = screen_model.get(key)
         if isinstance(candidate, dict):
-            status = str(candidate.get("status") or candidate.get("state") or "").strip().lower()
-            if status and status not in unavailable_markers:
-                return True
-            if any(_has_display_value(value) for value in candidate.values()):
-                if status not in unavailable_markers:
-                    return True
+            context.update(candidate)
+
+    screen3_context = screen_model.get("screen3_evidence_context")
+    if isinstance(screen3_context, dict):
+        nested = screen3_context.get("comparison_context")
+        if isinstance(nested, dict):
+            context.update(nested)
+        nested = screen3_context.get("comparison_prepared_context")
+        if isinstance(nested, dict):
+            context.update(nested)
+
+    comparison_review = screen_model.get("comparison_review")
+    if isinstance(comparison_review, dict):
+        for key in (
+            "comparison_mode",
+            "comparison_window",
+            "comparison_scope",
+            "comparison_artifact_reference",
+            "comparison_screen4_handoff",
+            "comparison_status",
+        ):
+            if key in comparison_review and key not in context:
+                context[key] = comparison_review.get(key)
+
+    for key, value in screen_model.items():
+        if key.startswith("selectedComparison") or key in {
+            "selectedComparisonBaseline",
+            "comparison_artifact_reference",
+            "comparison_screen4_handoff",
+            "comparison_result_target_a",
+            "comparison_result_target_b",
+            "comparison_result_status",
+            "comparison_result_metadata",
+            "comparison_status",
+            "comparison_mode",
+            "comparison_window",
+            "comparison_scope",
+            "comparison_cache_status",
+        }:
+            context.setdefault(key, value)
+
+    return context
+
+
+def _screen4_prepared_target_items(
+    selected_context: dict[str, Any],
+) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for suffix in ("A", "B"):
+        target = selected_context.get(f"target_{suffix.lower()}")
+        if not isinstance(target, dict):
+            target = selected_context.get(f"target{suffix}")
+        if not isinstance(target, dict):
+            target = {}
+        label = (
+            target.get("label")
+            or target.get("identity")
+            or target.get("run_id")
+            or target.get("scope_value")
+            or selected_context.get(f"selectedComparisonTarget{suffix}")
+            or selected_context.get(f"selectedComparisonTarget{suffix}ScopeValue")
+            or selected_context.get(f"selectedComparisonTarget{suffix}RunId")
+        )
+        if not _has_display_value(label):
             continue
+        items.append(
+            {
+                "target": f"Target {suffix}",
+                "identity": _display_value(label),
+                "source": _display_value(
+                    target.get("source")
+                    or selected_context.get(f"selectedComparisonTarget{suffix}SourceType")
+                    or selected_context.get("context_source")
+                    or "Prepared comparison context"
+                ),
+                "scope": _display_value(
+                    target.get("scope")
+                    or target.get("scope_type")
+                    or selected_context.get(f"selectedComparisonTarget{suffix}ScopeType")
+                    or selected_context.get("comparison_scope")
+                    or "Prepared scope"
+                ),
+                "window": _display_value(
+                    target.get("window")
+                    or target.get("time_window")
+                    or selected_context.get(f"selectedComparisonTarget{suffix}TimeWindow")
+                    or selected_context.get("comparison_window")
+                    or "Prepared window"
+                ),
+                "status": _display_value(
+                    target.get("status")
+                    or target.get("readiness_state")
+                    or selected_context.get(f"selectedComparisonTarget{suffix}ReadinessState")
+                    or "Preparation only"
+                ),
+            }
+        )
+    return items
+
+
+def _screen4_has_prepared_comparison_context(
+    screen_model: dict[str, Any],
+    selected_context: dict[str, Any],
+) -> bool:
+    if any(_has_display_value(value) for value in selected_context.values()):
+        return True
+    for candidate in _screen4_comparison_output_candidates(screen_model):
         if _has_display_value(candidate):
-            text = _display_value(candidate).strip().lower()
-            if text not in unavailable_markers:
+            return True
+    return False
+
+
+def _screen4_has_comparison_evidence_required_hint(
+    selected_context: dict[str, Any],
+) -> bool:
+    if not selected_context:
+        return False
+    target_selected = bool(
+        _screen4_selected_target_identity_values(selected_context, "A")
+        or _screen4_selected_target_identity_values(selected_context, "B")
+    )
+    if not target_selected:
+        return False
+    for key, value in selected_context.items():
+        normalized_key = str(key or "").strip().lower()
+        normalized_value = str(value or "").strip().lower()
+        if any(marker in normalized_key for marker in _SCREEN4_COMPARISON_MISSING_MARKERS):
+            return True
+        if any(marker in normalized_value for marker in _SCREEN4_COMPARISON_MISSING_MARKERS):
+            return True
+    return False
+
+
+def _screen4_has_comparison_output_required_hint(
+    screen_model: dict[str, Any],
+    selected_context: dict[str, Any],
+) -> bool:
+    if selected_context.get("comparison_cache_status") == "cached_continuity_only":
+        return False
+    for key, value in selected_context.items():
+        normalized_key = str(key or "").strip().lower()
+        normalized_value = str(value or "").strip().lower()
+        if normalized_value in _SCREEN4_COMPARISON_NON_OUTPUT_MARKERS:
+            continue
+        if any(marker in normalized_key for marker in _SCREEN4_COMPARISON_READY_MARKERS):
+            return True
+        if normalized_value in _SCREEN4_COMPARISON_READY_MARKERS:
+            return True
+    for key in (
+        "comparison_artifact_reference",
+        "comparison_result_metadata",
+        "comparison_result_status",
+        "comparison_screen4_handoff",
+        "comparison_status",
+    ):
+        screen_value = screen_model.get(key)
+        context_value = selected_context.get(key)
+        screen_value_text = str(screen_value or "").strip().lower()
+        context_value_text = str(context_value or "").strip().lower()
+        if screen_value_text in _SCREEN4_COMPARISON_NON_OUTPUT_MARKERS:
+            screen_value = None
+        if context_value_text in _SCREEN4_COMPARISON_NON_OUTPUT_MARKERS:
+            context_value = None
+        if _has_display_value(screen_value) or _has_display_value(context_value):
+            return True
+    comparison_review = screen_model.get("comparison_review")
+    if isinstance(comparison_review, dict):
+        for key in ("comparison_artifact_reference", "comparison_status", "screen4_handoff_status"):
+            value = comparison_review.get(key)
+            if str(value or "").strip().lower() in _SCREEN4_COMPARISON_NON_OUTPUT_MARKERS:
+                continue
+            if _has_display_value(value):
                 return True
     return False
+
+
+def _screen4_comparison_visualization_allowed(
+    comparison_output: Any,
+    visualization_name: str,
+) -> bool:
+    validation = _screen4_validate_deterministic_comparison_output(comparison_output)
+    if not validation.get("valid"):
+        return False
+    visualization = str(visualization_name or "").strip()
+    if not visualization:
+        return False
+    allowed = {
+        str(item).strip()
+        for item in validation.get("allowed_visualizations") or []
+        if _has_display_value(item)
+    }
+    if visualization not in allowed:
+        return False
+    normalized = visualization.lower()
+    if "fleet" in normalized or "population" in normalized:
+        output = validation.get("output") or {}
+        source_scope = str(output.get("source_scope") or "").strip()
+        if source_scope not in {"fleet", "population"}:
+            return False
+        fleet_contract = output.get("fleet_evidence_contract")
+        if not isinstance(fleet_contract, dict):
+            return False
+        if not _has_display_value(fleet_contract.get("contract_id")):
+            return False
+        if str(fleet_contract.get("generated_by") or "").strip() != "deterministic_engine":
+            return False
+    return True
 
 
 def _screen4_artifact_alignment_label(
@@ -21625,6 +22196,103 @@ def _render_screen4_evidence_context_guard(
             ],
             extra_class="screen4-graphics-guard-grid",
         )}
+      </section>
+    """
+
+
+def _render_screen4_comparative_review_panel(
+    comparative_state: dict[str, Any],
+) -> str:
+    state = str(comparative_state.get("state") or "comparison_unavailable")
+    output_ready = state == "comparison_output_ready"
+    graphics_state = str(comparative_state.get("graphics_state") or "blocked")
+    prepared_targets = list(comparative_state.get("prepared_targets") or [])
+    target_cards = []
+    for target in prepared_targets:
+        target_cards.append(
+            f"""
+              <article class="evidence-pane screen4-comparative-target-card">
+                <h3>{escape(_display_value(target.get("target")))}</h3>
+                {_render_info_grid(
+                    [
+                        ("Identity", target.get("identity")),
+                        ("Source", target.get("source")),
+                        ("Scope", target.get("scope")),
+                        ("Window", target.get("window")),
+                        ("Preparation Status", target.get("status")),
+                    ],
+                    extra_class="screen4-comparative-target-grid",
+                )}
+              </article>
+            """
+        )
+
+    allowed_visualizations = [
+        str(item)
+        for item in (comparative_state.get("allowed_visualizations") or [])
+        if _has_display_value(item)
+    ]
+    allowed_visualizations_text = (
+        ", ".join(allowed_visualizations)
+        if allowed_visualizations
+        else "No comparison visualizations are permitted for this state."
+    )
+    validation = comparative_state.get("validation")
+    validation_reason = (
+        validation.get("reason")
+        if isinstance(validation, dict)
+        else "comparison_output_missing_or_not_mapping"
+    )
+    if output_ready:
+        operator_summary = (
+            "Comparative Review has validated deterministic comparison output. "
+            "Screen 4 may show comparative evidence only from that contract."
+        )
+    elif prepared_targets:
+        operator_summary = (
+            "Comparative Review is not ready yet. Prepared Target A/B context can identify "
+            "what should be compared, but it does not create comparison evidence. "
+            "No governed deterministic comparison output has been returned to Screen 4."
+        )
+    else:
+        operator_summary = (
+            "Comparative Review is not ready yet. No governed deterministic comparison output "
+            "has been returned to Screen 4. Prepared Target A/B context can identify what should "
+            "be compared, but it does not create comparison evidence."
+        )
+    return f"""
+      <section class="card secondary screen4-comparative-review-guard"
+               data-screen4-mode-section="comparative-review"
+               data-screen4-comparative-review-state="{escape(state, quote=True)}"
+               data-screen4-comparison-output-ready="{str(output_ready).lower()}"
+               data-screen4-comparison-graphics-state="{escape(graphics_state, quote=True)}">
+        <div class="section-kicker">Comparative Review</div>
+        <h2>Comparative Review Guarded State</h2>
+        <p class="meta">
+          {escape(operator_summary)}
+          {escape(_display_value(comparative_state.get("message")))}
+          Target A/B selections are preparation only.
+          Deterministic comparison output is required before Screen 4 can show comparative evidence.
+        </p>
+        {_render_info_grid(
+            [
+                ("State", state),
+                ("Preparation Boundary", "Prepared comparison context exists." if prepared_targets else "No prepared comparison context is available for Screen 4."),
+                ("Output Boundary", "No governed deterministic comparison output has been returned to Screen 4." if not output_ready else "Validated deterministic comparison output contract is present."),
+                ("Graphics Boundary", comparative_state.get("graphics_message")),
+                ("Allowed Visualizations", allowed_visualizations_text),
+                ("Validation Reason", validation_reason),
+                ("Required Next Step", comparative_state.get("next_action")),
+            ],
+            extra_class="screen4-comparative-review-state-grid",
+        )}
+        {
+            '<div class="subgrid screen4-comparative-target-grid-wrap">' + "".join(target_cards) + "</div>"
+            if target_cards
+            else _render_screen4_graphic_guard_empty_state(
+                "No Target A/B prepared identity is available for this Screen 4 export."
+            )
+        }
       </section>
     """
 
@@ -21710,6 +22378,9 @@ def _render_screen_4_page(
     screen4_review_preview_html = _render_screen4_historical_review_preview_panel(
         screen_model
     )
+    screen4_comparative_review_html = _render_screen4_comparative_review_panel(
+        screen4_evidence_context.get("comparative_review_state") or {}
+    )
     return f"""
     <div class="grid">
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
@@ -21758,13 +22429,14 @@ def _render_screen_4_page(
             <h3>Historical Context Summary</h3>
             <div class="meta">
               Historical supporting context only; this does not override Screen 3 selected-scope diagnosis.
+              Risk reflects the historical signal level; posture reflects the deterministic diagnostic handling path.
             </div>
             {_render_info_grid(
                 [
-                    ("Risk", historical_verdict.get("display_severity_label")),
+                    ("Historical Risk Signal", historical_verdict.get("display_severity_label")),
                     ("Historical Stability", historical_verdict.get("historical_stability")),
                     ("Anomaly Burden", historical_verdict.get("anomaly_burden")),
-                    ("Historical Context Posture", historical_verdict.get("historical_posture")),
+                    ("Historical Action Posture", historical_verdict.get("historical_posture")),
                     (
                         "Similarity Context",
                         _screen4_similarity_context_label(similarity_evidence),
@@ -21777,6 +22449,7 @@ def _render_screen_4_page(
       </section>
       {_render_screen4_evidence_context_guard(screen4_evidence_context)}
       {_render_screen4_mode_selector_shell()}
+      {screen4_comparative_review_html}
       {screen4_exploration_html}
       {screen4_review_preview_html}
       {historical_trend_panels_html}
@@ -22218,7 +22891,7 @@ def _render_screen4_mode_selector_shell() -> str:
                 "Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; "
                 "Target A/B prepared-only state is not comparison output. Selected targets and cache-restored "
                 "state do not create comparison evidence. Deterministic comparison output is required before "
-                "A/B diagrams or future comparison violin panels can render. Screen 4 does not compute comparison "
+                "comparative graphics can render. Screen 4 does not compute comparison "
                 "in the browser."
             ),
             "chips": ("Unavailable", "No browser comparison"),
@@ -22342,8 +23015,8 @@ def _render_screen4_historical_exploration(
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
-          Future A-vs-B comparison violin panels belong on Screen 4 and must render deterministic comparison output.
-          LLM-assisted wording may explain evidence or comparison meaning only after governed comparison context exists; it does not compute comparison meaning or decide improvement/degradation.
+          Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output.
+          LLM-assisted wording may explain validated deterministic comparison output only after that output exists; it does not compute comparison meaning or decide outcome direction.
         </p>
         <div class="subgrid">
           <section class="evidence-pane selector-pane screen4-selected-historical-panel">
@@ -31199,7 +31872,7 @@ def _normalize_ui_text(text: str) -> str:
     )
     text = text.replace(
         "CPU-led evidence remains primary",
-        "CPU evidence remains one of the more visible signals in the historical window, but not consistently dominant",
+        "Available CPU evidence supports a tuning-first review path, but historical coverage is not sufficient to claim continuous CPU dominance across the full window",
     )
     text = text.replace(
         "CPU Insufficient data for a reliable conclusion",
@@ -31325,13 +31998,13 @@ def _normalize_ui_text(text: str) -> str:
     )
     normalized = re.sub(
         r"\bCPU-led evidence remains primary\b",
-        "CPU evidence remains one of the more visible signals in the historical window, but not consistently dominant",
+        "Available CPU evidence supports a tuning-first review path, but historical coverage is not sufficient to claim continuous CPU dominance across the full window",
         normalized,
         flags=re.IGNORECASE,
     )
     normalized = re.sub(
         r"\bPrimary evidence keeps the historical story CPU-led\b",
-        "CPU and workload distribution evidence remain among the strongest historical signals",
+        "Available CPU and workload distribution evidence support a tuning-first review path without proving continuous CPU dominance",
         normalized,
         flags=re.IGNORECASE,
     )
@@ -31815,7 +32488,7 @@ def _render_analysis_visual_summary(visual_summary: dict[str, Any]) -> str:
     ]
     if not any(summary for summary in summaries):
         return _render_empty_item(
-            "No compact signal visuals are available for this scope. View full historical proof in Screen 4."
+            "No compact signal visuals are available for this scope. View full historical evidence in Screen 4."
         )
     cards = [
         _render_mini_trend_card(summary)
@@ -31825,7 +32498,7 @@ def _render_analysis_visual_summary(visual_summary: dict[str, Any]) -> str:
     hint = visual_summary.get("hint") or "View full historical analysis in Screen 4"
     if not cards:
         return _render_empty_item(
-            "No compact signal visuals passed data-gating for this scope. View full historical proof in Screen 4."
+            "No compact signal visuals passed data-gating for this scope. View full historical evidence in Screen 4."
         )
     return f"""
       <section class="diagnostic-block">
@@ -33176,7 +33849,7 @@ def _normalize_narrative_for_display(
     )
     text = re.sub(
         r"The historical review is organized around CPU first\. Primary proof is led by DB Time Breakdown, CPU history, Workload distributions\. Supporting proof follows with I/O history, Commit history\. Contextual proof remains historical and subordinate: RAC / cluster context, Topology distributions, Per-instance RAC distributions\. Lower-value or unsupported families were not promoted: ADG family, EXADATA family, MEMORY family, NETWORK family\.",
-        "The historical review is organized around CPU-first evidence. Primary support comes from DB Time Breakdown, CPU history, and Workload distributions. Supporting evidence includes I/O history and Commit history. Contextual signals (RAC / cluster context, Topology distributions, Per-instance RAC distributions) remain available for historical comparison only. Lower-value or unsupported families were not promoted: ADG, EXADATA, MEMORY, NETWORK, and platform-level signals.",
+        "The historical review is organized around CPU-first evidence. Primary support comes from DB Time Breakdown, CPU history, and Workload distributions. Supporting evidence includes I/O history and Commit history. Contextual signals (RAC / cluster context, Topology distributions, Per-instance RAC distributions) remain available as historical supporting context only. Lower-value or unsupported families were not promoted: ADG, EXADATA, MEMORY, NETWORK, and platform-level signals.",
         text,
         flags=re.IGNORECASE,
     )

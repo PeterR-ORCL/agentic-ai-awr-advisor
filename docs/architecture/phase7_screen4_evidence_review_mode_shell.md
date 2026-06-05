@@ -22,6 +22,8 @@ Screen 4 does not compute A-vs-B comparison, assign comparison readiness, decide
 
 7CV-E adds only a Screen 2-to-Screen 4 handoff placeholder. Comparative Review may display that Target A/B context is prepared in Screen 2, but prepared targets are selected context only and do not create comparison evidence.
 
+7CX-B adds a guarded Comparative Review state model. Prepared comparison context, route state, cache state, loose artifact references, Screen 3 prepared-only context, and 7CC metadata do not make Screen 4 output-ready. Only a strict Screen 4 deterministic comparison output contract can enter `comparison_output_ready`.
+
 ## 4. Screen 4 Role Contract
 
 Screen 4 owns supporting evidence review. It may show deterministic evidence, governed historical context, selected runtime context, historical trend/anomaly/similarity context, and unavailable-state placeholders for future governed evidence review.
@@ -58,15 +60,25 @@ Prohibited behavior: create historical truth from cache, infer trend changes wit
 
 Purpose: review deterministic Target A-vs-B comparison evidence after deterministic comparison output exists.
 
-Current state: unavailable except for future-governed ownership wording and handoff placeholders. No active Screen 4 A-vs-B comparison output is rendered today.
+Current state: guarded state shell only. No active Screen 4 A-vs-B comparison output is rendered today unless a strict Screen 4 deterministic comparison output contract validates successfully.
 
-Allowed now: unavailable/prepared-state placeholder copy that clearly says deterministic comparison output is not yet active, optional wording that reflects Screen 2 Target A/Target B preparation context, and ownership wording that reserves future comparison evidence and comparison violin panels for Screen 4.
+Allowed now: unavailable, prepared-only, evidence-required, output-required, and output-ready state copy; neutral Target A/B identity display as preparation only; and ownership wording that reserves future comparison evidence and comparison violin panels for Screen 4. Target A/B is prepared comparison context only until deterministic comparison output is returned to Screen 4.
 
 Unavailable now: target deltas, domain deltas, wait/event deltas, SQL deltas, topology/platform deltas, improvement/degradation/stable labels, comparison result summaries, and comparison violin diagrams.
 
 Future owner: 7CX.
 
-Prohibited behavior: compute comparison results in the browser, decide improvement/degradation without deterministic comparison output, assign comparison readiness, synthesize A-vs-B deltas, change Screen 3 diagnosis, change recommendations, or render comparison violin diagrams as truth before deterministic comparison data exists.
+Prohibited behavior: compute comparison results in the browser, decide improvement/degradation without deterministic comparison output, assign comparison readiness, synthesize A-vs-B deltas, change Screen 3 diagnosis, change recommendations, render comparison violin diagrams as truth before deterministic comparison data exists, or treat 7CC metadata as Screen 4 output-ready without a future strict adapter.
+
+The 7CX-B states are:
+
+| State | Meaning | Allowed action |
+| --- | --- | --- |
+| `comparison_unavailable` | No useful prepared comparison context and no validated deterministic comparison output. | Prepare Target A/B context upstream. |
+| `comparison_prepared_only` | Target A/B or comparison setup exists, but no validated deterministic comparison output exists. | Display neutral prepared Target A/B identity/context only. |
+| `comparison_evidence_required` | Targets are selected, but persisted structured evidence is missing. | Prepare governed evidence before requesting output. |
+| `comparison_output_required` | Comparison-ready evidence or workflow metadata exists, but no Screen 4 deterministic output contract was returned. | Return governed deterministic comparison output to Screen 4. |
+| `comparison_output_ready` | Strict deterministic comparison output contract validates. | Display contract-backed comparative evidence only; graphics remain gated by `allowed_visualizations`. |
 
 ### Deep Analysis
 
@@ -96,6 +108,10 @@ Future unavailable output refers to planned deterministic comparison or future d
 
 LLM explanatory wording is wording only. It may explain already-computed, already-selected, already-validated, already-recorded, or already-governed meaning, but it must not create evidence, classify evidence, diagnose, score, recommend, compare targets, persist records, activate runtime behavior, or change future-run behavior.
 
+Strict deterministic comparison output for Screen 4 must carry `screen4_contract_type=deterministic_comparison_output`, `comparison_id`, `baseline_run_id`, `candidate_run_id`, `source_scope`, `comparison_scope`, `generated_by=deterministic_engine`, `generated_at`, `deterministic_engine_version`, `metric_deltas`, `domain_deltas`, `evidence_rows`, `confidence_basis`, `missing_evidence`, and `allowed_visualizations`. Empty metric/domain deltas are allowed only when the contract carries evidence rows or an explicit deterministic empty-evidence/no-change explanation.
+
+Wording rule: reserve `comparison` language for prepared Target A/B context, deterministic comparison output, Comparative Review state names, and explicitly gated future comparison visualizations. Historical RAC, Data Guard, topology, period, baseline, and distribution content should use supporting context, historical supporting context, topology supporting context, RAC supporting context, Data Guard supporting context, period context, or broader historical context. Target A/B preparation alone does not create Screen 4 comparison evidence.
+
 ## 7. Screen Boundary Matrix
 
 | Screen | Owner role | Allowed handoff to Screen 4 | Prohibited overlap |
@@ -112,9 +128,9 @@ LLM explanatory wording is wording only. It may explain already-computed, alread
 
 Screen 1 may pass or display selected/new source context, generated artifact readiness context, parser/source-governance handoff state, source validation context, evidence handoff eligibility, and parser-discovered or unknown signal context only as governed/source context. Screen 4 must not treat unapproved parser mappings, ungoverned unknown signal interpretations, raw parser discoveries, source validation state, or artifact readiness as scoring truth or diagnosis.
 
-Screen 2 may pass or display selected existing evidence/run context, selected runtime scope, selected target context, Target A/Target B preparation context, comparison readiness prepared by Screen 2, runtime-control context, and selected evidence mode/context. Screen 4 must not treat comparison readiness as comparison evidence, a UI-selected target as a diagnosis change, cache-restored selection as authoritative backend truth, or any comparison result, improvement/degradation/stable label, or domain delta as truth unless deterministic comparison output exists.
+Screen 2 may pass or display selected existing evidence/run context, selected runtime scope, selected target context, Target A/Target B preparation context, comparison readiness prepared by Screen 2, runtime-control context, and selected evidence mode/context. Screen 4 must not treat comparison readiness as comparison evidence, a UI-selected target as a diagnosis change, cache-restored selection as authoritative backend truth, or any comparison result, improvement/degradation/stable label, or domain delta as truth unless strict deterministic comparison output exists.
 
-Screen 4 uses the handoff to vary the visible review context. It may show a prepared-context-only placeholder that says Target A/B context comes from Screen 2, deterministic comparison output is required before comparison evidence can be reviewed, selected targets and cache-restored state do not create comparison evidence, and Screen 4 does not compute comparison in the browser. It remains read-only and does not mutate upstream source governance, runtime scope, target selection, comparison readiness, deterministic output, recommendations, action/outcome state, or learning governance.
+Screen 4 uses the handoff to vary the visible review context. It may show prepared comparison context that says Target A/B context comes from Screen 2, deterministic comparison output is required before comparison evidence can be reviewed, selected targets and cache-restored state do not create comparison evidence, and Screen 4 does not compute comparison in the browser. It remains read-only and does not mutate upstream source governance, runtime scope, target selection, comparison readiness, deterministic output, recommendations, action/outcome state, or learning governance.
 
 ## 8. Current vs Future Capability Map
 
@@ -125,7 +141,7 @@ Screen 4 uses the handoff to vary the visible review context. It may show a prep
 | Baseline context | Present as historical context | Deterministic/report comparison context | 7CW | Do not imply A-vs-B output |
 | Similarity evidence | Present | `similarity_intelligence` and governed data where available | 7CW | No nearest-neighbor recomputation in UI |
 | Prior recommendations/actions/outcomes | Mostly absent | Governed persistence only if available | 7CW | Must not become Screen 5 ownership |
-| Target A/B comparison | Placeholder only | Future deterministic comparison output | 7CX | No browser-side comparison |
+| Target A/B comparison | Guarded state shell only | Future strict Screen 4 deterministic comparison output | 7CX | No browser-side comparison |
 | Domain deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
 | Wait/event deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
 | SQL deltas | Absent | Future deterministic comparison output | 7CX | No synthesized deltas |
@@ -139,15 +155,17 @@ Screen 4 uses the handoff to vary the visible review context. It may show a prep
 
 Screen 2 prepares Target A/B and comparison readiness. Screen 3 explains a selected Target A or Target B individually. Screen 4 owns future deterministic A-vs-B evidence review after deterministic comparison output exists.
 
-Screen 4 owns future comparison violin panels. 7CV-B does not implement comparison violin diagrams, comparison violin data, comparison runtime, or comparison output rendering.
+Screen 4 owns future comparison violin panels. 7CX-B does not implement comparison violin diagrams, comparison violin data, comparison runtime, or comparison output rendering. Even after output-ready, graphics may render only when the specific visualization is present in `allowed_visualizations`.
 
 Existing Screen 4 workload distribution violins are historical/supporting distribution evidence, not A-vs-B comparison violin diagrams.
+
+7CC comparison execution metadata requires a future adapter before Screen 4 can render it. A comparison artifact reference, output reference, or 7CC metadata payload is not sufficient by itself.
 
 ## 10. LLM / Provider Boundary
 
 7CV-B through 7CV-D add no Screen 4 provider route. Existing common Screen 2 explanation plumbing remains outside Screen 4 ownership unless Screen 4 renders visible controls and an approved route in a later task.
 
-Future LLM wording on Screen 4 may explain already-computed deterministic evidence, governed persisted context, or deterministic comparison meaning. It must not create evidence, choose evidence, validate evidence, decide comparison outcome, score, diagnose, recommend, persist records, or mutate workflow state.
+Future LLM wording on Screen 4 may explain already-computed deterministic evidence, governed persisted context, or validated deterministic comparison output after that output exists. It must not create evidence, choose evidence, validate evidence, decide comparison outcome, score, diagnose, recommend, persist records, or mutate workflow state.
 
 ## 11. Cache / State Boundary
 

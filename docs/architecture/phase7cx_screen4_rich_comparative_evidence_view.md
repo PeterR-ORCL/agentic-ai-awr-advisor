@@ -93,14 +93,14 @@ The future view should render in this order when eligible:
 
 1. Contract / Readiness Banner
 2. Target A vs Target B Identity Summary
-3. Evidence Completeness Matrix
+3. Metric Delta Table
 4. Domain Delta Summary
-5. Metric Delta Table
+5. Evidence Completeness Matrix
 6. Wait/Event Movement Table
 7. SQL Movement Table
-8. Confidence Basis Panel
-9. Missing Evidence / Limitations Panel
-10. Visualization Eligibility Panel
+8. Visualization Eligibility Panel
+9. Confidence Basis Panel
+10. Missing Evidence / Limitations Panel
 11. Future Time-Series Overlay
 12. Future Distribution / Violin Panel
 13. LLM Explanation Boundary Panel
@@ -248,12 +248,12 @@ Implemented 7CX-F sections:
 
 - Contract / Readiness Banner.
 - Target A vs Target B Identity Summary.
-- Evidence Completeness Matrix when contract evidence or missing-evidence category data exists.
-- Domain Delta Summary when `allowed_visualizations` includes `domain_delta_summary` and `domain_deltas` contains rows.
 - Metric Delta Table when `allowed_visualizations` includes `metric_delta_table` and `metric_deltas` contains rows.
+- Domain Delta Summary when `allowed_visualizations` includes `domain_delta_summary` and `domain_deltas` contains rows.
+- Evidence Completeness Matrix when contract evidence or missing-evidence category data exists.
+- Visualization Eligibility Panel for useful table/panel permissions and text-only deferred visual reasons.
 - Confidence Basis Panel when `confidence_basis` exists.
 - Missing Evidence / Limitations Panel when `missing_evidence`, adapter validation messages, or confidence limitations exist.
-- Visualization Eligibility Panel for useful table/panel permissions and text-only deferred visual reasons.
 
 7CX-F does not implement graphs, violins, time-series overlays, distribution panels, wait/event movement tables, SQL movement tables, backend routes, browser-side comparison execution, Build Comparison actions, or runtime mutation.
 
@@ -268,6 +268,21 @@ Dynamic/no-empty enforcement in 7CX-F:
 - Missing-evidence or deferred-visual text appears only when it helps explain an operator-relevant limitation.
 
 The 7CX-F renderer is intentionally extracted behind `src/reporting/dashboard/screen4/comparative_tables.py` as a small 7DG-friendly seam. The module renders server-side HTML only; it does not compute comparison truth, inspect browser state, or create data rows.
+
+## 7CX-F-FU1 Review and Product Polish
+
+7CX-F-FU1 reviews the first table renderer before graph or violin work begins. The review confirms that comparative table rendering still enters only through `comparison_output_ready`, continues to rely on the strict 7CX-B validator, and does not treat prepared Target A/B context, route/cache continuity, loose metadata, or unadapted 7CC artifacts as output-ready evidence.
+
+Product polish decisions:
+
+- Operator-facing headings use "Metric Differences", "Domain Differences", "Evidence Completeness", "Rendering Eligibility", and "Deterministic Confidence Basis".
+- Metric and domain evidence appear before completeness and rendering-eligibility metadata, so the operator sees contract-backed differences first.
+- Rendering eligibility uses product-facing labels and concise explanations; raw visualization permission keys remain contract facts, not primary operator copy.
+- Deferred visual entries remain text-only explanations and do not create chart, violin, time-series, wait/event, SQL, or top-event evidence panels.
+- Optional table columns remain dynamic and are omitted when no row contains data.
+- Empty tables, empty identity cards, empty evidence blocks, chart shells, placeholder graphs, static examples, fake deltas, and "coming soon" evidence panels remain forbidden.
+
+Graph and violin work remains deferred to 7CX-G and still requires validated deterministic evidence shapes plus explicit `allowed_visualizations` permission.
 
 ## html_dashboard.py Growth Controls
 

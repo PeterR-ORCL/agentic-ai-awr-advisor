@@ -175,9 +175,15 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
     def test_metric_delta_table_requires_permission_and_rows(self) -> None:
         html = self.render_contract(self.valid_contract())
         self.assertIn("screen4-comparative-metric-delta-table", html)
+        self.assertIn("Metric Differences", html)
         self.assertIn("scores.cpu", html)
         self.assertIn("Target A Value", html)
         self.assertIn("Target B Value", html)
+        metric_start = html.index("screen4-comparative-metric-deltas")
+        metric_end = html.index("</section>", metric_start)
+        metric_fragment = html[metric_start:metric_end]
+        self.assertNotIn("Delta Percent", metric_fragment)
+        self.assertNotIn("Notes / Limitations", metric_fragment)
 
         without_permission = {
             **self.valid_contract(),
@@ -194,6 +200,7 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
     def test_domain_delta_summary_requires_permission_and_rows(self) -> None:
         html = self.render_contract(self.valid_contract())
         self.assertIn("screen4-comparative-domain-delta-summary", html)
+        self.assertIn("Domain Differences", html)
         self.assertIn("CPU", html)
 
         without_permission = {
@@ -207,9 +214,26 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
         html = self.render_contract(empty_rows)
         self.assertNotIn("screen4-comparative-domain-delta-summary", html)
 
+    def test_comparative_sections_render_in_operator_review_order(self) -> None:
+        html = self.render_contract(self.valid_contract())
+
+        expected_order = (
+            "screen4-comparative-readiness-banner",
+            "screen4-comparative-target-identity",
+            "screen4-comparative-metric-deltas",
+            "screen4-comparative-domain-delta-summary",
+            "screen4-comparative-evidence-completeness",
+            "screen4-comparative-visualization-eligibility",
+            "screen4-comparative-confidence-basis",
+            "screen4-comparative-missing-evidence",
+        )
+        indexes = [html.index(marker) for marker in expected_order]
+        self.assertEqual(sorted(indexes), indexes)
+
     def test_confidence_and_missing_evidence_panels_render_only_when_useful(self) -> None:
         html = self.render_contract(self.valid_contract())
         self.assertIn("screen4-comparative-confidence-basis", html)
+        self.assertIn("Deterministic Confidence Basis", html)
         self.assertIn("screen4-comparative-missing-evidence", html)
         self.assertIn("SQL movement table omitted", html)
 
@@ -241,12 +265,31 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
         html = self.render_contract(contract)
 
         self.assertIn("screen4-comparative-visualization-eligibility", html)
-        self.assertIn("Metric Delta Table", html)
+        self.assertIn("Rendering Eligibility", html)
+        self.assertIn("Metric Differences", html)
         self.assertIn("Distribution violin requires distribution sample rows.", html)
+        eligibility_start = html.index("screen4-comparative-visualization-eligibility")
+        eligibility_end = html.index("</section>", eligibility_start)
+        eligibility_fragment = html[eligibility_start:eligibility_end]
+        self.assertNotIn("metric_delta_table", eligibility_fragment)
+        self.assertNotIn("domain_delta_summary", eligibility_fragment)
         self.assertNotIn("<canvas", html)
         self.assertNotIn("<svg", html)
         self.assertNotIn("screen4-comparative-distribution-violin", html)
         self.assertNotIn("screen4-comparative-time-series-overlay", html)
+
+    def test_visualization_eligibility_omits_when_no_useful_rows_exist(self) -> None:
+        contract = {
+            **self.valid_contract(),
+            "allowed_visualizations": [],
+            "metric_deltas": [],
+            "domain_deltas": [],
+        }
+        html = self.render_contract(contract)
+
+        self.assertNotIn("screen4-comparative-visualization-eligibility", html)
+        self.assertNotIn("screen4-comparative-metric-delta-table", html)
+        self.assertNotIn("screen4-comparative-domain-delta-summary", html)
 
     def test_no_empty_shells_sample_rows_or_ui_created_conclusions(self) -> None:
         html = self.render_contract(self.valid_contract()).lower()

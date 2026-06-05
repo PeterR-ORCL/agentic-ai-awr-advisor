@@ -12,18 +12,32 @@ from typing import Any
 
 
 TABLE_PANEL_VISUALIZATIONS = {
-    "metric_delta_table": "Metric Delta Table",
-    "domain_delta_summary": "Domain Delta Summary",
-    "evidence_completeness_matrix": "Evidence Completeness Matrix",
-    "confidence_basis_panel": "Confidence Basis Panel",
-    "missing_evidence_panel": "Missing Evidence Panel",
+    "metric_delta_table": "Metric Differences",
+    "domain_delta_summary": "Domain Differences",
+    "evidence_completeness_matrix": "Evidence Completeness",
+    "confidence_basis_panel": "Confidence Basis",
+    "missing_evidence_panel": "Missing Evidence",
+}
+TABLE_PANEL_ELIGIBILITY_NOTES = {
+    "metric_delta_table": "Permitted by the validated contract when metric rows are present.",
+    "domain_delta_summary": "Permitted by the validated contract when domain rows are present.",
+    "evidence_completeness_matrix": "Available when evidence or missing-evidence category rows are present.",
+    "confidence_basis_panel": "Available from the deterministic confidence basis.",
+    "missing_evidence_panel": "Available when missing evidence or limitations are reported.",
 }
 DEFERRED_VISUALIZATIONS = {
     "time_series_overlay": "Time-series overlay requires aligned time-series rows.",
     "distribution_violin": "Distribution violin requires distribution sample rows.",
-    "wait_class_movement_table": "Wait/event movement requires stable wait/event identity.",
-    "top_sql_movement_table": "SQL movement requires stable SQL identity.",
-    "top_event_movement_table": "Top event movement requires stable event identity.",
+    "wait_class_movement_table": "Wait/event movement requires persistent wait/event identity.",
+    "top_sql_movement_table": "SQL movement requires persistent SQL identity.",
+    "top_event_movement_table": "Top event movement requires persistent event identity.",
+}
+DEFERRED_VISUALIZATION_LABELS = {
+    "time_series_overlay": "Time-series Overlay",
+    "distribution_violin": "Distribution / Violin Evidence",
+    "wait_class_movement_table": "Wait/Event Movement",
+    "top_sql_movement_table": "SQL Movement",
+    "top_event_movement_table": "Top Event Movement",
 }
 
 
@@ -44,12 +58,12 @@ def render_screen4_comparative_tables(comparative_state: dict[str, Any]) -> str:
     sections = [
         _render_readiness_banner(contract),
         _render_target_identity_summary(contract),
-        _render_evidence_completeness_matrix(contract),
-        _render_domain_delta_summary(contract),
         _render_metric_delta_table(contract),
+        _render_domain_delta_summary(contract),
+        _render_evidence_completeness_matrix(contract),
+        _render_visualization_eligibility_panel(contract),
         _render_confidence_basis_panel(contract),
         _render_missing_evidence_panel(contract),
-        _render_visualization_eligibility_panel(contract),
     ]
     rendered_sections = [section for section in sections if section.strip()]
     if not rendered_sections:
@@ -81,7 +95,7 @@ def _render_readiness_banner(contract: dict[str, Any]) -> str:
     return f"""
       <section class="evidence-pane screen4-comparative-readiness-banner"
                data-screen4-comparative-section="readiness-banner">
-        <h3>Deterministic Comparison Output</h3>
+        <h3>Deterministic Comparison Output Readiness</h3>
         {grid}
       </section>
     """
@@ -254,7 +268,7 @@ def _render_domain_delta_summary(contract: dict[str, Any]) -> str:
     return f"""
       <section class="evidence-pane screen4-comparative-domain-delta-summary"
                data-screen4-comparative-section="domain-delta-summary">
-        <h3>Domain Delta Summary</h3>
+        <h3>Domain Differences</h3>
         {table}
       </section>
     """
@@ -301,7 +315,7 @@ def _render_metric_delta_table(contract: dict[str, Any]) -> str:
     return f"""
       <section class="evidence-pane screen4-comparative-metric-deltas"
                data-screen4-comparative-section="metric-delta-table">
-        <h3>Metric Delta Table</h3>
+        <h3>Metric Differences</h3>
         {table}
       </section>
     """
@@ -326,7 +340,7 @@ def _render_confidence_basis_panel(contract: dict[str, Any]) -> str:
     return f"""
       <section class="evidence-pane screen4-comparative-confidence-basis"
                data-screen4-comparative-section="confidence-basis">
-        <h3>Confidence Basis</h3>
+        <h3>Deterministic Confidence Basis</h3>
         {grid}
       </section>
     """
@@ -395,15 +409,15 @@ def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
     rows = [
         {
             "visualization": TABLE_PANEL_VISUALIZATIONS[item],
-            "status": "allowed",
-            "basis": item,
+            "status": "Available",
+            "basis": TABLE_PANEL_ELIGIBILITY_NOTES.get(item),
         }
         for item in allowed
     ]
     rows.extend(
         {
-            "visualization": item,
-            "status": "blocked",
+            "visualization": DEFERRED_VISUALIZATION_LABELS[item],
+            "status": "Blocked",
             "basis": DEFERRED_VISUALIZATIONS[item],
         }
         for item in deferred
@@ -424,7 +438,7 @@ def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
     return f"""
       <section class="evidence-pane screen4-comparative-visualization-eligibility"
                data-screen4-comparative-section="visualization-eligibility">
-        <h3>Visualization Eligibility</h3>
+        <h3>Rendering Eligibility</h3>
         {table}
       </section>
     """
@@ -569,4 +583,3 @@ def _has_display_value(value: Any) -> bool:
     if isinstance(value, (list, tuple, set, dict)):
         return bool(value)
     return True
-

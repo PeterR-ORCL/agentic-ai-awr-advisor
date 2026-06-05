@@ -13,6 +13,9 @@ from typing import Any
 from src.reporting.dashboard.screen4.comparative_visual_eligibility import (
     build_screen4_comparative_visual_eligibility,
 )
+from src.reporting.dashboard.screen4.comparative_visuals import (
+    render_screen4_comparative_visuals,
+)
 
 
 TABLE_PANEL_VISUALIZATIONS = {
@@ -54,6 +57,7 @@ def render_screen4_comparative_tables(comparative_state: dict[str, Any]) -> str:
         _render_visualization_eligibility_panel(contract),
         _render_confidence_basis_panel(contract),
         _render_missing_evidence_panel(contract),
+        render_screen4_comparative_visuals(comparative_state),
     ]
     rendered_sections = [section for section in sections if section.strip()]
     if not rendered_sections:

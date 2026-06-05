@@ -626,7 +626,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertEqual([], results)
 
-    def test_visual_ready_fixture_marks_eligible_without_chart_rendering(self) -> None:
+    def test_visual_ready_fixture_marks_eligible_and_dashboard_renders_visual(self) -> None:
         dashboard = dashboard_module()
         contract = self.valid_contract(
             ["metric_delta_table", "time_series_overlay"],
@@ -657,8 +657,9 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertIn("Time-series Overlay", html)
         self.assertIn("Eligible for future rendering", html)
+        self.assertIn("screen4-comparative-time-series-evidence", html)
+        self.assertIn("<svg", html)
         self.assertNotIn("<canvas", html)
-        self.assertNotIn("<svg", html)
         self.assertNotIn("screen4-comparative-time-series-overlay", html)
 
     def test_text_panel_omits_not_requested_future_visuals_and_synthetic_wording(self) -> None:

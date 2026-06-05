@@ -185,9 +185,9 @@ The Screen 4 Rendering Eligibility panel may show text-only eligibility facts. I
 - Min/max-only distribution rows are explicitly blocked as `distribution_samples_missing`; they are not sample evidence.
 - The text-only panel must not use "coming soon" wording, synthetic-data wording, chart containers, or visual placeholders.
 
-## Future Gate
+## 7CX-H Rendering Gate
 
-Future 7CX-H rendering may draw graphs or violins only after:
+7CX-H may render comparative visuals only after:
 
 - the Screen 4 deterministic comparison output contract validates,
 - `allowed_visualizations` includes the specific visual,
@@ -195,3 +195,12 @@ Future 7CX-H rendering may draw graphs or violins only after:
 - the renderer reads explicit visual-shaped `evidence_rows`, not permission, cache, route state, or loose artifact fields,
 - the renderer can draw from real contract evidence without synthetic points or samples,
 - and no empty chart shell would be produced.
+
+7CX-H implements:
+
+- a static Time-Series Evidence SVG from `evidence_rows` marked `visualization=time_series_overlay`,
+- a static Distribution Evidence sample plot from `evidence_rows` marked `visualization=distribution_violin`.
+
+The distribution view is intentionally conservative. It is a sample plot from actual Target A/B samples, not a true violin density plot, because the contract does not provide density estimates and Screen 4 must not synthesize samples or infer density.
+
+Blocked or malformed visual evidence renders no SVG, no axes, no chart frame, and no placeholder visual section.

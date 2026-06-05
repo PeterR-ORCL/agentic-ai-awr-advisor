@@ -329,6 +329,19 @@ The text-only Rendering Eligibility panel may use 7CX-G results to explain eligi
 
 7CX-G-FU2 aligns the data-to-render contract: `allowed_visualizations` is permission only, 7CX-G eligibility is a gate only, and future graph/violin renderers may consume visual evidence only from explicit visual-shaped `evidence_rows`. Top-level `time_series_rows`, `distribution_rows`, `visual_evidence`, cache/route continuity, artifact references, prepared Target A/B context, LLM text, UI-generated values, and synthetic values are not visual evidence.
 
+## 7CX-H Comparative Visual Rendering
+
+7CX-H implements the first populated visual rendering layer while preserving the 7CX-B/7CX-G chain. A visual section renders only when Screen 4 is in `comparison_output_ready`, the strict deterministic comparison output contract validates, `allowed_visualizations` includes the visual, 7CX-G returns `eligible`, and explicit visual-shaped `evidence_rows` are present.
+
+Implemented 7CX-H visuals:
+
+- Time-Series Evidence: a static SVG two-target overlay from `evidence_rows` marked `visualization=time_series_overlay`. Rows must include timestamp, metric key, numeric Target A value, and numeric Target B value. At least two aligned rows for one metric are required.
+- Distribution Evidence: a static SVG sample plot from `evidence_rows` marked `visualization=distribution_violin`. Rows must include actual Target A and Target B sample arrays, or paired Target A/B sample rows, with at least three numeric samples per target.
+
+The distribution visual is not a true violin plot. It deliberately avoids density estimation because the contract currently supplies samples, not density curves. Future true violin rendering would require deterministic density evidence or a documented deterministic density-generation contract.
+
+7CX-H renders no visual when evidence is missing or malformed. Blocked visuals remain text-only in Rendering Eligibility; Screen 4 does not render empty SVGs, axes without data, disabled chart frames, placeholder graph panels, or visual sections that exist only to fill space.
+
 ## html_dashboard.py Growth Controls
 
 `html_dashboard.py` is already too large. Future implementation should avoid large monolithic additions, duplicated HTML/JS blocks, browser computation, static examples, empty blocks, generated placeholder charts, and visual shells.

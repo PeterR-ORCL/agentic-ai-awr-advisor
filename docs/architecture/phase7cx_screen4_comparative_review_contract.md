@@ -118,3 +118,14 @@ Metric deltas, domain deltas, summary rows, min/max-only rows, top-level loose v
 7CX-G-FU1 clarifies that an `eligible` visual status means eligible for future rendering only. Fleet/population visuals without a fleet/population evidence contract must use the `fleet_evidence_contract_missing` reason and remain `not_supported`.
 
 7CX-G-FU2 aligns the visual data-to-render contract: `allowed_visualizations` is permission only, 7CX-G eligibility is a gate only, and future visual renderers must consume explicit visual-shaped `evidence_rows`. Permission, eligibility, route/cache continuity, prepared Target A/B context, artifact references, LLM wording, and UI-generated values do not create visual evidence.
+
+## 7CX-H Visual Rendering Boundary
+
+7CX-H renders populated comparative visuals only after `comparison_output_ready`, strict contract validation, explicit `allowed_visualizations` permission, 7CX-G `eligible` status, and explicit visual-shaped `evidence_rows`.
+
+Implemented visual rendering is limited to:
+
+- Time-Series Evidence from `evidence_rows` marked `visualization=time_series_overlay`.
+- Distribution Evidence from `evidence_rows` marked `visualization=distribution_violin`.
+
+Distribution Evidence is a conservative sample plot from actual Target A/B samples. It is not a true violin density plot and does not synthesize samples or density. Blocked or malformed visual evidence renders no SVG, no axes, no chart frame, and no placeholder panel.

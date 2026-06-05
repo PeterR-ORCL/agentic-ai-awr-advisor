@@ -267,7 +267,10 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
         self.assertIn("screen4-comparative-visualization-eligibility", html)
         self.assertIn("Rendering Eligibility", html)
         self.assertIn("Metric Differences", html)
-        self.assertIn("Distribution violin requires distribution sample rows.", html)
+        self.assertIn(
+            "Distribution violin is blocked because distribution sample rows are missing.",
+            html,
+        )
         eligibility_start = html.index("screen4-comparative-visualization-eligibility")
         eligibility_end = html.index("</section>", eligibility_start)
         eligibility_fragment = html[eligibility_start:eligibility_end]

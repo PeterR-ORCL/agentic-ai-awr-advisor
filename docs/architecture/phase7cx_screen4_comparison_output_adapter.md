@@ -134,3 +134,5 @@ Those require future evidence shapes such as aligned time-series points, distrib
 After 7CX-D review, the next safe step is 7CX-E: Screen 4 Rich Comparative Evidence View Design. Rich tables, deltas, graphs, and violins should remain deferred until the validated contract contains the required evidence and `allowed_visualizations` explicitly permits the visualization.
 
 The 7CX-E design is documented in `docs/architecture/phase7cx_screen4_rich_comparative_evidence_view.md`.
+
+7CX-G adds a visual eligibility layer after table rendering. The adapter may eventually emit visual evidence shapes such as aligned time-series rows or distribution samples, but those rows still must pass 7CX-G eligibility before any future Screen 4 graph or violin renderer can draw them. 7CX-G does not render visuals and does not treat summary deltas as graph or violin evidence.

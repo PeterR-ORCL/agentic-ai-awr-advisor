@@ -10,6 +10,10 @@ from __future__ import annotations
 from html import escape
 from typing import Any
 
+from src.reporting.dashboard.screen4.comparative_visual_eligibility import (
+    build_screen4_comparative_visual_eligibility,
+)
+
 
 TABLE_PANEL_VISUALIZATIONS = {
     "metric_delta_table": "Metric Differences",
@@ -25,21 +29,6 @@ TABLE_PANEL_ELIGIBILITY_NOTES = {
     "confidence_basis_panel": "Available from the deterministic confidence basis.",
     "missing_evidence_panel": "Available when missing evidence or limitations are reported.",
 }
-DEFERRED_VISUALIZATIONS = {
-    "time_series_overlay": "Time-series overlay requires aligned time-series rows.",
-    "distribution_violin": "Distribution violin requires distribution sample rows.",
-    "wait_class_movement_table": "Wait/event movement requires persistent wait/event identity.",
-    "top_sql_movement_table": "SQL movement requires persistent SQL identity.",
-    "top_event_movement_table": "Top event movement requires persistent event identity.",
-}
-DEFERRED_VISUALIZATION_LABELS = {
-    "time_series_overlay": "Time-series Overlay",
-    "distribution_violin": "Distribution / Violin Evidence",
-    "wait_class_movement_table": "Wait/Event Movement",
-    "top_sql_movement_table": "SQL Movement",
-    "top_event_movement_table": "Top Event Movement",
-}
-
 
 def render_screen4_comparative_tables(comparative_state: dict[str, Any]) -> str:
     """Render output-ready Screen 4 Comparative Review tables and panels."""
@@ -404,8 +393,9 @@ def _render_missing_evidence_panel(contract: dict[str, Any]) -> str:
 
 
 def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
-    allowed = [item for item in _string_list(contract.get("allowed_visualizations")) if item in TABLE_PANEL_VISUALIZATIONS]
-    deferred = [item for item in _string_list(contract.get("allowed_visualizations")) if item in DEFERRED_VISUALIZATIONS]
+    allowed_visualizations = _string_list(contract.get("allowed_visualizations"))
+    allowed = [item for item in allowed_visualizations if item in TABLE_PANEL_VISUALIZATIONS]
+    visual_names = [item for item in allowed_visualizations if item not in TABLE_PANEL_VISUALIZATIONS]
     rows = [
         {
             "visualization": TABLE_PANEL_VISUALIZATIONS[item],
@@ -414,14 +404,18 @@ def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
         }
         for item in allowed
     ]
-    rows.extend(
-        {
-            "visualization": DEFERRED_VISUALIZATION_LABELS[item],
-            "status": "Blocked",
-            "basis": DEFERRED_VISUALIZATIONS[item],
-        }
-        for item in deferred
-    )
+    for result in build_screen4_comparative_visual_eligibility(
+        contract,
+        visual_names,
+    ):
+        rows.append(
+            {
+                "visualization": result.visualization_label,
+                "status": result.status.replace("_", " ").title(),
+                "basis": result.reason,
+                "evidence_count": result.evidence_count if result.evidence_count else None,
+            }
+        )
     if not rows:
         return ""
     table = _render_table(
@@ -430,6 +424,7 @@ def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
             ("visualization", "Visualization"),
             ("status", "Status"),
             ("basis", "Basis"),
+            ("evidence_count", "Evidence Rows"),
         ],
         "screen4-comparative-visualization-eligibility-table",
     )

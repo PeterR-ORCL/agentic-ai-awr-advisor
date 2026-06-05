@@ -106,3 +106,11 @@ The 7CC comparison execution artifacts and references are not automatically Scre
 The adapter does not render charts, comparison violins, A/B overlays, or rich Comparative Review UI. It does not add browser-side comparison computation, browser artifact dereferencing, a Build Comparison button, or a Screen 4 provider route.
 
 For 7CX-D, `allowed_visualizations` may include only conservative table/panel permissions when supported by fields: `metric_delta_table`, `domain_delta_summary`, `confidence_basis_panel`, and `missing_evidence_panel`. Distribution violins, time-series overlays, top-SQL movement, top-event movement, wait-class movement, and fleet/population visuals remain future and require additional deterministic evidence contracts.
+
+## 7CX-G Visual Eligibility Boundary
+
+7CX-G adds a deterministic eligibility layer for future comparative visuals. `allowed_visualizations` remains necessary but is not sufficient for graph or violin rendering. A future visual also requires the 7CX-G eligibility result to be `eligible`.
+
+Time-series overlay eligibility requires explicit aligned time-series rows with timestamp, metric key, numeric Target A value, and numeric Target B value. Distribution/violin eligibility requires actual numeric Target A and Target B sample arrays or paired sample rows with at least three samples per target. SQL/event movement eligibility requires persistent SQL or event/wait identity and numeric Target A/B values.
+
+Metric deltas, domain deltas, summary rows, route/cache state, prepared Target A/B context, LLM text, and snapshot identity are not sufficient visual evidence. 7CX-G does not render charts, violins, canvas/SVG, empty chart shells, fleet diagrams, or placeholder visuals.

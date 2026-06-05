@@ -234,7 +234,8 @@ Any future LLM explanation panel must quote or summarize only contract-backed fa
 Recommended sequence after 7CX-E:
 
 1. 7CX-F: Screen 4 Comparative Tables from Validated Contract.
-2. 7CX-G: Screen 4 Comparative Graphs and Violins from Validated Contract.
+2. 7CX-G: Screen 4 Comparative Visual Eligibility and Guardrails.
+3. 7CX-H: Screen 4 Comparative Graphs and Violins from Validated Visual Evidence.
 
 Tables should come before graphs because current 7CX-D adapter output supports conservative table/panel permissions only. Graphs and violins require stronger evidence shapes such as aligned time-series points, distribution samples, stable SQL identity, and stable event identity.
 
@@ -282,7 +283,31 @@ Product polish decisions:
 - Optional table columns remain dynamic and are omitted when no row contains data.
 - Empty tables, empty identity cards, empty evidence blocks, chart shells, placeholder graphs, static examples, fake deltas, and "coming soon" evidence panels remain forbidden.
 
-Graph and violin work remains deferred to 7CX-G and still requires validated deterministic evidence shapes plus explicit `allowed_visualizations` permission.
+Graph and violin rendering remains deferred to 7CX-H and still requires validated deterministic evidence shapes, explicit `allowed_visualizations` permission, and an eligible 7CX-G visual eligibility result.
+
+## 7CX-G Visual Eligibility and Guardrails
+
+7CX-G adds a pure eligibility layer for future comparative visuals. It does not render graphs, draw violins, create visual containers, synthesize time-series points, synthesize distribution samples, add browser computation, add backend routes, or mutate deterministic truth.
+
+The eligibility layer returns structured statuses for each requested visual:
+
+- `eligible`
+- `blocked`
+- `omitted`
+- `not_requested`
+- `not_supported`
+
+Future visuals may render only when the Screen 4 deterministic comparison output contract validates, `allowed_visualizations` includes the visual, and the 7CX-G eligibility result is `eligible`.
+
+7CX-G accepts explicit deterministic evidence shapes only:
+
+- `time_series_overlay` requires aligned time-series rows with timestamp, metric key, numeric Target A value, and numeric Target B value; at least two aligned points are required for one metric.
+- `distribution_violin` requires actual numeric Target A and Target B samples; at least three samples per target are required for one metric.
+- SQL/event movement requires persistent SQL or event/wait identity and numeric Target A/B values.
+
+Metric deltas alone, domain deltas alone, summary deltas, snapshot identity, route/cache state, prepared Target A/B context, and LLM text cannot make a visual eligible.
+
+The text-only Rendering Eligibility panel may use 7CX-G results to explain eligible, blocked, or unsupported future visual states. It must not render chart shells, canvas/SVG, visual placeholders, or "coming soon" evidence panels.
 
 ## html_dashboard.py Growth Controls
 
@@ -330,6 +355,7 @@ This design depends on:
 
 - `docs/architecture/phase7cx_screen4_comparative_review_contract.md`
 - `docs/architecture/phase7cx_screen4_comparison_output_adapter.md`
+- `docs/architecture/phase7cx_screen4_comparative_visual_eligibility.md`
 - `docs/architecture/phase7_screen4_evidence_review_mode_shell.md`
 - `docs/architecture/phase7cc_comparison_execution.md`
 - `docs/architecture/phase7am_awr_report_comparison_engine.md`

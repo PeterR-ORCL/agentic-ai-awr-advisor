@@ -287,19 +287,33 @@ def _render_time_series_svg(metric: dict[str, Any]) -> str:
     first_timestamp = _display_value(rows[0].get("timestamp"))
     last_timestamp = _display_value(rows[-1].get("timestamp"))
     target_a_marks = "".join(
-        _svg_circle(x, y, "#2563eb", "Target A")
-        for x, y in target_a_points
+        _svg_circle(
+            x,
+            y,
+            "#2563eb",
+            f"Target A {_format_number(row.get('target_a_value'))} at {_display_value(row.get('timestamp'))}",
+        )
+        for row, (x, y) in zip(rows, target_a_points)
     )
     target_b_marks = "".join(
-        _svg_circle(x, y, "#0f766e", "Target B")
-        for x, y in target_b_points
+        _svg_circle(
+            x,
+            y,
+            "#0f766e",
+            f"Target B {_format_number(row.get('target_b_value'))} at {_display_value(row.get('timestamp'))}",
+        )
+        for row, (x, y) in zip(rows, target_b_points)
     )
     return f"""
       <figure class="screen4-comparative-visual-figure">
         <svg class="screen4-comparative-time-series-svg"
              viewBox="0 0 {width} {height}"
              role="img"
-             aria-label="Time-Series Evidence for {escape(metric_label, quote=True)}">
+             aria-labelledby="screen4-time-series-title screen4-time-series-desc">
+          <title id="screen4-time-series-title">Time-Series Evidence for {escape(metric_label)}</title>
+          <desc id="screen4-time-series-desc">
+            Validated deterministic comparison output with Target A and Target B values for each timestamp.
+          </desc>
           <rect x="0" y="0" width="{width}" height="{height}" fill="#ffffff" rx="8"></rect>
           <line x1="{left}" y1="{top + plot_height}" x2="{width - right}" y2="{top + plot_height}"
                 stroke="#94a3b8" stroke-width="1"></line>
@@ -311,13 +325,13 @@ def _render_time_series_svg(metric: dict[str, Any]) -> str:
           <text x="{left - 8}" y="{top + 5}" fill="#475569" font-size="11" text-anchor="end">{escape(_format_number(max_value))}</text>
           <text x="{left - 8}" y="{top + plot_height}" fill="#475569" font-size="11" text-anchor="end">{escape(_format_number(min_value))}</text>
           <path d="{target_a_path}" fill="none" stroke="#2563eb" stroke-width="2.5"></path>
-          <path d="{target_b_path}" fill="none" stroke="#0f766e" stroke-width="2.5"></path>
+          <path d="{target_b_path}" fill="none" stroke="#0f766e" stroke-width="2.5" stroke-dasharray="6 4"></path>
           {target_a_marks}
           {target_b_marks}
           <circle cx="{width - 196}" cy="18" r="4" fill="#2563eb"></circle>
           <text x="{width - 186}" y="22" fill="#334155" font-size="11">Target A</text>
           <circle cx="{width - 112}" cy="18" r="4" fill="#0f766e"></circle>
-          <text x="{width - 102}" y="22" fill="#334155" font-size="11">Target B</text>
+          <text x="{width - 102}" y="22" fill="#334155" font-size="11">Target B (dashed)</text>
         </svg>
       </figure>
     """
@@ -345,11 +359,21 @@ def _render_distribution_svg(metric: dict[str, Any]) -> str:
         return left + ((value - min_value) / value_range * plot_width)
 
     target_a_marks = "".join(
-        _svg_circle(x_at(float(value)), target_a_y, "#2563eb", f"Target A {index + 1}")
+        _svg_circle(
+            x_at(float(value)),
+            target_a_y,
+            "#2563eb",
+            f"Target A sample {index + 1}: {_format_number(value)}",
+        )
         for index, value in enumerate(target_a_samples)
     )
     target_b_marks = "".join(
-        _svg_circle(x_at(float(value)), target_b_y, "#0f766e", f"Target B {index + 1}")
+        _svg_circle(
+            x_at(float(value)),
+            target_b_y,
+            "#0f766e",
+            f"Target B sample {index + 1}: {_format_number(value)}",
+        )
         for index, value in enumerate(target_b_samples)
     )
     if not target_a_marks or not target_b_marks:
@@ -360,7 +384,11 @@ def _render_distribution_svg(metric: dict[str, Any]) -> str:
         <svg class="screen4-comparative-distribution-svg"
              viewBox="0 0 {width} {height}"
              role="img"
-             aria-label="Distribution Evidence for {escape(metric_label, quote=True)}">
+             aria-labelledby="screen4-distribution-title screen4-distribution-desc">
+          <title id="screen4-distribution-title">Distribution Evidence for {escape(metric_label)}</title>
+          <desc id="screen4-distribution-desc">
+            Validated Target A and Target B sample values rendered as a conservative sample plot; no density curve is estimated.
+          </desc>
           <rect x="0" y="0" width="{width}" height="{height}" fill="#ffffff" rx="8"></rect>
           <text x="{left}" y="24" fill="#0f172a" font-size="13" font-weight="700">{escape(metric_label)}</text>
           <line x1="{left}" y1="{target_a_y}" x2="{width - right}" y2="{target_a_y}" stroke="#cbd5e1" stroke-width="1"></line>

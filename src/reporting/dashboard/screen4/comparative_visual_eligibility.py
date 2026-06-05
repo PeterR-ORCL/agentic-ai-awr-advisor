@@ -50,7 +50,7 @@ DEFAULT_VISUALIZATION_ORDER = (
 
 VISUALIZATION_LABELS = {
     TIME_SERIES_OVERLAY: "Time-series Overlay",
-    DISTRIBUTION_VIOLIN: "Distribution / Violin Evidence",
+    DISTRIBUTION_VIOLIN: "Distribution Evidence",
     TOP_SQL_MOVEMENT_TABLE: "SQL Movement",
     WAIT_CLASS_MOVEMENT_TABLE: "Wait/Event Movement",
     TOP_EVENT_MOVEMENT_TABLE: "Top Event Movement",
@@ -302,7 +302,7 @@ def _evaluate_distribution_violin(
         return _blocked(
             DISTRIBUTION_VIOLIN,
             "distribution_samples_missing",
-            "Distribution violin is blocked because distribution sample rows are missing.",
+            "Distribution evidence is blocked because distribution sample rows are missing.",
             required_fields=required,
             missing_fields=("evidence_rows",),
         )
@@ -315,7 +315,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "missing_metric_identity",
-                "Distribution violin is blocked because a metric key is missing.",
+                "Distribution evidence is blocked because a metric key is missing.",
                 required_fields=required,
                 missing_fields=("metric_key",),
                 evidence_count=len(rows),
@@ -328,7 +328,7 @@ def _evaluate_distribution_violin(
                 return _blocked(
                     DISTRIBUTION_VIOLIN,
                     "target_a_samples_missing",
-                    "Distribution violin is blocked because Target A samples are missing.",
+                    "Distribution evidence is blocked because Target A samples are missing.",
                     required_fields=required,
                     missing_fields=("target_a_samples",),
                     evidence_count=len(rows),
@@ -337,17 +337,19 @@ def _evaluate_distribution_violin(
                 return _blocked(
                     DISTRIBUTION_VIOLIN,
                     "target_b_samples_missing",
-                    "Distribution violin is blocked because Target B samples are missing.",
+                    "Distribution evidence is blocked because Target B samples are missing.",
                     required_fields=required,
                     missing_fields=("target_b_samples",),
                     evidence_count=len(rows),
                 )
-            invalid_sample = _non_numeric_sample(target_a_samples) or _non_numeric_sample(target_b_samples)
+            invalid_sample = _non_numeric_sample(target_a_samples) or _non_numeric_sample(
+                target_b_samples
+            )
             if invalid_sample:
                 return _blocked(
                     DISTRIBUTION_VIOLIN,
                     "non_numeric_distribution_sample",
-                    "Distribution violin is blocked because samples must be numeric.",
+                    "Distribution evidence is blocked because samples must be numeric.",
                     required_fields=required,
                     missing_fields=("samples",),
                     evidence_count=len(rows),
@@ -359,24 +361,24 @@ def _evaluate_distribution_violin(
                 return _blocked(
                     DISTRIBUTION_VIOLIN,
                     "insufficient_distribution_samples",
-                    "Distribution violin is blocked because at least three samples per target are required.",
+                    "Distribution evidence is blocked because at least three samples per target are required.",
                     required_fields=required,
                     evidence_count=min(len(target_a_samples), len(target_b_samples)),
                 )
             return _eligible(
                 DISTRIBUTION_VIOLIN,
                 "distribution_samples_present",
-                "Distribution violin has numeric Target A/B sample arrays for one metric.",
+                "Distribution evidence has numeric Target A/B sample arrays for one metric.",
                 required_fields=required,
-                    evidence_count=min(len(target_a_samples), len(target_b_samples)),
-                )
+                evidence_count=min(len(target_a_samples), len(target_b_samples)),
+            )
 
         if not _has_text(row.get("target")) and row.get("samples") is None:
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "distribution_samples_missing",
                 (
-                    "Distribution violin is blocked because Target A/B sample arrays "
+                    "Distribution evidence is blocked because Target A/B sample arrays "
                     "are missing; summary rows such as min/max are not distribution samples."
                 ),
                 required_fields=required,
@@ -390,7 +392,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "target_a_samples_missing",
-                "Distribution violin is blocked because separate sample rows must identify Target A or Target B.",
+                "Distribution evidence is blocked because separate sample rows must identify Target A or Target B.",
                 required_fields=required,
                 missing_fields=("target",),
                 evidence_count=len(rows),
@@ -400,7 +402,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 missing_code,
-                f"Distribution violin is blocked because Target {target} samples are missing.",
+                f"Distribution evidence is blocked because Target {target} samples are missing.",
                 required_fields=required,
                 missing_fields=("samples",),
                 evidence_count=len(rows),
@@ -409,7 +411,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "non_numeric_distribution_sample",
-                "Distribution violin is blocked because samples must be numeric.",
+                "Distribution evidence is blocked because samples must be numeric.",
                 required_fields=required,
                 missing_fields=("samples",),
                 evidence_count=len(rows),
@@ -425,7 +427,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "target_a_samples_missing",
-                "Distribution violin is blocked because Target A samples are missing.",
+                "Distribution evidence is blocked because Target A samples are missing.",
                 required_fields=required,
                 missing_fields=("target_a_samples",),
                 evidence_count=len(rows),
@@ -434,7 +436,7 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "target_b_samples_missing",
-                "Distribution violin is blocked because Target B samples are missing.",
+                "Distribution evidence is blocked because Target B samples are missing.",
                 required_fields=required,
                 missing_fields=("target_b_samples",),
                 evidence_count=len(rows),
@@ -445,14 +447,14 @@ def _evaluate_distribution_violin(
             return _blocked(
                 DISTRIBUTION_VIOLIN,
                 "insufficient_distribution_samples",
-                "Distribution violin is blocked because at least three samples per target are required.",
+                "Distribution evidence is blocked because at least three samples per target are required.",
                 required_fields=required,
                 evidence_count=min(a_count, b_count),
             )
         return _eligible(
             DISTRIBUTION_VIOLIN,
             "distribution_samples_present",
-            "Distribution violin has numeric Target A/B sample rows for one metric.",
+            "Distribution evidence has numeric Target A/B sample rows for one metric.",
             required_fields=required,
             evidence_count=min(a_count, b_count),
         )
@@ -460,7 +462,7 @@ def _evaluate_distribution_violin(
     return _blocked(
         DISTRIBUTION_VIOLIN,
         "distribution_samples_missing",
-        "Distribution violin is blocked because distribution sample rows are missing.",
+        "Distribution evidence is blocked because distribution sample rows are missing.",
         required_fields=required,
         missing_fields=("evidence_rows",),
     )

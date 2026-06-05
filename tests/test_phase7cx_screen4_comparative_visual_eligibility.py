@@ -339,6 +339,8 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertEqual("blocked", result.status)
         self.assertEqual("distribution_samples_missing", result.reason_code)
+        self.assertEqual("Distribution Evidence", result.visualization_label)
+        self.assertIn("Distribution evidence is blocked", result.reason)
 
     def test_distribution_violin_blocked_from_summary_deltas(self) -> None:
         result = self.evaluate(
@@ -500,6 +502,8 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         self.assertEqual("eligible", result.status)
         self.assertTrue(result.rendering_allowed)
         self.assertEqual(3, result.evidence_count)
+        self.assertEqual("Distribution Evidence", result.visualization_label)
+        self.assertIn("Distribution evidence has numeric", result.reason)
 
     def test_distribution_violin_accepts_separate_target_rows_only_with_both_sides(self) -> None:
         missing_b = self.evaluate(

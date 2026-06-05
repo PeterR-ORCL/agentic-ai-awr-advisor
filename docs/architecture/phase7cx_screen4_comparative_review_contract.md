@@ -129,3 +129,5 @@ Implemented visual rendering is limited to:
 - Distribution Evidence from `evidence_rows` marked `visualization=distribution_violin`.
 
 Distribution Evidence is a conservative sample plot from actual Target A/B samples. It is not a true violin density plot and does not synthesize samples or density. Blocked or malformed visual evidence renders no SVG, no axes, no chart frame, and no placeholder panel.
+
+7CX-H-FU1 confirms that Screen 4 keeps `Distribution Evidence` as the operator-facing label for the conservative sample plot. The `distribution_violin` value remains the deterministic permission/evidence-shape key, but Screen 4 must not label the rendered output as a true violin unless future contract fields provide deterministic density semantics. Visual SVGs should include accessible title/description text and redundant Target A/Target B labeling, while preserving the no-empty-shell and no-synthetic-data guarantees.

@@ -118,7 +118,7 @@ The future view should render in this order when eligible:
 9. Confidence Basis Panel
 10. Missing Evidence / Limitations Panel
 11. Future Time-Series Overlay
-12. Future Distribution / Violin Panel
+12. Future Distribution Evidence / Violin Panel
 13. LLM Explanation Boundary Panel
 
 Sections should be compact, operational, and scannable. Repeated empty states should collapse into one Missing Evidence or Visualization Eligibility explanation.
@@ -138,7 +138,7 @@ Sections should be compact, operational, and scannable. Repeated empty states sh
 | Missing Evidence / Limitations Panel | Make gaps visible. | `missing_evidence` non-empty or adapter messages contain limitation/blocking messages. | `missing_evidence`, `adapter_validation_messages`, `confidence_basis.limitations`. | `missing_evidence_panel` when treated as a visual asset. | Show category, field, reason, impact, blocked visualization if available. | If empty, optionally show no missing evidence only when useful and not redundant. | Omit if empty and not useful. | Do not invent missing evidence. |
 | Visualization Eligibility Panel | Explain available or blocked visuals. | Allowed visuals exist, or blocked visual explanation is useful. | `allowed_visualizations`, `missing_evidence`, `evidence_rows`, `confidence_basis`, `adapter_validation_messages`. | None; it explains permissions. | Show allowed visualizations and meaningful blocked reasons. | Do not list every blocked visual unless helpful. | Omit if it duplicates other blocked messages. | No visual shells or "coming soon" placeholders. |
 | Future Time-Series Overlay | Define future graph behavior. | Future only: allowed and explicit `evidence_rows` marked `visualization=time_series_overlay` exist. | `evidence_rows[].visualization`, timestamp, metric key, Target A value, Target B value, unit, alignment basis. | `time_series_overlay`. | Render overlay from aligned points only. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit if not allowed and not useful. | No synthetic series from summary deltas, top-level loose fields, or snapshot identity alone. |
-| Future Distribution / Violin Panel | Define future violin behavior. | Future only: allowed and explicit `evidence_rows` marked `visualization=distribution_violin` exist. | `evidence_rows[].visualization`, metric key, Target A sample set, Target B sample set, sample values or buckets, unit, sample count. | `distribution_violin`. | Render violin from actual samples only. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit if not allowed and not useful. | No violin from summary deltas, min/max-only rows, top-level loose fields, empty containers, or synthetic samples. |
+| Future Distribution Evidence / Violin Panel | Define distribution evidence behavior and future true violin requirements. | Future only: allowed and explicit `evidence_rows` marked `visualization=distribution_violin` exist. | `evidence_rows[].visualization`, metric key, Target A sample set, Target B sample set, sample values or buckets, unit, sample count. | `distribution_violin`. | Render a conservative Distribution Evidence sample plot from actual samples; render a true violin only after deterministic density semantics are contract-supported. | "Distribution evidence is blocked because this deterministic comparison output does not include distribution sample rows." | Omit if not allowed and not useful. | No violin from summary deltas, min/max-only rows, top-level loose fields, empty containers, or synthetic samples. |
 | LLM Explanation Boundary Panel | Keep explanation separate from truth. | Comparative explanation exists or planned and a boundary note is useful. | validated contract presence. | None. | "LLM-assisted wording may explain validated deterministic comparison output only after that output exists. It does not compute comparison meaning or decide outcome direction." | Omit if redundant. | No LLM-created deltas, direction labels, evidence rows, or confidence. |
 
 ## Evidence Completeness Categories
@@ -176,7 +176,7 @@ A category may be `available` only when matching evidence rows exist. It may be 
 | Confidence Basis Panel | `confidence_basis_panel` | `confidence_basis` | Deterministic basis, sample count, evidence count, missing count, limitations. | None inside output-ready. | Omit empty optional fields. | No UI or LLM confidence. |
 | Missing Evidence Panel | `missing_evidence_panel` | `missing_evidence`, limitations/messages | Missing field/category rows or limitation messages. | None when empty; omit instead. | Omit when empty and not useful. | No invented missing evidence. |
 | Time-Series Overlay | `time_series_overlay` | visual-shaped `evidence_rows` | Rows marked `visualization=time_series_overlay` with timestamp, metric key, numeric Target A value, numeric Target B value, unit, alignment basis; at least two rows for one metric. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit when not allowed and not useful. | No synthetic time series or top-level loose rows. |
-| Distribution Violin | `distribution_violin` | visual-shaped `evidence_rows` | Rows marked `visualization=distribution_violin` with metric key and numeric Target A/B sample arrays or paired sample rows; at least three samples per target. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit when not allowed and not useful. | No violin from summary deltas, min/max-only rows, or top-level loose rows. |
+| Distribution Evidence | `distribution_violin` | visual-shaped `evidence_rows` | Rows marked `visualization=distribution_violin` with metric key and numeric Target A/B sample arrays or paired sample rows; at least three samples per target. | "Distribution evidence is blocked because this deterministic comparison output does not include distribution sample rows." | Omit when not allowed and not useful. | No violin from summary deltas, min/max-only rows, or top-level loose rows. |
 | Wait Class Movement Table | `wait_class_movement_table` | wait/event evidence rows | Stable wait class or event identity, Target A/B values, unit, source. | "Wait/event movement is blocked because stable wait/event identity is not present." | Omit when not allowed and not useful. | No empty wait table or loose grouping. |
 | Top SQL Movement Table | `top_sql_movement_table` | SQL evidence rows | Stable SQL identity across Target A/B, metric key, values, unit, source. | "SQL movement is blocked because stable SQL identity is not present." | Omit when not allowed and not useful. | No SQL matching by label alone. |
 | Top Event Movement Table | `top_event_movement_table` | event evidence rows | Stable event identity, Target A/B values, unit, source. | "Top event movement is blocked because stable event identity is not present." | Omit when not allowed and not useful. | No empty event table. |
@@ -341,6 +341,18 @@ Implemented 7CX-H visuals:
 The distribution visual is not a true violin plot. It deliberately avoids density estimation because the contract currently supplies samples, not density curves. Future true violin rendering would require deterministic density evidence or a documented deterministic density-generation contract.
 
 7CX-H renders no visual when evidence is missing or malformed. Blocked visuals remain text-only in Rendering Eligibility; Screen 4 does not render empty SVGs, axes without data, disabled chart frames, placeholder graph panels, or visual sections that exist only to fill space.
+
+## 7CX-H-FU1 Visual Review and Product Polish
+
+7CX-H-FU1 reviews the first visual renderer and keeps it bounded to the existing visual evidence contract. The review confirms that visuals still require `comparison_output_ready`, strict deterministic contract validation, exact `allowed_visualizations` permission, 7CX-G `eligible` status, and explicit visual-shaped `evidence_rows`.
+
+Product and accessibility polish:
+
+- Time-Series Evidence SVGs include an SVG title and description, visible Target A/Target B labels, point titles, and dashed Target B styling so the visual does not rely on color alone.
+- Distribution Evidence remains the visible label for the conservative sample plot. The underlying permission key is still `distribution_violin`, but Screen 4 must not present the plot as a true violin unless a future deterministic density contract supports that semantic.
+- Distribution Evidence SVGs include an SVG title and description, visible Target A/Target B labels, point titles, and the textual sample table with sample counts.
+- Blocked or malformed visual evidence continues to render no SVG, no chart title, no axes, no disabled chart frame, and no placeholder visual panel.
+- No new visual types, browser computation, backend routes, synthetic points, synthetic samples, top-level visual convenience fields, or UI/LLM-created visual facts were introduced.
 
 ## html_dashboard.py Growth Controls
 

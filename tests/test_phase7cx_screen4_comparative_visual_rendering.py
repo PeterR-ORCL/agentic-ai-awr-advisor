@@ -225,6 +225,17 @@ class Screen4ComparativeVisualRenderingTests(unittest.TestCase):
         self.assertIn("screen4-comparative-time-series-evidence", html)
         self.assertIn("screen4-comparative-time-series-svg", html)
         self.assertIn("Time-Series Evidence", html)
+        self.assertIn(
+            'aria-labelledby="screen4-time-series-title screen4-time-series-desc"',
+            html,
+        )
+        self.assertIn(
+            '<title id="screen4-time-series-title">Time-Series Evidence for CPU</title>',
+            html,
+        )
+        self.assertIn('<desc id="screen4-time-series-desc">', html)
+        self.assertIn("Target B (dashed)", html)
+        self.assertIn('stroke-dasharray="6 4"', html)
         self.assertIn("2026-06-05T12:00:00Z", html)
         self.assertIn("2026-06-05T12:05:00Z", html)
         self.assertIn("70", html)
@@ -290,11 +301,23 @@ class Screen4ComparativeVisualRenderingTests(unittest.TestCase):
         self.assertIn("screen4-comparative-distribution-evidence", html)
         self.assertIn("screen4-comparative-distribution-svg", html)
         self.assertIn("Distribution Evidence", html)
+        self.assertIn(
+            'aria-labelledby="screen4-distribution-title screen4-distribution-desc"',
+            html,
+        )
+        self.assertIn(
+            '<title id="screen4-distribution-title">Distribution Evidence for CPU</title>',
+            html,
+        )
+        self.assertIn('<desc id="screen4-distribution-desc">', html)
         self.assertIn("sample plot", html)
+        self.assertIn("Sample Count", html)
         self.assertIn("70, 71, 72", html)
         self.assertIn("58, 59, 60", html)
         self.assertNotIn("screen4-comparative-time-series-evidence", html)
         self.assertIn("No density curve is estimated.", html)
+        self.assertNotIn("Distribution / Violin Evidence", html)
+        self.assertNotIn(">Violin<", html)
         self.assertNotIn("<canvas", html)
 
     def test_distribution_visual_accepts_separate_target_sample_rows(self) -> None:

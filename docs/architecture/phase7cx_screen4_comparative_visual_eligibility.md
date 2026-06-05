@@ -95,7 +95,7 @@ Blocked reason codes include:
 
 Metric deltas, domain deltas, snapshot identity, prepared Target A/B context, route/cache state, and LLM text are not time-series evidence.
 
-## Distribution / Violin Eligibility
+## Distribution Evidence Eligibility (`distribution_violin`)
 
 `distribution_violin` is eligible only when:
 
@@ -132,7 +132,7 @@ Accepted separate row shape:
 
 Separate rows are accepted only when both Target A and Target B sample rows exist for the same metric.
 
-Distribution rows must appear in `evidence_rows` and must be explicitly marked with `visualization=distribution_violin`. Top-level `distribution_rows`, `distribution_sample_rows`, `distribution_evidence_rows`, and `visual_evidence.distribution_violin` are not Screen 4 violin render evidence.
+Distribution rows must appear in `evidence_rows` and must be explicitly marked with `visualization=distribution_violin`. Top-level `distribution_rows`, `distribution_sample_rows`, `distribution_evidence_rows`, and `visual_evidence.distribution_violin` are not Screen 4 distribution render evidence.
 
 Blocked reason codes include:
 
@@ -144,7 +144,7 @@ Blocked reason codes include:
 - `insufficient_distribution_samples`
 - `non_numeric_distribution_sample`
 
-Summary deltas, min/max-only rows, one sample per target, and synthetic samples cannot make a violin eligible. Min/max rows must remain blocked unless the contract also carries actual Target A/B sample arrays or paired sample rows.
+Summary deltas, min/max-only rows, one sample per target, and synthetic samples cannot make distribution evidence eligible. Min/max rows must remain blocked unless the contract also carries actual Target A/B sample arrays or paired sample rows.
 
 ## SQL/Event Movement Eligibility
 
@@ -204,3 +204,14 @@ The Screen 4 Rendering Eligibility panel may show text-only eligibility facts. I
 The distribution view is intentionally conservative. It is a sample plot from actual Target A/B samples, not a true violin density plot, because the contract does not provide density estimates and Screen 4 must not synthesize samples or infer density.
 
 Blocked or malformed visual evidence renders no SVG, no axes, no chart frame, and no placeholder visual section.
+
+## 7CX-H-FU1 Visual Review Findings
+
+7CX-H-FU1 keeps the machine contract key `distribution_violin`, but the operator-facing label is `Distribution Evidence` unless a future deterministic density contract supports a true violin plot. Eligibility reasons should describe missing sample evidence as Distribution Evidence, not as an implemented violin.
+
+The first visual renderer remains server-side/static and no-browser-compute:
+
+- Time-Series Evidence SVGs include accessible title and description text, visible Target A/Target B labels, and dashed Target B line styling so the visual does not rely on color alone.
+- Distribution Evidence SVGs include accessible title and description text, visible Target A/Target B sample rows, and a textual sample table with sample counts.
+- Blocked or malformed visual evidence continues to render no SVG, no chart frame, no axes, and no placeholder visual section.
+- The renderer still reads only explicit visual-shaped `evidence_rows`; permission, eligibility, top-level loose fields, and UI/LLM values do not create visual evidence.

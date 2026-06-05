@@ -268,7 +268,7 @@ class Screen4ComparativeTablesTests(unittest.TestCase):
         self.assertIn("Rendering Eligibility", html)
         self.assertIn("Metric Differences", html)
         self.assertIn(
-            "Distribution violin is blocked because distribution sample rows are missing.",
+            "Distribution evidence is blocked because distribution sample rows are missing.",
             html,
         )
         eligibility_start = html.index("screen4-comparative-visualization-eligibility")

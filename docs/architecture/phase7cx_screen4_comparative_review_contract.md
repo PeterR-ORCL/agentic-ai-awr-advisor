@@ -98,3 +98,11 @@ LLM wording may explain validated deterministic comparison output only after tha
 ## 7CC Boundary
 
 The 7CC comparison execution artifacts and references are not automatically Screen 4 output-ready. They require a future adapter that emits this strict Screen 4 deterministic comparison output contract before Screen 4 can render comparative evidence.
+
+## 7CX-D Adapter Boundary
+
+7CX-D introduces a backend-only adapter in `src/learning/screen4_comparison_contract.py`. The adapter may transform trusted 7CC/7AM comparison artifacts and governed workflow metadata into this strict contract, but only after Target A/B identity aligns, backend provenance is present, `generated_by=deterministic_engine`, `generated_at` is present, and deterministic evidence rows or deterministic empty-evidence explanation are available.
+
+The adapter does not render charts, comparison violins, A/B overlays, or rich Comparative Review UI. It does not add browser-side comparison computation, browser artifact dereferencing, a Build Comparison button, or a Screen 4 provider route.
+
+For 7CX-D, `allowed_visualizations` may include only conservative table/panel permissions when supported by fields: `metric_delta_table`, `domain_delta_summary`, `confidence_basis_panel`, and `missing_evidence_panel`. Distribution violins, time-series overlays, top-SQL movement, top-event movement, wait-class movement, and fleet/population visuals remain future and require additional deterministic evidence contracts.

@@ -84,10 +84,16 @@ Object Storage loading remains future 7CD work. Phase 7CC does not call Object S
 
 Dashboard output refresh and regenerated artifact handling remain future 7CE work. No dashboard regeneration occurs in Phase 7CC.
 
-## 20. Relationship to Phase 8
+## 20. Relationship to 7CX-D
+
+Phase 7CC output artifacts are governed comparison metadata, not Screen 4 output-ready contracts by themselves. 7CX-D adds a backend-only adapter that may transform trusted 7CC/7AM comparison artifacts into the strict Screen 4 deterministic comparison output contract after Target A/B identity alignment, deterministic provenance, generated timestamp, engine version, evidence rows, missing evidence, confidence basis, and `allowed_visualizations` are validated.
+
+7CC must not bypass that adapter by handing loose artifact references, output references, or serialized metadata directly to Screen 4 as output-ready evidence.
+
+## 21. Relationship to Phase 8
 
 Phase 8 remains separate and future. Phase 7CC does not implement sizing, TCO, target-platform what-if, or cost comparison logic.
 
-## 21. Acceptance Criteria
+## 22. Acceptance Criteria
 
 Phase 7CC is accepted when comparison execution validates actor, audit, idempotency, transaction, comparison input readiness, and input metadata; builds comparisons from supplied already-loaded structured in-memory payloads only; blocks staged-only and missing-structured-payload inputs; persists governed workflow metadata when a repository is supplied; supports idempotent replay; records comparison output references; and keeps all runtime mutation, file access, parser call, Object Storage, DB report lookup, dashboard regeneration, Phase 4I, adaptive runtime, and Phase 8 flags false.

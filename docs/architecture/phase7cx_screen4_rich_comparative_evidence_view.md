@@ -309,6 +309,8 @@ Metric deltas alone, domain deltas alone, summary deltas, snapshot identity, rou
 
 The text-only Rendering Eligibility panel may use 7CX-G results to explain eligible, blocked, or unsupported future visual states. It must not render chart shells, canvas/SVG, visual placeholders, or "coming soon" evidence panels.
 
+7CX-G-FU1 clarifies that `eligible` is an eligibility status for future rendering, not an active visual render state. The Rendering Eligibility panel should use concise text such as "Eligible for future rendering" and should omit `not_requested` future visuals by default. Min/max-only distribution rows, summary deltas, and loose SQL/event labels remain blocked, not visual evidence.
+
 ## html_dashboard.py Growth Controls
 
 `html_dashboard.py` is already too large. Future implementation should avoid large monolithic additions, duplicated HTML/JS blocks, browser computation, static examples, empty blocks, generated placeholder charts, and visual shells.

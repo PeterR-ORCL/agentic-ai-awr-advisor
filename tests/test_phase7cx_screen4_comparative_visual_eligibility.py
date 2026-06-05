@@ -115,7 +115,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertEqual("not_supported", result.status)
         self.assertFalse(result.rendering_allowed)
-        self.assertEqual("fleet_contract_missing", result.reason_code)
+        self.assertEqual("fleet_evidence_contract_missing", result.reason_code)
 
     def test_time_series_overlay_not_requested_when_not_allowed(self) -> None:
         result = self.evaluate(self.valid_contract([]), "time_series_overlay")
@@ -171,6 +171,49 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertEqual("blocked", result.status)
         self.assertEqual("insufficient_time_series_points", result.reason_code)
+
+    def test_time_series_overlay_blocks_missing_metric_identity_and_timestamp(self) -> None:
+        missing_metric = self.evaluate(
+            self.valid_contract(
+                ["time_series_overlay"],
+                time_series_rows=[
+                    {
+                        "timestamp": "2026-06-05T12:00:00Z",
+                        "target_a_value": 70,
+                        "target_b_value": 58,
+                    },
+                    {
+                        "timestamp": "2026-06-05T12:05:00Z",
+                        "metric_key": "cpu",
+                        "target_a_value": 71,
+                        "target_b_value": 59,
+                    },
+                ],
+            ),
+            "time_series_overlay",
+        )
+        self.assertEqual("missing_metric_identity", missing_metric.reason_code)
+
+        missing_timestamp = self.evaluate(
+            self.valid_contract(
+                ["time_series_overlay"],
+                time_series_rows=[
+                    {
+                        "metric_key": "cpu",
+                        "target_a_value": 70,
+                        "target_b_value": 58,
+                    },
+                    {
+                        "timestamp": "2026-06-05T12:05:00Z",
+                        "metric_key": "cpu",
+                        "target_a_value": 71,
+                        "target_b_value": 59,
+                    },
+                ],
+            ),
+            "time_series_overlay",
+        )
+        self.assertEqual("missing_timestamp", missing_timestamp.reason_code)
 
     def test_time_series_overlay_blocked_when_target_b_value_missing(self) -> None:
         result = self.evaluate(
@@ -280,6 +323,28 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
 
         self.assertEqual("blocked", result.status)
         self.assertEqual("distribution_samples_missing", result.reason_code)
+
+    def test_distribution_violin_blocked_from_min_max_only_rows(self) -> None:
+        result = self.evaluate(
+            self.valid_contract(
+                ["distribution_violin"],
+                distribution_rows=[
+                    {
+                        "visualization": "distribution_violin",
+                        "metric_key": "cpu",
+                        "target_a_min": 70,
+                        "target_a_max": 72,
+                        "target_b_min": 58,
+                        "target_b_max": 60,
+                    }
+                ],
+            ),
+            "distribution_violin",
+        )
+
+        self.assertEqual("blocked", result.status)
+        self.assertEqual("distribution_samples_missing", result.reason_code)
+        self.assertIn("min/max", result.reason)
 
     def test_distribution_violin_blocked_with_one_sample_per_target(self) -> None:
         result = self.evaluate(
@@ -512,10 +577,27 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         html = dashboard._render_screen4_comparative_review_panel(state)
 
         self.assertIn("Time-series Overlay", html)
-        self.assertIn("Eligible", html)
+        self.assertIn("Eligible for future rendering", html)
         self.assertNotIn("<canvas", html)
         self.assertNotIn("<svg", html)
         self.assertNotIn("screen4-comparative-time-series-overlay", html)
+
+    def test_text_panel_omits_not_requested_future_visuals_and_synthetic_wording(self) -> None:
+        dashboard = dashboard_module()
+        contract = self.valid_contract(["metric_delta_table"])
+        state = dashboard._screen4_build_comparative_review_state(
+            {"deterministic_comparison_output": contract}
+        )
+        html = dashboard._render_screen4_comparative_review_panel(state)
+        fragment_start = html.index("screen4-comparative-visualization-eligibility")
+        fragment_end = html.index("</section>", fragment_start)
+        fragment = html[fragment_start:fragment_end].lower()
+
+        self.assertNotIn("time-series overlay", fragment)
+        self.assertNotIn("distribution / violin evidence", fragment)
+        self.assertNotIn("not requested", fragment)
+        self.assertNotIn("coming soon", fragment)
+        self.assertNotIn("synthetic", fragment)
 
 
 if __name__ == "__main__":

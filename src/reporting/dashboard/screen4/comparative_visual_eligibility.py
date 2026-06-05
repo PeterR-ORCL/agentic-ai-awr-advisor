@@ -146,7 +146,7 @@ def evaluate_screen4_comparative_visual_eligibility(
             visualization_name=visualization,
             status=STATUS_NOT_REQUESTED,
             reason_code="allowed_visualization_missing",
-            reason=f"{_label(visualization)} is not requested by allowed_visualizations.",
+            reason=f"{_label(visualization)} is not requested by the deterministic contract.",
             required_fields=("allowed_visualizations",),
             missing_fields=(visualization,),
         )
@@ -364,7 +364,20 @@ def _evaluate_distribution_violin(
                 "distribution_samples_present",
                 "Distribution violin has numeric Target A/B sample arrays for one metric.",
                 required_fields=required,
-                evidence_count=min(len(target_a_samples), len(target_b_samples)),
+                    evidence_count=min(len(target_a_samples), len(target_b_samples)),
+                )
+
+        if not _has_text(row.get("target")) and row.get("samples") is None:
+            return _blocked(
+                DISTRIBUTION_VIOLIN,
+                "distribution_samples_missing",
+                (
+                    "Distribution violin is blocked because Target A/B sample arrays "
+                    "are missing; summary rows such as min/max are not distribution samples."
+                ),
+                required_fields=required,
+                missing_fields=("target_a_samples", "target_b_samples", "samples"),
+                evidence_count=len(rows),
             )
 
         target = _normalize_target_side(row.get("target"))
@@ -625,7 +638,7 @@ def _fleet_result(
         return _result(
             visualization_name=visualization,
             status=STATUS_NOT_SUPPORTED,
-            reason_code="fleet_contract_missing",
+            reason_code="fleet_evidence_contract_missing",
             reason=f"{_label(visualization)} is not supported without a fleet/population evidence contract.",
             supported=False,
             required_fields=("fleet_evidence_contract",),
@@ -640,7 +653,7 @@ def _fleet_result(
         return _result(
             visualization_name=visualization,
             status=STATUS_NOT_SUPPORTED,
-            reason_code="fleet_contract_missing",
+            reason_code="fleet_evidence_contract_missing",
             reason=f"{_label(visualization)} is not supported without a fleet/population evidence contract.",
             supported=False,
             required_fields=("fleet_evidence_contract",),

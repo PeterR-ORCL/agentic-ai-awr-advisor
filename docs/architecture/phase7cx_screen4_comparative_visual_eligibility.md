@@ -125,7 +125,7 @@ Blocked reason codes include:
 - `insufficient_distribution_samples`
 - `non_numeric_distribution_sample`
 
-Summary deltas, min/max values, one sample per target, and synthetic samples cannot make a violin eligible.
+Summary deltas, min/max-only rows, one sample per target, and synthetic samples cannot make a violin eligible. Min/max rows must remain blocked unless the contract also carries actual Target A/B sample arrays or paired sample rows.
 
 ## SQL/Event Movement Eligibility
 
@@ -147,11 +147,24 @@ Rows identified only by a loose label are blocked.
 
 Fleet or population visuals are `not_supported` in 7CX-G unless a future fleet/population evidence contract exists. 7CX-G does not add fleet diagrams or population visuals.
 
+The missing fleet/population contract reason code is `fleet_evidence_contract_missing`.
+
 ## Rendering Boundary
 
 The 7CX-G helper returns structured status data only. It emits no chart markup, no canvas, no SVG, no visual containers, and no placeholder panels.
 
 The Screen 4 Rendering Eligibility panel may show text-only eligibility facts. It must omit `not_requested` visuals unless the absence is useful and must not create empty visual shells.
+
+## 7CX-G-FU1 Review Findings
+
+7CX-G-FU1 confirms and tightens the product boundary before any rendering work:
+
+- `eligible` means eligible for future rendering only; it does not mean Screen 4 draws a chart today.
+- `blocked` must identify the missing deterministic evidence shape, such as aligned time-series rows, Target A/B samples, persistent SQL identity, or persistent event/wait identity.
+- `not_requested` visuals stay out of the text-only panel by default so the panel does not become noisy.
+- Fleet/population visuals use `fleet_evidence_contract_missing` when no fleet/population evidence contract is present.
+- Min/max-only distribution rows are explicitly blocked as `distribution_samples_missing`; they are not sample evidence.
+- The text-only panel must not use "coming soon" wording, synthetic-data wording, chart containers, or visual placeholders.
 
 ## Future Gate
 

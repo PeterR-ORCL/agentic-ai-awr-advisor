@@ -114,3 +114,5 @@ For 7CX-D, `allowed_visualizations` may include only conservative table/panel pe
 Time-series overlay eligibility requires explicit aligned time-series rows with timestamp, metric key, numeric Target A value, and numeric Target B value. Distribution/violin eligibility requires actual numeric Target A and Target B sample arrays or paired sample rows with at least three samples per target. SQL/event movement eligibility requires persistent SQL or event/wait identity and numeric Target A/B values.
 
 Metric deltas, domain deltas, summary rows, route/cache state, prepared Target A/B context, LLM text, and snapshot identity are not sufficient visual evidence. 7CX-G does not render charts, violins, canvas/SVG, empty chart shells, fleet diagrams, or placeholder visuals.
+
+7CX-G-FU1 clarifies that an `eligible` visual status means eligible for future rendering only. Fleet/population visuals without a fleet/population evidence contract must use the `fleet_evidence_contract_missing` reason and remain `not_supported`.

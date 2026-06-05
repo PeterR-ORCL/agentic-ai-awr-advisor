@@ -30,6 +30,7 @@ TABLE_PANEL_ELIGIBILITY_NOTES = {
     "missing_evidence_panel": "Available when missing evidence or limitations are reported.",
 }
 
+
 def render_screen4_comparative_tables(comparative_state: dict[str, Any]) -> str:
     """Render output-ready Screen 4 Comparative Review tables and panels."""
 
@@ -411,7 +412,7 @@ def _render_visualization_eligibility_panel(contract: dict[str, Any]) -> str:
         rows.append(
             {
                 "visualization": result.visualization_label,
-                "status": result.status.replace("_", " ").title(),
+                "status": _visual_eligibility_status_label(result.status),
                 "basis": result.reason,
                 "evidence_count": result.evidence_count if result.evidence_count else None,
             }
@@ -509,6 +510,17 @@ def _render_bullets(items: list[str], class_name: str) -> str:
 
 def _visualization_allowed(contract: dict[str, Any], visualization: str) -> bool:
     return visualization in set(_string_list(contract.get("allowed_visualizations")))
+
+
+def _visual_eligibility_status_label(status: str) -> str:
+    labels = {
+        "eligible": "Eligible for future rendering",
+        "blocked": "Blocked",
+        "omitted": "Omitted",
+        "not_requested": "Not requested",
+        "not_supported": "Not supported",
+    }
+    return labels.get(status, status.replace("_", " ").title())
 
 
 def _dict_rows(value: Any) -> list[dict[str, Any]]:

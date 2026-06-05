@@ -4049,6 +4049,20 @@ def _validate_screen1_source_intake_execute_payload(
         or payload.get("source_mode")
         or ""
     ).strip()
+    source_type = str(payload.get("source_type") or payload.get("sourceType") or "").strip()
+    if not source_type:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution payload must include source_type"
+        )
+    if source_type != mode:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution source_type must match selectedSourceMode"
+        )
+    source_channel = str(payload.get("source_channel") or payload.get("sourceChannel") or "").strip()
+    if source_channel and source_channel != mode:
+        raise DashboardRuntimeInteractionError(
+            "Screen 1 source intake execution source_channel must match selectedSourceMode"
+        )
     if mode not in {"local_staged", "local_file", "object_storage"}:
         raise DashboardRuntimeInteractionError(
             "Screen 1 source intake execution requires local_staged, local_file, or object_storage source mode"
@@ -4091,6 +4105,7 @@ def _validate_screen1_source_intake_execute_payload(
             raise DashboardRuntimeInteractionError(
                 f"Screen 1 source intake execution payload field {field_name} must remain false"
             )
+    _reject_client_artifact_readiness_claims(payload)
     if "em_extract" in mode.lower() or "em extract" in mode.lower():
         raise DashboardRuntimeInteractionError("EM Extract source mode remains Phase 8")
     if mode == "local_staged":
@@ -4285,6 +4300,8 @@ def _screen1_source_intake_execution_summary_for_request(
         "target_type": request.target_type,
         "target_id": request.target_id,
         "selectedSourceMode": mode,
+        "source_type": payload.get("source_type"),
+        "source_channel": payload.get("source_channel"),
         "sourceSelectionMethod": payload.get("sourceSelectionMethod")
         or payload.get("source_selection_method")
         or "",
@@ -4439,6 +4456,46 @@ def _reject_source_secret_fields(payload: dict[str, Any]) -> None:
             if value not in ("", None, False):
                 raise DashboardRuntimeInteractionError(
                     f"payload.{key} must not include secrets or credentials"
+                )
+
+
+def _client_readiness_claimed(value: Any) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "artifact_ready",
+            "completed_artifact_ready",
+            "screen1_artifact_ready",
+        }
+    return False
+
+
+def _reject_client_artifact_readiness_claims(payload: dict[str, Any]) -> None:
+    readiness_fields = (
+        "artifact_ready",
+        "completed_artifact_ready",
+        "client_artifact_ready_claimed",
+        "client_completed_artifact_ready",
+        "generatedArtifactAvailable",
+        "screen1ArtifactEvidenceReady",
+        "screen1GeneratedArtifactReady",
+        "screen1GeneratedRunExecuted",
+        "screen1SelectedGeneratedArtifactReady",
+        "dashboardEvidenceReady",
+    )
+    containers: list[tuple[str, dict[str, Any]]] = [("payload", payload)]
+    dashboard_state = payload.get("dashboard_state")
+    if isinstance(dashboard_state, dict):
+        containers.append(("payload.dashboard_state", dashboard_state))
+    for container_name, container in containers:
+        for field_name in readiness_fields:
+            if _client_readiness_claimed(container.get(field_name)):
+                raise DashboardRuntimeInteractionError(
+                    f"{container_name}.{field_name} must not claim Screen 1 artifact readiness"
                 )
 
 

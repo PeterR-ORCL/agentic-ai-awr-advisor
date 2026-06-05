@@ -5213,6 +5213,9 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.screen1ArtifactEvidenceReady = '';
         state.screen1ArtifactReadyRequestId = '';
         state.screen1GeneratedArtifactPath = '';
+        state.sourceHandoffRequestId = '';
+        state.sourceHandoffAuditStatus = '';
+        state.screen1SourceIntakeExecutionStatus = '';
         state.dashboardEvidenceReady = '';
         state.dashboardEvidenceSessionId = '';
         state.currentOperatorEvidenceSession = '';
@@ -8460,8 +8463,15 @@ def _build_dashboard_interactivity_javascript() -> str:
             selected_context_value: selectedContextValue,
             selectedSourceMode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
             source_mode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            selected_source_mode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            source_type: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            source_channel: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
             sourceSelectionMethod: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
             source_selection_method: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
+            sourceSelectionSessionId: dashboardState.sourceSelectionSessionId || '',
+            source_selection_session_id: dashboardState.sourceSelectionSessionId || '',
+            operator_session_id: dashboardState.sourceSelectionSessionId || '',
+            generated_dashboard_session_id: safeStateValue(readOperatorSession().dashboardGeneratedAt || ''),
             selectedSourcePath: dashboardState.selectedSourcePath || '',
             backend_visible_path: dashboardState.selectedSourcePath || '',
             selectedLocalFolderFileCount: dashboardState.selectedLocalFolderFileCount || '',
@@ -8511,6 +8521,11 @@ def _build_dashboard_interactivity_javascript() -> str:
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
+            browser_truth_boundary: isScreen1SourceAction
+              ? 'screen1_browser_metadata_only_backend_truth_required'
+              : 'dashboard_browser_state_non_authoritative',
+            client_completed_artifact_ready: false,
+            client_artifact_ready_claimed: false,
             target_screen: (isScreen1Action || isScreen1SourceAction) ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
             source_request_contract_version: isScreen1SourceAction
               ? '7CR.screen1_source_intake_execute.v1'
@@ -8936,8 +8951,15 @@ def _build_dashboard_interactivity_javascript() -> str:
           payload: Object.assign({}, basePayload, {
             selectedSourceMode: safeState.selectedSourceMode || '',
             source_mode: safeState.selectedSourceMode || '',
+            selected_source_mode: safeState.selectedSourceMode || '',
+            source_type: safeState.selectedSourceMode || '',
+            source_channel: safeState.selectedSourceMode || '',
+            sourceSelectionSessionId: safeState.sourceSelectionSessionId || '',
+            source_selection_session_id: safeState.sourceSelectionSessionId || '',
             selectedSourcePath: safeState.selectedSourcePath || '',
-            backend_visible_path: safeState.selectedSourcePath || ''
+            backend_visible_path: safeState.selectedSourcePath || '',
+            client_completed_artifact_ready: false,
+            client_artifact_ready_claimed: false
           })
         };
       }
@@ -10357,6 +10379,7 @@ def _build_dashboard_interactivity_javascript() -> str:
         state.sourceSelectionActivated = 'true';
         state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         state.sourceSelectionMethod = 'object_storage_metadata';
+        clearScreen1GeneratedArtifactState(state);
         state.objectStorageValidationStatus = 'pending';
         state.objectStorageValidationMessage = 'Submitting Object Storage metadata to governed backend validation.';
         writeDashboardState(state);
@@ -10383,6 +10406,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.sourceSelectionActivated = 'true';
           nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           nextState.objectStorageValidationStatus = result.ok && body.status === 'accepted'
             ? (body.validation_status || 'valid')
             : (body.validation_status || 'invalid');
@@ -10394,6 +10418,7 @@ def _build_dashboard_interactivity_javascript() -> str:
           nextState.sourceSelectionActivated = 'true';
           nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           nextState.objectStorageValidationStatus = 'unavailable';
           nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           writeDashboardState(nextState);
@@ -10462,6 +10487,11 @@ def _build_dashboard_interactivity_javascript() -> str:
             'Dashboard workflow service is not running. Start the service to use interactive features.'
           );
           return;
+        }
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          const resetState = readDashboardState();
+          clearScreen1GeneratedArtifactState(resetState);
+          writeDashboardState(resetState);
         }
         const actionRequest = buildDashboardActionRequest(element);
         if (isScreen1SourceIntakeExecutionAction(element)) {

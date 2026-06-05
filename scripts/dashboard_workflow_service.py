@@ -435,15 +435,29 @@ def run_screen1_source_intake_execution(request: Any) -> dict[str, Any]:
     payload = getattr(request, "payload", {}) or {}
     mode = str(payload.get("selectedSourceMode") or payload.get("source_mode") or "").strip()
     if mode != "local_staged":
+        if mode == "local_file":
+            message = (
+                "Local file source intake is metadata/path validation only until "
+                "a governed upload or staging path is configured. No browser file "
+                "read, upload, parse, or generated artifact readiness was claimed."
+            )
+        elif mode == "object_storage":
+            message = (
+                "Object Storage source intake is metadata-validation only until "
+                "a governed backend load-to-staging and parser chain exists. "
+                "No OCI object was read and no generated artifact readiness was claimed."
+            )
+        else:
+            message = (
+                "Screen 1 source intake execution currently supports local folder "
+                "sources only. Unsupported or Screen 2-owned source modes fail safely."
+            )
         return {
             "status": "failed_safely",
             "execution_status": "failed_safely",
             "artifact_ready": False,
             "runner_invoked": False,
-            "message": (
-                "Backend source intake execution currently supports local folder "
-                "sources only. No generated artifact was claimed."
-            ),
+            "message": message,
         }
 
     source_path = str(payload.get("selectedSourcePath") or "").strip()

@@ -5449,8 +5449,8 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="Jun 5, 2026, 9:24 AM"
-      data-dashboard-generated-session-id="dashboard-run-1780665890489592000">
+<body data-dashboard-generated-at="Jun 5, 2026, 9:47 AM"
+      data-dashboard-generated-session-id="dashboard-run-1780667257329945000">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5655,7 +5655,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: Jun 5, 2026, 9:24 AM</div>
+        <div class="hero-meta">Generated: Jun 5, 2026, 9:47 AM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link active" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -6006,7 +6006,7 @@
                 <h3>CPU Signal</h3>
                 <p>DB CPU % DB Time = 30.4</p>
               </div>
-              <div class="meta diagnostic-driver-evidence">Latest interval shows visible CPU pressure.</div>
+              <div class="meta diagnostic-driver-evidence">There is visible CPU pressure in the latest interval.</div>
             </article>
 
             <article class="diagnostic-driver-row">
@@ -6978,7 +6978,7 @@
     </div>
 
 
-    <div class="footer">Generated at Jun 5, 2026, 9:24 AM</div>
+    <div class="footer">Generated at Jun 5, 2026, 9:47 AM</div>
   </div>
 
   <script>
@@ -11077,6 +11077,9 @@
         state.screen1ArtifactEvidenceReady = '';
         state.screen1ArtifactReadyRequestId = '';
         state.screen1GeneratedArtifactPath = '';
+        state.sourceHandoffRequestId = '';
+        state.sourceHandoffAuditStatus = '';
+        state.screen1SourceIntakeExecutionStatus = '';
         state.dashboardEvidenceReady = '';
         state.dashboardEvidenceSessionId = '';
         state.currentOperatorEvidenceSession = '';
@@ -14324,8 +14327,15 @@
             selected_context_value: selectedContextValue,
             selectedSourceMode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
             source_mode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            selected_source_mode: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            source_type: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
+            source_channel: dashboardState.selectedSourceMode || (dashboardState.selectedRunReference ? 'existing_run' : ''),
             sourceSelectionMethod: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
             source_selection_method: dashboardState.sourceSelectionMethod || (dashboardState.selectedRunReference ? 'existing_run_reference' : ''),
+            sourceSelectionSessionId: dashboardState.sourceSelectionSessionId || '',
+            source_selection_session_id: dashboardState.sourceSelectionSessionId || '',
+            operator_session_id: dashboardState.sourceSelectionSessionId || '',
+            generated_dashboard_session_id: safeStateValue(readOperatorSession().dashboardGeneratedAt || ''),
             selectedSourcePath: dashboardState.selectedSourcePath || '',
             backend_visible_path: dashboardState.selectedSourcePath || '',
             selectedLocalFolderFileCount: dashboardState.selectedLocalFolderFileCount || '',
@@ -14375,6 +14385,11 @@
               content_uploaded: false,
               upload_staging_required_for_oci: true
             },
+            browser_truth_boundary: isScreen1SourceAction
+              ? 'screen1_browser_metadata_only_backend_truth_required'
+              : 'dashboard_browser_state_non_authoritative',
+            client_completed_artifact_ready: false,
+            client_artifact_ready_claimed: false,
             target_screen: (isScreen1Action || isScreen1SourceAction) ? 'screen_1' : (isScreen3Action ? 'screen_3' : 'screen3'),
             source_request_contract_version: isScreen1SourceAction
               ? '7CR.screen1_source_intake_execute.v1'
@@ -14800,8 +14815,15 @@
           payload: Object.assign({}, basePayload, {
             selectedSourceMode: safeState.selectedSourceMode || '',
             source_mode: safeState.selectedSourceMode || '',
+            selected_source_mode: safeState.selectedSourceMode || '',
+            source_type: safeState.selectedSourceMode || '',
+            source_channel: safeState.selectedSourceMode || '',
+            sourceSelectionSessionId: safeState.sourceSelectionSessionId || '',
+            source_selection_session_id: safeState.sourceSelectionSessionId || '',
             selectedSourcePath: safeState.selectedSourcePath || '',
-            backend_visible_path: safeState.selectedSourcePath || ''
+            backend_visible_path: safeState.selectedSourcePath || '',
+            client_completed_artifact_ready: false,
+            client_artifact_ready_claimed: false
           })
         };
       }
@@ -16221,6 +16243,7 @@
         state.sourceSelectionActivated = 'true';
         state.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
         state.sourceSelectionMethod = 'object_storage_metadata';
+        clearScreen1GeneratedArtifactState(state);
         state.objectStorageValidationStatus = 'pending';
         state.objectStorageValidationMessage = 'Submitting Object Storage metadata to governed backend validation.';
         writeDashboardState(state);
@@ -16247,6 +16270,7 @@
           nextState.sourceSelectionActivated = 'true';
           nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           nextState.objectStorageValidationStatus = result.ok && body.status === 'accepted'
             ? (body.validation_status || 'valid')
             : (body.validation_status || 'invalid');
@@ -16258,6 +16282,7 @@
           nextState.sourceSelectionActivated = 'true';
           nextState.sourceSelectionSessionId = issueOperatorSessionToken('sourceSelectionSessionId', 'source');
           nextState.sourceSelectionMethod = 'object_storage_metadata';
+          clearScreen1GeneratedArtifactState(nextState);
           nextState.objectStorageValidationStatus = 'unavailable';
           nextState.objectStorageValidationMessage = 'Dashboard workflow service is not running. Start the service to use interactive features.';
           writeDashboardState(nextState);
@@ -16326,6 +16351,11 @@
             'Dashboard workflow service is not running. Start the service to use interactive features.'
           );
           return;
+        }
+        if (isScreen1SourceIntakeExecutionAction(element)) {
+          const resetState = readDashboardState();
+          clearScreen1GeneratedArtifactState(resetState);
+          writeDashboardState(resetState);
         }
         const actionRequest = buildDashboardActionRequest(element);
         if (isScreen1SourceIntakeExecutionAction(element)) {

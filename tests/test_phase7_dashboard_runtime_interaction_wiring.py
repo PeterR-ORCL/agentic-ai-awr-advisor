@@ -625,6 +625,45 @@ def validation_module():
     return module
 
 
+def screen1_source_intake_request(
+    mode: str = "local_staged",
+    payload_overrides: dict[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "selectedSourceMode": mode,
+        "source_type": mode,
+        "source_channel": mode,
+        "sourceSelectionMethod": "backend_path",
+        "selectedSourcePath": "data/input",
+        "target_screen": "screen_1",
+        "browser_file_read_attempted": False,
+        "browser_file_upload_performed": False,
+        "browser_object_storage_access_attempted": False,
+        "browser_db_query_attempted": False,
+        "browser_parsing_performed": False,
+        "direct_object_storage_execution_attempted": False,
+        "run_analysis_coupling": False,
+        "client_completed_artifact_ready": False,
+        "client_artifact_ready_claimed": False,
+    }
+    if payload_overrides:
+        payload.update(payload_overrides)
+    return {
+        "screen_id": "screen_1",
+        "action_type": "screen1_source_intake_execute",
+        "workflow_type": "screen1_source_intake_execution",
+        "actor_id": "ACTOR-LOCAL-TEST",
+        "target_type": "source_intake",
+        "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
+        "execution_mode": "governed_backend_execution",
+        "runtime_influence_granted": False,
+        "phase4i_mutation_allowed": False,
+        "phase8_behavior": False,
+        "run_analysis_coupling": False,
+        "payload": payload,
+    }
+
+
 class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -762,6 +801,11 @@ class Phase7DashboardRuntimeInteractionWiringTests(unittest.TestCase):
         self.assertIn("dashboardEvidenceReady", supported_keys)
         self.assertIn("sourceMode: 'selectedSourceMode'", source)
         self.assertIn("'source-mode': 'selectedSourceMode'", source)
+        self.assertIn("source_type: dashboardState.selectedSourceMode", source)
+        self.assertIn("source_channel: dashboardState.selectedSourceMode", source)
+        self.assertIn("sourceSelectionSessionId: dashboardState.sourceSelectionSessionId", source)
+        self.assertIn("browser_truth_boundary", source)
+        self.assertIn("client_completed_artifact_ready: false", source)
         self.assertIn('data-dashboard-select-key="selectedSourceMode"', source)
         self.assertIn('data-required-selection-key="selectedSourceMode"', source)
 
@@ -1186,6 +1230,8 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
                 "run_analysis_coupling": False,
                 "payload": {
                     "selectedSourceMode": "local_staged",
+                    "source_type": "local_staged",
+                    "source_channel": "local_staged",
                     "sourceSelectionMethod": "backend_path",
                     "selectedSourcePath": "data/input",
                     "target_screen": "screen_1",
@@ -1230,6 +1276,8 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
                 "run_analysis_coupling": False,
                 "payload": {
                     "selectedSourceMode": "local_staged",
+                    "source_type": "local_staged",
+                    "source_channel": "local_staged",
                     "sourceSelectionMethod": "backend_path",
                     "selectedSourcePath": "data/input",
                     "target_screen": "screen_1",
@@ -1253,36 +1301,188 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
     def test_screen1_source_intake_acceptance_without_runner_does_not_mark_artifact_ready(self) -> None:
         from src.learning.dashboard_runtime_interaction import process_dashboard_action
 
-        result = process_dashboard_action(
-            {
-                "screen_id": "screen_1",
-                "action_type": "screen1_source_intake_execute",
-                "workflow_type": "screen1_source_intake_execution",
-                "actor_id": "ACTOR-LOCAL-TEST",
-                "target_type": "source_intake",
-                "target_id": "SCREEN1-SOURCE-INTAKE-EXECUTE",
-                "execution_mode": "governed_backend_execution",
-                "runtime_influence_granted": False,
-                "phase4i_mutation_allowed": False,
-                "phase8_behavior": False,
-                "run_analysis_coupling": False,
-                "payload": {
-                    "selectedSourceMode": "local_staged",
-                    "sourceSelectionMethod": "backend_path",
-                    "selectedSourcePath": "data/input",
-                    "target_screen": "screen_1",
-                    "browser_file_read_attempted": False,
-                    "browser_object_storage_access_attempted": False,
-                    "browser_db_query_attempted": False,
-                    "browser_parsing_performed": False,
-                    "run_analysis_coupling": False,
-                },
-            }
-        )
+        result = process_dashboard_action(screen1_source_intake_request())
         self.assertEqual("blocked", result.status)
         self.assertFalse(result.source_summary["artifact_ready"])
         self.assertFalse(result.source_summary["screen1GeneratedArtifactReady"])
         self.assertIn("runner is not wired", result.message)
+
+    def test_screen1_source_intake_requires_explicit_source_type(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        request = screen1_source_intake_request()
+        request["payload"].pop("source_type")
+
+        result = process_dashboard_action(request)
+
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("must include source_type", result.message)
+
+    def test_screen1_source_intake_rejects_mismatched_source_type(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            screen1_source_intake_request(payload_overrides={"source_type": "object_storage"})
+        )
+
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("source_type must match selectedSourceMode", result.message)
+
+    def test_screen1_source_intake_rejects_client_artifact_ready_claims(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            screen1_source_intake_request(
+                "object_storage",
+                {
+                    "sourceSelectionMethod": "object_storage_metadata",
+                    "selectedSourcePath": "",
+                    "objectStorageNamespace": "axxduehrw7lz",
+                    "objectStorageBucket": "agentic-ai-awr-raw",
+                    "objectStorageObjectName": "awr/raw/report.out",
+                    "objectStorageRegion": "us-phoenix-1",
+                    "objectStorageValidationStatus": "valid",
+                    "client_completed_artifact_ready": "completed_artifact_ready",
+                },
+            )
+        )
+
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("must not claim Screen 1 artifact readiness", result.message)
+
+    def test_screen1_source_intake_rejects_nested_dashboard_state_artifact_ready_claims(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            screen1_source_intake_request(
+                payload_overrides={
+                    "dashboard_state": {
+                        "screen1GeneratedArtifactReady": "completed_artifact_ready",
+                    }
+                }
+            )
+        )
+
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("payload.dashboard_state.screen1GeneratedArtifactReady", result.message)
+
+    def test_screen1_object_storage_source_intake_rejects_credentials(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        result = process_dashboard_action(
+            screen1_source_intake_request(
+                "object_storage",
+                {
+                    "sourceSelectionMethod": "object_storage_metadata",
+                    "selectedSourcePath": "",
+                    "objectStorageNamespace": "axxduehrw7lz",
+                    "objectStorageBucket": "agentic-ai-awr-raw",
+                    "objectStorageObjectName": "awr/raw/report.out",
+                    "objectStorageRegion": "us-phoenix-1",
+                    "objectStorageValidationStatus": "valid",
+                    "credential_value": "not-allowed",
+                },
+            )
+        )
+
+        self.assertEqual("rejected", result.status)
+        self.assertFalse(result.queued)
+        self.assertIn("must not include secrets or credentials", result.message)
+
+    def test_screen1_object_storage_metadata_validation_never_marks_artifact_ready(self) -> None:
+        from src.learning.dashboard_runtime_interaction import validate_object_storage_source
+
+        result = validate_object_storage_source(
+            {
+                "screen_id": "index_source_mode",
+                "action_type": "object_storage_source_validation",
+                "workflow_type": "index_object_storage_source_validation",
+                "target_screen": "screen3",
+                "governance_mode": "governed_request",
+                "objectStorageNamespace": "axxduehrw7lz",
+                "objectStorageBucket": "agentic-ai-awr-raw",
+                "objectStorageObjectName": "awr/raw/report.out",
+                "objectStorageRegion": "us-phoenix-1",
+                "browser_object_storage_access_attempted": False,
+                "direct_object_storage_execution_attempted": False,
+                "direct_truth_mutation_allowed": False,
+                "phase4i_mutation_allowed": False,
+                "phase8_behavior": False,
+                "run_analysis_coupling": False,
+            }
+        )
+
+        self.assertEqual("accepted", result["status"])
+        self.assertEqual("valid", result["validation_status"])
+        self.assertNotIn("completed_artifact_ready", result)
+        self.assertNotIn("artifact_ready", result)
+        self.assertFalse(result["browser_object_storage_access_performed"])
+
+    def test_screen1_source_intake_rejects_existing_run_and_future_channels(self) -> None:
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        existing_result = process_dashboard_action(
+            screen1_source_intake_request(
+                "existing_run",
+                {
+                    "sourceSelectionMethod": "existing_run_reference",
+                    "selectedRunReference": "RUN_HISTORY_ID:9001",
+                    "existingRunLookupStatus": "valid",
+                },
+            )
+        )
+        future_result = process_dashboard_action(
+            screen1_source_intake_request(
+                "enterprise_manager_oem",
+                {"sourceSelectionMethod": "future_governed_source"},
+            )
+        )
+
+        self.assertEqual("rejected", existing_result.status)
+        self.assertEqual("rejected", future_result.status)
+        self.assertIn("requires local_staged, local_file, or object_storage", existing_result.message)
+        self.assertIn("requires local_staged, local_file, or object_storage", future_result.message)
+
+    def test_workflow_service_local_file_and_object_storage_fail_safely_without_artifact_ready(self) -> None:
+        import scripts.dashboard_workflow_service as service
+        from src.learning.dashboard_runtime_interaction import process_dashboard_action
+
+        local_file_result = process_dashboard_action(
+            screen1_source_intake_request(
+                "local_file",
+                {
+                    "sourceSelectionMethod": "backend_path",
+                    "selectedSourcePath": "report.out",
+                },
+            ),
+            source_intake_executor=service.run_screen1_source_intake_execution,
+        )
+        object_storage_result = process_dashboard_action(
+            screen1_source_intake_request(
+                "object_storage",
+                {
+                    "sourceSelectionMethod": "object_storage_metadata",
+                    "selectedSourcePath": "",
+                    "objectStorageNamespace": "axxduehrw7lz",
+                    "objectStorageBucket": "agentic-ai-awr-raw",
+                    "objectStorageObjectName": "awr/raw/report.out",
+                    "objectStorageRegion": "us-phoenix-1",
+                    "objectStorageValidationStatus": "valid",
+                },
+            ),
+            source_intake_executor=service.run_screen1_source_intake_execution,
+        )
+
+        self.assertEqual("failed_safely", local_file_result.status)
+        self.assertFalse(local_file_result.source_summary["artifact_ready"])
+        self.assertIn("metadata/path validation only", local_file_result.message)
+        self.assertEqual("failed_safely", object_storage_result.status)
+        self.assertFalse(object_storage_result.source_summary["artifact_ready"])
+        self.assertIn("metadata-validation only", object_storage_result.message)
 
     def test_workflow_service_returns_completed_artifact_ready_for_mocked_screen1_execution(self) -> None:
         import scripts.dashboard_workflow_service as service
@@ -1322,6 +1522,8 @@ const DASHBOARD_TYPE_TO_STATE_KEY = Object.freeze({
                             "run_analysis_coupling": False,
                             "payload": {
                                 "selectedSourceMode": "local_staged",
+                                "source_type": "local_staged",
+                                "source_channel": "local_staged",
                                 "sourceSelectionMethod": "backend_path",
                                 "selectedSourcePath": "data/input",
                                 "target_screen": "screen_1",

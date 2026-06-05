@@ -4437,6 +4437,19 @@ def _shared_page_styles() -> str:
       outline: none;
     }
 
+    .phase7cm-source-card.disabled-preview-only {
+      border-style: dashed;
+      border-color: rgba(159, 176, 199, 0.18);
+      background: rgba(11, 20, 34, 0.44);
+      cursor: not-allowed;
+      opacity: 0.74;
+    }
+
+    .phase7cm-source-card.disabled-preview-only:hover,
+    .phase7cm-source-card.disabled-preview-only:focus {
+      border-color: rgba(159, 176, 199, 0.22);
+    }
+
     .phase7cm-source-card strong {
       color: var(--accent);
       font-size: 14px;

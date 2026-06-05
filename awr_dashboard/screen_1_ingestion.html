@@ -4441,6 +4441,19 @@
       outline: none;
     }
 
+    .phase7cm-source-card.disabled-preview-only {
+      border-style: dashed;
+      border-color: rgba(159, 176, 199, 0.18);
+      background: rgba(11, 20, 34, 0.44);
+      cursor: not-allowed;
+      opacity: 0.74;
+    }
+
+    .phase7cm-source-card.disabled-preview-only:hover,
+    .phase7cm-source-card.disabled-preview-only:focus {
+      border-color: rgba(159, 176, 199, 0.22);
+    }
+
     .phase7cm-source-card strong {
       color: var(--accent);
       font-size: 14px;
@@ -5436,8 +5449,8 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="Jun 4, 2026, 4:10 PM"
-      data-dashboard-generated-session-id="dashboard-run-1780603804718749000">
+<body data-dashboard-generated-at="Jun 5, 2026, 9:24 AM"
+      data-dashboard-generated-session-id="dashboard-run-1780665890489592000">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5642,7 +5655,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: Jun 4, 2026, 4:10 PM</div>
+        <div class="hero-meta">Generated: Jun 5, 2026, 9:24 AM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link active" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5665,6 +5678,96 @@
           prepares governed handoff eligibility; existing platform evidence and
           runtime scope remain controlled on Screen 2.
         </p>
+
+
+        <section class="evidence-pane phase7cs-source-channel-model"
+                 data-phase7-source-channel-model="true">
+          <h3>Source Channel Model</h3>
+          <p class="meta">
+            Choose the source channel first, then validate metadata before any
+            governed backend handoff. Screen 1 prepares new-source intake and
+            parser/source governance only; existing platform evidence remains a
+            Screen 2 runtime-control workflow.
+          </p>
+          <div class="phase7cm-source-card-grid">
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="local_staged">
+              <span class="mini-pill success">Available</span>
+              <strong>Local Staged / Local Folder</strong>
+              <p>
+                Current most complete governed path. Operators provide a
+                backend-visible folder or folder-picker metadata for AWR .out
+                validation and backend intake.
+              </p>
+              <p><strong>Readiness:</strong> Can reach governed artifact readiness only after backend completion.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="local_file">
+              <span class="mini-pill neutral">Metadata context</span>
+              <strong>Local File</strong>
+              <p>
+                Operators provide file/path metadata for backend validation.
+                Browser selection does not upload, stage, read, parse, or
+                create source truth.
+              </p>
+              <p><strong>Readiness:</strong> Future governed upload or staging is required for full intake.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="object_storage">
+              <span class="mini-pill neutral">Metadata validation only</span>
+              <strong>Object Storage</strong>
+              <p>
+                Operators provide namespace, bucket, object or prefix, and
+                region. The browser never exposes credentials, lists buckets,
+                reads objects, or calls OCI APIs.
+              </p>
+              <p><strong>Readiness:</strong> Future governed backend load-to-staging contract required before artifact readiness.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-existing-evidence-handoff-reference="true">
+              <span class="mini-pill neutral">Screen 2 handoff</span>
+              <strong>Existing Platform Evidence</strong>
+              <p>
+                Existing platform evidence is not a Screen 1 source card. Use
+                Screen 2 Runtime Scope &amp; Analysis Control to load runtime
+                options, choose scope/window context, and prepare Target A/B.
+              </p>
+              <p><strong>Readiness:</strong> Screen 2-owned existing evidence workflow.</p>
+            </article>
+          </div>
+          <div class="phase7cm-source-card-grid"
+               data-phase7-future-source-channel-grid="true">
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="enterprise_manager_oem"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>Enterprise Manager / OEM</strong>
+              <p>Reserved for a future server-side supplemental source adapter with provenance, validation, and audit.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="file_system"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>File System</strong>
+              <p>Reserved for future backend-visible file-system sources, not browser-local path truth.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="catalog_repository"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>Catalog / Repository</strong>
+              <p>Reserved for future persisted source catalog references that require governed backend lookup.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="ai_source"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>AI Source</strong>
+              <p>Reserved for a future governed source mode; AI wording cannot create parser, evidence, or runtime truth.</p>
+            </article>
+          </div>
+        </section>
+
 
         <section class="evidence-pane" data-phase7-selection-workflow="true">
           <h3>Selection Workflow</h3>
@@ -5694,10 +5797,10 @@
                    data-selected="false"
                    aria-selected="false"
                    tabindex="0">
-                <span class="mini-pill neutral">Default local/dev source</span>
-                <strong>Local folder / Local staged AWR</strong>
-                <p>Use AWR files staged under data/input.</p>
-                <p><strong>Readiness:</strong> Default: local/dev | Fallback: data/input</p>
+                <span class="mini-pill neutral">Current governed path</span>
+                <strong>Local Staged / Local Folder</strong>
+                <p>Use backend-visible staged AWR .out files for the current most complete governed intake path.</p>
+                <p><strong>Readiness:</strong> Current: backend-visible folder can reach artifact readiness after backend completion. Fallback: data/input</p>
 	                <p class="selection-workflow-card-note">
 	                  Selection state: not selected. Entity type: source mode.
 	                  Downstream action: enables governed source intake for Screen 1 Ingestion.
@@ -5718,10 +5821,10 @@
                    data-selected="false"
                    aria-selected="false"
                    tabindex="0">
-                <span class="mini-pill neutral">Operator-selected file</span>
-                <strong>Local file</strong>
-                <p>Submit a governed request that identifies a local file context for backend-side validation.</p>
-                <p><strong>Readiness:</strong> Requires configured local file path</p>
+                <span class="mini-pill neutral">File metadata context</span>
+                <strong>Local File</strong>
+                <p>Capture file/path metadata for backend-side validation; upload, stage, and parse remain governed backend work.</p>
+                <p><strong>Readiness:</strong> Metadata/path validation only; future governed upload or staging is required for full intake.</p>
 	                <p class="selection-workflow-card-note">
 	                  Selection state: not selected. Entity type: source mode.
 	                  Downstream action: enables governed source intake for Screen 1 Ingestion.
@@ -5742,10 +5845,10 @@
                    data-selected="false"
                    aria-selected="false"
                    tabindex="0">
-                <span class="mini-pill neutral">Configuration-dependent source</span>
+                <span class="mini-pill neutral">Cloud metadata channel</span>
                 <strong>Object Storage</strong>
-                <p>Submit a governed request for backend-side Object Storage validation using configured environment values.</p>
-                <p><strong>Readiness:</strong> No browser-side Object Storage access</p>
+                <p>Capture namespace, bucket, object or prefix, and region for governed metadata validation.</p>
+                <p><strong>Readiness:</strong> Metadata validation only today; future backend source-loader contract is required for load-to-staging.</p>
 	                <p class="selection-workflow-card-note">
 	                  Selection state: not selected. Entity type: source mode.
 	                  Downstream action: enables governed source intake for Screen 1 Ingestion.
@@ -5758,11 +5861,12 @@
                  data-phase7-source-configuration="true">
           <h3>Source Configuration</h3>
           <p class="meta">
-            These fields describe the source reference that may be submitted to
-            the governed backend service. The browser does not read local files,
-            inspect folders, query the DB, or access Object Storage. Local
-            folder/file pickers provide selection metadata only; durable source
-            handling and validation remain backend-owned.
+            These fields describe the selected source channel reference that may
+            be submitted to the governed backend service. The browser does not
+            read local files, inspect folders, query the DB, or access Object
+            Storage. Local folder/file pickers provide selection metadata only;
+            durable source handling, credential handling, staging, and
+            validation remain backend-owned.
           </p>
           <p class="meta">
             The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter and is not accepted by this governed handoff.
@@ -5832,8 +5936,8 @@
                 size, and type metadata only; backend service validates the
                 governed request. The current verified local file input is .out
                 only. HTML AWR input is planned for a future parser/source
-                adapter. In OCI, local files must be uploaded/staged by the
-                governed backend path.
+                adapter. Full local-file intake requires future governed upload
+                or staging through the backend path.
               </small>
             </div>
             <label class="phase7cm-source-config-field"
@@ -5894,9 +5998,10 @@
                      autocomplete="off">
 	              <small>
 	                Object Storage access happens only through governed backend
-	                validation, never browser-side bucket reads. This is
-	                governed metadata validation only; full load, parse, and
-	                analyze remain backend-gated.
+	                validation, never browser-side bucket reads or object reads.
+	                This is governed metadata validation only; full load, parse, and
+	                analyze remain backend-gated until a future source-loader
+	                contract exists.
 	              </small>
             </label>
             <div class="phase7cm-source-config-field phase7cm-object-storage-config-field"
@@ -5911,7 +6016,8 @@
               <small>
                 Submits namespace, bucket, object/prefix, and region metadata to
                 the local governed workflow service. The browser does not call
-                OCI APIs, expose credentials, list buckets, or read objects.
+                OCI APIs, expose credentials, list buckets, read objects, or
+                claim artifact readiness.
               </small>
             </div>
           </div>
@@ -6112,7 +6218,7 @@
 
               <div class="info-box screen1-generated-evidence-info-box">
                 <strong title="Generated Time">Generated Time</strong>
-                <div>Jun 4, 2026, 4:10 PM</div>
+                <div>Jun 5, 2026, 9:24 AM</div>
               </div>
 
 
@@ -7232,7 +7338,7 @@
               <h3>Validation Notes</h3>
 
       <article class="item validation-note-summary">
-        <p>24 validation notes were detected across 24 files, representing repeated intake conditions summarized above.</p>
+        <p>24 validation notes were detected across 24 files, representing repeated intake conditions (summarized above).</p>
         <h4>Validation Notes Summary</h4>
         <div class="validation-note-list">
 
@@ -7633,7 +7739,7 @@
     </div>
 
 
-    <div class="footer">Generated at Jun 4, 2026, 4:10 PM</div>
+    <div class="footer">Generated at Jun 5, 2026, 9:24 AM</div>
   </div>
 
   <script>

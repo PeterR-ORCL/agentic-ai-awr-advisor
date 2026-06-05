@@ -23,18 +23,21 @@ class DashboardIndexObjectStorageConfigPanelTests(unittest.TestCase):
         for phrase in (
             'data-dashboard-select-id="object_storage"',
             "Object Storage",
-            "Configuration-dependent source",
-            "Submit a governed request for backend-side Object Storage validation using configured environment values.",
-            "No browser-side Object Storage access",
+            "Source Channel Model",
+            "Cloud metadata channel",
+            "Capture namespace, bucket, object or prefix, and region for governed metadata validation.",
+            "Metadata validation only today; future backend source-loader contract is required for load-to-staging.",
             "Validate Object Storage Source",
             "governed metadata validation only",
             "full load, parse, and",
             "analyze remain backend-gated",
+            "Future governed backend load-to-staging",
             "The browser does not call",
             "OCI APIs",
             "expose credentials",
             "list buckets",
             "read objects",
+            "claim artifact readiness",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
@@ -56,6 +59,37 @@ class DashboardIndexObjectStorageConfigPanelTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, rendered)
+
+    def test_screen1_source_channel_model_is_product_oriented(self) -> None:
+        rendered = self.render_screen1()
+        for phrase in (
+            'data-phase7-source-channel-model="true"',
+            "Source Channel Model",
+            'data-phase7-source-channel-card="local_staged"',
+            "Local Staged / Local Folder",
+            "Current most complete governed path",
+            'data-phase7-source-channel-card="local_file"',
+            "Local File",
+            "Future governed upload or staging",
+            'data-phase7-source-channel-card="object_storage"',
+            "Metadata validation only",
+            'data-phase7-existing-evidence-handoff-reference="true"',
+            "Existing platform evidence is not a Screen 1 source card",
+            "Screen 2 Runtime Scope &amp; Analysis Control",
+            'data-phase7-future-source-channel="enterprise_manager_oem"',
+            "Enterprise Manager / OEM",
+            'data-phase7-future-source-channel="file_system"',
+            "File System",
+            'data-phase7-future-source-channel="catalog_repository"',
+            "Catalog / Repository",
+            'data-phase7-future-source-channel="ai_source"',
+            "AI Source",
+            "Future governed source",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rendered)
+
+        self.assertNotIn('data-dashboard-select-id="existing_run"', rendered)
 
     def test_object_storage_legacy_panel_is_not_rendered(self) -> None:
         rendered = self.render_home()

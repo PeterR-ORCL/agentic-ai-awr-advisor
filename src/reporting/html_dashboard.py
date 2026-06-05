@@ -12097,10 +12097,10 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
     source_cards = [
         (
             "local_staged",
-            "Local folder / Local staged AWR",
-            "Default local/dev source",
-            "Use AWR files staged under data/input.",
-            f"Default: local/dev | Fallback: {default_local_folder}",
+            "Local Staged / Local Folder",
+            "Current governed path",
+            "Use backend-visible staged AWR .out files for the current most complete governed intake path.",
+            f"Current: backend-visible folder can reach artifact readiness after backend completion. Fallback: {default_local_folder}",
             "governed-source-intake-local-staged",
             {
                 "data-source-default-path": default_local_folder,
@@ -12114,10 +12114,10 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         ),
         (
             "local_file",
-            "Local file",
-            "Operator-selected file",
-            "Submit a governed request that identifies a local file context for backend-side validation.",
-            "Requires configured local file path",
+            "Local File",
+            "File metadata context",
+            "Capture file/path metadata for backend-side validation; upload, stage, and parse remain governed backend work.",
+            "Metadata/path validation only; future governed upload or staging is required for full intake.",
             "governed-source-intake-local-file",
             {
                 "data-source-default-path": "",
@@ -12149,9 +12149,9 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
         (
             "object_storage",
             "Object Storage",
-            "Configuration-dependent source",
-            "Submit a governed request for backend-side Object Storage validation using configured environment values.",
-            "No browser-side Object Storage access",
+            "Cloud metadata channel",
+            "Capture namespace, bucket, object or prefix, and region for governed metadata validation.",
+            "Metadata validation only today; future backend source-loader contract is required for load-to-staging.",
             "governed-source-intake-object-storage",
             {
                 "data-source-default-path": "",
@@ -12200,6 +12200,96 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
 	            """
         )
 
+    source_channel_model_html = """
+        <section class="evidence-pane phase7cs-source-channel-model"
+                 data-phase7-source-channel-model="true">
+          <h3>Source Channel Model</h3>
+          <p class="meta">
+            Choose the source channel first, then validate metadata before any
+            governed backend handoff. Screen 1 prepares new-source intake and
+            parser/source governance only; existing platform evidence remains a
+            Screen 2 runtime-control workflow.
+          </p>
+          <div class="phase7cm-source-card-grid">
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="local_staged">
+              <span class="mini-pill success">Available</span>
+              <strong>Local Staged / Local Folder</strong>
+              <p>
+                Current most complete governed path. Operators provide a
+                backend-visible folder or folder-picker metadata for AWR .out
+                validation and backend intake.
+              </p>
+              <p><strong>Readiness:</strong> Can reach governed artifact readiness only after backend completion.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="local_file">
+              <span class="mini-pill neutral">Metadata context</span>
+              <strong>Local File</strong>
+              <p>
+                Operators provide file/path metadata for backend validation.
+                Browser selection does not upload, stage, read, parse, or
+                create source truth.
+              </p>
+              <p><strong>Readiness:</strong> Future governed upload or staging is required for full intake.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-source-channel-card="object_storage">
+              <span class="mini-pill neutral">Metadata validation only</span>
+              <strong>Object Storage</strong>
+              <p>
+                Operators provide namespace, bucket, object or prefix, and
+                region. The browser never exposes credentials, lists buckets,
+                reads objects, or calls OCI APIs.
+              </p>
+              <p><strong>Readiness:</strong> Future governed backend load-to-staging contract required before artifact readiness.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card"
+                     data-phase7-existing-evidence-handoff-reference="true">
+              <span class="mini-pill neutral">Screen 2 handoff</span>
+              <strong>Existing Platform Evidence</strong>
+              <p>
+                Existing platform evidence is not a Screen 1 source card. Use
+                Screen 2 Runtime Scope &amp; Analysis Control to load runtime
+                options, choose scope/window context, and prepare Target A/B.
+              </p>
+              <p><strong>Readiness:</strong> Screen 2-owned existing evidence workflow.</p>
+            </article>
+          </div>
+          <div class="phase7cm-source-card-grid"
+               data-phase7-future-source-channel-grid="true">
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="enterprise_manager_oem"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>Enterprise Manager / OEM</strong>
+              <p>Reserved for a future server-side supplemental source adapter with provenance, validation, and audit.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="file_system"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>File System</strong>
+              <p>Reserved for future backend-visible file-system sources, not browser-local path truth.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="catalog_repository"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>Catalog / Repository</strong>
+              <p>Reserved for future persisted source catalog references that require governed backend lookup.</p>
+            </article>
+            <article class="phase7cm-source-card phase7cs-channel-card disabled-preview-only"
+                     data-phase7-future-source-channel="ai_source"
+                     aria-disabled="true">
+              <span class="mini-pill neutral">Future governed source</span>
+              <strong>AI Source</strong>
+              <p>Reserved for a future governed source mode; AI wording cannot create parser, evidence, or runtime truth.</p>
+            </article>
+          </div>
+        </section>
+    """
+
     action_payload = json.dumps(
         {
             "screen_id": "screen_1",
@@ -12242,6 +12332,8 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
           runtime scope remain controlled on Screen 2.
         </p>
 
+        {source_channel_model_html}
+
         <section class="evidence-pane" data-phase7-selection-workflow="true">
           <h3>Selection Workflow</h3>
           <ol>
@@ -12262,11 +12354,12 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
                  data-phase7-source-configuration="true">
           <h3>Source Configuration</h3>
           <p class="meta">
-            These fields describe the source reference that may be submitted to
-            the governed backend service. The browser does not read local files,
-            inspect folders, query the DB, or access Object Storage. Local
-            folder/file pickers provide selection metadata only; durable source
-            handling and validation remain backend-owned.
+            These fields describe the selected source channel reference that may
+            be submitted to the governed backend service. The browser does not
+            read local files, inspect folders, query the DB, or access Object
+            Storage. Local folder/file pickers provide selection metadata only;
+            durable source handling, credential handling, staging, and
+            validation remain backend-owned.
           </p>
           <p class="meta">
             The current verified parser path supports .out AWR reports. HTML AWR input is planned for a future parser/source adapter and is not accepted by this governed handoff.
@@ -12336,8 +12429,8 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
                 size, and type metadata only; backend service validates the
                 governed request. The current verified local file input is .out
                 only. HTML AWR input is planned for a future parser/source
-                adapter. In OCI, local files must be uploaded/staged by the
-                governed backend path.
+                adapter. Full local-file intake requires future governed upload
+                or staging through the backend path.
               </small>
             </div>
             <label class="phase7cm-source-config-field"
@@ -12398,9 +12491,10 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
                      autocomplete="off">
 	              <small>
 	                Object Storage access happens only through governed backend
-	                validation, never browser-side bucket reads. This is
-	                governed metadata validation only; full load, parse, and
-	                analyze remain backend-gated.
+	                validation, never browser-side bucket reads or object reads.
+	                This is governed metadata validation only; full load, parse, and
+	                analyze remain backend-gated until a future source-loader
+	                contract exists.
 	              </small>
             </label>
             <div class="phase7cm-source-config-field phase7cm-object-storage-config-field"
@@ -12415,7 +12509,8 @@ def _render_phase7cm_index_source_intake_panel(surface: str = "index") -> str:
               <small>
                 Submits namespace, bucket, object/prefix, and region metadata to
                 the local governed workflow service. The browser does not call
-                OCI APIs, expose credentials, list buckets, or read objects.
+                OCI APIs, expose credentials, list buckets, read objects, or
+                claim artifact readiness.
               </small>
             </div>
           </div>

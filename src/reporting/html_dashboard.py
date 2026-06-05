@@ -15,6 +15,9 @@ from src.reporting.ai_display_metadata import (
     build_learning_visibility_metadata,
     build_ml_explainability_visibility_metadata,
 )
+from src.reporting.dashboard.screen4.comparative_tables import (
+    render_screen4_comparative_tables,
+)
 from src.reporting.dashboard.styles import _shared_page_styles
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
 from src.learning.index_source_status import create_source_mode_status_summary
@@ -22248,17 +22251,26 @@ def _render_screen4_comparative_review_panel(
             "Comparative Review has validated deterministic comparison output. "
             "Screen 4 may show comparative evidence only from that contract."
         )
+        comparative_output_html = render_screen4_comparative_tables(comparative_state)
     elif prepared_targets:
         operator_summary = (
             "Comparative Review is not ready yet. Prepared Target A/B context can identify "
             "what should be compared, but it does not create comparison evidence. "
             "No governed deterministic comparison output has been returned to Screen 4."
         )
+        comparative_output_html = (
+            '<div class="subgrid screen4-comparative-target-grid-wrap">'
+            + "".join(target_cards)
+            + "</div>"
+        )
     else:
         operator_summary = (
             "Comparative Review is not ready yet. No governed deterministic comparison output "
             "has been returned to Screen 4. Prepared Target A/B context can identify what should "
             "be compared, but it does not create comparison evidence."
+        )
+        comparative_output_html = _render_screen4_graphic_guard_empty_state(
+            "No Target A/B prepared identity is available for this Screen 4 export."
         )
     return f"""
       <section class="card secondary screen4-comparative-review-guard"
@@ -22286,13 +22298,7 @@ def _render_screen4_comparative_review_panel(
             ],
             extra_class="screen4-comparative-review-state-grid",
         )}
-        {
-            '<div class="subgrid screen4-comparative-target-grid-wrap">' + "".join(target_cards) + "</div>"
-            if target_cards
-            else _render_screen4_graphic_guard_empty_state(
-                "No Target A/B prepared identity is available for this Screen 4 export."
-            )
-        }
+        {comparative_output_html}
       </section>
     """
 

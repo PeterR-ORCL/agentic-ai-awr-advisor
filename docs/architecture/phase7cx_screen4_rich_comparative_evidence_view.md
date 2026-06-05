@@ -240,6 +240,35 @@ Tables should come before graphs because current 7CX-D adapter output supports c
 
 Do not skip directly to graphics.
 
+## 7CX-F Table-Only Implementation Scope
+
+7CX-F implements the first product-facing output-ready Comparative Review surface. It is limited to dynamic tables and evidence panels rendered from a validated Screen 4 deterministic comparison output contract.
+
+Implemented 7CX-F sections:
+
+- Contract / Readiness Banner.
+- Target A vs Target B Identity Summary.
+- Evidence Completeness Matrix when contract evidence or missing-evidence category data exists.
+- Domain Delta Summary when `allowed_visualizations` includes `domain_delta_summary` and `domain_deltas` contains rows.
+- Metric Delta Table when `allowed_visualizations` includes `metric_delta_table` and `metric_deltas` contains rows.
+- Confidence Basis Panel when `confidence_basis` exists.
+- Missing Evidence / Limitations Panel when `missing_evidence`, adapter validation messages, or confidence limitations exist.
+- Visualization Eligibility Panel for useful table/panel permissions and text-only deferred visual reasons.
+
+7CX-F does not implement graphs, violins, time-series overlays, distribution panels, wait/event movement tables, SQL movement tables, backend routes, browser-side comparison execution, Build Comparison actions, or runtime mutation.
+
+The renderer must return no comparative table markup unless the existing 7CX-B state helper reaches `comparison_output_ready`. Prepared Target A/B context, cache-restored references, route state, loose comparison metadata, and unadapted 7CC artifacts remain guarded non-output states.
+
+Dynamic/no-empty enforcement in 7CX-F:
+
+- Table columns are included only when at least one row has data for that column.
+- Tables are omitted when their source row list is empty.
+- Identity fields are omitted when absent.
+- Empty target cards, empty tables, chart shells, SVG/canvas containers, static examples, and placeholder evidence are forbidden.
+- Missing-evidence or deferred-visual text appears only when it helps explain an operator-relevant limitation.
+
+The 7CX-F renderer is intentionally extracted behind `src/reporting/dashboard/screen4/comparative_tables.py` as a small 7DG-friendly seam. The module renders server-side HTML only; it does not compute comparison truth, inspect browser state, or create data rows.
+
 ## html_dashboard.py Growth Controls
 
 `html_dashboard.py` is already too large. Future implementation should avoid large monolithic additions, duplicated HTML/JS blocks, browser computation, static examples, empty blocks, generated placeholder charts, and visual shells.

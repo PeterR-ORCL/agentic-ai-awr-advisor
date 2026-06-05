@@ -17,6 +17,22 @@ Visual eligibility may be evaluated only from a Screen 4 deterministic compariso
 
 Prepared Target A/B context, route state, cache state, loose comparison metadata, LLM text, and unadapted 7CC artifact references cannot make a visual eligible.
 
+## Data-to-Render Contract
+
+`allowed_visualizations` is permission only. It does not create time-series points, distribution samples, SQL/event identity, graph rows, or chart-ready evidence.
+
+7CX-G visual eligibility is a gate only. It does not create evidence; it only checks whether the validated contract already contains the exact evidence shape required by the requested future visual.
+
+Future visual renderers may read visual evidence only from `evidence_rows` entries that carry an explicit visual-specific evidence shape:
+
+- Time-series evidence rows must be marked with `visualization=time_series_overlay`.
+- Distribution/violin evidence rows must be marked with `visualization=distribution_violin`.
+- SQL/event movement rows must live in `evidence_rows` and include persistent SQL/event/wait identity plus numeric Target A/B values.
+
+Top-level convenience fields such as `time_series_rows`, `distribution_rows`, `visual_evidence`, or artifact references are not visual evidence for Screen 4 rendering. A future adapter may normalize trusted backend data into visual-shaped `evidence_rows`, but Screen 4 must not render from those loose fields directly.
+
+`metric_deltas` feed the Metric Differences table only. `domain_deltas` feed the Domain Differences table only. Summary deltas, min/max-only rows, one sample per target, prepared Target A/B context, cache/route continuity, LLM text, UI-generated values, and synthetic samples or time-series points cannot feed future visuals.
+
 ## Result Model
 
 `Screen4ComparativeVisualEligibility` records:
@@ -55,6 +71,7 @@ Accepted row shape:
 
 ```json
 {
+  "visualization": "time_series_overlay",
   "timestamp": "2026-06-05T12:00:00Z",
   "metric_key": "cpu",
   "target_a_value": 70,
@@ -63,7 +80,7 @@ Accepted row shape:
 }
 ```
 
-Rows may appear in `time_series_rows`, `aligned_time_series_rows`, `time_series_evidence_rows`, `visual_evidence.time_series_overlay`, or evidence rows explicitly marked with `visualization=time_series_overlay`.
+Rows must appear in `evidence_rows` and must be explicitly marked with `visualization=time_series_overlay`. Top-level `time_series_rows`, `aligned_time_series_rows`, `time_series_evidence_rows`, and `visual_evidence.time_series_overlay` are not Screen 4 visual render evidence.
 
 Blocked reason codes include:
 
@@ -114,6 +131,8 @@ Accepted separate row shape:
 ```
 
 Separate rows are accepted only when both Target A and Target B sample rows exist for the same metric.
+
+Distribution rows must appear in `evidence_rows` and must be explicitly marked with `visualization=distribution_violin`. Top-level `distribution_rows`, `distribution_sample_rows`, `distribution_evidence_rows`, and `visual_evidence.distribution_violin` are not Screen 4 violin render evidence.
 
 Blocked reason codes include:
 
@@ -173,5 +192,6 @@ Future 7CX-H rendering may draw graphs or violins only after:
 - the Screen 4 deterministic comparison output contract validates,
 - `allowed_visualizations` includes the specific visual,
 - 7CX-G eligibility returns `eligible`,
+- the renderer reads explicit visual-shaped `evidence_rows`, not permission, cache, route state, or loose artifact fields,
 - the renderer can draw from real contract evidence without synthetic points or samples,
 - and no empty chart shell would be produced.

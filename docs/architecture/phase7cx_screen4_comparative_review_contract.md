@@ -85,7 +85,7 @@ Screen 4 must reject as output-ready:
 
 ## Graphics Guard
 
-`allowed_visualizations` controls graphics. Even in `comparison_output_ready`, Screen 4 may render only visualizations explicitly listed in that contract.
+`allowed_visualizations` controls graphics permission only. It does not create visual evidence. Even in `comparison_output_ready`, Screen 4 may render only visualizations explicitly listed in that contract and only after the contract carries the exact evidence shape required by that visualization.
 
 Before `comparison_output_ready`, Screen 4 must render no comparison charts, comparison violins, distribution graphics, fleet/population diagrams, or A/B graphical summaries.
 
@@ -111,8 +111,10 @@ For 7CX-D, `allowed_visualizations` may include only conservative table/panel pe
 
 7CX-G adds a deterministic eligibility layer for future comparative visuals. `allowed_visualizations` remains necessary but is not sufficient for graph or violin rendering. A future visual also requires the 7CX-G eligibility result to be `eligible`.
 
-Time-series overlay eligibility requires explicit aligned time-series rows with timestamp, metric key, numeric Target A value, and numeric Target B value. Distribution/violin eligibility requires actual numeric Target A and Target B sample arrays or paired sample rows with at least three samples per target. SQL/event movement eligibility requires persistent SQL or event/wait identity and numeric Target A/B values.
+Time-series overlay eligibility requires explicit `evidence_rows` marked `visualization=time_series_overlay` with timestamp, metric key, numeric Target A value, and numeric Target B value. Distribution/violin eligibility requires explicit `evidence_rows` marked `visualization=distribution_violin` with actual numeric Target A and Target B sample arrays or paired sample rows with at least three samples per target. SQL/event movement eligibility requires `evidence_rows` with persistent SQL or event/wait identity and numeric Target A/B values.
 
-Metric deltas, domain deltas, summary rows, route/cache state, prepared Target A/B context, LLM text, and snapshot identity are not sufficient visual evidence. 7CX-G does not render charts, violins, canvas/SVG, empty chart shells, fleet diagrams, or placeholder visuals.
+Metric deltas, domain deltas, summary rows, min/max-only rows, top-level loose visual row fields, route/cache state, prepared Target A/B context, artifact references, UI-generated values, LLM text, and snapshot identity are not sufficient visual evidence. 7CX-G does not render charts, violins, canvas/SVG, empty chart shells, fleet diagrams, or placeholder visuals.
 
 7CX-G-FU1 clarifies that an `eligible` visual status means eligible for future rendering only. Fleet/population visuals without a fleet/population evidence contract must use the `fleet_evidence_contract_missing` reason and remain `not_supported`.
+
+7CX-G-FU2 aligns the visual data-to-render contract: `allowed_visualizations` is permission only, 7CX-G eligibility is a gate only, and future visual renderers must consume explicit visual-shaped `evidence_rows`. Permission, eligibility, route/cache continuity, prepared Target A/B context, artifact references, LLM wording, and UI-generated values do not create visual evidence.

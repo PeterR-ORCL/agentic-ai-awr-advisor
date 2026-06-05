@@ -145,7 +145,31 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
                         "delta": -12,
                     }
                 ],
-                time_series_rows=[],
+            ),
+            "time_series_overlay",
+        )
+
+        self.assertEqual("blocked", result.status)
+        self.assertEqual("aligned_time_series_rows_missing", result.reason_code)
+
+    def test_time_series_overlay_ignores_top_level_rows_without_evidence_shape(self) -> None:
+        result = self.evaluate(
+            self.valid_contract(
+                ["time_series_overlay"],
+                time_series_rows=[
+                    {
+                        "timestamp": "2026-06-05T12:00:00Z",
+                        "metric_key": "cpu",
+                        "target_a_value": 70,
+                        "target_b_value": 58,
+                    },
+                    {
+                        "timestamp": "2026-06-05T12:05:00Z",
+                        "metric_key": "cpu",
+                        "target_a_value": 71,
+                        "target_b_value": 59,
+                    },
+                ],
             ),
             "time_series_overlay",
         )
@@ -157,8 +181,9 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:00:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 70,
@@ -176,13 +201,15 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         missing_metric = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:00:00Z",
                         "target_a_value": 70,
                         "target_b_value": 58,
                     },
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:05:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 71,
@@ -197,13 +224,15 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         missing_timestamp = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "metric_key": "cpu",
                         "target_a_value": 70,
                         "target_b_value": 58,
                     },
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:05:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 71,
@@ -219,13 +248,15 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:00:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 70,
                     },
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:05:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 71,
@@ -243,14 +274,16 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:00:00Z",
                         "metric_key": "cpu",
                         "target_a_value": "70",
                         "target_b_value": 58,
                     },
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:05:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 71,
@@ -268,14 +301,16 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["time_series_overlay"],
-                time_series_rows=[
+                evidence_rows=[
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:00:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 70,
                         "target_b_value": 58,
                     },
                     {
+                        "visualization": "time_series_overlay",
                         "timestamp": "2026-06-05T12:05:00Z",
                         "metric_key": "cpu",
                         "target_a_value": 71,
@@ -324,11 +359,53 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         self.assertEqual("blocked", result.status)
         self.assertEqual("distribution_samples_missing", result.reason_code)
 
-    def test_distribution_violin_blocked_from_min_max_only_rows(self) -> None:
+    def test_visuals_block_from_domain_deltas_alone(self) -> None:
+        for visualization, reason_code in (
+            ("time_series_overlay", "aligned_time_series_rows_missing"),
+            ("distribution_violin", "distribution_samples_missing"),
+        ):
+            with self.subTest(visualization=visualization):
+                result = self.evaluate(
+                    self.valid_contract(
+                        [visualization],
+                        domain_deltas=[
+                            {
+                                "domain": "CPU",
+                                "evidence_count": 2,
+                                "difference_rows": 1,
+                            }
+                        ],
+                    ),
+                    visualization,
+                )
+
+                self.assertEqual("blocked", result.status)
+                self.assertEqual(reason_code, result.reason_code)
+
+    def test_distribution_violin_ignores_top_level_rows_without_evidence_shape(self) -> None:
         result = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
                 distribution_rows=[
+                    {
+                        "visualization": "distribution_violin",
+                        "metric_key": "cpu",
+                        "target_a_samples": [70, 71, 72],
+                        "target_b_samples": [58, 59, 60],
+                    }
+                ],
+            ),
+            "distribution_violin",
+        )
+
+        self.assertEqual("blocked", result.status)
+        self.assertEqual("distribution_samples_missing", result.reason_code)
+
+    def test_distribution_violin_blocked_from_min_max_only_rows(self) -> None:
+        result = self.evaluate(
+            self.valid_contract(
+                ["distribution_violin"],
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -350,7 +427,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -369,7 +446,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -387,7 +464,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -406,7 +483,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         result = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -428,7 +505,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         missing_b = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -445,7 +522,7 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         eligible = self.evaluate(
             self.valid_contract(
                 ["distribution_violin"],
-                distribution_rows=[
+                evidence_rows=[
                     {
                         "visualization": "distribution_violin",
                         "metric_key": "cpu",
@@ -553,14 +630,16 @@ class Screen4ComparativeVisualEligibilityTests(unittest.TestCase):
         dashboard = dashboard_module()
         contract = self.valid_contract(
             ["metric_delta_table", "time_series_overlay"],
-            time_series_rows=[
+            evidence_rows=[
                 {
+                    "visualization": "time_series_overlay",
                     "timestamp": "2026-06-05T12:00:00Z",
                     "metric_key": "cpu",
                     "target_a_value": 70,
                     "target_b_value": 58,
                 },
                 {
+                    "visualization": "time_series_overlay",
                     "timestamp": "2026-06-05T12:05:00Z",
                     "metric_key": "cpu",
                     "target_a_value": 71,

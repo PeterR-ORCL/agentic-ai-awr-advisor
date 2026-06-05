@@ -1,8 +1,10 @@
 """Screen 4 Comparative Review visual eligibility guardrails.
 
 This module decides whether future Screen 4 comparative visuals have enough
-validated deterministic evidence to render. It does not render charts, create
-samples, infer time-series points, or compute comparison truth.
+validated deterministic evidence to render. Visual evidence is read only from
+explicit visual-shaped evidence_rows. allowed_visualizations is permission, and
+eligibility is a gate; neither creates evidence. This module does not render
+charts, create samples, infer time-series points, or compute comparison truth.
 """
 
 from __future__ import annotations
@@ -201,10 +203,11 @@ def _evaluate_time_series_overlay(
     rows = _time_series_rows(contract)
     required = (
         "allowed_visualizations",
-        "time_series_rows[].timestamp",
-        "time_series_rows[].metric_key",
-        "time_series_rows[].target_a_value",
-        "time_series_rows[].target_b_value",
+        "evidence_rows[].visualization=time_series_overlay",
+        "evidence_rows[].timestamp",
+        "evidence_rows[].metric_key",
+        "evidence_rows[].target_a_value",
+        "evidence_rows[].target_b_value",
     )
     if not rows:
         return _blocked(
@@ -212,7 +215,7 @@ def _evaluate_time_series_overlay(
             "aligned_time_series_rows_missing",
             "Time-series overlay is blocked because aligned time-series rows are missing.",
             required_fields=required,
-            missing_fields=("time_series_rows",),
+            missing_fields=("evidence_rows",),
         )
 
     for row in rows:
@@ -290,9 +293,10 @@ def _evaluate_distribution_violin(
     rows = _distribution_rows(contract)
     required = (
         "allowed_visualizations",
-        "distribution_rows[].metric_key",
-        "distribution_rows[].target_a_samples",
-        "distribution_rows[].target_b_samples",
+        "evidence_rows[].visualization=distribution_violin",
+        "evidence_rows[].metric_key",
+        "evidence_rows[].target_a_samples",
+        "evidence_rows[].target_b_samples",
     )
     if not rows:
         return _blocked(
@@ -300,7 +304,7 @@ def _evaluate_distribution_violin(
             "distribution_samples_missing",
             "Distribution violin is blocked because distribution sample rows are missing.",
             required_fields=required,
-            missing_fields=("distribution_rows",),
+            missing_fields=("evidence_rows",),
         )
 
     separate_samples: dict[str, dict[str, list[Any]]] = {}
@@ -458,7 +462,7 @@ def _evaluate_distribution_violin(
         "distribution_samples_missing",
         "Distribution violin is blocked because distribution sample rows are missing.",
         required_fields=required,
-        missing_fields=("distribution_rows",),
+        missing_fields=("evidence_rows",),
     )
 
 
@@ -559,48 +563,23 @@ def _evaluate_movement_rows(
 
 
 def _time_series_rows(contract: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = []
-    for key in (
-        "time_series_rows",
-        "aligned_time_series_rows",
-        "time_series_evidence_rows",
-    ):
-        rows.extend(_dict_rows(contract.get(key)))
-    rows.extend(_visual_evidence_rows(contract, TIME_SERIES_OVERLAY))
-    rows.extend(
+    return [
         row
         for row in _dict_rows(contract.get("evidence_rows"))
         if _row_visualization(row) == TIME_SERIES_OVERLAY
-    )
-    return rows
+    ]
 
 
 def _distribution_rows(contract: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = []
-    for key in (
-        "distribution_rows",
-        "distribution_sample_rows",
-        "distribution_evidence_rows",
-    ):
-        rows.extend(_dict_rows(contract.get(key)))
-    rows.extend(_visual_evidence_rows(contract, DISTRIBUTION_VIOLIN))
-    rows.extend(
+    return [
         row
         for row in _dict_rows(contract.get("evidence_rows"))
         if _row_visualization(row) == DISTRIBUTION_VIOLIN
-    )
-    return rows
+    ]
 
 
 def _movement_rows(contract: dict[str, Any], visualization: str) -> list[dict[str, Any]]:
     rows = []
-    for key in ("movement_rows", "visual_movement_rows"):
-        rows.extend(
-            row
-            for row in _dict_rows(contract.get(key))
-            if _row_visualization(row) in {"", visualization}
-        )
-    rows.extend(_visual_evidence_rows(contract, visualization))
     evidence_rows = _dict_rows(contract.get("evidence_rows"))
     if visualization == TOP_SQL_MOVEMENT_TABLE:
         rows.extend(
@@ -618,15 +597,6 @@ def _movement_rows(contract: dict[str, Any], visualization: str) -> list[dict[st
             or _row_category(row) in {"wait", "event", "wait_event"}
             or any(_has_text(row.get(key)) for key in ("event_id", "event_name", "wait_event", "stable_event_identity"))
         )
-    return rows
-
-
-def _visual_evidence_rows(contract: dict[str, Any], visualization: str) -> list[dict[str, Any]]:
-    rows = []
-    for key in ("visual_evidence", "comparative_visual_evidence", "visualization_evidence"):
-        value = contract.get(key)
-        if isinstance(value, dict):
-            rows.extend(_dict_rows(value.get(visualization)))
     return rows
 
 

@@ -125,6 +125,8 @@ The adapter does not grant:
 
 Those require future evidence shapes such as aligned time-series points, distribution samples, stable SQL identity, or event movement contracts. Fleet/population visualizations remain blocked without a fleet/population evidence contract.
 
+Future adapter work must normalize visual evidence into explicit visual-shaped `evidence_rows`; `allowed_visualizations` is permission only and does not create visual evidence. Top-level loose fields such as `time_series_rows`, `distribution_rows`, `visual_evidence`, artifact references, cache/route state, prepared Target A/B context, LLM text, UI-generated values, and synthetic samples or time-series points must not feed Screen 4 visuals.
+
 ## Rendering Boundary
 
 7CX-D does not make Screen 4 render new graphics. It only produces a strict contract that can pass the 7CX-B validator. Screen 4 graphics remain gated by `allowed_visualizations`, and no specific graphic may render unless future UI work implements that visualization from validated contract data.
@@ -135,4 +137,4 @@ After 7CX-D review, the next safe step is 7CX-E: Screen 4 Rich Comparative Evide
 
 The 7CX-E design is documented in `docs/architecture/phase7cx_screen4_rich_comparative_evidence_view.md`.
 
-7CX-G adds a visual eligibility layer after table rendering. The adapter may eventually emit visual evidence shapes such as aligned time-series rows or distribution samples, but those rows still must pass 7CX-G eligibility before any future Screen 4 graph or violin renderer can draw them. 7CX-G does not render visuals and does not treat summary deltas as graph or violin evidence.
+7CX-G adds a visual eligibility layer after table rendering. The adapter may eventually emit visual evidence shapes such as aligned time-series rows or distribution samples, but those rows must live in explicit visual-shaped `evidence_rows` and must pass 7CX-G eligibility before any future Screen 4 graph or violin renderer can draw them. 7CX-G does not render visuals and does not treat summary deltas, min/max-only rows, or one-sample rows as graph or violin evidence.

@@ -45,6 +45,22 @@ The rendering algorithm should:
 
 No section should exist merely to fill space.
 
+## Data-to-Render Contract
+
+`allowed_visualizations` is a permission list, not evidence. The visual eligibility layer is a gate, not evidence. Future visual renderers must still consume explicit visual-shaped `evidence_rows` from the validated deterministic comparison output contract.
+
+Data mapping is strict:
+
+- Target identity fields feed Target A/B identity display only; they do not feed graphs.
+- `metric_deltas` feed Metric Differences tables only.
+- `domain_deltas` feed Domain Differences tables only.
+- `confidence_basis` feeds Deterministic Confidence Basis only.
+- `missing_evidence` and `adapter_validation_messages` feed Missing Evidence / Limitations.
+- `allowed_visualizations` plus 7CX-G eligibility feed Rendering Eligibility.
+- Future time-series, distribution/violin, SQL movement, and event/wait visuals may render only from `evidence_rows` entries containing the exact visual-specific evidence shape.
+
+Summary deltas, min/max-only distribution rows, one sample per target, prepared Target A/B context, cache/route state, artifact references, LLM text, UI-generated values, synthetic time-series points, and synthetic samples are forbidden visual inputs.
+
 ## Contract Field Families
 
 Identity and provenance:
@@ -84,8 +100,8 @@ Evidence:
 - `adapter_validation_messages`
 - `allowed_visualizations`
 - optional `no_change_evidence`
-- optional future time-series rows
-- optional future distribution/sample rows
+- optional future visual-shaped `evidence_rows` for aligned time-series points
+- optional future visual-shaped `evidence_rows` for distribution/sample rows
 
 ## Layout Layers
 
@@ -121,8 +137,8 @@ Sections should be compact, operational, and scannable. Repeated empty states sh
 | Confidence Basis Panel | Explain deterministic basis. | `confidence_basis_panel` allowed, or `confidence_basis` exists and is operator-relevant. | `confidence_basis`. | `confidence_basis_panel` when treated as a visual asset. | Show `basis_type`, `sample_count`, `evidence_row_count`, `missing_evidence_count`, and limitations. | Missing `confidence_basis` keeps output non-ready; do not render empty panel. | Omit empty optional fields. | Do not generate confidence from LLM or UI. |
 | Missing Evidence / Limitations Panel | Make gaps visible. | `missing_evidence` non-empty or adapter messages contain limitation/blocking messages. | `missing_evidence`, `adapter_validation_messages`, `confidence_basis.limitations`. | `missing_evidence_panel` when treated as a visual asset. | Show category, field, reason, impact, blocked visualization if available. | If empty, optionally show no missing evidence only when useful and not redundant. | Omit if empty and not useful. | Do not invent missing evidence. |
 | Visualization Eligibility Panel | Explain available or blocked visuals. | Allowed visuals exist, or blocked visual explanation is useful. | `allowed_visualizations`, `missing_evidence`, `evidence_rows`, `confidence_basis`, `adapter_validation_messages`. | None; it explains permissions. | Show allowed visualizations and meaningful blocked reasons. | Do not list every blocked visual unless helpful. | Omit if it duplicates other blocked messages. | No visual shells or "coming soon" placeholders. |
-| Future Time-Series Overlay | Define future graph behavior. | Future only: allowed and aligned time-series evidence exists. | timestamp, metric key, Target A value, Target B value, unit, alignment basis. | `time_series_overlay`. | Render overlay from aligned points only. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit if not allowed and not useful. | No synthetic series from summary deltas or snapshot identity alone. |
-| Future Distribution / Violin Panel | Define future violin behavior. | Future only: allowed and distribution/sample evidence exists. | metric key, Target A sample set, Target B sample set, sample values or buckets, unit, sample count. | `distribution_violin`. | Render violin from actual samples only. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit if not allowed and not useful. | No violin from summary deltas, empty containers, or synthetic samples. |
+| Future Time-Series Overlay | Define future graph behavior. | Future only: allowed and explicit `evidence_rows` marked `visualization=time_series_overlay` exist. | `evidence_rows[].visualization`, timestamp, metric key, Target A value, Target B value, unit, alignment basis. | `time_series_overlay`. | Render overlay from aligned points only. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit if not allowed and not useful. | No synthetic series from summary deltas, top-level loose fields, or snapshot identity alone. |
+| Future Distribution / Violin Panel | Define future violin behavior. | Future only: allowed and explicit `evidence_rows` marked `visualization=distribution_violin` exist. | `evidence_rows[].visualization`, metric key, Target A sample set, Target B sample set, sample values or buckets, unit, sample count. | `distribution_violin`. | Render violin from actual samples only. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit if not allowed and not useful. | No violin from summary deltas, min/max-only rows, top-level loose fields, empty containers, or synthetic samples. |
 | LLM Explanation Boundary Panel | Keep explanation separate from truth. | Comparative explanation exists or planned and a boundary note is useful. | validated contract presence. | None. | "LLM-assisted wording may explain validated deterministic comparison output only after that output exists. It does not compute comparison meaning or decide outcome direction." | Omit if redundant. | No LLM-created deltas, direction labels, evidence rows, or confidence. |
 
 ## Evidence Completeness Categories
@@ -159,8 +175,8 @@ A category may be `available` only when matching evidence rows exist. It may be 
 | Evidence Completeness Matrix | `evidence_completeness_matrix` when formalized | `evidence_rows`, `missing_evidence`, `confidence_basis` | Category counts, missing counts, and meaningful blocked reasons. | "Evidence completeness is unavailable because the contract has no evidence or missing-evidence category data." | Omit when empty. | No empty matrix. |
 | Confidence Basis Panel | `confidence_basis_panel` | `confidence_basis` | Deterministic basis, sample count, evidence count, missing count, limitations. | None inside output-ready. | Omit empty optional fields. | No UI or LLM confidence. |
 | Missing Evidence Panel | `missing_evidence_panel` | `missing_evidence`, limitations/messages | Missing field/category rows or limitation messages. | None when empty; omit instead. | Omit when empty and not useful. | No invented missing evidence. |
-| Time-Series Overlay | `time_series_overlay` | future time-series rows | Timestamp, metric key, Target A value, Target B value, unit, alignment basis. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit when not allowed and not useful. | No synthetic time series. |
-| Distribution Violin | `distribution_violin` | future distribution/sample rows | Metric key, samples or buckets, Target A sample set, Target B sample set, unit, sample count. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit when not allowed and not useful. | No violin from summary deltas. |
+| Time-Series Overlay | `time_series_overlay` | visual-shaped `evidence_rows` | Rows marked `visualization=time_series_overlay` with timestamp, metric key, numeric Target A value, numeric Target B value, unit, alignment basis; at least two rows for one metric. | "Time-series overlay is blocked because aligned time-series evidence is not present in this deterministic comparison output." | Omit when not allowed and not useful. | No synthetic time series or top-level loose rows. |
+| Distribution Violin | `distribution_violin` | visual-shaped `evidence_rows` | Rows marked `visualization=distribution_violin` with metric key and numeric Target A/B sample arrays or paired sample rows; at least three samples per target. | "Distribution violin is blocked because this deterministic comparison output does not include distribution sample rows." | Omit when not allowed and not useful. | No violin from summary deltas, min/max-only rows, or top-level loose rows. |
 | Wait Class Movement Table | `wait_class_movement_table` | wait/event evidence rows | Stable wait class or event identity, Target A/B values, unit, source. | "Wait/event movement is blocked because stable wait/event identity is not present." | Omit when not allowed and not useful. | No empty wait table or loose grouping. |
 | Top SQL Movement Table | `top_sql_movement_table` | SQL evidence rows | Stable SQL identity across Target A/B, metric key, values, unit, source. | "SQL movement is blocked because stable SQL identity is not present." | Omit when not allowed and not useful. | No SQL matching by label alone. |
 | Top Event Movement Table | `top_event_movement_table` | event evidence rows | Stable event identity, Target A/B values, unit, source. | "Top event movement is blocked because stable event identity is not present." | Omit when not allowed and not useful. | No empty event table. |
@@ -173,8 +189,8 @@ These tiers exist inside `comparison_output_ready`. They do not replace the 7CX-
 | --- | --- | --- |
 | `output_ready_table_only` | Valid contract plus table/panel permissions only. | Readiness banner, Target A/B identity, metric/domain tables when data exists, confidence, missing evidence. |
 | `output_ready_summary_tables` | Metric and domain table permissions plus meaningful completeness data. | Table-focused summary with completeness and limitations. |
-| `output_ready_with_time_series` | `time_series_overlay` allowed and aligned time-series rows exist. | Adds time-series overlay. |
-| `output_ready_with_distribution` | `distribution_violin` allowed and distribution/sample rows exist. | Adds distribution/violin evidence. |
+| `output_ready_with_time_series` | `time_series_overlay` allowed and visual-shaped aligned time-series `evidence_rows` exist. | Adds time-series overlay. |
+| `output_ready_with_distribution` | `distribution_violin` allowed and visual-shaped distribution/sample `evidence_rows` exist. | Adds distribution/violin evidence. |
 | `output_ready_with_sql_movement` | `top_sql_movement_table` allowed and stable SQL identity rows exist. | Adds SQL movement table. |
 | `output_ready_with_full_visuals` | All required visual permissions and evidence shapes exist. | Rich tables, time series, distribution/violin, SQL/event movement, confidence, and missing evidence. |
 
@@ -299,17 +315,19 @@ The eligibility layer returns structured statuses for each requested visual:
 
 Future visuals may render only when the Screen 4 deterministic comparison output contract validates, `allowed_visualizations` includes the visual, and the 7CX-G eligibility result is `eligible`.
 
-7CX-G accepts explicit deterministic evidence shapes only:
+7CX-G accepts explicit deterministic evidence shapes in `evidence_rows` only:
 
-- `time_series_overlay` requires aligned time-series rows with timestamp, metric key, numeric Target A value, and numeric Target B value; at least two aligned points are required for one metric.
-- `distribution_violin` requires actual numeric Target A and Target B samples; at least three samples per target are required for one metric.
+- `time_series_overlay` requires rows marked `visualization=time_series_overlay` with timestamp, metric key, numeric Target A value, and numeric Target B value; at least two aligned points are required for one metric.
+- `distribution_violin` requires rows marked `visualization=distribution_violin` with actual numeric Target A and Target B samples; at least three samples per target are required for one metric.
 - SQL/event movement requires persistent SQL or event/wait identity and numeric Target A/B values.
 
-Metric deltas alone, domain deltas alone, summary deltas, snapshot identity, route/cache state, prepared Target A/B context, and LLM text cannot make a visual eligible.
+Metric deltas alone, domain deltas alone, summary deltas, top-level loose visual rows, snapshot identity, route/cache state, prepared Target A/B context, artifact references, UI-generated values, and LLM text cannot make a visual eligible.
 
 The text-only Rendering Eligibility panel may use 7CX-G results to explain eligible, blocked, or unsupported future visual states. It must not render chart shells, canvas/SVG, visual placeholders, or "coming soon" evidence panels.
 
 7CX-G-FU1 clarifies that `eligible` is an eligibility status for future rendering, not an active visual render state. The Rendering Eligibility panel should use concise text such as "Eligible for future rendering" and should omit `not_requested` future visuals by default. Min/max-only distribution rows, summary deltas, and loose SQL/event labels remain blocked, not visual evidence.
+
+7CX-G-FU2 aligns the data-to-render contract: `allowed_visualizations` is permission only, 7CX-G eligibility is a gate only, and future graph/violin renderers may consume visual evidence only from explicit visual-shaped `evidence_rows`. Top-level `time_series_rows`, `distribution_rows`, `visual_evidence`, cache/route continuity, artifact references, prepared Target A/B context, LLM text, UI-generated values, and synthetic values are not visual evidence.
 
 ## html_dashboard.py Growth Controls
 

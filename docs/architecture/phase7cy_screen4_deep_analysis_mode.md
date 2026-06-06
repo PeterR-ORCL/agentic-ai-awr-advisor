@@ -358,12 +358,21 @@ Screen 6 owns learning candidate review, materialization, model registry/runtime
 Recommended sequence:
 
 1. 7CY-C: Add a small non-rendering Deep Analysis contract helper and validation tests.
-2. 7CY-D: Add guarded state integration that can classify unavailable, output-required, and ready states without rendering evidence panels.
-3. 7CY-E: Render text/table-only populated Deep Analysis evidence sections from a validated contract.
-4. 7CY-F: Add optional chart eligibility helper if validated chart evidence shapes exist.
-5. 7CY-G or later: Add chart rendering only from eligible evidence shapes, with no browser computation and no empty chart shells.
+2. 7CY-D: Add a small non-rendering builder/adapter that assembles the contract from existing deterministic current-scope inputs and validates it.
+3. 7CY-E: Add guarded state integration that can classify unavailable, output-required, and ready states without rendering evidence panels.
+4. 7CY-F: Render text/table-only populated Deep Analysis evidence sections from a validated contract.
+5. 7CY-G: Add optional chart eligibility helper if validated chart evidence shapes exist.
+6. 7CY-H or later: Add chart rendering only from eligible evidence shapes, with no browser computation and no empty chart shells.
 
 Do not skip directly to UI panels or charts.
+
+### 7CY-D Builder / Adapter Implementation Note
+
+7CY-D adds `src/reporting/dashboard/screen4/deep_analysis_builder.py` as a pure, non-rendering adapter. Its public entry points are `build_deep_analysis_contract(...)` and `build_and_validate_deep_analysis_contract(...)`.
+
+The builder accepts in-memory `report_data`, `selected_scope`, optional `screen_model`, optional `chart_payload`, and optional `generation_context` mappings. It assembles a `screen4_deep_analysis_contract` from deterministic current-scope diagnostic/display inputs only, treats historical time-series and distribution inputs as `historical_supporting_context`, records missing or blocked inputs as limitations/missing evidence, and ignores comparative, prepared-only, cache-only, fleet, and LLM text as Deep Analysis proof.
+
+Readiness remains owned by `src/reporting/dashboard/screen4/deep_analysis_contract.py`. `build_and_validate_deep_analysis_contract(...)` calls `validate_deep_analysis_contract(...)`; the builder does not independently declare readiness, render UI, render charts, call backend routes, call LLMs, or mutate runtime truth.
 
 ## 20. Future Test Plan
 
@@ -400,4 +409,3 @@ Future tests should verify:
 - Screen 5 or Screen 6 behavior.
 - 7CX comparative rendering changes.
 - Dashboard generator decomposition.
-

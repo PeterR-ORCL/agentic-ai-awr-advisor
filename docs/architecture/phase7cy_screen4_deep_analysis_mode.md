@@ -149,8 +149,12 @@ Allowed evidence types:
 - `top_sql_detail`.
 - `wait_event_detail`.
 - `db_time_breakdown`.
+- `domain_score_detail`.
+- `scalar_metric_detail`.
 - `time_series_supporting_context`.
 - `distribution_supporting_context`.
+- `anomaly_supporting_context`.
+- `similarity_supporting_context`.
 - `rac_adg_topology_detail`.
 - `engineering_detail`.
 - `limitation`.
@@ -379,6 +383,14 @@ Readiness remains owned by `src/reporting/dashboard/screen4/deep_analysis_contra
 7CY-E adds a Screen 4 Deep Analysis guarded state card in `src/reporting/html_dashboard.py`. The card calls `build_and_validate_deep_analysis_contract(...)` and renders only state metadata: readiness, validator state, selected scope summary, provenance/freshness summary, current/supporting section and row counts, blocked reasons, missing evidence categories, and limitation categories.
 
 7CY-E does not render Deep Analysis evidence rows, evidence tables, drilldowns, charts, SVGs, Chart.js/Plotly panels, backend routes, browser computation, parser/comparison execution, LLM calls, or runtime mutation. Historical inputs remain supporting context only, comparative/7CX fields remain Comparative Review only, and cache/prepared-only state cannot create Deep Analysis readiness. 7CY-F owns future text/table evidence rendering from validated contract rows.
+
+### 7CY-F Evidence Rendering Implementation Note
+
+7CY-F renders populated Screen 4 Deep Analysis evidence sections from the validated `screen4_deep_analysis_contract` only. The guarded state card remains first, then text/table evidence sections render from `evidence_sections`, `evidence_rows`, `limitations`, `missing_evidence`, and validator `allowed_section_ids` / `supporting_section_ids`.
+
+Current-scope rows render as "Current Diagnostic Evidence" only when the builder/validator marks the contract ready. Historical rows render only as "Historical Supporting Context" and do not become current proof. Comparative/7CX rows, metric/domain deltas, `allowed_visualizations`, comparative visual eligibility, prepared Target A/B, cache-only state, page identity, and LLM text do not feed Deep Analysis rendering.
+
+7CY-F does not render charts, SVGs, Chart.js/Plotly panels, violin/distribution diagrams, chart canvases, visual selectors, backend routes, browser computation, LLM calls, parser/comparison execution, or runtime mutation. Future graph work should be context-driven, evidence-shape-driven, dynamic, and extensible from validated contract data for the active evidence mode, not selected from a hard-coded small chart menu or inferred from page identity.
 
 ## 20. Future Test Plan
 

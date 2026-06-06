@@ -22503,8 +22503,8 @@ def _render_screen4_deep_analysis_guarded_state(
           {escape(summary)}
         </p>
         <p class="chart-support-note">
-          7CY-E renders state only. No Deep Analysis evidence rows, tables, drilldowns, or charts are rendered here.
-          Evidence Drilldown remains hidden until a validated contract-backed rendering step explicitly consumes populated rows.
+          This guarded state remains the first Deep Analysis signal.
+          Evidence sections render below only from validated contract-backed rows; charts and visual drilldowns remain deferred.
         </p>
         {_render_info_grid(
             [
@@ -22521,7 +22521,7 @@ def _render_screen4_deep_analysis_guarded_state(
                 ("Blocked Reasons", blocked_reasons),
                 ("Missing Evidence", missing_summary),
                 ("Evidence Limitations", limitation_summary),
-                ("Rendering Boundary", "State card only; evidence values and visuals remain hidden."),
+                ("Rendering Boundary", "State card first; populated evidence sections only after contract validation. No charts or visual drilldowns."),
             ],
             extra_class="screen4-deep-analysis-state-grid",
         )}
@@ -22552,6 +22552,354 @@ def _screen4_deep_analysis_counts(contract: dict[str, Any]) -> dict[str, int]:
             1 for item in rows if item.get("scope_classification") == "historical_supporting_context"
         ),
     }
+
+
+def _render_screen4_deep_analysis_evidence_sections(
+    deep_analysis_state: dict[str, Any],
+) -> str:
+    contract = _to_dict(deep_analysis_state.get("contract"))
+    validation_result = deep_analysis_state.get("validation_result")
+    state = str(deep_analysis_state.get("state") or "")
+    is_ready = bool(deep_analysis_state.get("is_ready"))
+    allowed_section_ids = set(
+        getattr(validation_result, "allowed_section_ids", ()) or ()
+    )
+    supporting_section_ids = set(
+        getattr(validation_result, "supporting_section_ids", ()) or ()
+    )
+    render_current = is_ready
+    render_supporting = state in {
+        "deep_analysis_ready",
+        "deep_analysis_historical_supporting_context",
+    }
+    if not (render_current or render_supporting):
+        return ""
+
+    section_html: list[str] = []
+    for section in _screen4_deep_analysis_sorted_sections(contract):
+        section_id = _first_display_value(section.get("section_id"))
+        scope = str(section.get("scope_classification") or "")
+        if scope == "current_scope":
+            if not (render_current and section_id in allowed_section_ids):
+                continue
+        elif scope == "historical_supporting_context":
+            if not (render_supporting and section_id in supporting_section_ids):
+                continue
+        else:
+            continue
+
+        rows = _screen4_deep_analysis_rows_for_section(
+            contract,
+            section_id=section_id,
+            expected_scope=scope,
+        )
+        if not rows:
+            continue
+        section_html.append(
+            _render_screen4_deep_analysis_evidence_section(section, rows)
+        )
+
+    gap_html = ""
+    if render_current or state == "deep_analysis_historical_supporting_context":
+        gap_html = "".join(
+            [
+                _render_screen4_deep_analysis_gap_section(
+                    "Missing Evidence",
+                    "Missing Evidence",
+                    contract.get("missing_evidence"),
+                    "missing-evidence",
+                ),
+                _render_screen4_deep_analysis_gap_section(
+                    "Evidence Limitations",
+                    "Evidence Limitation",
+                    contract.get("limitations"),
+                    "limitations",
+                ),
+            ]
+        )
+
+    if not section_html and not gap_html:
+        return ""
+
+    return f"""
+      <section class="card secondary screen4-deep-analysis-evidence-sections"
+               data-screen4-mode-section="deep-analysis"
+               data-screen4-deep-analysis-evidence="validated-contract"
+               data-screen4-deep-analysis-rendering="text-table-only">
+        <div class="section-kicker">Deep Analysis</div>
+        <h2>Contract-Backed Evidence Sections</h2>
+        <p class="meta">
+          Screen 4 renders only populated sections and rows already present in the validated Deep Analysis contract.
+          Historical rows are labeled as supporting context; charts and visual shells are not rendered in this phase.
+        </p>
+        {"".join(section_html)}
+        {gap_html}
+      </section>
+    """
+
+
+def _screen4_deep_analysis_sorted_sections(
+    contract: dict[str, Any],
+) -> list[dict[str, Any]]:
+    sections = [
+        _to_dict(section)
+        for section in (contract.get("evidence_sections") or [])
+        if isinstance(section, dict)
+    ]
+    return sorted(
+        sections,
+        key=lambda section: (
+            _screen4_deep_analysis_priority(section.get("display_priority")),
+            str(section.get("section_id") or ""),
+        ),
+    )
+
+
+def _screen4_deep_analysis_priority(value: Any) -> int:
+    if isinstance(value, bool):
+        return 1000
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return 1000
+
+
+def _screen4_deep_analysis_rows_for_section(
+    contract: dict[str, Any],
+    *,
+    section_id: str,
+    expected_scope: str,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in contract.get("evidence_rows") or []:
+        row_dict = _to_dict(row)
+        if row_dict.get("section_id") != section_id:
+            continue
+        if row_dict.get("scope_classification") != expected_scope:
+            continue
+        if not _screen4_deep_analysis_row_is_renderable(row_dict):
+            continue
+        rows.append(row_dict)
+    return rows
+
+
+def _screen4_deep_analysis_row_is_renderable(row: dict[str, Any]) -> bool:
+    scope = str(row.get("scope_classification") or "")
+    if scope not in {"current_scope", "historical_supporting_context"}:
+        return False
+    if str(row.get("freshness_status") or "").lower() in {
+        "stale",
+        "cache_only",
+        "cached_continuity_only",
+    }:
+        return False
+    if row.get("llm_generated") is True:
+        return False
+    generated_by = str(row.get("generated_by") or "").lower()
+    if "llm" in generated_by or "browser" in generated_by:
+        return False
+    for flag in (
+        "synthetic",
+        "synthetic_row",
+        "demo",
+        "demo_row",
+        "placeholder",
+        "placeholder_row",
+        "hard_coded",
+        "hardcoded",
+        "example",
+    ):
+        if row.get(flag) is True:
+            return False
+    evidence_type = str(row.get("evidence_type") or "")
+    if evidence_type not in {"limitation", "missing_evidence"} and "deterministic_value" not in row:
+        return False
+    if scope == "current_scope" and not _to_dict(row.get("supports_existing_truth_ref")):
+        return False
+    return True
+
+
+def _render_screen4_deep_analysis_evidence_section(
+    section: dict[str, Any],
+    rows: list[dict[str, Any]],
+) -> str:
+    scope = str(section.get("scope_classification") or "")
+    evidence_type = str(section.get("evidence_type") or "")
+    scope_label = _screen4_deep_analysis_scope_label(scope, evidence_type)
+    section_id = _first_display_value(section.get("section_id"))
+    support_note = (
+        "Historical Supporting Context only; this does not override selected diagnostic truth."
+        if scope == "historical_supporting_context"
+        else "Current Diagnostic Evidence from the validated deterministic contract."
+    )
+    return f"""
+        <section class="evidence-pane screen4-deep-analysis-evidence-section"
+                 data-screen4-deep-analysis-section="{escape(section_id, quote=True)}"
+                 data-screen4-deep-analysis-scope="{escape(scope, quote=True)}">
+          <div class="section-kicker">{escape(scope_label)}</div>
+          <h3>{escape(_first_display_value(section.get("title")) or "Evidence Section")}</h3>
+          <p class="meta">{escape(support_note)}</p>
+          {_render_info_grid(
+              [
+                  ("Scope", scope_label),
+                  ("Evidence Type", evidence_type),
+                  ("Source", section.get("source_path")),
+                  ("Provenance", _screen4_deep_analysis_provenance_summary({"provenance": _to_dict(section.get("provenance"))})),
+                  ("Freshness", section.get("freshness_status")),
+              ],
+              extra_class="screen4-deep-analysis-section-grid",
+          )}
+          {_render_screen4_deep_analysis_evidence_table(rows)}
+        </section>
+    """
+
+
+def _render_screen4_deep_analysis_evidence_table(
+    rows: list[dict[str, Any]],
+) -> str:
+    if not rows:
+        return ""
+    headers = [
+        "Evidence",
+        "Value",
+        "Unit / Type",
+        "Scope",
+        "Source",
+        "Freshness",
+        "Truth Reference / Support",
+        "Limitation",
+    ]
+    body_rows = []
+    for row in rows:
+        scope = str(row.get("scope_classification") or "")
+        body_rows.append(
+            [
+                _screen4_deep_analysis_row_label(row),
+                _screen4_deep_analysis_compact_value(row.get("deterministic_value")),
+                _first_display_value(row.get("unit"), row.get("evidence_type")),
+                _screen4_deep_analysis_scope_label(scope, str(row.get("evidence_type") or "")),
+                _first_display_value(row.get("source_path")),
+                _first_display_value(row.get("freshness_status")),
+                _screen4_deep_analysis_truth_ref_label(row),
+                _screen4_deep_analysis_limitation_label(row),
+            ]
+        )
+
+    column_indexes = [
+        index
+        for index, _header in enumerate(headers)
+        if any(_has_display_value(row[index]) for row in body_rows)
+    ]
+    header_html = "".join(
+        f"<th>{escape(headers[index])}</th>" for index in column_indexes
+    )
+    row_html = []
+    for row in body_rows:
+        row_html.append(
+            "<tr>"
+            + "".join(
+                f"<td>{escape(_display_value(row[index]))}</td>"
+                for index in column_indexes
+            )
+            + "</tr>"
+        )
+    return f"""
+          <div class="data-table-wrap screen4-deep-analysis-table-wrap">
+            <table class="data-table screen4-deep-analysis-evidence-table">
+              <thead><tr>{header_html}</tr></thead>
+              <tbody>{"".join(row_html)}</tbody>
+            </table>
+          </div>
+    """
+
+
+def _render_screen4_deep_analysis_gap_section(
+    title: str,
+    label: str,
+    items: Any,
+    data_kind: str,
+) -> str:
+    entries = [item for item in (items or []) if isinstance(item, dict)]
+    if not entries:
+        return ""
+    list_items = []
+    for item in entries[:8]:
+        kind = _first_display_value(item.get("type"), item.get("code"), label)
+        field = _first_display_value(item.get("field"))
+        reason = _first_display_value(item.get("reason"))
+        text = " - ".join(part for part in (kind, field, reason) if _has_display_value(part))
+        list_items.append(f"<li>{escape(text)}</li>")
+    remaining = len(entries) - len(list_items)
+    if remaining > 0:
+        list_items.append(f"<li>{escape(str(remaining))} more</li>")
+    return f"""
+        <section class="evidence-pane screen4-deep-analysis-gap-section"
+                 data-screen4-deep-analysis-section="{escape(data_kind, quote=True)}">
+          <div class="section-kicker">{escape(label)}</div>
+          <h3>{escape(title)}</h3>
+          <p class="meta">These entries describe absent or blocked evidence. They are not proof and do not create diagnostic truth.</p>
+          <ul>{"".join(list_items)}</ul>
+        </section>
+    """
+
+
+def _screen4_deep_analysis_scope_label(scope: str, evidence_type: str = "") -> str:
+    if evidence_type == "limitation":
+        return "Evidence Limitation"
+    if evidence_type == "missing_evidence":
+        return "Missing Evidence"
+    if scope == "current_scope":
+        return "Current Diagnostic Evidence"
+    if scope == "historical_supporting_context":
+        return "Historical Supporting Context"
+    return "Evidence Limitation"
+
+
+def _screen4_deep_analysis_row_label(row: dict[str, Any]) -> str:
+    return _first_display_value(
+        row.get("display_label"),
+        row.get("evidence_name"),
+        row.get("metric_name"),
+        row.get("evidence_type"),
+        "Evidence",
+    )
+
+
+def _screen4_deep_analysis_compact_value(value: Any) -> str:
+    if isinstance(value, dict):
+        parts = []
+        for key, item in list(value.items())[:4]:
+            if _has_display_value(item):
+                parts.append(f"{key}: {_screen4_deep_analysis_compact_value(item)}")
+        remaining = len(value) - len(parts)
+        if remaining > 0:
+            parts.append(f"{remaining} more")
+        return "; ".join(parts)
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return ""
+        return f"{len(value)} values"
+    return _first_display_value(value)
+
+
+def _screen4_deep_analysis_truth_ref_label(row: dict[str, Any]) -> str:
+    if row.get("scope_classification") == "historical_supporting_context":
+        return "Supporting context only"
+    truth_ref = _to_dict(row.get("supports_existing_truth_ref"))
+    return _first_display_value(
+        truth_ref.get("ref"),
+        truth_ref.get("source_path"),
+        "Existing diagnostic truth",
+    )
+
+
+def _screen4_deep_analysis_limitation_label(row: dict[str, Any]) -> str:
+    flags = row.get("limitation_flags")
+    if isinstance(flags, list):
+        return ", ".join(str(flag) for flag in flags if _has_display_value(flag))
+    return _first_display_value(flags)
 
 
 def _screen4_deep_analysis_state_title(state: str, is_ready: bool) -> str:
@@ -22778,6 +23126,9 @@ def _render_screen_4_page(
     screen4_deep_analysis_html = _render_screen4_deep_analysis_guarded_state(
         screen4_deep_analysis_state
     )
+    screen4_deep_analysis_evidence_html = (
+        _render_screen4_deep_analysis_evidence_sections(screen4_deep_analysis_state)
+    )
     return f"""
     <div class="grid">
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
@@ -22847,6 +23198,7 @@ def _render_screen_4_page(
       {_render_screen4_evidence_context_guard(screen4_evidence_context)}
       {_render_screen4_mode_selector_shell()}
       {screen4_deep_analysis_html}
+      {screen4_deep_analysis_evidence_html}
       {screen4_comparative_review_html}
       {screen4_exploration_html}
       {screen4_review_preview_html}

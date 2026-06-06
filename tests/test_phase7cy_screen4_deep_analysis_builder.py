@@ -197,6 +197,30 @@ class Screen4DeepAnalysisBuilderTests(unittest.TestCase):
         self.assertTrue(any(row.get("evidence_type") == "top_sql_detail" for row in current_rows))
         self.assertFalse(any(row.get("synthetic") or row.get("llm_generated") for row in current_rows))
 
+    def test_current_scalar_metrics_become_current_scope_detail_rows(self) -> None:
+        report = current_report(
+            derived_scalar_metrics={
+                "parse_cpu_pct": {
+                    "deterministic_value": 14.4,
+                    "unit": "percent",
+                    "display_label": "Parse CPU Percent",
+                }
+            }
+        )
+
+        contract, result = self.build_and_validate(report_data=report)
+
+        self.assertTrue(result.is_ready)
+        scalar_rows = [
+            row
+            for row in contract["evidence_rows"]
+            if row.get("evidence_type") == "scalar_metric_detail"
+        ]
+        self.assertEqual(1, len(scalar_rows))
+        self.assertEqual("current_scope", scalar_rows[0]["scope_classification"])
+        self.assertEqual(14.4, scalar_rows[0]["deterministic_value"])
+        self.assertEqual("report_data.derived_scalar_metrics.parse_cpu_pct", scalar_rows[0]["source_path"])
+
     def test_historical_support_is_supporting_only_and_not_ready_by_itself(self) -> None:
         report = {
             "time_series_charts": {

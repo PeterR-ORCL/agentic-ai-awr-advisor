@@ -148,6 +148,15 @@ def build_deep_analysis_contract(
         provenance=provenance,
         freshness=freshness,
     )
+    _append_current_scalar_metric_rows(
+        evidence_sections=evidence_sections,
+        evidence_rows=evidence_rows,
+        report=report,
+        screen=screen,
+        charts=charts,
+        provenance=provenance,
+        freshness=freshness,
+    )
     _append_historical_support_rows(
         evidence_sections=evidence_sections,
         evidence_rows=evidence_rows,
@@ -497,6 +506,63 @@ def _append_current_chart_rows(
         )
 
 
+def _append_current_scalar_metric_rows(
+    *,
+    evidence_sections: list[dict[str, Any]],
+    evidence_rows: list[dict[str, Any]],
+    report: Mapping[str, Any],
+    screen: Mapping[str, Any],
+    charts: Mapping[str, Any],
+    provenance: Mapping[str, Any],
+    freshness: Mapping[str, Any],
+) -> None:
+    sources = [
+        ("report_data.derived_scalar_metrics", _mapping(report.get("derived_scalar_metrics"))),
+        ("screen_model.derived_scalar_metrics", _mapping(screen.get("derived_scalar_metrics"))),
+    ]
+    if _is_current_scope_payload(charts):
+        sources.append(
+            ("chart_payload.derived_scalar_metrics", _mapping(charts.get("derived_scalar_metrics")))
+        )
+
+    rows_before = len(evidence_rows)
+    for source_path, payload in sources:
+        for metric_name, value, unit, label, value_path in _iter_scalar_metric_rows(source_path, payload):
+            evidence_rows.append(
+                _row(
+                    row_id=f"scalar-metric-{_slug(metric_name)}",
+                    section_id="current-scalar-metric-detail",
+                    scope=ScopeClassification.CURRENT_SCOPE,
+                    evidence_type="scalar_metric_detail",
+                    metric_name=metric_name,
+                    deterministic_value=value,
+                    unit=unit,
+                    source_path=value_path,
+                    provenance=provenance,
+                    freshness=freshness,
+                    supports_existing_truth_ref={"ref": "immutable_truth_refs.diagnostic_driver_refs"},
+                    render_as="metric_row",
+                    display_label=label,
+                )
+            )
+
+    if len(evidence_rows) > rows_before:
+        evidence_sections.append(
+            _section(
+                section_id="current-scalar-metric-detail",
+                title="Scalar Metric Detail",
+                scope=ScopeClassification.CURRENT_SCOPE,
+                evidence_type="scalar_metric_detail",
+                source_path="report_data.derived_scalar_metrics/screen_model.derived_scalar_metrics/chart_payload.derived_scalar_metrics",
+                provenance=provenance,
+                freshness=freshness,
+                rows_present=True,
+                allowed_rendering="evidence_table",
+                display_priority=35,
+            )
+        )
+
+
 def _append_historical_support_rows(
     *,
     evidence_sections: list[dict[str, Any]],
@@ -595,7 +661,10 @@ def _append_historical_support_rows(
 
     visual_analysis = _mapping(screen.get("visual_analysis"))
     if visual_analysis and not (time_series_rows or distribution_rows):
-        summary = _first_value(visual_analysis.get("summary"), visual_analysis.get("story"))
+        summary = _first_value(
+            _meaningful_nested_value(visual_analysis.get("summary")),
+            _meaningful_nested_value(visual_analysis.get("story")),
+        )
         if _has_value(summary):
             evidence_rows.append(
                 _row(
@@ -1104,6 +1173,89 @@ def _numeric_values(value: Any) -> list[float]:
             continue
         values.append(float(item))
     return values
+
+
+def _meaningful_nested_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        cleaned = {
+            key: _meaningful_nested_value(item)
+            for key, item in value.items()
+        }
+        cleaned = {
+            key: item
+            for key, item in cleaned.items()
+            if _has_value(item)
+        }
+        return cleaned or None
+    if isinstance(value, list):
+        cleaned_list = [
+            _meaningful_nested_value(item)
+            for item in value
+        ]
+        cleaned_list = [
+            item
+            for item in cleaned_list
+            if _has_value(item)
+        ]
+        return cleaned_list or None
+    return value if _has_value(value) else None
+
+
+def _iter_scalar_metric_rows(
+    source_path: str,
+    payload: Mapping[str, Any],
+) -> list[tuple[str, Any, Any, str, str]]:
+    rows: list[tuple[str, Any, Any, str, str]] = []
+    for key, item in sorted(payload.items(), key=lambda pair: str(pair[0])):
+        metric_name = _first_text(key)
+        if not metric_name:
+            continue
+        if isinstance(item, Mapping):
+            if not _scalar_metric_mapping_is_current_scope(item):
+                continue
+            value = _first_value(
+                item.get("deterministic_value"),
+                item.get("metric_value"),
+                item.get("current_value"),
+                item.get("value"),
+                item.get("display_value"),
+            )
+            if not _has_value(value):
+                continue
+            unit = _first_text(item.get("unit"), item.get("value_unit"))
+            label = _first_text(item.get("display_label"), item.get("label"), item.get("name"), metric_name)
+            rows.append((metric_name, value, unit, label, f"{source_path}.{metric_name}"))
+            continue
+        if isinstance(item, (list, tuple, set)):
+            continue
+        if _has_value(item):
+            rows.append((metric_name, item, "", metric_name, f"{source_path}.{metric_name}"))
+    return rows
+
+
+def _scalar_metric_mapping_is_current_scope(item: Mapping[str, Any]) -> bool:
+    if item.get("llm_generated") is True or _normalized_text(item.get("generated_by")) in {
+        "llm",
+        "llm_explanation",
+        "browser_llm",
+    }:
+        return False
+    for flag in ("synthetic", "demo", "placeholder", "hard_coded", "hardcoded", "example"):
+        if item.get(flag) is True:
+            return False
+    explicit_scope = _normalized_text(
+        item.get("scope_classification")
+        or item.get("source_scope")
+        or item.get("scope")
+    )
+    if not explicit_scope:
+        return True
+    return explicit_scope in {
+        ScopeClassification.CURRENT_SCOPE.value,
+        CURRENT_SOURCE_SCOPE,
+        "selected_diagnostic_scope",
+        "current_selected_scope",
+    }
 
 
 def _nested_get(payload: Any, path: tuple[str, ...]) -> Any:

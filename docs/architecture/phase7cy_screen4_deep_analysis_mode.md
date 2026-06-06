@@ -374,6 +374,12 @@ The builder accepts in-memory `report_data`, `selected_scope`, optional `screen_
 
 Readiness remains owned by `src/reporting/dashboard/screen4/deep_analysis_contract.py`. `build_and_validate_deep_analysis_contract(...)` calls `validate_deep_analysis_contract(...)`; the builder does not independently declare readiness, render UI, render charts, call backend routes, call LLMs, or mutate runtime truth.
 
+### 7CY-E Guarded State Implementation Note
+
+7CY-E adds a Screen 4 Deep Analysis guarded state card in `src/reporting/html_dashboard.py`. The card calls `build_and_validate_deep_analysis_contract(...)` and renders only state metadata: readiness, validator state, selected scope summary, provenance/freshness summary, current/supporting section and row counts, blocked reasons, missing evidence categories, and limitation categories.
+
+7CY-E does not render Deep Analysis evidence rows, evidence tables, drilldowns, charts, SVGs, Chart.js/Plotly panels, backend routes, browser computation, parser/comparison execution, LLM calls, or runtime mutation. Historical inputs remain supporting context only, comparative/7CX fields remain Comparative Review only, and cache/prepared-only state cannot create Deep Analysis readiness. 7CY-F owns future text/table evidence rendering from validated contract rows.
+
 ## 20. Future Test Plan
 
 Future tests should verify:

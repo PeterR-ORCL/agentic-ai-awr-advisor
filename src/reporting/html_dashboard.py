@@ -18,6 +18,9 @@ from src.reporting.ai_display_metadata import (
 from src.reporting.dashboard.screen4.comparative_tables import (
     render_screen4_comparative_tables,
 )
+from src.reporting.dashboard.screen4.deep_analysis_builder import (
+    build_and_validate_deep_analysis_contract,
+)
 from src.reporting.dashboard.styles import _shared_page_styles
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
 from src.learning.index_source_status import create_source_mode_status_summary
@@ -22303,6 +22306,386 @@ def _render_screen4_comparative_review_panel(
     """
 
 
+def _screen4_build_deep_analysis_guarded_state(
+    screen_model: dict[str, Any],
+    chart_payload: dict[str, Any],
+    report_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build Screen 4 Deep Analysis state from the 7CY builder/validator only."""
+
+    report = _to_dict(report_data or {})
+    screen = _to_dict(screen_model)
+    contract, validation_result = build_and_validate_deep_analysis_contract(
+        report_data=report,
+        selected_scope=_screen4_deep_analysis_selected_scope(report, screen),
+        screen_model=screen,
+        chart_payload=chart_payload or {},
+        generation_context=_screen4_deep_analysis_generation_context(report, screen),
+    )
+    counts = _screen4_deep_analysis_counts(contract)
+    state_value = _screen4_deep_analysis_result_value(validation_result.state)
+    status_value = _screen4_deep_analysis_result_value(validation_result.status)
+    messages = [
+        message.to_dict() if hasattr(message, "to_dict") else {}
+        for message in validation_result.messages
+    ]
+    return {
+        "contract": contract,
+        "validation_result": validation_result,
+        "state": state_value,
+        "status": status_value,
+        "is_ready": bool(validation_result.is_ready),
+        "blocked_reasons": list(validation_result.blocked_reasons),
+        "messages": messages,
+        "allowed_section_count": len(validation_result.allowed_section_ids),
+        "supporting_section_count": len(validation_result.supporting_section_ids),
+        **counts,
+    }
+
+
+def _screen4_deep_analysis_selected_scope(
+    report_data: dict[str, Any],
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    explicit = _to_dict(
+        report_data.get("deep_analysis_selected_scope")
+        or screen_model.get("deep_analysis_selected_scope")
+    )
+    selected = dict(explicit)
+    metadata = _to_dict(report_data.get("metadata"))
+    header = _to_dict(screen_model.get("header"))
+
+    run_id = _first_display_value(
+        selected.get("selected_run_id"),
+        selected.get("run_id"),
+        metadata.get("selected_run_id"),
+        metadata.get("run_id"),
+        report_data.get("analysis_run_id"),
+        header.get("analysis_run_id"),
+        header.get("run_id"),
+    )
+    if run_id:
+        selected.setdefault("selected_run_id", run_id)
+
+    source_identifier = _to_dict(
+        selected.get("selected_source_identifier")
+        or selected.get("source_identifier")
+    )
+    if not source_identifier:
+        source_identifier = {
+            key: value
+            for key, value in {
+                "source_artifact_id": _first_display_value(
+                    metadata.get("source_artifact_id"),
+                    report_data.get("source_artifact_id"),
+                    report_data.get("artifact_id"),
+                ),
+                "source_type": _first_display_value(metadata.get("source_type")),
+                "db_name": _first_display_value(
+                    metadata.get("db_name"),
+                    header.get("db_name"),
+                ),
+                "dbid": _first_display_value(metadata.get("dbid"), header.get("dbid")),
+                "instance_name": _first_display_value(
+                    metadata.get("instance_name"),
+                    header.get("instance_name"),
+                ),
+                "host_name": _first_display_value(
+                    metadata.get("host_name"),
+                    header.get("host_name"),
+                ),
+            }.items()
+            if _has_display_value(value)
+        }
+    if source_identifier:
+        selected.setdefault("selected_source_identifier", source_identifier)
+
+    snapshot_identifier = _to_dict(
+        selected.get("selected_snapshot_identifier")
+        or selected.get("snapshot_identifier")
+    )
+    if not snapshot_identifier:
+        snapshot_identifier = {
+            key: value
+            for key, value in {
+                "awr_id": _first_display_value(
+                    selected.get("awr_id"),
+                    metadata.get("awr_id"),
+                    report_data.get("awr_id"),
+                ),
+                "snapshot_begin": _first_display_value(
+                    metadata.get("snapshot_begin"),
+                    header.get("snapshot_begin"),
+                ),
+                "snapshot_end": _first_display_value(
+                    metadata.get("snapshot_end"),
+                    header.get("snapshot_end"),
+                ),
+                "window": _first_display_value(
+                    selected.get("window"),
+                    selected.get("time_window"),
+                    header.get("comparison_window"),
+                ),
+            }.items()
+            if _has_display_value(value)
+        }
+    if snapshot_identifier:
+        selected.setdefault("selected_snapshot_identifier", snapshot_identifier)
+
+    current_ref = _to_dict(
+        selected.get("current_diagnostic_output_ref")
+        or report_data.get("current_diagnostic_output_ref")
+        or screen_model.get("current_diagnostic_output_ref")
+    )
+    if current_ref:
+        selected.setdefault("current_diagnostic_output_ref", current_ref)
+    return selected
+
+
+def _screen4_deep_analysis_generation_context(
+    report_data: dict[str, Any],
+    screen_model: dict[str, Any],
+) -> dict[str, Any]:
+    explicit = _to_dict(
+        report_data.get("deep_analysis_generation_context")
+        or screen_model.get("deep_analysis_generation_context")
+    )
+    context = dict(explicit)
+    for key in (
+        "generated_at",
+        "dashboard_generation_id",
+        "deterministic_engine_version",
+    ):
+        value = _first_display_value(
+            context.get(key),
+            report_data.get(key),
+            _to_dict(report_data.get("metadata")).get(key),
+            screen_model.get(key),
+        )
+        if value:
+            context.setdefault(key, value)
+
+    for key in ("freshness", "provenance", "immutable_truth_refs"):
+        value = _to_dict(
+            context.get(key)
+            or report_data.get(key)
+            or screen_model.get(key)
+        )
+        if value:
+            context.setdefault(key, value)
+    return context
+
+
+def _render_screen4_deep_analysis_guarded_state(
+    deep_analysis_state: dict[str, Any],
+) -> str:
+    contract = _to_dict(deep_analysis_state.get("contract"))
+    state = str(deep_analysis_state.get("state") or "deep_analysis_unavailable")
+    is_ready = bool(deep_analysis_state.get("is_ready"))
+    title = _screen4_deep_analysis_state_title(state, is_ready)
+    summary = _screen4_deep_analysis_state_summary(state, is_ready)
+    blocked_reasons = _screen4_deep_analysis_blocked_summary(deep_analysis_state)
+    missing_summary = _screen4_deep_analysis_gap_summary(
+        contract.get("missing_evidence")
+    )
+    limitation_summary = _screen4_deep_analysis_gap_summary(
+        contract.get("limitations")
+    )
+    return f"""
+      <section class="card secondary screen4-deep-analysis-guarded-state"
+               data-screen4-mode-section="deep-analysis"
+               data-screen4-deep-analysis-state="{escape(state, quote=True)}"
+               data-screen4-deep-analysis-ready="{str(is_ready).lower()}"
+               data-screen4-deep-analysis-rendering="state-only">
+        <div class="section-kicker">Deep Analysis</div>
+        <h2>{escape(title)}</h2>
+        <p class="meta">
+          {escape(summary)}
+        </p>
+        <p class="chart-support-note">
+          7CY-E renders state only. No Deep Analysis evidence rows, tables, drilldowns, or charts are rendered here.
+          Evidence Drilldown remains hidden until a validated contract-backed rendering step explicitly consumes populated rows.
+        </p>
+        {_render_info_grid(
+            [
+                ("State", _screen4_deep_analysis_state_label(state)),
+                ("Readiness", "Contract Ready" if is_ready else "Contract Required"),
+                ("Contract Status", deep_analysis_state.get("status")),
+                ("Selected Scope", _screen4_deep_analysis_selected_scope_summary(contract)),
+                ("Provenance", _screen4_deep_analysis_provenance_summary(contract)),
+                ("Freshness", _screen4_deep_analysis_freshness_summary(contract)),
+                ("Current-Scope Sections", deep_analysis_state.get("current_section_count")),
+                ("Current-Scope Rows", deep_analysis_state.get("current_row_count")),
+                ("Supporting Context Sections", deep_analysis_state.get("supporting_section_count")),
+                ("Supporting Context Rows", deep_analysis_state.get("supporting_row_count")),
+                ("Blocked Reasons", blocked_reasons),
+                ("Missing Evidence", missing_summary),
+                ("Evidence Limitations", limitation_summary),
+                ("Rendering Boundary", "State card only; evidence values and visuals remain hidden."),
+            ],
+            extra_class="screen4-deep-analysis-state-grid",
+        )}
+      </section>
+    """
+
+
+def _screen4_deep_analysis_counts(contract: dict[str, Any]) -> dict[str, int]:
+    sections = [
+        item for item in (contract.get("evidence_sections") or [])
+        if isinstance(item, dict)
+    ]
+    rows = [
+        item for item in (contract.get("evidence_rows") or [])
+        if isinstance(item, dict)
+    ]
+    return {
+        "current_section_count": sum(
+            1 for item in sections if item.get("scope_classification") == "current_scope"
+        ),
+        "supporting_section_count": sum(
+            1 for item in sections if item.get("scope_classification") == "historical_supporting_context"
+        ),
+        "current_row_count": sum(
+            1 for item in rows if item.get("scope_classification") == "current_scope"
+        ),
+        "supporting_row_count": sum(
+            1 for item in rows if item.get("scope_classification") == "historical_supporting_context"
+        ),
+    }
+
+
+def _screen4_deep_analysis_state_title(state: str, is_ready: bool) -> str:
+    if is_ready:
+        return "Deep Analysis: Contract Ready"
+    if state == "deep_analysis_historical_supporting_context":
+        return "Deep Analysis: Historical Context Only"
+    if state == "deep_analysis_evidence_available":
+        return "Deep Analysis: Evidence Contract Blocked"
+    return "Deep Analysis: Evidence Contract Required"
+
+
+def _screen4_deep_analysis_state_summary(state: str, is_ready: bool) -> str:
+    if is_ready:
+        return (
+            "The deterministic Deep Analysis contract validates for the current selected scope. "
+            "Screen 4 may show readiness metadata only in this phase."
+        )
+    if state == "deep_analysis_historical_supporting_context":
+        return (
+            "Historical supporting context is available, but it is not current-scope Deep Analysis proof."
+        )
+    if state == "deep_analysis_evidence_available":
+        return (
+            "Candidate Deep Analysis evidence exists, but validator messages still block readiness."
+        )
+    return (
+        "A validated deterministic Deep Analysis evidence contract is required before Screen 4 can show drilldown evidence."
+    )
+
+
+def _screen4_deep_analysis_state_label(state: str) -> str:
+    labels = {
+        "deep_analysis_unavailable": "Unavailable",
+        "deep_analysis_output_required": "Output Required",
+        "deep_analysis_current_scope": "Current Scope Contract Required",
+        "deep_analysis_historical_supporting_context": "Historical Context Only",
+        "deep_analysis_evidence_available": "Evidence Available; Blocked",
+        "deep_analysis_ready": "Contract Ready",
+    }
+    return labels.get(state, state.replace("_", " ").title())
+
+
+def _screen4_deep_analysis_blocked_summary(
+    deep_analysis_state: dict[str, Any],
+) -> str:
+    reasons = [
+        str(reason)
+        for reason in (deep_analysis_state.get("blocked_reasons") or [])
+        if _has_display_value(reason)
+    ]
+    if not reasons:
+        return ""
+    return ", ".join(reasons[:5])
+
+
+def _screen4_deep_analysis_gap_summary(value: Any) -> str:
+    items = [item for item in (value or []) if isinstance(item, dict)]
+    if not items:
+        return ""
+    summaries = []
+    for item in items[:3]:
+        kind = _first_display_value(
+            item.get("type"),
+            item.get("code"),
+            item.get("field"),
+            "gap",
+        )
+        field = _first_display_value(item.get("field"))
+        summaries.append(
+            f"{kind}: {field}" if field and field != kind else str(kind)
+        )
+    remaining = len(items) - len(summaries)
+    if remaining > 0:
+        summaries.append(f"{remaining} more")
+    return "; ".join(summaries)
+
+
+def _screen4_deep_analysis_selected_scope_summary(
+    contract: dict[str, Any],
+) -> str:
+    run_id = _first_display_value(contract.get("selected_run_id"))
+    source = _to_dict(contract.get("selected_source_identifier"))
+    snapshot = _to_dict(contract.get("selected_snapshot_identifier"))
+    parts = [
+        f"Run {run_id}" if run_id else "",
+        _format_scope_label_value(
+            source.get("db_name"),
+            source.get("dbid"),
+            fallback=source.get("source_artifact_id"),
+        ),
+        _first_display_value(
+            snapshot.get("awr_id"),
+            snapshot.get("window"),
+            snapshot.get("snapshot_begin"),
+        ),
+    ]
+    return " / ".join(part for part in parts if _has_display_value(part))
+
+
+def _screen4_deep_analysis_provenance_summary(contract: dict[str, Any]) -> str:
+    provenance = _to_dict(contract.get("provenance"))
+    if not provenance:
+        return "Missing deterministic provenance"
+    return _first_display_value(
+        provenance.get("source_contract_ref"),
+        provenance.get("source_path"),
+        provenance.get("deterministic_engine_version"),
+        "Deterministic provenance present",
+    )
+
+
+def _screen4_deep_analysis_freshness_summary(contract: dict[str, Any]) -> str:
+    freshness = _to_dict(contract.get("freshness"))
+    if not freshness:
+        return "Missing freshness metadata"
+    status = _first_display_value(
+        freshness.get("freshness_status"),
+        freshness.get("status"),
+        freshness.get("cache_status"),
+    )
+    generated_at = _first_display_value(
+        freshness.get("generated_at"),
+        freshness.get("source_generated_at"),
+    )
+    return " / ".join(
+        part for part in (status, generated_at) if _has_display_value(part)
+    )
+
+
+def _screen4_deep_analysis_result_value(value: Any) -> str:
+    return str(getattr(value, "value", value) or "")
+
+
 def _render_screen_4_page(
     screen_model: dict[str, Any],
     chart_payload: dict[str, Any],
@@ -22387,6 +22770,14 @@ def _render_screen_4_page(
     screen4_comparative_review_html = _render_screen4_comparative_review_panel(
         screen4_evidence_context.get("comparative_review_state") or {}
     )
+    screen4_deep_analysis_state = _screen4_build_deep_analysis_guarded_state(
+        screen_model,
+        chart_payload,
+        report_data=report_data,
+    )
+    screen4_deep_analysis_html = _render_screen4_deep_analysis_guarded_state(
+        screen4_deep_analysis_state
+    )
     return f"""
     <div class="grid">
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
@@ -22455,6 +22846,7 @@ def _render_screen_4_page(
       </section>
       {_render_screen4_evidence_context_guard(screen4_evidence_context)}
       {_render_screen4_mode_selector_shell()}
+      {screen4_deep_analysis_html}
       {screen4_comparative_review_html}
       {screen4_exploration_html}
       {screen4_review_preview_html}

@@ -365,8 +365,8 @@ Recommended sequence:
 2. 7CY-D: Add a small non-rendering builder/adapter that assembles the contract from existing deterministic current-scope inputs and validates it.
 3. 7CY-E: Add guarded state integration that can classify unavailable, output-required, and ready states without rendering evidence panels.
 4. 7CY-F: Render text/table-only populated Deep Analysis evidence sections from a validated contract.
-5. 7CY-G: Add optional chart eligibility helper if validated chart evidence shapes exist.
-6. 7CY-H or later: Add chart rendering only from eligible evidence shapes, with no browser computation and no empty chart shells.
+5. 7CY-G: Add a non-rendering dynamic visualization selection contract that inspects validated evidence shapes.
+6. 7CY-H or later: Render selected visualization candidates only from eligible evidence shapes, with no browser computation and no empty chart shells.
 
 Do not skip directly to UI panels or charts.
 
@@ -391,6 +391,16 @@ Readiness remains owned by `src/reporting/dashboard/screen4/deep_analysis_contra
 Current-scope rows render as "Current Diagnostic Evidence" only when the builder/validator marks the contract ready. Historical rows render only as "Historical Supporting Context" and do not become current proof. Comparative/7CX rows, metric/domain deltas, `allowed_visualizations`, comparative visual eligibility, prepared Target A/B, cache-only state, page identity, and LLM text do not feed Deep Analysis rendering.
 
 7CY-F does not render charts, SVGs, Chart.js/Plotly panels, violin/distribution diagrams, chart canvases, visual selectors, backend routes, browser computation, LLM calls, parser/comparison execution, or runtime mutation. Future graph work should be context-driven, evidence-shape-driven, dynamic, and extensible from validated contract data for the active evidence mode, not selected from a hard-coded small chart menu or inferred from page identity.
+
+### 7CY-G Dynamic Visualization Selection Implementation Note
+
+7CY-G adds `src/reporting/dashboard/screen4/deep_analysis_visual_selection.py` as a pure, non-rendering selector. Its public entry point is `select_deep_analysis_visualizations(contract, validation_result=None)`.
+
+The selector inspects only the validated Deep Analysis contract: `evidence_sections`, `evidence_rows`, optional `chart_eligibility`, limitations, missing evidence, and validator `allowed_section_ids` / `supporting_section_ids`. It emits candidate metadata for visualization families such as contribution, ranked contribution, time series, aligned overlay, distribution evidence, anomaly timeline, pressure band, topology fact map, similarity neighborhood, fleet/population blocked state, and table-only fallback. It does not render HTML, SVG, Chart.js, Plotly, chart containers, or visual shells.
+
+Visualization selection is evidence-shape-driven and extensible. It is not limited to DB time, wait, or Top SQL buckets, and it does not use page identity, route state, cache, prepared Target A/B, comparative output, fleet evidence without a future fleet contract, or LLM text as visual proof. `chart_eligibility` remains an input signal only; it cannot create evidence, bypass row/shape validation, or make an invalid contract ready.
+
+Distribution and violin-style future candidates use "Distribution Evidence" wording unless true density semantics are explicitly validated. One-sample, min/max-only, summary-only, synthetic, demo, placeholder, stale, cache-only, or LLM-created samples are not eligible. Future 7CY-H rendering may consume eligible candidates only after this selector and the Deep Analysis contract remain valid.
 
 ## 20. Future Test Plan
 

@@ -22188,7 +22188,7 @@ def _render_screen4_evidence_context_guard(
                data-screen4-context-classification="{escape(str(evidence_context.get("context_classification") or ""), quote=True)}"
                data-screen4-artifact-alignment-status="{escape(str(evidence_context.get("artifact_alignment_status") or ""), quote=True)}"
                data-screen4-comparison-output="{"available" if evidence_context.get("comparison_output_available") else "unavailable"}">
-        <div class="section-kicker">Screen 4 Graphics Boundary</div>
+        <div class="section-kicker">Evidence Readiness</div>
         <h2>Evidence Context &amp; Graphics Guard</h2>
         <p class="meta">
           Screen 4 renders graphics only when deterministic evidence and context alignment allow it.
@@ -23149,7 +23149,7 @@ def _render_screen_4_page(
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
       <section class="card secondary screen4-summary-card">
         <div class="section-kicker">Screen 4</div>
-        <h2>Evidence Review / Historical Context</h2>
+        <h2>Evidence Review / Historical Supporting Context</h2>
         <div class="meta">
           Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.
         </div>
@@ -23639,13 +23639,26 @@ def _render_screen4_mode_selector_shell() -> str:
             "state": "Active",
             "class": " active",
             "mode": "Historical Review",
-            "subtitle": "Current evidence mode",
+            "subtitle": "Historical supporting context lane",
             "body": (
-                "Historical Review is active. Reviews deterministic trends, anomalies, "
+                "Historical Review is active. It reviews deterministic trends, anomalies, "
                 "historical baseline context, historical period context, and similarity "
-                "evidence already available on this page."
+                "evidence already available on this page as supporting context only."
             ),
-            "chips": ("Current", "Deterministic evidence"),
+            "chips": ("Supporting Context", "Deterministic evidence"),
+        },
+        {
+            "state": "Contract-bound",
+            "class": "",
+            "mode": "Deep Analysis",
+            "subtitle": "Current selected diagnostic evidence lane",
+            "body": (
+                "Deep Analysis renders guarded state, contract-backed evidence, and selected visual evidence "
+                "only after the deterministic current-scope contract validates. Historical rows remain "
+                "supporting context; cache, prepared Target A/B, comparative output, and LLM text do not "
+                "create Deep Analysis evidence."
+            ),
+            "chips": ("Contract-Backed", "No browser computation"),
         },
         {
             "state": "Prepared only",
@@ -23654,25 +23667,10 @@ def _render_screen4_mode_selector_shell() -> str:
             "subtitle": "Unavailable until deterministic comparison output exists",
             "body": (
                 "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
-                "Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; "
-                "Target A/B prepared-only state is not comparison output. Selected targets and cache-restored "
-                "state do not create comparison evidence. Deterministic comparison output is required before "
-                "comparative graphics can render. Screen 4 does not compute comparison "
-                "in the browser."
+                "Target A/B prepared-only state is not comparison output. Screen 4 does not compute comparison "
+                "or comparative graphics in the browser."
             ),
-            "chips": ("Unavailable", "No browser comparison"),
-        },
-        {
-            "state": "Reserved",
-            "class": "",
-            "mode": "Deep Analysis",
-            "subtitle": "Future structured expert evidence review",
-            "body": (
-                "Deep Analysis is reserved for future structured expert evidence review. Future 7CY may cover waits, "
-                "top events, top SQL, DB time, I/O, commit latency, memory/PGA/temp, RAC/GC, ADG, topology/platform, "
-                "derived metrics, and raw evidence drilldown. No raw drilldown is active yet."
-            ),
-            "chips": ("Unavailable", "No raw drilldown"),
+            "chips": ("Comparison Contract", "No browser comparison"),
         },
     )
     cards = []
@@ -23709,7 +23707,7 @@ def _render_screen4_mode_selector_shell() -> str:
           Deterministic evidence remains authoritative.
           Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state.
           Browser state and cache restore display continuity only; they do not create evidence truth.
-          Historical Review is the only active mode in this phase.
+          Screen 4 separates Historical Supporting Context, contract-bound Deep Analysis, and deterministic Comparative Review.
         </p>
         <div class="screen4-selector-grid">
           {"".join(cards)}

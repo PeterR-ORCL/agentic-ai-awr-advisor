@@ -410,6 +410,14 @@ The first rendering subset includes contribution/ranked contribution bars, stati
 
 Distribution evidence uses "Distribution Evidence" wording unless true density semantics are explicitly validated; 7CY-H does not claim a true violin plot from samples, summaries, min/max values, or synthetic points. Historical visuals render only as supporting context. 7CX comparative visuals, fleet visuals, cache/prepared-only state, page identity, and LLM text remain outside the Deep Analysis visual rendering path.
 
+### 7CY-I Product Polish Implementation Note
+
+7CY-I is a polish and product simplification pass only. It does not add evidence sources, evidence types, visual families, backend routes, browser computation, LLM calls, parser/comparison execution, runtime mutation, or generated dashboard artifacts.
+
+The Screen 4 orientation copy now makes the operator lanes plainer: Historical Review is labeled as historical supporting context, Deep Analysis is labeled as a current selected diagnostic evidence lane that requires the deterministic contract, and Comparative Review remains a separate deterministic comparison-output lane. Visual card metadata uses operator-facing labels such as visual family, evidence shape, mode, provenance, and freshness without exposing raw enum-like strings as the primary display text.
+
+The polish preserves rich evidence depth and the dynamic visualization principle. Validated evidence remains extensible across diagnostic drivers, metrics, SQL, events, topology, engineering, time-series support, distribution support, anomaly support, similarity support, limitations, and missing evidence. Visuals remain selected from validated evidence shapes rather than page identity or a tiny fixed chart list.
+
 ## 20. Future Test Plan
 
 Future tests should verify:

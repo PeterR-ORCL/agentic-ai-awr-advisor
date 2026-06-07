@@ -67,6 +67,7 @@ def render_deep_analysis_visualizations(
         <h2>Contract-Backed Visual Evidence</h2>
         <p class="meta">
           Visual evidence renders only from eligible visualization candidates selected from validated Deep Analysis contract rows.
+          Deep Analysis uses its current-scope evidence contract; Comparative Review uses its own deterministic comparison output contract.
           No page identity, cache state, prepared target context, comparative output, or LLM text is used as visual proof.
         </p>
         {"".join(rendered)}
@@ -123,7 +124,7 @@ def render_deep_analysis_visual_candidate(
     support_note = (
         "Supporting visual; does not override selected-scope diagnostic truth."
         if supporting or scope == "historical_supporting_context"
-        else "Current-scope visual evidence from the validated deterministic contract."
+        else "Current Diagnostic Evidence visual from the validated deterministic contract."
     )
     visual_id = f"screen4-deep-analysis-visual-{_slug(_candidate_id(candidate))}"
     return f"""
@@ -383,9 +384,9 @@ def _render_candidate_metadata(
     section: Mapping[str, Any],
 ) -> str:
     items = [
-        ("Family", _candidate_family(candidate)),
-        ("Evidence Shape", _candidate_shape(candidate)),
-        ("Scope", _candidate_scope(candidate)),
+        ("Visual", _visual_family_label(_candidate_family(candidate))),
+        ("Shape", _evidence_shape_label(_candidate_shape(candidate))),
+        ("Mode", _scope_label(_candidate_scope(candidate))),
         ("Provenance", _first_text(_candidate_value(candidate, "provenance_summary"), _provenance_summary(section))),
         ("Freshness", _first_text(_candidate_value(candidate, "freshness_summary"), _first_text(section.get("freshness_status")))),
     ]
@@ -659,6 +660,58 @@ def _candidate_row_ids(candidate: DeepAnalysisVisualizationCandidate | Mapping[s
 
 def _candidate_supporting(candidate: DeepAnalysisVisualizationCandidate | Mapping[str, Any]) -> bool:
     return bool(_candidate_value(candidate, "is_supporting_context"))
+
+
+def _visual_family_label(value: Any) -> str:
+    labels = {
+        "contribution": "Contribution",
+        "ranked_contribution": "Ranked Contribution",
+        "time_series": "Time Series",
+        "aligned_overlay": "Aligned Overlay",
+        "distribution_evidence": "Distribution Evidence",
+        "anomaly_timeline": "Anomaly Timeline",
+        "pressure_band": "Pressure Band",
+        "topology_fact_map": "Topology Fact Map",
+        "similarity_neighborhood": "Similarity Neighborhood",
+        "fleet_population": "Fleet Population",
+        "table_only": "Table Only",
+    }
+    text = _first_text(value)
+    return labels.get(text, text.replace("_", " ").title())
+
+
+def _evidence_shape_label(value: Any) -> str:
+    labels = {
+        "categorical_contribution": "Categorical Contribution",
+        "ranked_rows": "Ranked Rows",
+        "time_indexed_series": "Time-Indexed Series",
+        "aligned_multi_series": "Aligned Multi-Series",
+        "numeric_samples": "Numeric Samples",
+        "interval_events": "Interval Events",
+        "scalar_threshold": "Scalar Threshold",
+        "topology_facts": "Topology Facts",
+        "identity_rows": "Identity Rows",
+        "score_vector": "Score Vector",
+        "similarity_cases": "Similarity Cases",
+        "population_samples": "Population Samples",
+    }
+    text = _first_text(value)
+    return labels.get(text, text.replace("_", " ").title())
+
+
+def _scope_label(value: Any) -> str:
+    labels = {
+        "current_scope": "Current Diagnostic Evidence",
+        "historical_supporting_context": "Historical Supporting Context",
+        "comparative_output": "Comparative Review Only",
+        "prepared_only": "Prepared Context Only",
+        "cache_only": "Cache Continuity Only",
+        "fleet_population": "Fleet / Population",
+        "llm_explanation_only": "Explanation Only",
+        "unknown_or_mixed": "Unknown or Mixed",
+    }
+    text = _first_text(value)
+    return labels.get(text, text.replace("_", " ").title())
 
 
 def _format_number(value: float) -> str:

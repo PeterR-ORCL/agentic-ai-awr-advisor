@@ -45,7 +45,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
 
         required_phrases = (
             "Evidence Context &amp; Graphics Guard",
-            "Screen 4 Graphics Boundary",
+            "Evidence Readiness",
             "Screen 4 renders graphics only when deterministic evidence and context alignment allow it.",
             "Selected runtime state does not create historical truth.",
             "Prepared Target A/B state does not create comparison output.",
@@ -103,15 +103,17 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Historical Review",
             "Comparative Review",
             "Deep Analysis",
-            "Historical Review is active.",
+            "Historical supporting context lane",
+            "Historical Review is active. It reviews deterministic trends",
+            "evidence already available on this page as supporting context only.",
+            "Current selected diagnostic evidence lane",
+            "Deep Analysis renders guarded state, contract-backed evidence, and selected visual evidence",
+            "cache, prepared Target A/B, comparative output, and LLM text do not create Deep Analysis evidence.",
+            "Contract-Backed",
+            "No browser computation",
             "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
-            "Uses Target A/B context prepared in Screen 2.",
-            "Prepared targets are selected context only",
             "Target A/B prepared-only state is not comparison output.",
-            "Selected targets and cache-restored state do not create comparison evidence.",
-            "Deterministic comparison output is required before comparative graphics can render.",
-            "Screen 4 does not compute comparison in the browser.",
-            "Deep Analysis is reserved for future structured expert evidence review.",
+            "Screen 4 does not compute comparison or comparative graphics in the browser.",
             "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
             "Deterministic evidence remains authoritative.",
             "Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state.",
@@ -124,7 +126,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             'data-screen4-mode-state="prepared-only"',
             'data-screen4-screen2-handoff="prepared-context-only"',
             'data-screen4-mode="deep-analysis"',
-            'data-screen4-mode-state="reserved"',
+            'data-screen4-mode-state="contract-bound"',
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

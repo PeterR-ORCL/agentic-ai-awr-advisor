@@ -234,7 +234,7 @@ class Screen4DeepAnalysisVisualRenderingTests(unittest.TestCase):
 
         self.assertIn('data-screen4-deep-analysis-static-visual="topology-fact-map"', html)
         self.assertIn("RAC / ADG Topology", html)
-        self.assertIn("topology_fact_map", html)
+        self.assertIn("Topology Fact Map", html)
         self.assertIn("FIN1", html)
 
     def test_time_series_visual_requires_multiple_validated_points(self) -> None:

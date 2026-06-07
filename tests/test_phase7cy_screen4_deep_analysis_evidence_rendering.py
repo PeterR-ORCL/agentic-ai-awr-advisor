@@ -126,7 +126,9 @@ class Screen4DeepAnalysisEvidenceRenderingTests(unittest.TestCase):
         if marker not in html:
             return ""
         start = html.index(marker)
-        end_marker = "screen4-comparative-review-guard"
+        visual_marker = "screen4-deep-analysis-visual-evidence"
+        comparative_marker = "screen4-comparative-review-guard"
+        end_marker = visual_marker if visual_marker in html[start:] else comparative_marker
         end = html.index(end_marker, start) if end_marker in html[start:] else len(html)
         return html[start:end]
 
@@ -297,6 +299,7 @@ class Screen4DeepAnalysisEvidenceRenderingTests(unittest.TestCase):
         self.assertEqual(1, html.count("screen4-deep-analysis-guarded-state"))
         self.assertNotIn("screen4-deep-analysis-evidence-sections", html)
         self.assertNotIn("screen4-deep-analysis-evidence-table", html)
+        self.assertNotIn("screen4-deep-analysis-visual-evidence", html)
 
     def test_guarded_state_remains_before_evidence_sections(self) -> None:
         html = self.render_screen4(report_data=valid_report())

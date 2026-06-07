@@ -402,6 +402,14 @@ Visualization selection is evidence-shape-driven and extensible. It is not limit
 
 Distribution and violin-style future candidates use "Distribution Evidence" wording unless true density semantics are explicitly validated. One-sample, min/max-only, summary-only, synthetic, demo, placeholder, stale, cache-only, or LLM-created samples are not eligible. Future 7CY-H rendering may consume eligible candidates only after this selector and the Deep Analysis contract remain valid.
 
+### 7CY-H Dynamic Visualization Rendering Implementation Note
+
+7CY-H adds `src/reporting/dashboard/screen4/deep_analysis_visuals.py` as a static, deterministic renderer for eligible candidates returned by `select_deep_analysis_visualizations(...)`. Screen 4 calls the builder/validator, then the selector, and then renders only eligible candidate references that resolve back to validated Deep Analysis contract rows.
+
+The first rendering subset includes contribution/ranked contribution bars, static time-series SVG, conservative Distribution Evidence dot strips, scalar pressure bands, topology/fact cards, anomaly timelines, and similarity fact cards. These renderers are evidence-shape-driven and are not limited to DB time, waits, or Top SQL. Unsupported or table-only candidates are omitted without empty visual shells.
+
+Distribution evidence uses "Distribution Evidence" wording unless true density semantics are explicitly validated; 7CY-H does not claim a true violin plot from samples, summaries, min/max values, or synthetic points. Historical visuals render only as supporting context. 7CX comparative visuals, fleet visuals, cache/prepared-only state, page identity, and LLM text remain outside the Deep Analysis visual rendering path.
+
 ## 20. Future Test Plan
 
 Future tests should verify:

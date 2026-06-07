@@ -21,6 +21,12 @@ from src.reporting.dashboard.screen4.comparative_tables import (
 from src.reporting.dashboard.screen4.deep_analysis_builder import (
     build_and_validate_deep_analysis_contract,
 )
+from src.reporting.dashboard.screen4.deep_analysis_visual_selection import (
+    select_deep_analysis_visualizations,
+)
+from src.reporting.dashboard.screen4.deep_analysis_visuals import (
+    render_deep_analysis_visualizations,
+)
 from src.reporting.dashboard.styles import _shared_page_styles
 from src.learning.index_source_mode_entry import create_index_source_mode_summary
 from src.learning.index_source_status import create_source_mode_status_summary
@@ -22322,6 +22328,10 @@ def _screen4_build_deep_analysis_guarded_state(
         chart_payload=chart_payload or {},
         generation_context=_screen4_deep_analysis_generation_context(report, screen),
     )
+    visualization_selection_result = select_deep_analysis_visualizations(
+        contract,
+        validation_result,
+    )
     counts = _screen4_deep_analysis_counts(contract)
     state_value = _screen4_deep_analysis_result_value(validation_result.state)
     status_value = _screen4_deep_analysis_result_value(validation_result.status)
@@ -22332,6 +22342,7 @@ def _screen4_build_deep_analysis_guarded_state(
     return {
         "contract": contract,
         "validation_result": validation_result,
+        "visualization_selection_result": visualization_selection_result,
         "state": state_value,
         "status": status_value,
         "is_ready": bool(validation_result.is_ready),
@@ -22504,7 +22515,7 @@ def _render_screen4_deep_analysis_guarded_state(
         </p>
         <p class="chart-support-note">
           This guarded state remains the first Deep Analysis signal.
-          Evidence sections render below only from validated contract-backed rows; charts and visual drilldowns remain deferred.
+          Evidence sections and visual evidence render below only from validated contract-backed rows and eligible visualization candidates.
         </p>
         {_render_info_grid(
             [
@@ -22521,7 +22532,7 @@ def _render_screen4_deep_analysis_guarded_state(
                 ("Blocked Reasons", blocked_reasons),
                 ("Missing Evidence", missing_summary),
                 ("Evidence Limitations", limitation_summary),
-                ("Rendering Boundary", "State card first; populated evidence sections only after contract validation. No charts or visual drilldowns."),
+                ("Rendering Boundary", "State card first; populated evidence and selected visuals only after contract validation."),
             ],
             extra_class="screen4-deep-analysis-state-grid",
         )}
@@ -22630,7 +22641,7 @@ def _render_screen4_deep_analysis_evidence_sections(
         <h2>Contract-Backed Evidence Sections</h2>
         <p class="meta">
           Screen 4 renders only populated sections and rows already present in the validated Deep Analysis contract.
-          Historical rows are labeled as supporting context; charts and visual shells are not rendered in this phase.
+          Historical rows are labeled as supporting context; visual evidence uses a separate selection-contract lane.
         </p>
         {"".join(section_html)}
         {gap_html}
@@ -22916,7 +22927,7 @@ def _screen4_deep_analysis_state_summary(state: str, is_ready: bool) -> str:
     if is_ready:
         return (
             "The deterministic Deep Analysis contract validates for the current selected scope. "
-            "Screen 4 may show readiness metadata only in this phase."
+            "Screen 4 may render populated evidence and selected visuals only from validated contract-backed rows."
         )
     if state == "deep_analysis_historical_supporting_context":
         return (
@@ -23129,6 +23140,10 @@ def _render_screen_4_page(
     screen4_deep_analysis_evidence_html = (
         _render_screen4_deep_analysis_evidence_sections(screen4_deep_analysis_state)
     )
+    screen4_deep_analysis_visuals_html = render_deep_analysis_visualizations(
+        _to_dict(screen4_deep_analysis_state.get("contract")),
+        screen4_deep_analysis_state.get("visualization_selection_result"),
+    )
     return f"""
     <div class="grid">
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
@@ -23199,6 +23214,7 @@ def _render_screen_4_page(
       {_render_screen4_mode_selector_shell()}
       {screen4_deep_analysis_html}
       {screen4_deep_analysis_evidence_html}
+      {screen4_deep_analysis_visuals_html}
       {screen4_comparative_review_html}
       {screen4_exploration_html}
       {screen4_review_preview_html}

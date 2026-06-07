@@ -22194,6 +22194,11 @@ def _render_screen4_evidence_context_guard(
           Screen 4 renders graphics only when deterministic evidence and context alignment allow it.
           Selected runtime state does not create historical truth. Prepared Target A/B state does not create comparison output.
           Browser cache does not create evidence.
+          Every visual is selected by active evidence mode, validated data, validated evidence shape,
+          provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility;
+          invalid or blocked shapes are omitted rather than shown as shells.
+          Screen 4 visual north star: mode first, validated data second, evidence shape third,
+          visualization choice fourth, truthful rendering only.
         </p>
         {_render_info_grid(
             [
@@ -22201,9 +22206,14 @@ def _render_screen4_evidence_context_guard(
                 ("Artifact Alignment", evidence_context.get("artifact_alignment_label")),
                 ("Historical Review Eligibility", evidence_context.get("historical_review_eligibility")),
                 ("Single-AWR Review Eligibility", evidence_context.get("single_awr_review_eligibility")),
-                ("Distribution / Violin Eligibility", evidence_context.get("distribution_eligibility")),
+                ("Distribution Evidence Eligibility", evidence_context.get("distribution_eligibility")),
                 ("Fleet / Population", "No fleet/population graphics until a fleet evidence contract exists."),
                 ("Comparison Review Eligibility", evidence_context.get("comparison_review_eligibility")),
+                (
+                    "Universal Visual Rule",
+                    "Page identity, route state, cache/localStorage, prepared Target A/B alone, LLM text, "
+                    "scalar/min/max-only values, repeated shared samples, and synthetic/default rows cannot select visuals.",
+                ),
                 ("Graphics Boundary", "Page identity alone cannot select graphics."),
             ],
             extra_class="screen4-graphics-guard-grid",
@@ -22274,9 +22284,9 @@ def _render_screen4_comparative_review_panel(
         )
     else:
         operator_summary = (
-            "Comparative Review is not ready yet. No governed deterministic comparison output "
-            "has been returned to Screen 4. Prepared Target A/B context can identify what should "
-            "be compared, but it does not create comparison evidence."
+            "Comparison is not active for this single-scope review. No Target A/B context is prepared. "
+            "This section is shown only as a boundary, not as an action requirement for single-AWR review. "
+            "No governed deterministic comparison output has been returned to Screen 4."
         )
         comparative_output_html = _render_screen4_graphic_guard_empty_state(
             "No Target A/B prepared identity is available for this Screen 4 export."
@@ -22299,6 +22309,7 @@ def _render_screen4_comparative_review_panel(
             [
                 ("State", state),
                 ("Preparation Boundary", "Prepared comparison context exists." if prepared_targets else "No prepared comparison context is available for Screen 4."),
+                ("Single-Scope Boundary", "Comparison is not active for this single-scope review." if not prepared_targets else "Prepared context only; deterministic comparison output still required."),
                 ("Output Boundary", "No governed deterministic comparison output has been returned to Screen 4." if not output_ready else "Validated deterministic comparison output contract is present."),
                 ("Graphics Boundary", comparative_state.get("graphics_message")),
                 ("Allowed Visualizations", allowed_visualizations_text),
@@ -22494,7 +22505,7 @@ def _render_screen4_deep_analysis_guarded_state(
     state = str(deep_analysis_state.get("state") or "deep_analysis_unavailable")
     is_ready = bool(deep_analysis_state.get("is_ready"))
     title = _screen4_deep_analysis_state_title(state, is_ready)
-    summary = _screen4_deep_analysis_state_summary(state, is_ready)
+    summary = _screen4_deep_analysis_state_summary(deep_analysis_state)
     blocked_reasons = _screen4_deep_analysis_blocked_summary(deep_analysis_state)
     missing_summary = _screen4_deep_analysis_gap_summary(
         contract.get("missing_evidence")
@@ -22923,7 +22934,25 @@ def _screen4_deep_analysis_state_title(state: str, is_ready: bool) -> str:
     return "Deep Analysis: Evidence Contract Required"
 
 
-def _screen4_deep_analysis_state_summary(state: str, is_ready: bool) -> str:
+def _screen4_deep_analysis_candidate_evidence_detected(
+    deep_analysis_state: dict[str, Any],
+) -> bool:
+    return any(
+        int(deep_analysis_state.get(key) or 0) > 0
+        for key in (
+            "current_section_count",
+            "current_row_count",
+            "supporting_section_count",
+            "supporting_row_count",
+        )
+    )
+
+
+def _screen4_deep_analysis_state_summary(
+    deep_analysis_state: dict[str, Any],
+) -> str:
+    state = str(deep_analysis_state.get("state") or "deep_analysis_unavailable")
+    is_ready = bool(deep_analysis_state.get("is_ready"))
     if is_ready:
         return (
             "The deterministic Deep Analysis contract validates for the current selected scope. "
@@ -22933,9 +22962,10 @@ def _screen4_deep_analysis_state_summary(state: str, is_ready: bool) -> str:
         return (
             "Historical supporting context is available, but it is not current-scope Deep Analysis proof."
         )
-    if state == "deep_analysis_evidence_available":
+    if state == "deep_analysis_evidence_available" or _screen4_deep_analysis_candidate_evidence_detected(deep_analysis_state):
         return (
-            "Candidate Deep Analysis evidence exists, but validator messages still block readiness."
+            "Candidate evidence rows were detected, but Deep Analysis proof is blocked until deterministic provenance "
+            "and freshness metadata validate."
         )
     return (
         "A validated deterministic Deep Analysis evidence contract is required before Screen 4 can show drilldown evidence."
@@ -22958,13 +22988,29 @@ def _screen4_deep_analysis_blocked_summary(
     deep_analysis_state: dict[str, Any],
 ) -> str:
     reasons = [
-        str(reason)
+        _screen4_deep_analysis_blocked_reason_label(str(reason))
         for reason in (deep_analysis_state.get("blocked_reasons") or [])
         if _has_display_value(reason)
     ]
     if not reasons:
         return ""
     return ", ".join(reasons[:5])
+
+
+def _screen4_deep_analysis_blocked_reason_label(reason: str) -> str:
+    labels = {
+        "provenance_missing": "Missing provenance",
+        "freshness_missing": "Missing freshness",
+        "section_provenance_missing": "Section provenance missing",
+        "section_freshness_missing": "Section freshness missing",
+        "row_provenance_missing": "Row provenance missing",
+        "row_freshness_missing": "Row freshness missing",
+        "selected_identifier_missing": "Selected identifier missing",
+        "current_diagnostic_output_ref_missing": "Current diagnostic output reference missing",
+        "immutable_truth_refs_missing": "Immutable truth references missing",
+        "mutation_boundaries_missing": "Mutation boundaries missing",
+    }
+    return labels.get(reason, reason.replace("_", " ").title())
 
 
 def _screen4_deep_analysis_gap_summary(value: Any) -> str:
@@ -23211,7 +23257,7 @@ def _render_screen_4_page(
         </div>
       </section>
       {_render_screen4_evidence_context_guard(screen4_evidence_context)}
-      {_render_screen4_mode_selector_shell()}
+      {_render_screen4_mode_selector_shell(screen4_evidence_context.get("comparative_review_state") or {})}
       {screen4_deep_analysis_html}
       {screen4_deep_analysis_evidence_html}
       {screen4_deep_analysis_visuals_html}
@@ -23633,10 +23679,71 @@ def _screen4_trend_evidence_note(populated_count: int, total_count: int) -> str:
     return "Existing deterministic trend evidence; displayed as historical context only."
 
 
-def _render_screen4_mode_selector_shell() -> str:
+def _screen4_comparative_mode_selector_state(
+    comparative_state: dict[str, Any] | None,
+) -> dict[str, Any]:
+    state = str(_to_dict(comparative_state).get("state") or "comparison_unavailable")
+    if state == "comparison_output_ready":
+        return {
+            "state": "Contract Ready",
+            "mode_state": "comparison-output-ready",
+            "subtitle": "Deterministic comparison output available",
+            "body": (
+                "Comparative Review has a governed deterministic comparison output contract. "
+                "Evidence may be reviewed only from that contract; Screen 4 still does not compute "
+                "comparison or comparative graphics in the browser."
+            ),
+            "chips": ("Comparison Contract", "Deterministic output"),
+            "handoff": "",
+        }
+    if state == "comparison_prepared_only":
+        return {
+            "state": "Prepared only",
+            "mode_state": "prepared-only",
+            "subtitle": "Prepared Target A/B context only",
+            "body": (
+                "Prepared Target A/B context exists, but deterministic comparison output has not "
+                "been returned. Prepared-only state is not comparison output, and Screen 4 does not "
+                "compute comparison or comparative graphics in the browser."
+            ),
+            "chips": ("Comparison Contract", "No browser comparison"),
+            "handoff": ' data-screen4-screen2-handoff="prepared-context-only"',
+        }
+    if state in {"comparison_evidence_required", "comparison_output_required"}:
+        return {
+            "state": "Output Required",
+            "mode_state": state.replace("_", "-"),
+            "subtitle": "Prepared context exists; deterministic output required",
+            "body": (
+                "Comparative Review requires prepared Target A/B context and governed deterministic "
+                "comparison output. Prepared context alone is not comparison evidence, and Screen 4 "
+                "does not compute comparison or comparative graphics in the browser."
+            ),
+            "chips": ("Comparison Contract", "Output required"),
+            "handoff": ' data-screen4-screen2-handoff="prepared-context-only"',
+        }
+    return {
+        "state": "Unavailable",
+        "mode_state": "comparison-unavailable",
+        "subtitle": "No Target A/B context prepared",
+        "body": (
+            "Comparative Review requires prepared Target A/B context and governed deterministic "
+            "comparison output. No prepared comparison context is available for this Screen 4 export, "
+            "and Screen 4 does not compute comparison or comparative graphics in the browser."
+        ),
+        "chips": ("Comparison Contract", "No browser comparison"),
+        "handoff": "",
+    }
+
+
+def _render_screen4_mode_selector_shell(
+    comparative_state: dict[str, Any] | None = None,
+) -> str:
+    comparative_mode = _screen4_comparative_mode_selector_state(comparative_state)
     modes = (
         {
             "state": "Active",
+            "mode_state": "active",
             "class": " active",
             "mode": "Historical Review",
             "subtitle": "Historical supporting context lane",
@@ -23646,9 +23753,11 @@ def _render_screen4_mode_selector_shell() -> str:
                 "evidence already available on this page as supporting context only."
             ),
             "chips": ("Supporting Context", "Deterministic evidence"),
+            "handoff": "",
         },
         {
             "state": "Contract-bound",
+            "mode_state": "contract-bound",
             "class": "",
             "mode": "Deep Analysis",
             "subtitle": "Current selected diagnostic evidence lane",
@@ -23659,27 +23768,22 @@ def _render_screen4_mode_selector_shell() -> str:
                 "create Deep Analysis evidence."
             ),
             "chips": ("Contract-Backed", "No browser computation"),
+            "handoff": "",
         },
         {
-            "state": "Prepared only",
+            "state": comparative_mode["state"],
+            "mode_state": comparative_mode["mode_state"],
             "class": "",
             "mode": "Comparative Review",
-            "subtitle": "Unavailable until deterministic comparison output exists",
-            "body": (
-                "Comparative Review requires deterministic comparison output before evidence can be reviewed here. "
-                "Target A/B prepared-only state is not comparison output. Screen 4 does not compute comparison "
-                "or comparative graphics in the browser."
-            ),
-            "chips": ("Comparison Contract", "No browser comparison"),
+            "subtitle": comparative_mode["subtitle"],
+            "body": comparative_mode["body"],
+            "chips": comparative_mode["chips"],
+            "handoff": comparative_mode["handoff"],
         },
     )
     cards = []
     for mode in modes:
-        handoff_attr = (
-            ' data-screen4-screen2-handoff="prepared-context-only"'
-            if mode["mode"] == "Comparative Review"
-            else ""
-        )
+        handoff_attr = str(mode.get("handoff") or "")
         chips = "".join(
             f'<span class="scope-chip">{escape(chip)}</span>'
             for chip in mode["chips"]
@@ -23688,7 +23792,7 @@ def _render_screen4_mode_selector_shell() -> str:
             f"""
               <article class="screen4-selector-card{mode["class"]}"
                        data-screen4-mode="{escape(_screen4_state_id(mode["mode"]), quote=True)}"
-                       data-screen4-mode-state="{escape(_screen4_state_id(mode["state"]), quote=True)}"{handoff_attr}>
+                       data-screen4-mode-state="{escape(str(mode["mode_state"]), quote=True)}"{handoff_attr}>
                 <strong>{escape(mode["state"])}</strong>
                 <span>{escape(mode["mode"])}</span>
                 <p>{escape(mode["subtitle"])}</p>
@@ -23779,7 +23883,7 @@ def _render_screen4_historical_exploration(
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
-          Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output.
+          Future A/B comparison Distribution Evidence panels belong on Screen 4 but may render only from validated deterministic comparison output.
           LLM-assisted wording may explain validated deterministic comparison output only after that output exists; it does not compute comparison meaning or decide outcome direction.
         </p>
         <div class="subgrid">
@@ -23809,7 +23913,7 @@ def _render_screen4_historical_exploration(
           )}
           {_render_screen4_selector_group(
               "Trend / Metric Selector",
-              "Trend selection uses already rendered metrics only. No metric recalculation.",
+              "Trend selection highlights existing rendered metric views and filters only. No metric recalculation.",
               exploration["trend_metrics"],
               "No additional trend or metric groups available in this static export. Selection is local and read-only. Historical output remains unchanged.",
           )}
@@ -23821,7 +23925,7 @@ def _render_screen4_historical_exploration(
           )}
           {_render_screen4_selector_group(
               "Violin / Distribution Selector",
-              "Distribution selection highlights rendered distribution domains only. No distribution recalculation.",
+              "Distribution selection highlights rendered Distribution Evidence domains only. Distribution visuals require validated multi-sample evidence; a single AWR may still contain valid multi-sample distributions, but scalar-only facts, one-sample values, summaries, min/max-only data, synthetic data, cache-only state, or LLM text are not eligible. No distribution recalculation.",
               exploration["distribution_groups"],
               "No distribution selector available in this static export. Selection is local and read-only. Historical output remains unchanged.",
           )}
@@ -23927,6 +24031,14 @@ def _build_screen4_historical_exploration_model(
     similarity_evidence = _to_dict(screen_model.get("similarity_evidence"))
     time_series_payload = _to_dict(chart_payload.get("time_series_charts"))
     domain_scores = _to_dict(normalized_decision.get("domain_scores"))
+    domain_score_values = [
+        _screen2_domain_score(domain_scores, domain)
+        for domain in SCREEN4_HISTORICAL_EXPLORATION_DOMAINS
+    ]
+    has_real_domain_scores = any(
+        score is not None and float(score) > 0.0
+        for score in domain_score_values
+    )
     primary_domain = _screen4_selector_domain(
         normalized_decision.get("primary_issue")
         or historical_verdict.get("primary_issue")
@@ -23944,8 +24056,9 @@ def _build_screen4_historical_exploration_model(
             state_key="selectedDomain",
             domain=domain,
             active=domain == primary_domain,
-            display_value=(
-                f"{score:.1f}" if score is not None else "Exploration domain"
+            display_value=_screen4_historical_domain_display_value(
+                score,
+                has_real_domain_scores=has_real_domain_scores,
             ),
             note="Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.",
         )
@@ -24004,7 +24117,7 @@ def _build_screen4_historical_exploration_model(
                 state_key="selectedTrendMetric",
                 domain=chart_domain,
                 display_value=group_title or title,
-                note="Rendered trend metric only. No metric recalculation.",
+                note="Existing rendered metric view/filter only. No metric recalculation.",
             )
     for label, value in _to_dict(derived_scalar_metrics).items():
         if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
@@ -24017,7 +24130,7 @@ def _build_screen4_historical_exploration_model(
             state_key="selectedTrendMetric",
             domain=_screen4_selector_domain(label),
             display_value=_format_scalar_metric(value),
-            note="Derived scalar metric already rendered. No metric recalculation.",
+            note="Existing scalar metric view/filter only. No metric recalculation.",
         )
 
     anomaly_groups = _screen4_anomaly_selector_items(anomaly_review)
@@ -24036,6 +24149,16 @@ def _build_screen4_historical_exploration_model(
         "distribution_groups": _dedupe_screen4_selector_items(distribution_groups),
         "baseline_similarity": _dedupe_screen4_selector_items(baseline_similarity),
     }
+
+
+def _screen4_historical_domain_display_value(
+    score: float | None,
+    *,
+    has_real_domain_scores: bool,
+) -> str:
+    if has_real_domain_scores and score is not None:
+        return f"{score:.1f}"
+    return "Historical context"
 
 
 def _screen4_anomaly_selector_items(anomaly_review: dict[str, Any]) -> list[dict[str, Any]]:
@@ -29426,6 +29549,15 @@ def _build_dashboard_html(report_data: dict[str, Any]) -> str:
     }}
     .selector-pane {{
       padding: 16px;
+    }}
+    .screen4-selected-historical-summary {{
+      margin: 0 0 10px;
+      padding: 13px 14px;
+      border: 1px solid rgba(159, 176, 199, 0.24);
+      border-radius: 14px;
+      background: rgba(20, 36, 58, 0.70);
+      color: var(--text);
+      line-height: 1.5;
     }}
     .selector-header-grid {{
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -35918,8 +36050,10 @@ def _render_violin_panel(
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Workload Distribution Evidence</h2>
         <p class="chart-support-note">
-          Distribution graphics require deterministic multi-sample evidence plus context alignment.
-          Prepared Target A/B state does not create comparison violin output. Fleet/population
+          Distribution visuals require validated multi-sample evidence plus context alignment. A single AWR may still
+          contain valid multi-sample distributions, but scalar-only facts, one-sample values, summaries, min/max-only
+          data, synthetic data, cache-only state, or LLM text are not eligible.
+          Prepared Target A/B state does not create comparison Distribution Evidence output. Fleet/population
           diagrams require a fleet evidence contract and are not rendered here.
         </p>
         {_render_screen4_graphic_guard_empty_state(
@@ -35933,9 +36067,16 @@ def _render_violin_panel(
         group_slug = re.sub(r"[^a-z0-9]+", "-", group["group_key"]).strip("-")
         cards = []
         for config in group["metrics"]:
+            sample_note_parts = [
+                f"Sample count: {config.get('sample_count')}" if config.get("sample_count") else "",
+                f"Distinct values: {config.get('distinct_sample_count')}" if config.get("distinct_sample_count") else "",
+                f"Source: {config.get('sample_source_path')}" if config.get("sample_source_path") else "",
+            ]
+            sample_note = "; ".join(part for part in sample_note_parts if part)
             cards.append(f"""
               <section class="violin-chart-card">
                 <h3>{escape(config["title"])}</h3>
+                {f'<p class="violin-group-note">{escape(sample_note)}</p>' if sample_note else ''}
                 <div id="{escape(config["container_id"])}" class="violin-chart"></div>
               </section>
                 """)
@@ -35960,12 +36101,13 @@ def _render_violin_panel(
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Workload Distribution Evidence</h2>
         <p class="chart-support-note">
-          Historical / Supporting Context (Not Selected-Scope Truth). Violin
-          charts render only when enough real multi-snapshot samples exist,
-          while scalar-only facts stay in scalar metric cards below. Distribution
-          graphics are context-only unless deterministic sample evidence and alignment
-          allow selected-scope review. No comparison violins or fleet/population
-          diagrams render in this phase.
+          Historical / Supporting Context (Not Selected-Scope Truth). Distribution
+          visuals require validated multi-sample evidence; a single AWR may still contain
+          valid multi-sample distributions, but scalar-only facts, one-sample values,
+          summaries, min/max-only data, synthetic data, cache-only state, or LLM text
+          are not eligible. Distribution graphics are context-only unless deterministic
+          sample evidence and alignment allow selected-scope review. No comparison Distribution Evidence panels
+          or fleet/population diagrams render in this phase.
         </p>
 """
         + "".join(group_sections)
@@ -36017,7 +36159,7 @@ def _render_scalar_metrics(metrics: dict[str, Any]) -> str:
     return (
         '<p class="scalar-note">'
         "These metrics are shown as scalar facts because no real "
-        "multi-sample distribution exists for violin rendering."
+        "multi-sample Distribution Evidence is available for them."
         "</p>" + '<div class="scalar-grid">' + "".join(boxes) + "</div>"
     )
 
@@ -36076,8 +36218,8 @@ def _render_topology_scalar_fallback(violin_payload: dict[str, Any]) -> str:
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>RAC / Data Guard Scalar Evidence</h2>
         <p class="scalar-note">
-          These topology facts use real samples but did not meet violin
-          distribution gates, so they remain scalar evidence.
+          These topology facts use real samples but did not meet validated
+          Distribution Evidence gates, so they remain scalar evidence.
         </p>
 """
         + gc_equivalence_note
@@ -36117,13 +36259,29 @@ def _build_violin_metric_groups(
     """
 
     groups: list[dict[str, Any]] = []
+    seen_sample_sets: set[tuple[float, ...]] = set()
     for group_definition in VIOLIN_METRIC_GROUP_DEFINITIONS:
         payload_group = violin_payload.get(group_definition["group_key"]) or {}
-        metrics = [
-            metric
-            for metric in group_definition["metrics"]
-            if _has_violin_display_data(payload_group.get(metric["payload_key"]))
-        ]
+        metrics = []
+        for metric in group_definition["metrics"]:
+            values = payload_group.get(metric["payload_key"])
+            if not _has_violin_display_data(values):
+                continue
+            sample_signature = _violin_sample_signature(values)
+            if not sample_signature or sample_signature in seen_sample_sets:
+                continue
+            seen_sample_sets.add(sample_signature)
+            numeric_values = _violin_numeric_values(values)
+            metrics.append(
+                {
+                    **metric,
+                    "sample_count": len(numeric_values),
+                    "distinct_sample_count": len({round(value, 6) for value in numeric_values}),
+                    "sample_source_path": (
+                        f"chart_payload.violin_panel.{group_definition['group_key']}.{metric['payload_key']}"
+                    ),
+                }
+            )
         if not metrics:
             continue
         groups.append(
@@ -36153,16 +36311,29 @@ def _flatten_violin_metric_groups(
     return configs
 
 
-def _has_violin_samples(values: Any) -> bool:
-    """Return True only when a violin metric has enough numeric samples to render."""
-
+def _violin_numeric_values(values: Any) -> list[float]:
     if not isinstance(values, list):
-        return False
-    numeric_values = [
+        return []
+    return [
         float(value)
         for value in values
         if isinstance(value, (int, float)) and math.isfinite(float(value))
     ]
+
+
+def _violin_sample_signature(values: Any) -> tuple[float, ...]:
+    numeric_values = _violin_numeric_values(values)
+    if len(numeric_values) < VIOLIN_MIN_SAMPLES:
+        return ()
+    if len({round(value, 6) for value in numeric_values}) < VIOLIN_MIN_DISTINCT_VALUES:
+        return ()
+    return tuple(round(value, 8) for value in numeric_values)
+
+
+def _has_violin_samples(values: Any) -> bool:
+    """Return True only when a violin metric has enough numeric samples to render."""
+
+    numeric_values = _violin_numeric_values(values)
     if len(numeric_values) < VIOLIN_MIN_SAMPLES:
         return False
     distinct_values = {round(value, 6) for value in numeric_values}
@@ -36170,13 +36341,7 @@ def _has_violin_samples(values: Any) -> bool:
 
 
 def _has_violin_display_data(values: Any) -> bool:
-    if not isinstance(values, list):
-        return False
-    numeric_values = [
-        float(value)
-        for value in values
-        if isinstance(value, (int, float)) and math.isfinite(float(value))
-    ]
+    numeric_values = _violin_numeric_values(values)
     if len(numeric_values) < VIOLIN_MIN_SAMPLES:
         return False
     distinct_values = {round(value, 6) for value in numeric_values}

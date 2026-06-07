@@ -5449,8 +5449,8 @@
 
   </style>
 </head>
-<body data-dashboard-generated-at="Jun 5, 2026, 11:46 AM"
-      data-dashboard-generated-session-id="dashboard-run-1780674370782026000">
+<body data-dashboard-generated-at="Jun 7, 2026, 5:43 PM"
+      data-dashboard-generated-session-id="dashboard-run-1780868583574112000">
   <!--
     Dashboard Interactivity Foundation (Phase 7H.1).
     Cross-Screen Selection Propagation (Phase 7H.8).
@@ -5655,7 +5655,7 @@
           Deterministic Oracle AWR intelligence delivering consistent diagnosis,
           historical context, and actionable guidance.
         </p>
-        <div class="hero-meta">Generated: Jun 5, 2026, 11:46 AM</div>
+        <div class="hero-meta">Generated: Jun 7, 2026, 5:43 PM</div>
       </section>
 
       <nav class="page-nav"><a class="nav-link" href="index.html" data-dashboard-propagate-state="true">Home</a><a class="nav-link" href="screen_1_ingestion.html" data-dashboard-propagate-state="true">1 Ingestion</a><a class="nav-link" href="screen_2_control.html" data-dashboard-propagate-state="true">2 Control</a><a class="nav-link" href="screen_3_analysis.html" data-dashboard-propagate-state="true">3 Analysis</a><a class="nav-link active" href="screen_4_historical_review.html" data-dashboard-propagate-state="true">4 Review</a><a class="nav-link" href="screen_5_recommendation_action.html" data-dashboard-propagate-state="true">5 Action</a><a class="nav-link" href="screen_6_fleet_overview.html" data-dashboard-propagate-state="true">6 Learning</a></nav>
@@ -5677,7 +5677,7 @@
       <!-- Screen 4 = historical review across scope + timeframe, with visuals. -->
       <section class="card secondary screen4-summary-card">
         <div class="section-kicker">Screen 4</div>
-        <h2>Evidence Review / Historical Context</h2>
+        <h2>Evidence Review / Historical Supporting Context</h2>
         <div class="meta">
           Historical evidence supports interpretation but does not override the selected-scope diagnostic truth.
         </div>
@@ -5768,12 +5768,17 @@
                data-screen4-context-classification="same_db_historical_context"
                data-screen4-artifact-alignment-status="same_db_historical_available"
                data-screen4-comparison-output="unavailable">
-        <div class="section-kicker">Screen 4 Graphics Boundary</div>
+        <div class="section-kicker">Evidence Readiness</div>
         <h2>Evidence Context &amp; Graphics Guard</h2>
         <p class="meta">
           Screen 4 renders graphics only when deterministic evidence and context alignment allow it.
           Selected runtime state does not create historical truth. Prepared Target A/B state does not create comparison output.
           Browser cache does not create evidence.
+          Every visual is selected by active evidence mode, validated data, validated evidence shape,
+          provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility;
+          invalid or blocked shapes are omitted rather than shown as shells.
+          Screen 4 visual north star: mode first, validated data second, evidence shape third,
+          visualization choice fourth, truthful rendering only.
         </p>
         <div class="info-grid screen4-graphics-guard-grid">
             <div class="info-box">
@@ -5797,7 +5802,7 @@
             </div>
 
             <div class="info-box">
-              <strong>Distribution / Violin Eligibility</strong>
+              <strong>Distribution Evidence Eligibility</strong>
               <div>Context-only distribution evidence</div>
             </div>
 
@@ -5809,6 +5814,11 @@
             <div class="info-box">
               <strong>Comparison Review Eligibility</strong>
               <div>No prepared comparison context</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Universal Visual Rule</strong>
+              <div>Page identity, route state, cache/localStorage, prepared Target A/B alone, LLM text, scalar/min/max-only values, repeated shared samples, and synthetic/default rows cannot select visuals.</div>
             </div>
 
             <div class="info-box">
@@ -5828,7 +5838,7 @@
           Deterministic evidence remains authoritative.
           Selected context does not create diagnosis, scores, readiness, comparison output, recommendations, actions, outcomes, or learning state.
           Browser state and cache restore display continuity only; they do not create evidence truth.
-          Historical Review is the only active mode in this phase.
+          Screen 4 separates Historical Supporting Context, contract-bound Deep Analysis, and deterministic Comparative Review.
         </p>
         <div class="screen4-selector-grid">
 
@@ -5837,33 +5847,123 @@
                        data-screen4-mode-state="active">
                 <strong>Active</strong>
                 <span>Historical Review</span>
-                <p>Current evidence mode</p>
-                <p>Historical Review is active. Reviews deterministic trends, anomalies, historical baseline context, historical period context, and similarity evidence already available on this page.</p>
-                <div class="scope-chip-row"><span class="scope-chip">Current</span><span class="scope-chip">Deterministic evidence</span></div>
-              </article>
-
-              <article class="screen4-selector-card"
-                       data-screen4-mode="comparative-review"
-                       data-screen4-mode-state="prepared-only" data-screen4-screen2-handoff="prepared-context-only">
-                <strong>Prepared only</strong>
-                <span>Comparative Review</span>
-                <p>Unavailable until deterministic comparison output exists</p>
-                <p>Comparative Review requires deterministic comparison output before evidence can be reviewed here. Uses Target A/B context prepared in Screen 2. Prepared targets are selected context only; Target A/B prepared-only state is not comparison output. Selected targets and cache-restored state do not create comparison evidence. Deterministic comparison output is required before comparative graphics can render. Screen 4 does not compute comparison in the browser.</p>
-                <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No browser comparison</span></div>
+                <p>Historical supporting context lane</p>
+                <p>Historical Review is active. It reviews deterministic trends, anomalies, historical baseline context, historical period context, and similarity evidence already available on this page as supporting context only.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Supporting Context</span><span class="scope-chip">Deterministic evidence</span></div>
               </article>
 
               <article class="screen4-selector-card"
                        data-screen4-mode="deep-analysis"
-                       data-screen4-mode-state="reserved">
-                <strong>Reserved</strong>
+                       data-screen4-mode-state="contract-bound">
+                <strong>Contract-bound</strong>
                 <span>Deep Analysis</span>
-                <p>Future structured expert evidence review</p>
-                <p>Deep Analysis is reserved for future structured expert evidence review. Future 7CY may cover waits, top events, top SQL, DB time, I/O, commit latency, memory/PGA/temp, RAC/GC, ADG, topology/platform, derived metrics, and raw evidence drilldown. No raw drilldown is active yet.</p>
-                <div class="scope-chip-row"><span class="scope-chip">Unavailable</span><span class="scope-chip">No raw drilldown</span></div>
+                <p>Current selected diagnostic evidence lane</p>
+                <p>Deep Analysis renders guarded state, contract-backed evidence, and selected visual evidence only after the deterministic current-scope contract validates. Historical rows remain supporting context; cache, prepared Target A/B, comparative output, and LLM text do not create Deep Analysis evidence.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Contract-Backed</span><span class="scope-chip">No browser computation</span></div>
+              </article>
+
+              <article class="screen4-selector-card"
+                       data-screen4-mode="comparative-review"
+                       data-screen4-mode-state="comparison-unavailable">
+                <strong>Unavailable</strong>
+                <span>Comparative Review</span>
+                <p>No Target A/B context prepared</p>
+                <p>Comparative Review requires prepared Target A/B context and governed deterministic comparison output. No prepared comparison context is available for this Screen 4 export, and Screen 4 does not compute comparison or comparative graphics in the browser.</p>
+                <div class="scope-chip-row"><span class="scope-chip">Comparison Contract</span><span class="scope-chip">No browser comparison</span></div>
               </article>
 
         </div>
       </section>
+
+
+      <section class="card secondary screen4-deep-analysis-guarded-state"
+               data-screen4-mode-section="deep-analysis"
+               data-screen4-deep-analysis-state="deep_analysis_output_required"
+               data-screen4-deep-analysis-ready="false"
+               data-screen4-deep-analysis-rendering="state-only">
+        <div class="section-kicker">Deep Analysis</div>
+        <h2>Deep Analysis: Evidence Contract Required</h2>
+        <p class="meta">
+          Candidate evidence rows were detected, but Deep Analysis proof is blocked until deterministic provenance and freshness metadata validate.
+        </p>
+        <p class="chart-support-note">
+          This guarded state remains the first Deep Analysis signal.
+          Evidence sections and visual evidence render below only from validated contract-backed rows and eligible visualization candidates.
+        </p>
+        <div class="info-grid screen4-deep-analysis-state-grid">
+            <div class="info-box">
+              <strong>State</strong>
+              <div>Output Required</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Readiness</strong>
+              <div>Contract Required</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Contract Status</strong>
+              <div>invalid</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Selected Scope</strong>
+              <div>SPRTRN / 8101005004 / 108</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Provenance</strong>
+              <div>Missing deterministic provenance</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Freshness</strong>
+              <div>Missing freshness metadata</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Current-Scope Sections</strong>
+              <div>2</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Current-Scope Rows</strong>
+              <div>12</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Supporting Context Sections</strong>
+              <div>2</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Supporting Context Rows</strong>
+              <div>44</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Blocked Reasons</strong>
+              <div>Missing freshness, Missing provenance, Section provenance missing, Section freshness missing, Section provenance missing</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Missing Evidence</strong>
+              <div>top_sql_missing: report_data.top_sql</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Evidence Limitations</strong>
+              <div>llm_text_not_evidence: report_data.llm_explanation</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Rendering Boundary</strong>
+              <div>State card first; populated evidence and selected visuals only after contract validation.</div>
+            </div>
+            </div>
+      </section>
+
+
 
 
       <section class="card secondary screen4-comparative-review-guard"
@@ -5874,7 +5974,7 @@
         <div class="section-kicker">Comparative Review</div>
         <h2>Comparative Review Guarded State</h2>
         <p class="meta">
-          Comparative Review is not ready yet. No governed deterministic comparison output has been returned to Screen 4. Prepared Target A/B context can identify what should be compared, but it does not create comparison evidence.
+          Comparison is not active for this single-scope review. No Target A/B context is prepared. This section is shown only as a boundary, not as an action requirement for single-AWR review. No governed deterministic comparison output has been returned to Screen 4.
           No prepared comparison context is available for Screen 4.
           Target A/B selections are preparation only.
           Deterministic comparison output is required before Screen 4 can show comparative evidence.
@@ -5888,6 +5988,11 @@
             <div class="info-box">
               <strong>Preparation Boundary</strong>
               <div>No prepared comparison context is available for Screen 4.</div>
+            </div>
+
+            <div class="info-box">
+              <strong>Single-Scope Boundary</strong>
+              <div>Comparison is not active for this single-scope review.</div>
             </div>
 
             <div class="info-box">
@@ -5936,7 +6041,7 @@
           Cross-Screen Selection Propagation is browser-side only.
           URL hash/localStorage state is not authoritative truth.
           No approval controls. No runtime activation.
-          Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output.
+          Future A/B comparison Distribution Evidence panels belong on Screen 4 but may render only from validated deterministic comparison output.
           LLM-assisted wording may explain validated deterministic comparison output only after that output exists; it does not compute comparison meaning or decide outcome direction.
         </p>
         <div class="subgrid">
@@ -5971,7 +6076,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>CPU</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
 
@@ -5989,7 +6094,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>IO</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
 
@@ -6007,7 +6112,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>MEMORY</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
 
@@ -6025,7 +6130,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>COMMIT</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
 
@@ -6043,7 +6148,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>RAC</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
 
@@ -6061,7 +6166,7 @@
               >
                 <strong>Historical Domain</strong>
                 <span>ADG</span>
-                <p>0.0</p>
+                <p>Historical context</p>
                 <p>Historical domain selection only; no trend, anomaly, baseline, primary-issue, or severity change.</p>
               </article>
     </div>
@@ -6149,7 +6254,7 @@
 
           <section class="evidence-pane selector-pane">
             <h3>Trend / Metric Selector</h3>
-            <p class="meta">Trend selection uses already rendered metrics only. No metric recalculation.</p>
+            <p class="meta">Trend selection highlights existing rendered metric views and filters only. No metric recalculation.</p>
             <div class="screen4-selector-grid">
               <article
                 class="screen4-selector-card"
@@ -6166,7 +6271,7 @@
                 <strong>Trend Metric</strong>
                 <span>DB CPU % DB Time</span>
                 <p>CPU Time-Series Charts</p>
-                <p>Rendered trend metric only. No metric recalculation.</p>
+                <p>Existing rendered metric view/filter only. No metric recalculation.</p>
               </article>
 
               <article
@@ -6184,7 +6289,7 @@
                 <strong>Trend Metric</strong>
                 <span>User I/O Pressure</span>
                 <p>I/O Time-Series Charts</p>
-                <p>Rendered trend metric only. No metric recalculation.</p>
+                <p>Existing rendered metric view/filter only. No metric recalculation.</p>
               </article>
 
               <article
@@ -6202,7 +6307,7 @@
                 <strong>Trend Metric</strong>
                 <span>Commit / Log File Sync</span>
                 <p>I/O Time-Series Charts</p>
-                <p>Rendered trend metric only. No metric recalculation.</p>
+                <p>Existing rendered metric view/filter only. No metric recalculation.</p>
               </article>
 
               <article
@@ -6220,7 +6325,7 @@
                 <strong>Trend Metric</strong>
                 <span>Cluster Wait %</span>
                 <p>RAC Time-Series Charts</p>
-                <p>Rendered trend metric only. No metric recalculation.</p>
+                <p>Existing rendered metric view/filter only. No metric recalculation.</p>
               </article>
 
               <article
@@ -6238,7 +6343,7 @@
                 <strong>Trend Metric</strong>
                 <span>GC Wait %</span>
                 <p>RAC Time-Series Charts</p>
-                <p>Rendered trend metric only. No metric recalculation.</p>
+                <p>Existing rendered metric view/filter only. No metric recalculation.</p>
               </article>
 
               <article
@@ -6256,7 +6361,7 @@
                 <strong>Trend Metric</strong>
                 <span>Pga Spill Pressure</span>
                 <p>0.03</p>
-                <p>Derived scalar metric already rendered. No metric recalculation.</p>
+                <p>Existing scalar metric view/filter only. No metric recalculation.</p>
               </article>
     </div>
           </section>
@@ -6379,7 +6484,7 @@
 
           <section class="evidence-pane selector-pane">
             <h3>Violin / Distribution Selector</h3>
-            <p class="meta">Distribution selection highlights rendered distribution domains only. No distribution recalculation.</p>
+            <p class="meta">Distribution selection highlights rendered Distribution Evidence domains only. Distribution visuals require validated multi-sample evidence; a single AWR may still contain valid multi-sample distributions, but scalar-only facts, one-sample values, summaries, min/max-only data, synthetic data, cache-only state, or LLM text are not eligible. No distribution recalculation.</p>
             <div class="screen4-selector-grid">
               <article
                 class="screen4-selector-card"
@@ -6486,42 +6591,6 @@
                 <strong>Distribution</strong>
                 <span>Interconnect Stress Evidence</span>
                 <p>Topology Distributions</p>
-                <p>Rendered distribution metric only. No distribution recalculation.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="distribution"
-                data-dashboard-select-key="selectedDistribution"
-                data-dashboard-select-id="rac-instance"
-                data-dashboard-filter-key="selectedDistribution"
-                data-dashboard-filter-value="rac-instance" data-dashboard-select-domain="RAC"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Distribution</strong>
-                <span>Per-Instance RAC Distributions</span>
-                <p>1 rendered distribution metric(s)</p>
-                <p>Per-instance RAC values remain available as broader cluster supporting context only. These are not mixed with cluster-level distributions.</p>
-              </article>
-
-              <article
-                class="screen4-selector-card"
-                data-dashboard-selectable="true"
-                data-dashboard-select-type="distribution"
-                data-dashboard-select-key="selectedDistribution"
-                data-dashboard-select-id="rac-instance-per-instance-cpu-pct-db-time"
-                data-dashboard-filter-key="selectedDistribution"
-                data-dashboard-filter-value="rac-instance-per-instance-cpu-pct-db-time" data-dashboard-select-domain="RAC"
-                data-selected="false"
-                aria-selected="false"
-                tabindex="0"
-              >
-                <strong>Distribution</strong>
-                <span>Per-Instance RAC CPU</span>
-                <p>Per-Instance RAC Distributions</p>
                 <p>Rendered distribution metric only. No distribution recalculation.</p>
               </article>
     </div>
@@ -7039,12 +7108,13 @@
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Workload Distribution Evidence</h2>
         <p class="chart-support-note">
-          Historical / Supporting Context (Not Selected-Scope Truth). Violin
-          charts render only when enough real multi-snapshot samples exist,
-          while scalar-only facts stay in scalar metric cards below. Distribution
-          graphics are context-only unless deterministic sample evidence and alignment
-          allow selected-scope review. No comparison violins or fleet/population
-          diagrams render in this phase.
+          Historical / Supporting Context (Not Selected-Scope Truth). Distribution
+          visuals require validated multi-sample evidence; a single AWR may still contain
+          valid multi-sample distributions, but scalar-only facts, one-sample values,
+          summaries, min/max-only data, synthetic data, cache-only state, or LLM text
+          are not eligible. Distribution graphics are context-only unless deterministic
+          sample evidence and alignment allow selected-scope review. No comparison Distribution Evidence panels
+          or fleet/population diagrams render in this phase.
         </p>
 
         <div class="violin-group violin-group-workload">
@@ -7054,21 +7124,25 @@
 
               <section class="violin-chart-card">
                 <h3>Cluster CPU % DB Time</h3>
+                <p class="violin-group-note">Sample count: 24; Distinct values: 22; Source: chart_payload.violin_panel.workload.cluster_cpu_pct_db_time</p>
                 <div id="violinClusterCpuPct" class="violin-chart"></div>
               </section>
 
               <section class="violin-chart-card">
                 <h3>Cluster User I/O %</h3>
+                <p class="violin-group-note">Sample count: 18; Distinct values: 18; Source: chart_payload.violin_panel.workload.cluster_user_io_pct_db_time</p>
                 <div id="violinClusterUserIoPct" class="violin-chart"></div>
               </section>
 
               <section class="violin-chart-card">
                 <h3>Cluster Log File Sync Latency Distribution</h3>
+                <p class="violin-group-note">Sample count: 18; Distinct values: 18; Source: chart_payload.violin_panel.workload.cluster_log_file_sync_ms</p>
                 <div id="violinClusterLogFileSyncMs" class="violin-chart"></div>
               </section>
 
               <section class="violin-chart-card">
                 <h3>Cluster PGA Spill Pressure Distribution</h3>
+                <p class="violin-group-note">Sample count: 24; Distinct values: 4; Source: chart_payload.violin_panel.workload.cluster_pga_spill_pressure</p>
                 <div id="violinClusterPgaSpillPressure" class="violin-chart"></div>
               </section>
 
@@ -7082,20 +7156,8 @@
 
               <section class="violin-chart-card">
                 <h3>Interconnect Stress Evidence</h3>
+                <p class="violin-group-note">Sample count: 24; Distinct values: 2; Source: chart_payload.violin_panel.topology.interconnect_stress_flag</p>
                 <div id="violinInterconnectStress" class="violin-chart"></div>
-              </section>
-
-          </div>
-        </div>
-
-        <div class="violin-group violin-group-rac-instance">
-          <h3>Per-Instance RAC Distributions</h3>
-          <p class="violin-group-note">Per-instance RAC values remain available as broader cluster supporting context only. These are not mixed with cluster-level distributions</p>
-          <div class="violin-grid">
-
-              <section class="violin-chart-card">
-                <h3>Per-Instance RAC CPU</h3>
-                <div id="violinPerInstanceRacCpuPct" class="violin-chart"></div>
               </section>
 
           </div>
@@ -7106,7 +7168,7 @@
       <section id="derived-scalar-metrics" class="card secondary">
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>Derived Scalar Metrics</h2>
-        <p class="scalar-note">These metrics are shown as scalar facts because no real multi-sample distribution exists for violin rendering.</p><div class="scalar-grid">
+        <p class="scalar-note">These metrics are shown as scalar facts because no real multi-sample Distribution Evidence is available for them.</p><div class="scalar-grid">
             <div class="scalar-box">
               <strong>PGA Spill Pressure</strong>
               <div class="scalar-value">0.03</div>
@@ -7120,8 +7182,8 @@
         <div class="section-kicker">Supporting Visual Layer</div>
         <h2>RAC / Data Guard Scalar Evidence</h2>
         <p class="scalar-note">
-          These topology facts use real samples but did not meet violin
-          distribution gates, so they remain scalar evidence.
+          These topology facts use real samples but did not meet validated
+          Distribution Evidence gates, so they remain scalar evidence.
         </p>
 
         <p class="scalar-note scalar-context-note">
@@ -7496,7 +7558,7 @@
     </div>
 
 
-    <div class="footer">Generated at Jun 5, 2026, 11:46 AM</div>
+    <div class="footer">Generated at Jun 7, 2026, 5:43 PM</div>
   </div>
 
   <script>
@@ -17923,7 +17985,7 @@
 
     const chartTextColor = '#d9e4f2';
     const chartMutedColor = 'rgba(159, 176, 199, 0.28)';
-    const violinConfigs = [{"payload_key": "cluster_cpu_pct_db_time", "container_id": "violinClusterCpuPct", "title": "Cluster CPU % DB Time", "color": "rgba(255, 107, 107, 0.72)", "group_key": "workload", "is_percent_like": true}, {"payload_key": "cluster_user_io_pct_db_time", "container_id": "violinClusterUserIoPct", "title": "Cluster User I/O %", "color": "rgba(255, 159, 67, 0.72)", "group_key": "workload", "is_percent_like": true}, {"payload_key": "cluster_log_file_sync_ms", "container_id": "violinClusterLogFileSyncMs", "title": "Cluster Log File Sync Latency Distribution", "color": "rgba(239, 83, 80, 0.72)", "group_key": "workload", "is_percent_like": false}, {"payload_key": "cluster_pga_spill_pressure", "container_id": "violinClusterPgaSpillPressure", "title": "Cluster PGA Spill Pressure Distribution", "color": "rgba(102, 187, 106, 0.72)", "group_key": "workload", "is_percent_like": false}, {"payload_key": "interconnect_stress_flag", "container_id": "violinInterconnectStress", "title": "Interconnect Stress Evidence", "color": "rgba(255, 112, 67, 0.72)", "group_key": "topology", "is_percent_like": false}, {"payload_key": "per_instance_cpu_pct_db_time", "container_id": "violinPerInstanceRacCpuPct", "title": "Per-Instance RAC CPU", "color": "rgba(249, 65, 68, 0.72)", "group_key": "rac_instance", "is_percent_like": true}];
+    const violinConfigs = [{"payload_key": "cluster_cpu_pct_db_time", "container_id": "violinClusterCpuPct", "title": "Cluster CPU % DB Time", "color": "rgba(255, 107, 107, 0.72)", "sample_count": 24, "distinct_sample_count": 22, "sample_source_path": "chart_payload.violin_panel.workload.cluster_cpu_pct_db_time", "group_key": "workload", "is_percent_like": true}, {"payload_key": "cluster_user_io_pct_db_time", "container_id": "violinClusterUserIoPct", "title": "Cluster User I/O %", "color": "rgba(255, 159, 67, 0.72)", "sample_count": 18, "distinct_sample_count": 18, "sample_source_path": "chart_payload.violin_panel.workload.cluster_user_io_pct_db_time", "group_key": "workload", "is_percent_like": true}, {"payload_key": "cluster_log_file_sync_ms", "container_id": "violinClusterLogFileSyncMs", "title": "Cluster Log File Sync Latency Distribution", "color": "rgba(239, 83, 80, 0.72)", "sample_count": 18, "distinct_sample_count": 18, "sample_source_path": "chart_payload.violin_panel.workload.cluster_log_file_sync_ms", "group_key": "workload", "is_percent_like": false}, {"payload_key": "cluster_pga_spill_pressure", "container_id": "violinClusterPgaSpillPressure", "title": "Cluster PGA Spill Pressure Distribution", "color": "rgba(102, 187, 106, 0.72)", "sample_count": 24, "distinct_sample_count": 4, "sample_source_path": "chart_payload.violin_panel.workload.cluster_pga_spill_pressure", "group_key": "workload", "is_percent_like": false}, {"payload_key": "interconnect_stress_flag", "container_id": "violinInterconnectStress", "title": "Interconnect Stress Evidence", "color": "rgba(255, 112, 67, 0.72)", "sample_count": 24, "distinct_sample_count": 2, "sample_source_path": "chart_payload.violin_panel.topology.interconnect_stress_flag", "group_key": "topology", "is_percent_like": false}];
     const timeSeriesSpecs = [{"key": "cpu_trend", "container_id": "timeSeriesCpuTrend", "title": "DB CPU % DB Time", "label": "DB CPU % DB time", "color": "rgba(255, 107, 107, 0.92)"}, {"key": "io_trend", "container_id": "timeSeriesIoTrend", "title": "User I/O Pressure", "label": "User I/O % DB time", "color": "rgba(246, 184, 76, 0.92)"}, {"key": "log_file_sync_trend", "container_id": "timeSeriesLogFileSyncTrend", "title": "Commit / Log File Sync", "label": "Log file sync ms", "color": "rgba(239, 83, 80, 0.92)"}, {"key": "cluster_wait_trend", "container_id": "timeSeriesClusterWaitTrend", "title": "Cluster Wait %", "label": "Cluster waits % DB time", "color": "rgba(255, 159, 67, 0.92)"}, {"key": "gc_wait_trend", "container_id": "timeSeriesGcWaitTrend", "title": "GC Wait %", "label": "GC wait % DB time", "color": "rgba(244, 162, 97, 0.92)"}];
     const violinMinimumSamples = 4;
     const violinMinimumDistinctValues = 2;

@@ -269,7 +269,10 @@ class Screen4DeepAnalysisVisualRenderingTests(unittest.TestCase):
             row_id="dist-samples",
             section_id="distribution-current",
             evidence_type="distribution_supporting_context",
+            metric_name="CPU sample values",
             deterministic_value=[61.0, 63.0, 65.0, 67.0],
+            source_path="report_data.samples.cpu",
+            unit="% DB Time",
         )
 
         html = self.render_contract(valid_contract(evidence_sections=[dist_section], evidence_rows=[samples_row]))
@@ -277,6 +280,12 @@ class Screen4DeepAnalysisVisualRenderingTests(unittest.TestCase):
         self.assertIn('data-screen4-deep-analysis-static-visual="distribution-evidence"', html)
         self.assertIn("Distribution Evidence", html)
         self.assertIn("no density curve is estimated", html)
+        self.assertIn("sample count 4", html)
+        self.assertIn("CPU sample values", html)
+        self.assertIn("% DB Time", html)
+        self.assertIn("scale 61 to 67", html)
+        self.assertIn("report_data.samples.cpu", html)
+        self.assertIn("screen3.normalized_decision", html)
         self.assertNotIn("violin", html.lower())
 
         for bad_value in ([61.0], {"min": 61.0, "max": 67.0, "sample_count": 4}):
@@ -288,6 +297,163 @@ class Screen4DeepAnalysisVisualRenderingTests(unittest.TestCase):
         synthetic_row = {**samples_row, "synthetic": True}
         rendered = self.render_contract(valid_contract(evidence_sections=[dist_section], evidence_rows=[synthetic_row]))
         self.assertEqual("", rendered)
+
+    def test_duplicate_distribution_candidates_do_not_render_independent_visuals(self) -> None:
+        dist_section = section(
+            section_id="distribution-current",
+            title="CPU Samples",
+            evidence_type="distribution_supporting_context",
+        )
+        samples_row = row(
+            row_id="dist-samples",
+            section_id="distribution-current",
+            evidence_type="distribution_supporting_context",
+            metric_name="CPU sample values",
+            deterministic_value=[61.0, 63.0, 65.0, 67.0],
+            source_path="report_data.samples.cpu",
+            unit="% DB Time",
+        )
+        candidate = {
+            "status": "eligible",
+            "visualization_family": "distribution_evidence",
+            "suggested_title": "CPU Distribution Evidence",
+            "scope_classification": "current_scope",
+            "evidence_shape": "numeric_samples",
+            "section_id": "distribution-current",
+            "row_ids": ["dist-samples"],
+            "provenance_summary": "screen3.normalized_decision",
+            "freshness_summary": "fresh",
+            "is_supporting_context": False,
+        }
+        contract = valid_contract(evidence_sections=[dist_section], evidence_rows=[samples_row])
+        html = visuals_module().render_deep_analysis_visualizations(
+            contract,
+            {
+                "eligible_candidates": [
+                    {**candidate, "candidate_id": "dist-a"},
+                    {**candidate, "candidate_id": "dist-b"},
+                ]
+            },
+        )
+
+        self.assertEqual(1, html.count('data-screen4-deep-analysis-static-visual="distribution-evidence"'))
+
+        duplicate_sections = [
+            dist_section,
+            section(
+                section_id="distribution-reused",
+                title="Reused Samples",
+                evidence_type="distribution_supporting_context",
+            ),
+        ]
+        duplicate_rows = [
+            samples_row,
+            row(
+                row_id="dist-samples-reused",
+                section_id="distribution-reused",
+                evidence_type="distribution_supporting_context",
+                metric_name="Reused sample values",
+                deterministic_value=[61.0, 63.0, 65.0, 67.0],
+                source_path="report_data.samples.reused_cpu",
+                unit="% DB Time",
+            ),
+        ]
+        duplicate_contract = valid_contract(
+            evidence_sections=duplicate_sections,
+            evidence_rows=duplicate_rows,
+        )
+        duplicate_html = visuals_module().render_deep_analysis_visualizations(
+            duplicate_contract,
+            {
+                "eligible_candidates": [
+                    {**candidate, "candidate_id": "dist-a"},
+                    {
+                        **candidate,
+                        "candidate_id": "dist-reused",
+                        "section_id": "distribution-reused",
+                        "row_ids": ["dist-samples-reused"],
+                    },
+                ]
+            },
+        )
+
+        self.assertEqual(
+            1,
+            duplicate_html.count('data-screen4-deep-analysis-static-visual="distribution-evidence"'),
+        )
+
+    def test_distinct_distribution_sample_sets_may_render_separately(self) -> None:
+        sections = [
+            section(
+                section_id="distribution-cpu",
+                title="CPU Samples",
+                evidence_type="distribution_supporting_context",
+            ),
+            section(
+                section_id="distribution-io",
+                title="I/O Samples",
+                evidence_type="distribution_supporting_context",
+            ),
+        ]
+        rows = [
+            row(
+                row_id="dist-cpu",
+                section_id="distribution-cpu",
+                evidence_type="distribution_supporting_context",
+                metric_name="CPU sample values",
+                deterministic_value=[61.0, 63.0, 65.0, 67.0],
+                source_path="report_data.samples.cpu",
+                unit="% DB Time",
+            ),
+            row(
+                row_id="dist-io",
+                section_id="distribution-io",
+                evidence_type="distribution_supporting_context",
+                metric_name="I/O sample values",
+                deterministic_value=[11.0, 17.0, 23.0, 29.0],
+                source_path="report_data.samples.io",
+                unit="% DB Time",
+            ),
+        ]
+        contract = valid_contract(evidence_sections=sections, evidence_rows=rows)
+        selection = {
+            "eligible_candidates": [
+                {
+                    "candidate_id": "dist-cpu",
+                    "status": "eligible",
+                    "visualization_family": "distribution_evidence",
+                    "suggested_title": "CPU Distribution Evidence",
+                    "scope_classification": "current_scope",
+                    "evidence_shape": "numeric_samples",
+                    "section_id": "distribution-cpu",
+                    "row_ids": ["dist-cpu"],
+                    "provenance_summary": "screen3.normalized_decision",
+                    "freshness_summary": "fresh",
+                    "is_supporting_context": False,
+                },
+                {
+                    "candidate_id": "dist-io",
+                    "status": "eligible",
+                    "visualization_family": "distribution_evidence",
+                    "suggested_title": "I/O Distribution Evidence",
+                    "scope_classification": "current_scope",
+                    "evidence_shape": "numeric_samples",
+                    "section_id": "distribution-io",
+                    "row_ids": ["dist-io"],
+                    "provenance_summary": "screen3.normalized_decision",
+                    "freshness_summary": "fresh",
+                    "is_supporting_context": False,
+                },
+            ]
+        }
+
+        html = visuals_module().render_deep_analysis_visualizations(contract, selection)
+
+        self.assertEqual(2, html.count('data-screen4-deep-analysis-static-visual="distribution-evidence"'))
+        self.assertIn("CPU sample values", html)
+        self.assertIn("I/O sample values", html)
+        self.assertIn("report_data.samples.cpu", html)
+        self.assertIn("report_data.samples.io", html)
 
     def test_historical_supporting_visual_is_labeled_supporting_only(self) -> None:
         hist_section = section(

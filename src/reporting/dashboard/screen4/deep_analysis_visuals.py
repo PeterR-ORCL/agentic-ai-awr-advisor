@@ -52,10 +52,16 @@ def render_deep_analysis_visualizations(
 
     if not isinstance(contract, Mapping) or not contract:
         return ""
-    rendered = [
-        render_deep_analysis_visual_candidate(contract, candidate)
-        for candidate in _eligible_candidates(selection_result)
-    ]
+    rendered = []
+    distribution_signatures: set[tuple[float, ...]] = set()
+    for candidate in _eligible_candidates(selection_result):
+        if _candidate_family(candidate) == VisualizationFamily.DISTRIBUTION_EVIDENCE.value:
+            rows = _candidate_rows(contract, candidate)
+            signature = _distribution_signature(rows)
+            if not signature or signature in distribution_signatures:
+                continue
+            distribution_signatures.add(signature)
+        rendered.append(render_deep_analysis_visual_candidate(contract, candidate))
     rendered = [item for item in rendered if item.strip()]
     if not rendered:
         return ""
@@ -256,6 +262,9 @@ def _render_distribution_evidence_visual(rows: list[Mapping[str, Any]]) -> str:
         samples.extend(_numeric_samples(row))
     if len(samples) < 3:
         return ""
+    source_paths = _distribution_source_paths(rows)
+    if not source_paths:
+        return ""
     min_value = min(samples)
     max_value = max(samples)
     if min_value == max_value:
@@ -273,7 +282,22 @@ def _render_distribution_evidence_visual(rows: list[Mapping[str, Any]]) -> str:
             f'<circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="#0f766e" opacity="0.78" />'
         )
     title = "Distribution Evidence"
-    desc = f"Static dot strip from {len(samples)} real numeric samples; no density curve is estimated."
+    metric_names = _distribution_metric_names(rows)
+    units = _distribution_units(rows)
+    provenance = _distribution_provenance_summary(rows)
+    metadata_parts = [
+        f"sample count {len(samples)}",
+        f"metric {' / '.join(metric_names)}" if metric_names else "",
+        f"unit {' / '.join(units)}" if units else "",
+        f"scale {_format_number(min_value)} to {_format_number(max_value)}",
+        f"source {' / '.join(source_paths)}",
+        f"provenance {provenance}" if provenance else "",
+    ]
+    metadata = "; ".join(part for part in metadata_parts if part)
+    desc = (
+        f"Static dot strip from {len(samples)} real numeric samples; no density curve is estimated. "
+        f"{metadata}."
+    )
     return f"""
         <figure class="screen4-deep-analysis-distribution"
                 data-screen4-deep-analysis-static-visual="distribution-evidence">
@@ -516,6 +540,65 @@ def _numeric_samples(row: Mapping[str, Any]) -> list[float]:
                 return samples
         return []
     return _numeric_list(value)
+
+
+def _distribution_signature(
+    rows: list[Mapping[str, Any]],
+) -> tuple[float, ...] | None:
+    samples: list[float] = []
+    for row in rows:
+        samples.extend(_numeric_samples(row))
+    if len(samples) < 3:
+        return None
+    if not _distribution_source_paths(rows):
+        return None
+    return tuple(round(sample, 8) for sample in samples)
+
+
+def _distribution_source_paths(rows: list[Mapping[str, Any]]) -> list[str]:
+    values = []
+    for row in rows:
+        value = _first_text(row.get("source_path"))
+        if value and value not in values:
+            values.append(value)
+    return values
+
+
+def _distribution_metric_names(rows: list[Mapping[str, Any]]) -> list[str]:
+    values = []
+    for row in rows:
+        value = _first_text(
+            row.get("metric_name"),
+            row.get("evidence_name"),
+            row.get("display_label"),
+        )
+        if value and value not in values:
+            values.append(value)
+    return values[:3]
+
+
+def _distribution_units(rows: list[Mapping[str, Any]]) -> list[str]:
+    values = []
+    for row in rows:
+        value = _first_text(row.get("unit"))
+        if value and value not in values:
+            values.append(value)
+    return values[:3]
+
+
+def _distribution_provenance_summary(rows: list[Mapping[str, Any]]) -> str:
+    values = []
+    for row in rows:
+        provenance = row.get("provenance")
+        if isinstance(provenance, Mapping):
+            value = _first_text(
+                provenance.get("source_contract_ref"),
+                provenance.get("source_path"),
+                provenance.get("deterministic_engine_version"),
+            )
+            if value and value not in values:
+                values.append(value)
+    return " / ".join(values[:2])
 
 
 def _numeric_list(value: Any) -> list[float]:

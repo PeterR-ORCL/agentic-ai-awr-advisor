@@ -150,8 +150,12 @@ class Screen4DeepAnalysisGuardedStateTests(unittest.TestCase):
 
         self.assertIn('data-screen4-deep-analysis-ready="false"', fragment)
         self.assertIn("Deep Analysis: Evidence Contract Required", fragment)
-        self.assertIn("provenance_missing", fragment)
-        self.assertIn("freshness_missing", fragment)
+        self.assertIn(
+            "Candidate evidence rows were detected, but Deep Analysis proof is blocked until deterministic provenance and freshness metadata validate.",
+            fragment,
+        )
+        self.assertIn("Missing provenance", fragment)
+        self.assertIn("Missing freshness", fragment)
         self.assertNotIn("Deep Analysis: Contract Ready", fragment)
         self.assert_no_deep_analysis_visual_or_table_markup(fragment)
 

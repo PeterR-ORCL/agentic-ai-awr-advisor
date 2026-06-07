@@ -202,6 +202,11 @@ class Screen4DeepAnalysisProductPolishTests(unittest.TestCase):
             "Contract-Backed Visual Evidence",
             "Deep Analysis uses its current-scope evidence contract",
             "Comparative Review uses its own deterministic comparison output contract",
+            "No Target A/B context prepared",
+            "Every visual is selected by active evidence mode, validated data, validated evidence shape",
+            "provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility",
+            "Screen 4 visual north star: mode first, validated data second, evidence shape third",
+            "Universal Visual Rule",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -265,7 +270,7 @@ class Screen4DeepAnalysisProductPolishTests(unittest.TestCase):
             "Browser cache does not create evidence.",
             "Prepared Target A/B state does not create comparison output.",
             "cache, prepared Target A/B, comparative output, and LLM text do not create Deep Analysis evidence.",
-            "Target A/B prepared-only state is not comparison output.",
+            "No prepared comparison context is available for this Screen 4 export",
             "Screen 4 does not compute comparison or comparative graphics in the browser.",
         )
         for phrase in required:

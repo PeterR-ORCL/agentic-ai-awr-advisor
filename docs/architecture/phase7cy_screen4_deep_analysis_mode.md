@@ -418,6 +418,16 @@ The Screen 4 orientation copy now makes the operator lanes plainer: Historical R
 
 The polish preserves rich evidence depth and the dynamic visualization principle. Validated evidence remains extensible across diagnostic drivers, metrics, SQL, events, topology, engineering, time-series support, distribution support, anomaly support, similarity support, limitations, and missing evidence. Visuals remain selected from validated evidence shapes rather than page identity or a tiny fixed chart list.
 
+### 7CY-J-FU2 Single-AWR Review Consistency Note
+
+The Screen 4 mode selector mirrors the Comparative Review guarded state. A single-scope export with no prepared Target A/B context renders Comparative Review as unavailable, not prepared-only; prepared-only is reserved for actual prepared Target A/B context without deterministic comparison output. The Comparative Review guard remains visible as a boundary, but its copy states that comparison is not active for single-scope review and is not an action requirement.
+
+When candidate Deep Analysis rows exist but provenance or freshness blocks validation, Screen 4 may report that candidate rows were detected, but it must not render them as proof until deterministic provenance and freshness validate. Historical domain selectors are navigation/filter affordances; when no real domain score is present they show historical context rather than zero-score placeholders. Distribution wording remains evidence-shape-driven: a single AWR may contain valid multi-sample distributions, but scalar-only facts, one-sample values, summaries, min/max-only data, synthetic data, cache-only state, and LLM text are not eligible.
+
+Distribution-style rendering must not create repeated independent visuals from the same sample set. Deep Analysis selected visual candidates are deduped by validated sample/source identity, and historical/supporting distribution configs are deduped when two metric cards reuse the same numeric sample array. Distinct metric-specific sample arrays may render separately, and visible sample metadata should include sample count, source path, and metric identity where available.
+
+Universal Screen 4 visual selection remains mode-, data-, and shape-driven. Current selected scope, same-DB historical supporting context, deterministic comparison output, and future fleet/population evidence each require their own validated evidence mode. Graphs, diagrams, trends, Distribution Evidence, topology visuals, comparison visuals, and future fleet visuals may render only from validated available data, validated evidence shape, provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility. Supported shapes include time series, numeric samples, ranked rows, categorical contribution, scalar thresholds, topology facts, anomaly intervals, similarity cases, comparison-aligned rows, or future fleet population samples. Page identity, route state alone, cache/localStorage alone, prepared Target A/B alone, LLM explanation text, scalar-only values, min/max-only summaries, repeated shared samples, and synthetic/demo/default rows cannot select visuals. The Screen 4 visual north star is: mode first, validated data second, evidence shape third, visualization choice fourth, truthful rendering only.
+
 ## 20. Future Test Plan
 
 Future tests should verify:

@@ -3,7 +3,9 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import json
 from pathlib import Path
+import re
 import unittest
 
 
@@ -12,6 +14,7 @@ DOCS = ROOT / "docs" / "architecture"
 HTML_DASHBOARD_PATH = ROOT / "src" / "reporting" / "html_dashboard.py"
 AI_METADATA_PATH = ROOT / "src" / "reporting" / "ai_display_metadata.py"
 RUN_ANALYSIS_PATH = ROOT / "scripts" / "run_analysis.py"
+GENERATED_SCREEN4_PATH = ROOT / "awr_dashboard" / "screen_4_historical_review.html"
 
 
 def read_text(path: Path) -> str:
@@ -58,12 +61,17 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Context-only historical evidence",
             "Single-AWR Review Eligibility",
             "Selected-scope graphics not ready for this evidence context",
-            "Distribution / Violin Eligibility",
+            "Distribution Evidence Eligibility",
             "Context-only distribution evidence",
             "Fleet / Population",
             "No fleet/population graphics until a fleet evidence contract exists.",
             "Comparison Review Eligibility",
             "No prepared comparison context",
+            "Universal Visual Rule",
+            "Every visual is selected by active evidence mode, validated data, validated evidence shape,",
+            "provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility",
+            "Screen 4 visual north star: mode first, validated data second, evidence shape third,",
+            "visualization choice fourth, truthful rendering only.",
             "Graphics Boundary",
             "Page identity alone cannot select graphics.",
             'data-screen4-evidence-context-guard="true"',
@@ -111,8 +119,9 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "cache, prepared Target A/B, comparative output, and LLM text do not create Deep Analysis evidence.",
             "Contract-Backed",
             "No browser computation",
-            "Comparative Review requires deterministic comparison output before evidence can be reviewed here.",
-            "Target A/B prepared-only state is not comparison output.",
+            "No Target A/B context prepared",
+            "Comparative Review requires prepared Target A/B context and governed deterministic comparison output.",
+            "No prepared comparison context is available for this Screen 4 export",
             "Screen 4 does not compute comparison or comparative graphics in the browser.",
             "Screen 4 reflects upstream selected source, run, scope, and target context for display only.",
             "Deterministic evidence remains authoritative.",
@@ -123,14 +132,39 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             'data-screen4-mode="historical-review"',
             'data-screen4-mode-state="active"',
             'data-screen4-mode="comparative-review"',
-            'data-screen4-mode-state="prepared-only"',
-            'data-screen4-screen2-handoff="prepared-context-only"',
+            'data-screen4-mode-state="comparison-unavailable"',
             'data-screen4-mode="deep-analysis"',
             'data-screen4-mode-state="contract-bound"',
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rendered)
+        comparative_start = rendered.index('data-screen4-mode="comparative-review"')
+        comparative_card = rendered[comparative_start:rendered.index("</article>", comparative_start)]
+        self.assertNotIn('data-screen4-mode-state="prepared-only"', comparative_card)
+        self.assertNotIn('data-screen4-screen2-handoff="prepared-context-only"', comparative_card)
+        self.assertNotIn(">Prepared only</strong>", comparative_card)
+
+    def test_screen4_mode_selector_allows_prepared_only_only_with_target_context(self) -> None:
+        dashboard = dashboard_module()
+
+        rendered = dashboard._render_screen4_mode_selector_shell(
+            {
+                "state": "comparison_prepared_only",
+                "prepared_targets": [
+                    {"target": "Target A", "identity": "AWR-A"},
+                    {"target": "Target B", "identity": "AWR-B"},
+                ],
+            }
+        )
+
+        comparative_card = rendered[
+            rendered.index('data-screen4-mode="comparative-review"'):
+        ]
+        self.assertIn('data-screen4-mode-state="prepared-only"', comparative_card)
+        self.assertIn('data-screen4-screen2-handoff="prepared-context-only"', comparative_card)
+        self.assertIn(">Prepared only</strong>", comparative_card)
+        self.assertIn("Prepared Target A/B context exists", comparative_card)
 
     def test_screen4_fu6_product_wording_replaces_ambiguous_labels(self) -> None:
         rendered = self.render_screen4()
@@ -238,6 +272,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         summary_fragment = rendered[summary_start: rendered.index("</p>", summary_start)]
 
         self.assertIn('data-dashboard-selected-summary-kind="screen4-historical"', summary_fragment)
+        self.assertIn("screen4-selected-historical-summary", summary_fragment)
         self.assertIn(
             "Read-only historical exploration: no local selection. Historical output remains unchanged.",
             summary_fragment,
@@ -345,7 +380,7 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "Selection only highlights deterministic historical context",
             "Cross-Screen Selection Propagation is browser-side only",
             "URL hash/localStorage state is not authoritative truth",
-            "Future A/B comparison violin panels belong on Screen 4 but may render only from validated deterministic comparison output",
+            "Future A/B comparison Distribution Evidence panels belong on Screen 4 but may render only from validated deterministic comparison output",
             "LLM-assisted wording may explain validated deterministic comparison output only after that output exists",
             "it does not compute comparison meaning or decide outcome direction",
         )
@@ -358,10 +393,11 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
 
         required_phrases = (
             "Comparative Review Guarded State",
-            "Comparative Review is not ready yet.",
             "No governed deterministic comparison output has been returned to Screen 4.",
-            "Prepared Target A/B context can identify what should be compared, but it does not create comparison evidence.",
             "No prepared comparison context is available for Screen 4.",
+            "Comparison is not active for this single-scope review.",
+            "No Target A/B context is prepared.",
+            "This section is shown only as a boundary, not as an action requirement for single-AWR review.",
             "Target A/B selections are preparation only.",
             "Deterministic comparison output is required before Screen 4 can show comparative evidence.",
             "No comparison graphics are available because no validated deterministic comparison output contract is present.",
@@ -394,6 +430,96 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, comparative_section)
+
+    def test_historical_domain_selector_does_not_emit_all_zero_placeholder_scores(self) -> None:
+        model = self.sample_screen4_model()
+        model["normalized_decision"] = {
+            "primary_issue": "CPU",
+            "domain_scores": {"CPU": 0.0, "IO": 0.0, "MEMORY": 0.0, "COMMIT": 0.0, "RAC": 0.0, "ADG": 0.0},
+        }
+        rendered = dashboard_module()._render_screen_4_page(
+            model,
+            chart_payload=self.sample_chart_payload(),
+            violin_metric_groups=self.sample_violin_metric_groups(),
+            time_series_groups=self.sample_time_series_groups(),
+            derived_scalar_metrics={"pga_spill_pressure": 4.5},
+        )
+        start = rendered.index("Historical Domain Selector")
+        end = rendered.index("Time Window Selector")
+        selector_fragment = rendered[start:end]
+
+        self.assertIn("Historical context", selector_fragment)
+        self.assertNotIn("<p>0.0</p>", selector_fragment)
+
+    def test_distribution_wording_allows_valid_single_awr_multi_sample_evidence(self) -> None:
+        rendered = self.render_screen4()
+
+        self.assertIn("Distribution visuals require validated multi-sample evidence", rendered)
+        self.assertIn("a single AWR may still contain valid multi-sample distributions", rendered)
+        self.assertIn("scalar-only facts, one-sample values, summaries, min/max-only data, synthetic data, cache-only state, or LLM text are not eligible", rendered)
+        self.assertNotIn("single AWR means no violins", rendered.lower())
+        self.assertNotIn("single awr means no distributions", rendered.lower())
+
+    def test_historical_distribution_group_builder_dedupes_reused_sample_sets(self) -> None:
+        dashboard = dashboard_module()
+        payload = {
+            "workload": {
+                "cluster_cpu_pct_db_time": [10.0, 20.0, 30.0, 40.0],
+                "cluster_user_io_pct_db_time": [11.0, 22.0, 33.0, 44.0],
+            },
+            "rac_instance": {
+                "per_instance_cpu_pct_db_time": [10.0, 20.0, 30.0, 40.0],
+            },
+        }
+
+        groups = dashboard._build_violin_metric_groups(payload)
+        metrics = [
+            metric
+            for group in groups
+            for metric in group["metrics"]
+        ]
+        payload_keys = {metric["payload_key"] for metric in metrics}
+
+        self.assertIn("cluster_cpu_pct_db_time", payload_keys)
+        self.assertIn("cluster_user_io_pct_db_time", payload_keys)
+        self.assertNotIn("per_instance_cpu_pct_db_time", payload_keys)
+        for metric in metrics:
+            self.assertIn("sample_count", metric)
+            self.assertIn("sample_source_path", metric)
+
+    def test_generated_screen4_distribution_configs_are_distinct_sample_sets(self) -> None:
+        if not GENERATED_SCREEN4_PATH.is_file():
+            self.skipTest("Generated Screen 4 artifact is not present.")
+        html = read_text(GENERATED_SCREEN4_PATH)
+        payload_match = re.search(
+            r'<script id="chart-payload" type="application/json">\s*(.*?)\s*</script>',
+            html,
+            re.S,
+        )
+        configs_match = re.search(r"const violinConfigs = (\[.*?\]);", html, re.S)
+        self.assertIsNotNone(payload_match)
+        self.assertIsNotNone(configs_match)
+        payload = json.loads(payload_match.group(1))
+        configs = json.loads(configs_match.group(1))
+        seen_sample_sets: dict[tuple[float, ...], str] = {}
+        for config in configs:
+            values = (
+                payload.get("violin_panel", {})
+                .get(config["group_key"], {})
+                .get(config["payload_key"])
+            )
+            samples = tuple(
+                round(float(value), 8)
+                for value in values
+                if isinstance(value, (int, float))
+            )
+            if len(samples) < 4 or len(set(samples)) < 2:
+                continue
+            with self.subTest(payload_key=config["payload_key"]):
+                self.assertNotIn(samples, seen_sample_sets)
+                self.assertIn("sample_source_path", config)
+                self.assertIn("sample_count", config)
+            seen_sample_sets[samples] = config["payload_key"]
 
     def test_screen4_wording_keeps_historical_context_distinct_from_comparison(self) -> None:
         dashboard = dashboard_module()
@@ -433,6 +559,12 @@ class DashboardScreen4HistoricalReviewExplorationTests(unittest.TestCase):
             "runtime behavior.",
             "Source is deterministic/generated trend evidence already present in the dashboard payload.",
             "Graphics are not selected by page identity alone; they require deterministic evidence and context alignment.",
+            "Every visual is selected by active evidence mode, validated data, validated evidence shape",
+            "provenance, freshness, sample identity, sample count, scope classification, and rendering eligibility",
+            "invalid or blocked shapes are omitted rather than shown as shells",
+            "Screen 4 visual north star: mode first, validated data second, evidence shape third",
+            "Page identity, route state, cache/localStorage, prepared Target A/B alone, LLM text, "
+            "scalar/min/max-only values, repeated shared samples, and synthetic/default rows cannot select visuals",
             "Browser cache may restore UI context only; it does not create trend evidence truth.",
             "Trend Evidence Available",
             "Artifact Alignment",

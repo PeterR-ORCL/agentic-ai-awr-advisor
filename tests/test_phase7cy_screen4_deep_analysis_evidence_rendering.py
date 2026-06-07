@@ -223,7 +223,7 @@ class Screen4DeepAnalysisEvidenceRenderingTests(unittest.TestCase):
 
         html = self.render_screen4(report_data=report)
 
-        self.assertIn("provenance_missing", self.state_fragment(html))
+        self.assertIn("Missing provenance", self.state_fragment(html))
         self.assertEqual("", self.evidence_fragment(html))
 
     def test_comparative_inputs_do_not_render_in_deep_analysis(self) -> None:

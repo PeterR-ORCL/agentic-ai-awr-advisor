@@ -1,0 +1,118 @@
+import ast
+from pathlib import Path
+
+from src.reporting.dashboard.adapters.evidence_pack_builder import build_evidence_pack_contract
+from src.reporting.dashboard.contracts.selected_review_scope_contract import (
+    RuntimeScopeIdentity,
+    SelectionProvenance,
+    SourceMode,
+    build_selected_review_scope_contract,
+)
+from src.reporting.dashboard.renderers import screen5_renderer as module
+from src.reporting.dashboard.renderers.screen5_renderer import render_screen5_action
+from src.reporting.dashboard.view_models.screen5_action_view_model import build_screen5_action_view_model
+
+
+def selected_scope():
+    return build_selected_review_scope_contract(
+        source_mode=SourceMode.EXISTING_EVIDENCE,
+        runtime_scope=RuntimeScopeIdentity(scope_id="runtime-1", alignment_key="db-prod"),
+        provenance=SelectionProvenance(source_system="screen2_backend_contract_builder"),
+    )
+
+
+def action_payload():
+    return {
+        "evidence_ids": ["action-evidence"],
+        "rows": [
+            {
+                "row_id": "action-row",
+                "recommendation": "Add deterministic capacity",
+                "action": "scale_db_cpu",
+                "outcome": "reduced pressure",
+                "risk": "medium",
+                "impact": "high",
+            }
+        ],
+        "confidence_basis": [{"basis_id": "action-confidence", "confidence": "medium"}],
+        "summary": "Action evidence <script>alert(1)</script>",
+    }
+
+
+def action_model(**payloads):
+    pack = build_evidence_pack_contract(selected_scope(), provenance="deterministic_builder", **payloads)
+    return build_screen5_action_view_model(pack)
+
+
+def test_screen5_renderer_renders_recommendation_action_evidence():
+    html = render_screen5_action(action_model(recommendation_action_payload=action_payload()))
+
+    assert "Recommendation / Action" in html
+    assert "action-row" in html
+    assert "Add deterministic capacity" in html
+    assert "scale_db_cpu" in html
+    assert "medium" in html
+    assert "high" in html
+    assert "<script" not in html.lower()
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_screen5_renderer_renders_missing_unavailable_and_stale_action_states():
+    missing = render_screen5_action(action_model())
+    unavailable = render_screen5_action(
+        action_model(recommendation_action_payload={"llm_recommendation": "invented", "rows": [{"row_id": "x"}]})
+    )
+    stale = render_screen5_action(
+        action_model(
+            recommendation_action_payload={
+                "evidence_ids": ["action-evidence"],
+                "rows": [{"row_id": "action-row", "recommendation": "deterministic"}],
+                "stale": True,
+            }
+        )
+    )
+
+    assert "Missing evidence" in missing
+    assert "payload_missing" in missing
+    assert "Unavailable evidence" in unavailable
+    assert "payload_rejected" in unavailable
+    assert "invented" not in unavailable
+    assert "Stale evidence" in stale
+    assert "payload_stale" in stale
+
+
+def test_screen5_renderer_does_not_render_llm_text_as_recommendation():
+    html = render_screen5_action(
+        action_model(recommendation_action_payload={"llm_recommendation": "LLM says scale now"})
+    )
+
+    assert "LLM says scale now" not in html
+    assert "Recommendation fields" not in html
+    assert "llm_recommendation" not in html
+
+
+def test_screen5_renderer_import_boundary():
+    imports = _imports_for(module)
+    forbidden = (
+        "html_dashboard",
+        "evidence_pack_builder",
+        "selected_review_scope_contract",
+        "evidence_pack_contract",
+        "llm",
+        "awr_dashboard",
+        "browser",
+        "selector",
+        "runtime",
+    )
+    assert not any(fragment in name.lower() for name in imports for fragment in forbidden)
+
+
+def _imports_for(imported_module):
+    tree = ast.parse(Path(imported_module.__file__).read_text())
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imports.append(node.module or "")
+    return imports

@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from html import escape
 from pathlib import Path
-from typing import Any, Iterable, Sequence, TypedDict, cast
+from typing import Any, Iterable, Mapping, Sequence, TypedDict, cast
 
 from src.reporting.ai_display_metadata import (
     build_learning_visibility_metadata,
@@ -321,12 +321,16 @@ SelectorItems = list[dict[str, Any]]
 def generate_html_dashboard(
     report_data: dict,
     output_file: str = "awr_dashboard.html",
+    contract_screen_render_bundle: Any | None = None,
 ) -> str:
     """Generate a multi-page HTML dashboard bundle and return the index path."""
 
     output_dir = _resolve_dashboard_output_dir(output_file)
     output_dir.mkdir(parents=True, exist_ok=True)
-    pages = _build_dashboard_pages(report_data)
+    pages = _build_dashboard_pages(
+        report_data,
+        contract_screen_render_bundle=contract_screen_render_bundle,
+    )
     for file_name, html in pages.items():
         (output_dir / file_name).write_text(html, encoding="utf-8")
     return str((output_dir / "index.html").resolve())
@@ -771,12 +775,19 @@ def _resolve_dashboard_output_dir(output_file: str) -> Path:
     return output_path
 
 
-def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
+def _build_dashboard_pages(
+    report_data: dict[str, Any],
+    *,
+    contract_screen_render_bundle: Any | None = None,
+) -> dict[str, str]:
     """Build the full multi-page HTML product bundle."""
 
     title = str(report_data.get("title") or "AWR Performance Intelligence Dashboard")
     generated_at = str(report_data.get("generated_at") or datetime.utcnow().isoformat())
     screen_models = report_data.get("screen_models") or {}
+    contract_screen_fragments = _contract_screen_render_fragments(
+        contract_screen_render_bundle
+    )
     screen_4_model = screen_models.get("screen_4_historical_review") or {}
     screen_6_model = screen_models.get("screen_6_fleet_overview") or {}
     ai_sections = _normalize_ai_sections(
@@ -844,62 +855,94 @@ def _build_dashboard_pages(report_data: dict[str, Any]) -> dict[str, str]:
             page_key="screen_3",
             page_title="Screen 3 - Diagnostic Snapshot",
             report_data=report_data,
-            content_html=_render_screen_2_page(
-                screen_models.get("screen_2_analysis") or {},
-                ai_sections=ai_sections,
-                decision_state=decision_state,
-                report_data=report_data,
-            ),
+            content_html=contract_screen_fragments.get("screen3_html")
+            or _render_screen_2_page(
+                    screen_models.get("screen_2_analysis") or {},
+                    ai_sections=ai_sections,
+                    decision_state=decision_state,
+                    report_data=report_data,
+                ),
             generated_at=generated_at,
+            evidence_gate_enabled="screen3_html" not in contract_screen_fragments,
         ),
         "screen_4_historical_review.html": _build_page_html(
             page_key="screen_4",
             page_title="Screen 4 - Evidence Review",
             report_data=report_data,
-            content_html=_render_screen_4_page(
-        screen_4_model,
-        chart_payload=chart_payload,
-        violin_metric_groups=violin_metric_groups,
-        time_series_groups=time_series_groups,
-        derived_scalar_metrics=report_data.get("derived_scalar_metrics") or {},
-        report_data=report_data,
-    ),
+            content_html=contract_screen_fragments.get("screen4_html")
+            or _render_screen_4_page(
+                    screen_4_model,
+                    chart_payload=chart_payload,
+                    violin_metric_groups=violin_metric_groups,
+                    time_series_groups=time_series_groups,
+                    derived_scalar_metrics=report_data.get("derived_scalar_metrics") or {},
+                    report_data=report_data,
+                ),
             generated_at=generated_at,
             include_chart_scripts=True,
             chart_payload=chart_payload,
             violin_metric_configs=violin_metric_configs,
             time_series_groups=time_series_groups,
+            evidence_gate_enabled="screen4_html" not in contract_screen_fragments,
         ),
         "screen_5_recommendation_action.html": _build_page_html(
             page_key="screen_5",
             page_title="Screen 5 - Recommendation Action & Outcome",
             report_data=report_data,
-            content_html=_render_screen_5_page(
-                screen_models.get("screen_5_recommendation_action") or {},
-                ai_sections=ai_sections,
-                agentic_decision=report_data.get("agentic_decision") or {},
-                report_data=report_data,
-            ),
+            content_html=contract_screen_fragments.get("screen5_html")
+            or _render_screen_5_page(
+                    screen_models.get("screen_5_recommendation_action") or {},
+                    ai_sections=ai_sections,
+                    agentic_decision=report_data.get("agentic_decision") or {},
+                    report_data=report_data,
+                ),
             generated_at=generated_at,
+            evidence_gate_enabled="screen5_html" not in contract_screen_fragments,
         ),
         "screen_6_fleet_overview.html": _build_page_html(
             page_key="screen_6",
             page_title="Screen 6 - Learning Governance",
             report_data=report_data,
-            content_html=_render_screen_6_page(
-                screen_6_model,
-                governance_payload=governance_visibility_payload,
-                semantic_recall_payload=semantic_recall_visibility_payload,
-                learning_visibility_payload=learning_visibility_payload,
-                ml_explainability_visibility_payload=ml_explainability_visibility_payload,
-            ),
+            content_html=contract_screen_fragments.get("screen6_html")
+            or _render_screen_6_page(
+                    screen_6_model,
+                    governance_payload=governance_visibility_payload,
+                    semantic_recall_payload=semantic_recall_visibility_payload,
+                    learning_visibility_payload=learning_visibility_payload,
+                    ml_explainability_visibility_payload=ml_explainability_visibility_payload,
+                ),
             generated_at=generated_at,
+            evidence_gate_enabled="screen6_html" not in contract_screen_fragments,
         ),
     }
     return {
         filename: _final_dashboard_html_polish(html)
         for filename, html in pages.items()
     }
+
+
+def _contract_screen_render_fragments(bundle: Any | None) -> dict[str, str]:
+    """Return explicit contract-backed Screen 3/4/5/6 fragments for shell placement."""
+
+    if bundle is None:
+        return {}
+    source: Mapping[str, Any]
+    if isinstance(bundle, Mapping):
+        source = bundle
+    elif hasattr(bundle, "to_dict") and callable(bundle.to_dict):
+        source = bundle.to_dict()
+    else:
+        source = {
+            key: getattr(bundle, key, None)
+            for key in ("screen3_html", "screen4_html", "screen5_html", "screen6_html")
+        }
+
+    fragments: dict[str, str] = {}
+    for key in ("screen3_html", "screen4_html", "screen5_html", "screen6_html"):
+        value = source.get(key)
+        if isinstance(value, str) and value.strip():
+            fragments[key] = value
+    return fragments
 
 
 def _final_dashboard_html_polish(html: str) -> str:
@@ -986,6 +1029,7 @@ def _build_page_html(
     chart_payload: dict[str, Any] | None = None,
     violin_metric_configs: list[dict[str, Any]] | None = None,
     time_series_groups: list[dict[str, Any]] | None = None,
+    evidence_gate_enabled: bool = True,
 ) -> str:
     """Build one page of the multi-page dashboard experience."""
 
@@ -1023,7 +1067,11 @@ def _build_page_html(
     )
     interactivity_script = _build_dashboard_interactivity_javascript()
     interactivity_boundary = _render_dashboard_interactivity_boundary_comment()
-    gated_content_html = _wrap_downstream_evidence_gate(page_key, content_html)
+    gated_content_html = (
+        _wrap_downstream_evidence_gate(page_key, content_html)
+        if evidence_gate_enabled
+        else content_html
+    )
     generated_session_id = _dashboard_generated_session_id(
         generated_at,
         report_data.get("dashboard_generated_session_id"),

@@ -57,6 +57,9 @@ from src.reporting.ai_display_metadata import (
     format_ai_model_display_name,
     format_ai_provider_display_name,
 )
+from src.reporting.dashboard.adapters.production_contract_bundle_adapter import (
+    build_production_dashboard_screen_render_bundle,
+)
 from src.reporting.html_dashboard import (
     generate_html_dashboard,
 )
@@ -6179,7 +6182,14 @@ if __name__ == "__main__":
         report_data=report_data,
     )
     report_data["screen_models"] = canonical_payload["screen_models"]
-    dashboard_file = generate_html_dashboard(report_data)
+    contract_screen_render_bundle = build_production_dashboard_screen_render_bundle(
+        report_data
+    )
+    dashboard_file = generate_dashboard_with_contract_screen_render_bundle(
+        report_data,
+        contract_screen_render_bundle=contract_screen_render_bundle,
+        output_file="awr_dashboard.html",
+    )
 
     print("EXECUTIVE SUMMARY")
     print("-" * 80)

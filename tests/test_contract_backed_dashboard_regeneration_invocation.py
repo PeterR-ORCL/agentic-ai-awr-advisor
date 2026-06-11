@@ -175,8 +175,10 @@ def test_invocation_path_does_not_compute_evidence_or_call_llm():
     assert "llm" not in source.lower()
 
 
-def test_current_plain_run_analysis_generation_call_remains_legacy_fallback():
+def test_current_run_analysis_generation_call_uses_explicit_contract_bundle_helper():
     source = (ROOT / "scripts" / "run_analysis.py").read_text(encoding="utf-8")
 
-    assert "dashboard_file = generate_html_dashboard(report_data)" in source
-    assert "dashboard_file = generate_dashboard_with_contract_screen_render_bundle" not in source
+    assert "build_production_dashboard_screen_render_bundle(" in source
+    assert "report_data" in source
+    assert "dashboard_file = generate_dashboard_with_contract_screen_render_bundle" in source
+    assert "dashboard_file = generate_html_dashboard(report_data)" not in source

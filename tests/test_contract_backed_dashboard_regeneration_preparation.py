@@ -166,7 +166,7 @@ def test_regeneration_readiness_guard_public_writer_accepts_contract_bundle():
     assert "contract_screen_render_bundle" in page_builder_signature.parameters
 
 
-def test_current_src_and_script_generation_callers_do_not_pass_contract_bundle():
+def test_current_src_and_script_generation_callers_use_contract_bundle_path():
     production_sources = [
         path
         for root in (ROOT / "src", ROOT / "scripts")
@@ -187,10 +187,11 @@ def test_current_src_and_script_generation_callers_do_not_pass_contract_bundle()
     run_analysis_source = (ROOT / "scripts" / "run_analysis.py").read_text(
         encoding="utf-8"
     )
-    assert "dashboard_file = generate_html_dashboard(report_data)" in run_analysis_source
-    assert "dashboard_file = generate_dashboard_with_contract_screen_render_bundle" not in (
+    assert "build_production_dashboard_screen_render_bundle(" in run_analysis_source
+    assert "dashboard_file = generate_dashboard_with_contract_screen_render_bundle" in (
         run_analysis_source
     )
+    assert "dashboard_file = generate_html_dashboard(report_data)" not in run_analysis_source
 
 
 def test_artifact_fingerprints_unchanged_after_smoke_page_builder_calls():

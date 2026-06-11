@@ -13,6 +13,18 @@ from src.reporting.dashboard.renderers.screen6_renderer import render_screen6_le
 from src.reporting.dashboard.view_models.screen6_learning_view_model import build_screen6_learning_view_model
 
 
+RAW_DUMP_MARKERS = (
+    "<pre",
+    "{ domain:",
+    "{ row_id:",
+    "values:",
+    "source_evidence_ids:",
+    "visualization_id:",
+    "Allowed visualizations",
+    "CONTRACT_SCREEN6_SMOKE_FRAGMENT",
+)
+
+
 def selected_scope():
     return build_selected_review_scope_contract(
         source_mode=SourceMode.EXISTING_EVIDENCE,
@@ -27,11 +39,13 @@ def learning_payload():
         "rows": [
             {
                 "row_id": "learning-row",
-                "learning_candidate": "candidate-1",
-                "governance_status": "pending_review",
-                "memory_policy": "approval_required",
-                "approval_boundary": "human_gate",
-                "activation_boundary": "not_active",
+                "values": {
+                    "learning_candidate": "candidate-1",
+                    "governance_status": "pending_review",
+                    "memory_policy": "approval_required",
+                    "approval_boundary": "human_gate",
+                    "activation_boundary": "not_active",
+                },
             }
         ],
         "confidence_basis": [{"basis_id": "learning-confidence", "confidence": "medium"}],
@@ -44,25 +58,45 @@ def learning_model(**payloads):
     return build_screen6_learning_view_model(pack)
 
 
-def test_screen6_renderer_renders_learning_governance_evidence():
+def test_screen6_renderer_renders_learning_governance_cards():
     html = render_screen6_learning(learning_model(learning_governance_payload=learning_payload()))
 
     assert "Learning / Governance" in html
-    assert "learning-row" in html
+    assert "Learning/governance state" in html
+    assert "Learning/governance cards" in html
     assert "candidate-1" in html
     assert "pending_review" in html
     assert "approval_required" in html
     assert "human_gate" in html
+    assert "not_active" in html
     assert "<script" not in html.lower()
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    _assert_no_raw_dump(html)
 
 
-def test_screen6_renderer_renders_missing_unavailable_and_stale_governance_states():
-    missing = render_screen6_learning(learning_model())
-    unavailable = render_screen6_learning(
-        learning_model(learning_governance_payload={"llm_text": "approve", "rows": [{"row_id": "x"}]})
-    )
-    stale = render_screen6_learning(
+def test_screen6_renderer_renders_explicit_missing_governance_evidence():
+    html = render_screen6_learning(learning_model())
+
+    assert "Learning/governance evidence missing" in html
+    assert "Missing evidence" in html
+    assert "payload_missing" in html
+    _assert_no_raw_dump(html)
+
+
+def test_screen6_renderer_does_not_activate_learning_or_render_llm_governance():
+    html = render_screen6_learning(learning_model(learning_governance_payload={"llm_text": "activate"}))
+
+    assert "activate" not in html
+    assert "activate_learning" not in html
+    assert "activated" not in html
+    assert "llm_text" not in html
+    assert "Learning/governance cards" not in html
+    assert "Unavailable evidence" in html
+    _assert_no_raw_dump(html)
+
+
+def test_screen6_renderer_renders_stale_governance_state_without_raw_dump():
+    html = render_screen6_learning(
         learning_model(
             learning_governance_payload={
                 "evidence_ids": ["learning-evidence"],
@@ -72,23 +106,9 @@ def test_screen6_renderer_renders_missing_unavailable_and_stale_governance_state
         )
     )
 
-    assert "Missing evidence" in missing
-    assert "payload_missing" in missing
-    assert "Unavailable evidence" in unavailable
-    assert "payload_rejected" in unavailable
-    assert "approve" not in unavailable
-    assert "Stale evidence" in stale
-    assert "payload_stale" in stale
-
-
-def test_screen6_renderer_does_not_activate_learning_or_render_llm_governance():
-    html = render_screen6_learning(learning_model(learning_governance_payload={"llm_text": "activate"}))
-
-    assert "activate" not in html
-    assert "activate_learning" not in html
-    assert "activated" not in html
-    assert "Learning candidates" not in html
-    assert "llm_text" not in html
+    assert "Stale evidence" in html
+    assert "payload_stale" in html
+    _assert_no_raw_dump(html)
 
 
 def test_screen6_renderer_import_boundary():
@@ -105,6 +125,11 @@ def test_screen6_renderer_import_boundary():
         "runtime",
     )
     assert not any(fragment in name.lower() for name in imports for fragment in forbidden)
+
+
+def _assert_no_raw_dump(html):
+    for marker in RAW_DUMP_MARKERS:
+        assert marker not in html
 
 
 def _imports_for(imported_module):

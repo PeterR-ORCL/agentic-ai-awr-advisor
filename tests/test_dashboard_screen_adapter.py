@@ -80,7 +80,13 @@ def payload(name):
         "evidence_ids": [f"{name}-evidence"],
         "rows": [{"row_id": f"{name}-row", "metric": name, "value": 7}],
         "metrics": {f"{name}_metric": 7},
-        "trends": [{"trend_name": f"{name}-trend", "direction": "flat"}],
+        "trends": [
+            {
+                "trend_name": f"{name}-trend",
+                "direction": "flat",
+                "points": [{"index": 0, "value": 3}, {"index": 1, "value": 7}],
+            }
+        ],
         "summary": f"{name} evidence",
     }
 
@@ -263,23 +269,24 @@ def test_invalid_selected_scope_blocks_payload_evidence_and_renders_unavailable_
 def test_screen_outputs_remain_domain_scoped():
     bundle = build_bundle(**full_payloads())
 
-    assert "diagnostic-row" in bundle.screen3_html
+    assert "Diagnostic Snapshot" in bundle.screen3_html
+    assert "Top diagnostic drivers" in bundle.screen3_html
     assert "comparative-row" not in bundle.screen3_html
     assert "comparison_delta" not in bundle.screen3_html
     assert "target_a_vs_target_b_delta" not in bundle.screen3_html
 
-    assert "historical-row" in bundle.screen4_html
-    assert "comparative-row" in bundle.screen4_html
-    assert "deep-row" in bundle.screen4_html
+    assert "Historical Review evidence cards" in bundle.screen4_html
+    assert "Comparative Review evidence cards" in bundle.screen4_html
+    assert "Deep Analysis evidence cards" in bundle.screen4_html
     assert "diagnostic-row" not in bundle.screen4_html
     assert "action-row" not in bundle.screen4_html
     assert "learning-row" not in bundle.screen4_html
 
-    assert "action-row" in bundle.screen5_html
+    assert "Recommendation/action cards" in bundle.screen5_html
     assert "diagnostic-row" not in bundle.screen5_html
     assert "learning-row" not in bundle.screen5_html
 
-    assert "learning-row" in bundle.screen6_html
+    assert "Learning/governance cards" in bundle.screen6_html
     assert "action-row" not in bundle.screen6_html
     assert "diagnostic-row" not in bundle.screen6_html
 
@@ -323,12 +330,12 @@ def test_dynamic_visuals_appear_only_when_allowed_by_view_model_data():
     present = build_bundle(**full_payloads())
     missing = build_bundle(provenance="deterministic_builder")
 
-    assert "Allowed visualizations" in present.screen4_html
-    assert "Allowed visualizations" in present.screen5_html
-    assert "Allowed visualizations" in present.screen6_html
-    assert "allowed-visualizations" not in missing.screen4_html
-    assert "allowed-visualizations" not in missing.screen5_html
-    assert "allowed-visualizations" not in missing.screen6_html
+    assert 'data-visual-kind="time-series"' in present.screen4_html
+    assert "Allowed visualizations" not in all_html(present)
+    assert "visualization_id" not in all_html(present)
+    assert "source_evidence_ids" not in all_html(present)
+    assert 'data-visual-kind="time-series"' not in missing.screen4_html
+    assert "Missing evidence" in missing.screen4_html
     assert "show everything" not in all_html(present).lower()
     assert "decorative" not in all_html(present).lower()
 

@@ -61,6 +61,27 @@ from src.reporting.html_dashboard import (
     generate_html_dashboard,
 )
 
+
+def generate_dashboard_with_contract_screen_render_bundle(
+    report_data: dict[str, Any],
+    *,
+    contract_screen_render_bundle: Any,
+    output_file: str,
+) -> str:
+    """Generate dashboard artifacts only with an explicit contract-backed bundle."""
+
+    if contract_screen_render_bundle is None:
+        raise ValueError(
+            "contract_screen_render_bundle is required for contract-backed "
+            "dashboard regeneration"
+        )
+    return generate_html_dashboard(
+        report_data,
+        output_file=output_file,
+        contract_screen_render_bundle=contract_screen_render_bundle,
+    )
+
+
 SNAPSHOT_TIME_FORMATS = (
     "%d-%b-%y %H:%M:%S",
     "%d-%b-%Y %H:%M:%S",

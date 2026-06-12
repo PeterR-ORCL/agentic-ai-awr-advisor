@@ -30,9 +30,16 @@ class SourceMode(str, Enum):
 
 class ReviewFlowKind(str, Enum):
     SINGLE_AWR = "single_awr"
+    RUNTIME_SCOPE = "runtime_scope"
     HISTORICAL = "historical"
+    HISTORICAL_MULTI_SNAPSHOT = "historical_multi_snapshot"
     COMPARATIVE = "comparative"
+    COMPARISON = "comparison"
     DEEP_ANALYSIS = "deep_analysis"
+    FLEET = "fleet"
+    PREDICTIVE_SIZING = "predictive_sizing"
+    COMPARATIVE_SIZING = "comparative_sizing"
+    HEALTHCHECK = "healthcheck"
     UNAVAILABLE = "unavailable"
 
 
@@ -109,6 +116,14 @@ GENERATED_ARTIFACT_INPUT_FIELDS = {
     "html",
     "html_path",
 }
+SELECTED_SCOPE_PRODUCT_GUARDRAILS = (
+    "browser/localStorage/cache cannot create selected truth",
+    "generated HTML cannot create selected truth",
+    "LLM cannot create selected truth",
+    "single_awr scope cannot be polluted by historical_multi_snapshot context",
+    "comparison is unavailable unless Target A/B are deterministically resolved",
+    "predictive/comparative sizing are unavailable unless real sizing contracts exist",
+)
 
 
 def _clean_string(value: Any) -> str | None:
@@ -724,6 +739,12 @@ class SelectedReviewScopeContract:
     validation_status: ScopeValidationStatus = ScopeValidationStatus.INVALID
     validation_errors: tuple[ScopeValidationIssue, ...] = ()
     warnings: tuple[ScopeValidationIssue, ...] = ()
+    fleet_cohort: Mapping[str, Any] = field(default_factory=dict)
+    source_of_truth: Mapping[str, Any] = field(default_factory=dict)
+    freshness: Mapping[str, Any] = field(default_factory=dict)
+    unsupported_states: tuple[str, ...] = ()
+    missing_states: tuple[str, ...] = ()
+    internal_refs: Mapping[str, Any] = field(default_factory=dict)
 
     def selected_flow_identity(self) -> SelectedFlowIdentity:
         return SelectedFlowIdentity(

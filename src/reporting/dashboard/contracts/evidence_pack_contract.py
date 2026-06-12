@@ -99,6 +99,15 @@ FORBIDDEN_AUTHORITY_KEYS = {
     "ui_flags",
     "ui_selector_label",
 }
+EVIDENCE_PACK_PRODUCT_GUARDRAILS = (
+    "selected diagnostic evidence is not the same as supporting historical context",
+    "historical context must be labeled supporting/contextual",
+    "comparison evidence requires deterministic comparison contract",
+    "deep analysis evidence requires real deep-analysis input contract",
+    "visualization evidence is renderer input only",
+    "allowed_visualizations must never be user-facing evidence",
+    "debug/internal refs must not appear in first-fold product UI",
+)
 
 
 def _clean_string(value: Any) -> str | None:
@@ -765,6 +774,17 @@ class EvidencePackContract:
     validation_status: EvidencePackValidationStatus
     validation_errors: tuple[EvidenceIssue, ...] = ()
     warnings: tuple[EvidenceIssue, ...] = ()
+    selected_scope_ref: Mapping[str, Any] = field(default_factory=dict)
+    selected_diagnostic_evidence: Mapping[str, Any] = field(default_factory=dict)
+    supporting_historical_context: tuple[Mapping[str, Any], ...] = ()
+    comparison_evidence: Mapping[str, Any] = field(default_factory=dict)
+    recommendation_evidence: Mapping[str, Any] = field(default_factory=dict)
+    sizing_evidence: Mapping[str, Any] = field(default_factory=dict)
+    healthcheck_evidence: Mapping[str, Any] = field(default_factory=dict)
+    visualization_evidence: tuple[Mapping[str, Any], ...] = ()
+    unavailable_states: tuple[Mapping[str, Any], ...] = ()
+    debug_metadata: Mapping[str, Any] = field(default_factory=dict)
+    internal_refs: Mapping[str, Any] = field(default_factory=dict)
 
     def identity(self) -> EvidencePackIdentity:
         return EvidencePackIdentity(
@@ -1171,4 +1191,3 @@ def _dedupe_issues(issues: Sequence[EvidenceIssue]) -> tuple[EvidenceIssue, ...]
         seen.add(key)
         deduped.append(issue)
     return tuple(deduped)
-

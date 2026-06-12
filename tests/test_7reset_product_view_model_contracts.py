@@ -730,11 +730,12 @@ def test_visual_contracts_forbid_synthetic_and_metadata_only_visuals():
         assert "allowed_visualizations" not in annotations, (
             f"{contract_name} must be a real data/provenance contract; allowed_visualizations is renderer metadata."
         )
+        normalized_source = _normalize(source)
         for phrase in ("synthetic_data_allowed", "false", "unavailable_state"):
-            assert phrase in _normalize(source), (
+            assert _normalize(phrase).strip() in normalized_source, (
                 f"{contract_name} must forbid synthetic/static visuals and require unavailable state for missing data."
             )
-        assert "svg" not in _normalize(source) or "fake static svg is not evidence" in _normalize(source), (
+        assert "svg" not in normalized_source or "fake static svg is not evidence" in normalized_source, (
             f"{contract_name} must not treat fake/static SVG as evidence."
         )
 

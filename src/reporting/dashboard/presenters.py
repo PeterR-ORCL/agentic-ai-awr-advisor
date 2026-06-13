@@ -116,6 +116,7 @@ SELECTED_SCOPE_MAPPING_AUTHORITY_FIELDS = (
     "contract_version",
     "flow_kind",
     "validation_status",
+    "source_of_truth",
     "provenance",
 )
 PRODUCT_VIEW_MODEL_VERSION = "7reset.product.presenter.v1"

@@ -784,6 +784,7 @@ def _historical_mode_panel(
     supporting_historical_context = evidence_channels["supporting_historical_context"]
     ready = _has_evidence(temporal_evidence) and flow_kind in TEMPORAL_FLOW_KINDS
     availability = "ready" if ready else ("partial" if _has_evidence(supporting_historical_context) else "unavailable")
+    visuals = _visual_contracts(evidence_channels, "historical_supporting_context")
     unavailable_states = () if availability != "unavailable" else (
         _unavailable_state(
             "screen4-historical-unavailable",
@@ -794,6 +795,12 @@ def _historical_mode_panel(
             ("temporal_evidence",),
             "historical_supporting_context",
         ),
+    )
+    unavailable_states = unavailable_states + _visual_contract_unavailable_states(
+        mode="historical",
+        availability=availability,
+        visuals=visuals,
+        scope_classification="historical_supporting_context",
     )
     return EvidenceReviewModePanel(
         mode="historical",
@@ -810,7 +817,7 @@ def _historical_mode_panel(
                 supporting_historical_context,
             ),
         ),
-        visuals=_visual_contracts(evidence_channels, "historical_supporting_context"),
+        visuals=visuals,
         evidence_table=_display_rows(temporal_evidence, "historical_supporting_context"),
         unavailable_states=unavailable_states,
         llm_explanation=_llm_explanation_boundary(evidence_pack_contract),
@@ -826,6 +833,7 @@ def _comparative_mode_panel(
     comparison_evidence = evidence_channels["comparison_evidence"]
     deterministic_comparison_ready = _comparison_contract_ready(selected_scope_contract, flow_kind, comparison_evidence)
     availability = "ready" if deterministic_comparison_ready else "unavailable"
+    visuals = _visual_contracts(evidence_channels, "comparative_output")
     unavailable_states = () if deterministic_comparison_ready else (
         _unavailable_state(
             "screen4-comparative-unavailable",
@@ -837,6 +845,12 @@ def _comparative_mode_panel(
             "comparative_output",
         ),
     )
+    unavailable_states = unavailable_states + _visual_contract_unavailable_states(
+        mode="comparative",
+        availability=availability,
+        visuals=visuals,
+        scope_classification="comparative_output",
+    )
     return EvidenceReviewModePanel(
         mode="comparative",
         availability=availability,
@@ -847,7 +861,7 @@ def _comparative_mode_panel(
         secondary_sections=(
             _evidence_section("screen4-n-way-comparison", "N-way multi target comparison", "comparative_output", comparison_evidence),
         ),
-        visuals=_visual_contracts(evidence_channels, "comparative_output"),
+        visuals=visuals,
         evidence_table=_display_rows(comparison_evidence, "comparative_output"),
         unavailable_states=unavailable_states,
         llm_explanation=_llm_explanation_boundary(evidence_pack_contract),
@@ -862,6 +876,7 @@ def _deep_analysis_mode_panel(
     deep_analysis_detail_evidence = evidence_channels["deep_analysis_evidence"]
     ready = _has_evidence(deep_analysis_detail_evidence)
     availability = "ready" if ready else ("partial" if flow_kind in SINGLE_SCOPE_FLOW_KINDS else "unavailable")
+    visuals = _visual_contracts(evidence_channels, "deep_analysis_current_scope")
     unavailable_states = () if ready else (
         _unavailable_state(
             "screen4-deep-analysis-unavailable",
@@ -872,6 +887,12 @@ def _deep_analysis_mode_panel(
             ("deep_analysis_evidence",),
             "deep_analysis_current_scope",
         ),
+    )
+    unavailable_states = unavailable_states + _visual_contract_unavailable_states(
+        mode="deep_analysis",
+        availability=availability,
+        visuals=visuals,
+        scope_classification="deep_analysis_current_scope",
     )
     return EvidenceReviewModePanel(
         mode="deep_analysis",
@@ -886,7 +907,7 @@ def _deep_analysis_mode_panel(
             ),
         ),
         secondary_sections=(),
-        visuals=_visual_contracts(evidence_channels, "deep_analysis_current_scope"),
+        visuals=visuals,
         evidence_table=_display_rows(deep_analysis_detail_evidence, "deep_analysis_current_scope"),
         unavailable_states=unavailable_states,
         llm_explanation=_llm_explanation_boundary(evidence_pack_contract),
@@ -1057,6 +1078,41 @@ def _visual_contracts(
     return tuple(visuals)
 
 
+def _visual_contract_unavailable_states(
+    *,
+    mode: str,
+    availability: str,
+    visuals: tuple[TimeSeriesVisual | DistributionVisual | ViolinVisual | ComparisonDeltaVisual, ...],
+    scope_classification: ScopeClassification,
+) -> tuple[UnavailableVisualState, ...]:
+    if availability not in {"ready", "partial"} or visuals:
+        return ()
+    return (
+        UnavailableVisualState(
+            state_id=f"screen4-{mode}-visual-evidence-unavailable",
+            reason_code="visual_evidence_unavailable",
+            title="Visual evidence unavailable",
+            message=(
+                "Evidence exists for this mode, but no explicit visualization_evidence "
+                "contract was supplied."
+            ),
+            required_contract="visualization_evidence",
+            missing_fields=("visualization_evidence",),
+            scope_classification=scope_classification,
+            prohibited_substitutes=(
+                "generated_html",
+                "browser_cache",
+                "llm_text",
+                "static_fake_visual",
+                "allowed_visualizations",
+            ),
+            next_deterministic_step=(
+                "Produce a deterministic visualization_evidence contract before rendering a visual."
+            ),
+        ),
+    )
+
+
 def _visual_unavailable_state(
     item: Any,
     required_contract: str,
@@ -1111,4 +1167,3 @@ def _internal_refs(
         )
         if ref
     )
-

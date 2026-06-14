@@ -5,6 +5,7 @@ __pycache__/
 data/output/
 Old_Versions/
 .env
+.env.secret
 .venv
 .flake8
 .DS_Store

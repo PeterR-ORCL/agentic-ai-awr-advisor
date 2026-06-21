@@ -390,8 +390,8 @@ def _domain_lenses_from_screen4(
     view_model: Screen4EvidenceReviewViewModel,
     panels: tuple[EvidenceReviewModePanel, ...],
 ) -> tuple[HandoffOption, ...]:
-    evidence_text = " ".join(
-        item.lower()
+    evidence_tokens = set(
+        token
         for panel in panels
         for item in (
             panel.first_fold_summary,
@@ -399,6 +399,7 @@ def _domain_lenses_from_screen4(
             *(_row_labels(panel)),
         )
         if item
+        for token in _normalized_tokens(item)
     )
     has_any_rows = any(panel.evidence_table for panel in panels)
     default_availability = "partial" if has_any_rows else "unavailable"
@@ -408,7 +409,7 @@ def _domain_lenses_from_screen4(
         if label == "All Domains":
             availability = active_availability if active_availability != "blocked" else "partial"
         else:
-            availability = "partial" if label.lower() in evidence_text else default_availability
+            availability = "partial" if label.lower() in evidence_tokens else default_availability
         lenses.append(
             HandoffOption(
                 label=label,
@@ -474,6 +475,11 @@ def _row_labels(panel: EvidenceReviewModePanel) -> tuple[str, ...]:
 
 def _mode_label(mode: str) -> str:
     return mode.replace("_", " ").title()
+
+
+def _normalized_tokens(value: str) -> tuple[str, ...]:
+    text = "".join(character.lower() if character.isalnum() else " " for character in value)
+    return tuple(token for token in text.split() if token)
 
 
 def _component_contracts(view_model: ProductViewModel) -> tuple[str, ...]:

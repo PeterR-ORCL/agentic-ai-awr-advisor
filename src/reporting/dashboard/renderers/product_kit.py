@@ -74,6 +74,7 @@ EVIDENCE_ROW_FIELDS: tuple[str, ...] = (
     "freshness_status",
     "scope_classification",
 )
+REQUIRED_EVIDENCE_ROW_FIELDS: tuple[str, ...] = EVIDENCE_ROW_FIELDS[:-1]
 
 FORBIDDEN_TEXT_MARKERS: tuple[str, ...] = (
     "selected_flow_id",
@@ -336,7 +337,7 @@ def _normalize_evidence_row(row: Any) -> EvidenceDisplayRow:
     if isinstance(row, EvidenceDisplayRow):
         return row
     if isinstance(row, Mapping):
-        if not set(EVIDENCE_ROW_FIELDS).issubset(row):
+        if not set(REQUIRED_EVIDENCE_ROW_FIELDS).issubset(row):
             raise ValueError("EvidenceTable rows must be shaped EvidenceDisplayRow mappings.")
         return EvidenceDisplayRow(
             label=_text(row.get("label")),
@@ -347,7 +348,7 @@ def _normalize_evidence_row(row: Any) -> EvidenceDisplayRow:
             freshness_status=_text(row.get("freshness_status")),
             scope_classification=_text(row.get("scope_classification"), "current_scope"),
         )
-    if _has_fields(row, EVIDENCE_ROW_FIELDS):
+    if _has_fields(row, REQUIRED_EVIDENCE_ROW_FIELDS):
         return EvidenceDisplayRow(
             label=_text(_field(row, "label")),
             value=_field(row, "value"),
@@ -416,8 +417,10 @@ def _safe_body(value: Any) -> str:
 
 
 def _safe_text(value: Any, *, allow_internal: bool = False) -> str:
+    if _is_raw_payload(value):
+        return escape(PRODUCT_SAFE_PLACEHOLDER, quote=True)
     text = _text(value)
-    if not allow_internal and _contains_forbidden_text(text):
+    if not allow_internal and (_contains_forbidden_text(text) or _looks_like_object_repr(text)):
         text = "Blocked non-authoritative product content."
     return escape(text, quote=True)
 
@@ -428,7 +431,21 @@ def _safe_status(value: Any) -> str:
 
 
 def _contains_forbidden_text(value: str) -> bool:
-    return any(marker in value for marker in FORBIDDEN_TEXT_MARKERS)
+    normalized_value = value.lower()
+    return any(marker.lower() in normalized_value for marker in FORBIDDEN_TEXT_MARKERS)
+
+
+def _is_raw_payload(value: Any) -> bool:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return False
+    if getattr(value, "value", None) is not None:
+        return False
+    return isinstance(value, Mapping) or _is_sequence(value) or is_dataclass(value)
+
+
+def _looks_like_object_repr(value: str) -> bool:
+    normalized = value.strip()
+    return normalized.startswith("<") and " object at 0x" in normalized and normalized.endswith(">")
 
 
 def _data_attrs(values: Mapping[str, Any]) -> str:

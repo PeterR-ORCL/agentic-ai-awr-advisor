@@ -1,103 +1,263 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_NAME="Agentic AI AWR Advisor"
 PROJECT_DIR="${AWRAI_PROJECT_DIR:-$HOME/Projects/agentic-ai-awr-advisor}"
-ENV_FILE="$PROJECT_DIR/.env"
+ENV_FILE="${AWRAI_ENV_FILE:-$PROJECT_DIR/.env}"
+EXPECTED_BRANCH="${AWRAI_BRANCH:-phase7-final-operational-certification}"
+REMOTE="${AWRAI_REMOTE:-origin}"
+REMOTE_REF="$REMOTE/$EXPECTED_BRANCH"
 
-present_or_missing() {
+line() {
+  printf -- '----------------------------------------\n'
+}
+
+field() {
+  local label="$1"
+  local value="${2:-}"
+  if [[ -z "$value" ]]; then
+    value="unset"
+  fi
+  printf '  %-24s %s\n' "$label:" "$value"
+}
+
+set_status() {
+  local value="${1:-}"
+  if [[ -n "$value" ]]; then
+    printf 'set'
+  else
+    printf 'unset'
+  fi
+}
+
+exists_status() {
+  local path="${1:-}"
+  if [[ -n "$path" && -e "$path" ]]; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+}
+
+cmd_path() {
   local name="$1"
-  if [[ -n "${!name:-}" ]]; then
-    printf 'present'
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
   else
     printf 'missing'
   fi
 }
 
-tool_status() {
-  local name="$1"
-  if command -v "$name" >/dev/null 2>&1; then
-    printf 'OK: %s (%s)\n' "$name" "$(command -v "$name")"
+project_python() {
+  if [[ -x "$PROJECT_DIR/.venv/bin/python" ]]; then
+    printf '%s' "$PROJECT_DIR/.venv/bin/python"
+  elif command -v python >/dev/null 2>&1; then
+    command -v python
+  elif command -v python3 >/dev/null 2>&1; then
+    command -v python3
   else
-    printf 'MISSING: %s\n' "$name"
+    printf 'missing'
+  fi
+}
+
+project_pip() {
+  if [[ -x "$PROJECT_DIR/.venv/bin/pip" ]]; then
+    printf '%s' "$PROJECT_DIR/.venv/bin/pip"
+  elif command -v pip >/dev/null 2>&1; then
+    command -v pip
+  elif command -v pip3 >/dev/null 2>&1; then
+    command -v pip3
+  else
+    printf 'missing'
+  fi
+}
+
+version_for_tool() {
+  local label="$1"
+  local path="$2"
+  local version=""
+
+  if [[ -z "$path" || "$path" == "missing" ]]; then
+    printf 'version: missing'
+    return 0
+  fi
+
+  case "$label" in
+    git)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    python|python3)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    pip|pip3)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    node)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    npm)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    sql)
+      version="$($path -V 2>&1 | head -n 1 || true)"
+      ;;
+    oci)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+    rclone)
+      version="$($path version 2>&1 | head -n 1 || true)"
+      ;;
+    *)
+      version="$($path --version 2>&1 | head -n 1 || true)"
+      ;;
+  esac
+
+  if [[ -z "$version" ]]; then
+    printf 'version: unavailable'
+  else
+    printf '%s' "$version"
+  fi
+}
+
+tool_check() {
+  local label="$1"
+  local path="$2"
+  local version
+
+  if [[ -z "$path" || "$path" == "missing" ]]; then
+    printf 'MISSING: %s (missing) - version: missing\n' "$label"
+    return 0
+  fi
+
+  version="$(version_for_tool "$label" "$path")"
+  printf 'OK: %s (%s) - %s\n' "$label" "$path" "$version"
+}
+
+print_command_or_none() {
+  local output
+  output="$($@ 2>/dev/null || true)"
+  if [[ -n "$output" ]]; then
+    printf '%s\n' "$output"
+  else
+    printf '  none\n'
+  fi
+}
+
+load_env() {
+  if [[ ! -r "$ENV_FILE" ]]; then
+    return 0
+  fi
+
+  local restore_allexport=0
+  if [[ ! -o allexport ]]; then
+    set -a
+    restore_allexport=1
+  fi
+
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+
+  if (( restore_allexport )); then
+    set +a
   fi
 }
 
 if [[ ! -d "$PROJECT_DIR" ]]; then
-  echo "Project directory not found: $PROJECT_DIR" >&2
+  printf 'Project directory not found: %s\n' "$PROJECT_DIR" >&2
   exit 1
 fi
 
 cd "$PROJECT_DIR"
+load_env
 
-if [[ -r "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
+PYTHON_CMD="$(project_python)"
+PIP_CMD="$(project_pip)"
+CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+
+printf '%s preflight\n' "$PROJECT_NAME"
+line
+
+printf 'Project\n'
+field 'Project dir' "$PROJECT_DIR"
+field 'Env file' "$ENV_FILE"
+field 'Env file readable' "$(exists_status "$ENV_FILE")"
+field 'Expected branch' "$EXPECTED_BRANCH"
+printf '\n'
+
+printf 'Git\n'
+field 'Branch' "$CURRENT_BRANCH"
+field 'Remote' "$REMOTE"
+field 'Remote ref' "$REMOTE_REF"
+if git rev-parse --verify "$REMOTE_REF" >/dev/null 2>&1; then
+  field 'Ahead/behind' "$(git rev-list --left-right --count "$REMOTE_REF"...HEAD 2>/dev/null || printf 'unavailable')"
+else
+  field 'Ahead/behind' 'remote ref unavailable'
 fi
+printf '\nRecent commits:\n'
+print_command_or_none git log --oneline -12
+printf '\nGit status:\n'
+print_command_or_none git status --short
+printf '\nTracked diff stat:\n'
+print_command_or_none git diff --stat
+printf '\nTracked diff files:\n'
+print_command_or_none git diff --name-only
+printf '\nStaged files:\n'
+print_command_or_none git diff --cached --name-only
+printf '\n'
 
-echo "Project: $PROJECT_DIR"
-echo "Branch: $(git branch --show-current 2>/dev/null || true)"
-echo
+printf 'Environment\n'
+field 'APP_MODE' "${APP_MODE:-unset}"
+field 'USE_OCI' "${USE_OCI:-unset}"
+field 'USE_LLM' "${USE_LLM:-unset}"
+field 'ADB_USER' "${ADB_USER:-unset}"
+field 'ADB_DSN' "${ADB_DSN:-unset}"
+field 'TNS_ADMIN' "${TNS_ADMIN:-unset}"
+field 'TNS_ADMIN exists' "$(exists_status "${TNS_ADMIN:-}")"
+field 'OCI_REGION' "${OCI_REGION:-unset}"
+field 'ADB_OCID' "$(set_status "${ADB_OCID:-}")"
+field 'OCI_CONFIG_FILE' "$(set_status "${OCI_CONFIG_FILE:-}")"
+field 'OCI_CONFIG_PROFILE' "${OCI_CONFIG_PROFILE:-${OCI_PROFILE:-unset}}"
+field 'OCI_AWR_PREFIX' "$(set_status "${OCI_AWR_PREFIX:-}")"
+printf '\n'
 
-echo "Recent commits:"
-git log --oneline -12 2>/dev/null || true
-echo
+printf 'AI settings\n'
+field 'AI_PROVIDER' "${AI_PROVIDER:-unset}"
+field 'OCI_MODEL' "${OCI_MODEL:-unset}"
+field 'OCI_MODEL_ID' "$(set_status "${OCI_MODEL_ID:-}")"
+field 'OCI_COMPARTMENT_ID' "$(set_status "${OCI_COMPARTMENT_ID:-}")"
+field 'OPENAI_MODEL' "${OPENAI_MODEL:-unset}"
+field 'OPENAI_API_KEY' "$(set_status "${OPENAI_API_KEY:-}")"
+printf '\n'
 
-echo "Git status:"
-git status --short 2>/dev/null || true
-echo
+printf 'Wallet\n'
+field 'Wallet path (TNS_ADMIN)' "${TNS_ADMIN:-unset}"
+field 'Wallet directory exists' "$(exists_status "${TNS_ADMIN:-}")"
+field 'tnsnames.ora' "$(exists_status "${TNS_ADMIN:-}/tnsnames.ora")"
+field 'sqlnet.ora' "$(exists_status "${TNS_ADMIN:-}/sqlnet.ora")"
+field 'cwallet.sso' "$(exists_status "${TNS_ADMIN:-}/cwallet.sso")"
+printf '\n'
 
-echo "Tracked diff stat:"
-git diff --stat 2>/dev/null || true
-echo
+printf 'Tool checks:\n'
+tool_check git "$(cmd_path git)"
+tool_check python "$PYTHON_CMD"
+tool_check python3 "$(cmd_path python3)"
+tool_check pip "$PIP_CMD"
+tool_check pip3 "$(cmd_path pip3)"
+tool_check node "$(cmd_path node)"
+tool_check npm "$(cmd_path npm)"
+tool_check sql "$(cmd_path sql)"
+tool_check oci "$(cmd_path oci)"
+tool_check rclone "$(cmd_path rclone)"
+printf '\n'
 
-echo "Tracked diff files:"
-git diff --name-only 2>/dev/null || true
-echo
-
-echo "Staged files:"
-git diff --cached --name-only 2>/dev/null || true
-echo
-
-echo "Environment: $ENV_FILE"
-printf 'APP_MODE=%s\n' "${APP_MODE:-unset}"
-printf 'USE_OCI=%s\n' "${USE_OCI:-unset}"
-printf 'USE_LLM=%s\n' "${USE_LLM:-unset}"
-printf 'ADB_USER=%s\n' "${ADB_USER:-missing}"
-printf 'ADB_DSN=%s\n' "${ADB_DSN:-missing}"
-printf 'TNS_ADMIN=%s\n' "${TNS_ADMIN:-missing}"
-printf 'OCI_REGION=%s\n' "${OCI_REGION:-missing}"
-printf 'ADB_OCID=%s\n' "$(present_or_missing ADB_OCID)"
-printf 'OCI_AWR_PREFIX=%s\n' "$(present_or_missing OCI_AWR_PREFIX)"
-echo
-
-echo "AI settings:"
-printf 'AI_PROVIDER=%s\n' "${AI_PROVIDER:-missing}"
-printf 'OCI_MODEL=%s\n' "${OCI_MODEL:-missing}"
-printf 'OCI_MODEL_ID=%s\n' "$(present_or_missing OCI_MODEL_ID)"
-printf 'OCI_COMPARTMENT_ID=%s\n' "$(present_or_missing OCI_COMPARTMENT_ID)"
-printf 'OPENAI_MODEL=%s\n' "${OPENAI_MODEL:-missing}"
-printf 'OPENAI_API_KEY=%s\n' "$(present_or_missing OPENAI_API_KEY)"
-echo
-
-echo "Tool checks:"
-tool_status git
-tool_status python
-tool_status python3
-tool_status pip
-tool_status pip3
-tool_status node
-tool_status npm
-tool_status sql
-tool_status oci
-tool_status rclone
-echo
-
-if [[ -n "${TNS_ADMIN:-}" ]]; then
-  if [[ -d "$TNS_ADMIN" ]]; then
-    echo "Wallet directory exists: $TNS_ADMIN"
-  else
-    echo "Wallet directory missing: $TNS_ADMIN"
-  fi
+printf 'Project markers\n'
+if [[ -e PHASE7_COMPLETE ]]; then
+  field 'PHASE7_COMPLETE file' 'EXISTS'
+else
+  field 'PHASE7_COMPLETE file' 'absent'
+fi
+if git tag --list | grep -q 'PHASE7_COMPLETE'; then
+  field 'PHASE7_COMPLETE tag' 'EXISTS'
+else
+  field 'PHASE7_COMPLETE tag' 'absent'
 fi

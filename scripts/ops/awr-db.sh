@@ -21,6 +21,9 @@ Connection modes:
   ADB_DB_CONNECT_MODE=prompt       Prompt for password in SQLcl
   ADB_DB_CONNECT_MODE=password     Use ADB_PASSWORD from .env
   ADB_DB_CONNECT_MODE=cloudconfig  Use ADB_WALLET_ZIP with SQLcl -cloudconfig
+
+AWR-specific fallback:
+  AWR_DB_CONNECT_MODE may be used when ADB_DB_CONNECT_MODE is unset.
 USAGE
 }
 
@@ -53,6 +56,72 @@ load_env() {
   [[ -n "${TNS_ADMIN:-}" ]] && export TNS_ADMIN
 }
 
+mask_set() {
+  local value="${1:-}"
+  if [[ -n "$value" ]]; then
+    printf 'set'
+  else
+    printf 'unset'
+  fi
+}
+
+yes_no_dir() {
+  local path="${1:-}"
+  if [[ -n "$path" && -d "$path" ]]; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+}
+
+yes_no_file() {
+  local path="${1:-}"
+  if [[ -n "$path" && -f "$path" ]]; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+}
+
+kv() {
+  local label="$1"
+  local value="${2:-}"
+  printf '  %-21s %s\n' "$label:" "${value:-unset}"
+}
+
+tool_version() {
+  local name="$1"
+  local path
+  path="$(command -v "$name" 2>/dev/null || true)"
+  if [[ -z "$path" ]]; then
+    printf 'version: missing'
+    return 0
+  fi
+
+  case "$name" in
+    sql)
+      "$path" -version 2>&1 | head -n 1 || printf 'version unavailable'
+      ;;
+    oci)
+      "$path" --version 2>&1 | head -n 1 || printf 'version unavailable'
+      ;;
+    *)
+      "$path" --version 2>&1 | head -n 1 || printf 'version unavailable'
+      ;;
+  esac
+}
+
+tool_status() {
+  local name="$1"
+  local path
+  path="$(command -v "$name" 2>/dev/null || true)"
+  if [[ -n "$path" ]]; then
+    printf 'OK: %s (%s) - %s\n' "$name" "$path" "$(tool_version "$name")"
+  else
+    printf 'MISSING: %s (missing) - version: missing\n' "$name"
+  fi
+}
+
 connect_mode() {
   if [[ -n "${ADB_DB_CONNECT_MODE:-}" ]]; then
     printf '%s\n' "$ADB_DB_CONNECT_MODE"
@@ -63,10 +132,16 @@ connect_mode() {
   fi
 }
 
+oci_profile_value() {
+  printf '%s\n' "${OCI_CONFIG_PROFILE:-${OCI_PROFILE:-}}"
+}
+
 build_oci_args_array() {
   OCI_ARGS=()
+  local profile
+  profile="$(oci_profile_value)"
   [[ -n "${OCI_CONFIG_FILE:-}" ]] && OCI_ARGS+=(--config-file "$OCI_CONFIG_FILE")
-  [[ -n "${OCI_CONFIG_PROFILE:-}" ]] && OCI_ARGS+=(--profile "$OCI_CONFIG_PROFILE")
+  [[ -n "$profile" ]] && OCI_ARGS+=(--profile "$profile")
   [[ -n "${OCI_REGION:-}" ]] && OCI_ARGS+=(--region "$OCI_REGION")
 }
 
@@ -75,35 +150,44 @@ show_env() {
   echo "--------------------------------"
   echo "Project:      $PROJECT_DIR"
   echo "Env file:     $ENV_FILE"
-  echo "APP_MODE:     ${APP_MODE:-unset}"
-  echo "ADB_USER:     ${ADB_USER:-unset}"
-  if [[ -n "${ADB_PASSWORD:-}" ]]; then
-    echo "ADB_PASSWORD: set"
-  else
-    echo "ADB_PASSWORD: unset"
-  fi
-  echo "ADB_DSN:      ${ADB_DSN:-unset}"
-  echo "TNS_ADMIN:    ${TNS_ADMIN:-unset}"
-  if [[ -n "${TNS_ADMIN:-}" && -d "${TNS_ADMIN:-}" ]]; then
-    echo "TNS exists:   yes"
-  else
-    echo "TNS exists:   no"
-  fi
-  echo "ADB_WALLET_ZIP: ${ADB_WALLET_ZIP:-unset}"
-  if [[ -n "${ADB_OCID:-}" ]]; then
-    echo "ADB_OCID:     set"
-  else
-    echo "ADB_OCID:     unset"
-  fi
-  echo "OCI_CONFIG_FILE: ${OCI_CONFIG_FILE:-unset}"
-  echo "OCI_CONFIG_PROFILE: ${OCI_CONFIG_PROFILE:-unset}"
-  echo "OCI_REGION:   ${OCI_REGION:-unset}"
-  if [[ -n "${OCI_AWR_PREFIX:-}" ]]; then
-    echo "OCI_AWR_PREFIX: set"
-  else
-    echo "OCI_AWR_PREFIX: unset"
-  fi
-  echo "CONNECT_MODE: $(connect_mode)"
+  echo
+
+  echo "Runtime:"
+  kv "APP_MODE" "${APP_MODE:-unset}"
+  kv "USE_OCI" "${USE_OCI:-unset}"
+  kv "USE_LLM" "${USE_LLM:-unset}"
+  echo
+
+  echo "Database:"
+  kv "ADB_USER" "${ADB_USER:-unset}"
+  kv "ADB_PASSWORD" "$(mask_set "${ADB_PASSWORD:-}")"
+  kv "ADB_DSN" "${ADB_DSN:-unset}"
+  kv "CONNECT_MODE" "$(connect_mode)"
+  kv "ADB_OCID" "$(mask_set "${ADB_OCID:-}")"
+  kv "ADB_WALLET_ZIP" "$(mask_set "${ADB_WALLET_ZIP:-}")"
+  echo
+
+  echo "Wallet:"
+  kv "Wallet path" "${TNS_ADMIN:-unset}"
+  kv "Wallet exists" "$(yes_no_dir "${TNS_ADMIN:-}")"
+  kv "tnsnames.ora" "$(yes_no_file "${TNS_ADMIN:-}/tnsnames.ora")"
+  kv "sqlnet.ora" "$(yes_no_file "${TNS_ADMIN:-}/sqlnet.ora")"
+  kv "cwallet.sso" "$(yes_no_file "${TNS_ADMIN:-}/cwallet.sso")"
+  echo
+
+  echo "OCI:"
+  kv "OCI_CONFIG_FILE" "${OCI_CONFIG_FILE:-unset}"
+  kv "OCI_CONFIG_PROFILE" "${OCI_CONFIG_PROFILE:-${OCI_PROFILE:-unset}}"
+  kv "OCI_REGION" "${OCI_REGION:-unset}"
+  echo
+
+  echo "Project-specific:"
+  kv "OCI_AWR_PREFIX" "$(mask_set "${OCI_AWR_PREFIX:-}")"
+  echo
+
+  echo "Tool checks:"
+  tool_status sql
+  tool_status oci
 }
 
 connect_db() {

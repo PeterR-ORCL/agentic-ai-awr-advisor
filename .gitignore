@@ -30,3 +30,8 @@ scoring_diagnostics_*.md
 __pycache__/
 
 .clinerules
+
+####################################
+# Local editor workspace state
+####################################
+.vscode/

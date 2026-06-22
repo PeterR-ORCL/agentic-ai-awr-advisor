@@ -28,3 +28,5 @@ validation_*.json
 scoring_diagnostics_*.json
 scoring_diagnostics_*.md
 __pycache__/
+
+.clinerules

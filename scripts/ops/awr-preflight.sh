@@ -261,3 +261,16 @@ if git tag --list | grep -q 'PHASE7_COMPLETE'; then
 else
   field 'PHASE7_COMPLETE tag' 'absent'
 fi
+
+
+SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
+printf '\n'
+if [[ -x "$SYNC_GUARD" ]]; then
+  "$SYNC_GUARD" work-ready
+else
+  printf 'Work safety:\n'
+  printf '  NOT safe to continue to work on Agentic AI AWR Advisor.\n'
+  printf '  Reasons:\n'
+  printf '    - sync guard is not executable or not found: %s\n' "$SYNC_GUARD"
+  exit 1
+fi

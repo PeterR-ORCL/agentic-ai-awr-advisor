@@ -277,6 +277,109 @@ repair_stale() {
   printf '\nRepair complete. Hold folder kept at:\n%s\n' "$hold"
 }
 
+append_work_ready_issue() {
+  local message="$1"
+  if [ -n "${WORK_READY_ISSUES:-}" ]; then
+    WORK_READY_ISSUES="${WORK_READY_ISSUES}
+"
+  fi
+  WORK_READY_ISSUES="${WORK_READY_ISSUES}    - $message"
+}
+
+work_ready_evaluate() {
+  local current tracked staged status unexpected values behind ahead
+  current="$(git branch --show-current 2>/dev/null || true)"
+
+  if [ "$current" != "$BRANCH" ]; then
+    append_work_ready_issue "expected branch $BRANCH, got ${current:-unknown}"
+  fi
+
+  if [ -e PHASE7_COMPLETE ]; then
+    append_work_ready_issue "PHASE7_COMPLETE file exists"
+  fi
+
+  if git tag --list | grep -q 'PHASE7_COMPLETE'; then
+    append_work_ready_issue "PHASE7_COMPLETE tag exists"
+  fi
+
+  tracked="$(git diff --name-only)"
+  if [ -n "$tracked" ]; then
+    append_work_ready_issue "tracked diffs present; commit, restore, or inspect them before work"
+  fi
+
+  staged="$(git diff --cached --name-only)"
+  if [ -n "$staged" ]; then
+    append_work_ready_issue "staged files present; commit or unstage them before work"
+  fi
+
+  status="$(git status --short)"
+  if [ -n "$status" ]; then
+    unexpected="$(printf '%s\n' "$status" | grep -Ev "$EXPECTED_UNTRACKED_REGEX" || true)"
+    if [ -n "$unexpected" ]; then
+      append_work_ready_issue "unexpected dirty paths present; only docs/forensics/ may be untracked"
+    fi
+  fi
+
+  if ! remote_exists; then
+    append_work_ready_issue "remote ref unavailable: $REMOTE_REF"
+  else
+    values="$(ahead_behind_values)"
+    behind="$(printf '%s' "$values" | awk '{print $1}')"
+    ahead="$(printf '%s' "$values" | awk '{print $2}')"
+
+    if [ "$behind" = "unknown" ] || [ "$ahead" = "unknown" ]; then
+      append_work_ready_issue "remote alignment could not be determined"
+    elif [ "$behind" != "0" ] && [ "$ahead" = "0" ]; then
+      append_work_ready_issue "local branch is behind $REMOTE_REF by $behind commit(s); run awr-start"
+    elif [ "$behind" = "0" ] && [ "$ahead" != "0" ]; then
+      append_work_ready_issue "local branch is ahead of $REMOTE_REF by $ahead commit(s); run awr-leave"
+    elif [ "$behind" != "0" ] && [ "$ahead" != "0" ]; then
+      append_work_ready_issue "local branch has diverged from $REMOTE_REF; manual Git review required"
+    fi
+  fi
+
+  [ -z "${WORK_READY_ISSUES:-}" ]
+}
+
+work_ready() {
+  cd_project
+  print_header "$PROJECT_NAME work readiness"
+  printf 'Project: %s\n' "$PWD"
+  printf 'Branch:  %s\n' "$(git branch --show-current 2>/dev/null || printf 'unknown')"
+  printf 'Remote:  %s\n' "$REMOTE_REF"
+  printf '\n'
+
+  WORK_READY_ISSUES=""
+  printf 'Refreshing %s with prune...\n' "$REMOTE"
+  if ! git fetch --all --prune >/dev/null 2>&1; then
+    append_work_ready_issue "unable to fetch remote refs from $REMOTE"
+  fi
+
+  work_ready_evaluate || true
+
+  printf '\nGit status:\n'
+  print_status_block
+  printf '\nTracked diff files:\n'
+  git diff --name-only
+  printf '\nStaged files:\n'
+  git diff --cached --name-only
+  printf '\n'
+  print_ahead_behind
+
+  printf '\nWork safety:\n'
+  if [ -z "${WORK_READY_ISSUES:-}" ]; then
+    printf '  Safe to continue to work on %s.\n' "$PROJECT_NAME"
+    return 0
+  fi
+
+  printf '  NOT safe to continue to work on %s.\n' "$PROJECT_NAME"
+  printf '  Reasons:\n'
+  printf '%s\n' "$WORK_READY_ISSUES"
+  printf '  Next step:\n'
+  printf '    Run awr-start if the branch is behind, awr-leave if only ahead, or inspect/commit/restore the listed changes.\n'
+  return 1
+}
+
 usage() {
   cat <<USAGE
 Usage:
@@ -284,6 +387,7 @@ Usage:
   scripts/ops/awr-sync-guard.sh before-leave
   scripts/ops/awr-sync-guard.sh before-start
   scripts/ops/awr-sync-guard.sh repair-stale
+  scripts/ops/awr-sync-guard.sh work-ready
 
 Environment overrides:
   AWRAI_PROJECT_DIR
@@ -302,6 +406,9 @@ case "$cmd" in
     ;;
   before-start)
     before_start
+    ;;
+  work-ready)
+    work_ready
     ;;
   repair-stale)
     repair_stale

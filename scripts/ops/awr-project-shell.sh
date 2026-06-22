@@ -121,4 +121,18 @@ fi
 echo "Run 'exit' to leave this isolated project environment."
 echo
 
+
+SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
+if [[ -x "$SYNC_GUARD" ]]; then
+  echo
+  "$SYNC_GUARD" work-ready
+else
+  echo
+  echo "Work safety:"
+  echo "  NOT safe to continue to work on Agentic AI AWR Advisor."
+  echo "  Reasons:"
+  echo "    - sync guard is not executable or not found: $SYNC_GUARD"
+  exit 1
+fi
+
 exec "${SHELL:-/bin/zsh}" -i

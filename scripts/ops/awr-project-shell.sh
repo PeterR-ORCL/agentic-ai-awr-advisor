@@ -124,11 +124,10 @@ echo "Branch: $GIT_BRANCH"
 
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Git status:"
-  status="$(git status --short)"
-  if [[ -n "$status" ]]; then
-    printf '%s\n' "$status"
-  else
+  if git diff --quiet && git diff --cached --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
     echo "clean"
+  else
+    git -c color.status=always status --short
   fi
 else
   echo "Git status: unavailable"

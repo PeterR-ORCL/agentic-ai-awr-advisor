@@ -125,7 +125,8 @@ echo "Branch: $GIT_BRANCH"
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Git status:"
   if git diff --quiet && git diff --cached --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
-    printf '\033[1mclean\033[0m\n'
+    printf '[1;32m✓ CLEAN[0m
+'
   else
     git -c color.status=always status --short
   fi

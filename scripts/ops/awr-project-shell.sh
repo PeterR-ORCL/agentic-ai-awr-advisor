@@ -26,6 +26,17 @@ fi
 
 cd "$PROJECT_DIR"
 
+SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
+if [[ -x "$SYNC_GUARD" ]]; then
+  "$SYNC_GUARD" before-start
+else
+  echo "Work safety:" >&2
+  echo "  NOT safe to continue to work on Agentic AI AWR Advisor." >&2
+  echo "  Reasons:" >&2
+  echo "    - sync guard is not executable or not found: $SYNC_GUARD" >&2
+  exit 1
+fi
+
 # Load all .env assignments into the environment so the child shell inherits them.
 set -a
 # shellcheck disable=SC1090
@@ -121,18 +132,5 @@ fi
 echo "Run 'exit' to leave this isolated project environment."
 echo
 
-
-SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
-if [[ -x "$SYNC_GUARD" ]]; then
-  echo
-  "$SYNC_GUARD" work-ready
-else
-  echo
-  echo "Work safety:"
-  echo "  NOT safe to continue to work on Agentic AI AWR Advisor."
-  echo "  Reasons:"
-  echo "    - sync guard is not executable or not found: $SYNC_GUARD"
-  exit 1
-fi
 
 exec "${SHELL:-/bin/zsh}" -i

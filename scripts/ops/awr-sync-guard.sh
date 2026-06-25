@@ -227,12 +227,30 @@ before_start() {
 
   assert_on_branch
   phase7_check
-  assert_no_tracked_or_staged_diffs
 
   printf '\nFetching %s with prune...\n' "$REMOTE"
   git fetch --all --prune
 
-  printf 'Pulling %s with fast-forward only...\n' "$REMOTE_REF"
+  local tracked staged status unexpected
+  tracked="$(git diff --name-only)"
+  staged="$(git diff --cached --name-only)"
+  status="$(git status --short)"
+  unexpected="$(printf '%s\n' "$status" | grep -Ev "$EXPECTED_UNTRACKED_REGEX" || true)"
+
+  if [ -n "$tracked" ] || [ -n "$staged" ] || [ -n "$unexpected" ]; then
+    printf '\n%s\n' "Local dirty state blocks automatic start/pull:" >&2
+    if [ -n "$status" ]; then
+      printf '%s\n' "$status" >&2
+    else
+      printf '%s\n' "status unavailable" >&2
+    fi
+    printf '\n' >&2
+    print_ahead_behind >&2
+    printf '\n%s\n' "NOT safe to start Agentic AI AWR Advisor." >&2
+    die "Clean, commit, restore, or quarantine local changes before awr-start can pull. Only docs/forensics/ may remain untracked."
+  fi
+
+  printf '\nPulling %s with fast-forward only...\n' "$REMOTE_REF"
   git pull --ff-only "$REMOTE" "$BRANCH"
 
   assert_no_tracked_or_staged_diffs

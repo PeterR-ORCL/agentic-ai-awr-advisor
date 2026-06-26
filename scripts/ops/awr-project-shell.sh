@@ -26,17 +26,6 @@ fi
 
 cd "$PROJECT_DIR"
 
-SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
-if [[ -x "$SYNC_GUARD" ]]; then
-  "$SYNC_GUARD" before-start
-else
-  echo "Work safety:" >&2
-  echo "  NOT safe to continue to work on Agentic AI AWR Advisor." >&2
-  echo "  Reasons:" >&2
-  echo "    - sync guard is not executable or not found: $SYNC_GUARD" >&2
-  exit 1
-fi
-
 # Load all .env assignments into the environment so the child shell inherits them.
 set -a
 # shellcheck disable=SC1090
@@ -102,7 +91,7 @@ if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/n
   GIT_BRANCH="$(git branch --show-current 2>/dev/null || echo unavailable)"
 fi
 
-echo "Agentic AI AWR Advisor project shell is ready."
+echo "Agentic AI AWR Advisor project environment is loaded."
 echo "Project: $PROJECT_DIR"
 echo "Mode: $(value_or_unset "${APP_MODE:-}")"
 echo "Use Oracle DB: $(bool_from_env_or_db_presence)"
@@ -134,8 +123,24 @@ else
   echo "Git status: unavailable"
 fi
 
-echo "Run 'exit' to leave this isolated project environment."
+echo "Run 'exit' to leave this isolated project environment; the launcher returns to $HOME."
 echo
 
+
+SYNC_GUARD="$PROJECT_DIR/scripts/ops/awr-sync-guard.sh"
+echo
+if [[ -x "$SYNC_GUARD" ]]; then
+  if "$SYNC_GUARD" work-ready; then
+    :
+  else
+    echo
+    echo "Agentic AI AWR Advisor environment is active for cleanup/maintenance, but work readiness failed." >&2
+    echo "You are in the project root. Use awr-status, awr-start, git status, or cleanup commands." >&2
+  fi
+else
+  echo
+  echo "Work safety guard unavailable: $SYNC_GUARD" >&2
+  echo "Agentic AI AWR Advisor environment is active for cleanup/maintenance only." >&2
+fi
 
 exec "${SHELL:-/bin/zsh}" -i
